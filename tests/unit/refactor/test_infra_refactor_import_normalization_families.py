@@ -402,9 +402,7 @@ class TestsFlextInfraRefactorImportNormalizationFamilies(
             "    assert DemoApi(c, m, u, DemoApiTestDataHelper)\n",
         )
 
-        tm.that(normalized, has="from tests import c\n")
-        tm.that(normalized, has="from tests import c, u\n")
-        tm.that(normalized, has="from tests import c, m\n")
+        tm.that(normalized, has="from tests import c, m, u\n")
         tm.that(normalized, has="from demo_pkg import DemoApi\n")
         tm.that(
             normalized,
@@ -728,6 +726,53 @@ class TestsFlextInfraRefactorImportNormalizationFamilies(
             )
 
     @classmethod
+    def test_family_base_routes_its_own_letter_to_the_declaring_sibling(
+        cls, tmp_path: Path
+    ) -> None:
+        """A family ``base.py`` reading its own letter is repaired, not refused.
+
+        The base module keeps direct providers, which is exactly what the
+        own-family repair writes: the sibling owner through the family package.
+        """
+        project, package = cls._project(tmp_path)
+        family = u.Infra.facade_families()["p"]
+        directory = package / family.directory
+        cls._lazy_init(
+            directory,
+            {"DemoProtocolsBase": ".base", "DemoProtocolsResults": ".results"},
+        )
+        (directory / "results.py").write_text(
+            "from typing import Protocol\n\n\n"
+            "class DemoProtocolsResults:\n"
+            "    class Record(Protocol):\n"
+            "        name: str\n\n\n"
+            "__all__: list[str] = ['DemoProtocolsResults']\n",
+            encoding="utf-8",
+        )
+        (package / f"{family.module}.py").write_text(
+            f"from demo_pkg.{family.directory} import DemoProtocolsResults\n\n\n"
+            "class DemoProtocols(DemoProtocolsResults):\n"
+            "    pass\n\n\n"
+            "p = DemoProtocols\n"
+            "__all__: list[str] = ['DemoProtocols', 'p']\n",
+            encoding="utf-8",
+        )
+        cls._lazy_init(package, {"p": f".{family.module}", "DemoApi": ".api"})
+        source = (
+            "from __future__ import annotations\n\n"
+            "from demo_pkg import p\n\n\n"
+            "class DemoProtocolsBase:\n"
+            "    def first(self) -> p.Record:\n"
+            "        raise NotImplementedError\n\n\n"
+            "__all__: list[str] = ['DemoProtocolsBase']\n"
+        )
+
+        repaired = cls._normalize(project, directory / "base.py", source)
+
+        tm.that(repaired, lacks="from demo_pkg import p")
+        tm.that(repaired, has="DemoProtocolsResults.Record")
+
+    @classmethod
     @c.Tests.MARK.parametrize("letter", sorted(u.Infra.facade_families()))
     @c.Tests.MARK.parametrize("guarded", [False, True])
     def test_family_rejects_own_facade_but_preserves_private_assembly(
@@ -757,3 +802,47 @@ class TestsFlextInfraRefactorImportNormalizationFamilies(
             ),
             eq=native,
         )
+
+    @classmethod
+    def test_tier_root_local_reexport_is_a_fixed_point(cls, tmp_path: Path) -> None:
+        """A tier consumer keeps the root lazy route to a locally re-exported name."""
+        project, _ = cls._project(tmp_path)
+        tier = project / "tests"
+        fixtures = tier / "fixtures"
+        cls._lazy_init(fixtures, {"DemoSettings": ".settings"})
+        (fixtures / "settings.py").write_text(
+            "class DemoSettings:\n"
+            "    marker = 'fixture'\n"
+            "__all__: list[str] = ['DemoSettings']\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        cls._lazy_init(tier, {"DemoSettings": ".fixtures"})
+        cls._lazy_init(tier / "_utilities", {"DemoTools": ".tools"})
+        target = tier / "_utilities" / "tools.py"
+        source = (
+            "from tests import DemoSettings\n"
+            "\n"
+            "\n"
+            "class DemoTools:\n"
+            "    SETTINGS = DemoSettings\n"
+            "\n"
+            "\n"
+            "__all__: list[str] = ['DemoTools']\n"
+        )
+        first = tm.ok(
+            u.Infra.normalize_import_source(
+                project_root=project,
+                file_path=target,
+                source=source,
+            )
+        )
+        second = tm.ok(
+            u.Infra.normalize_import_source(
+                project_root=project,
+                file_path=target,
+                source=first,
+            )
+        )
+        tm.that(first, has="from tests import DemoSettings")
+        tm.that(first, lacks="from tests.fixtures import DemoSettings")
+        tm.that(second, eq=first)

@@ -66,12 +66,12 @@ class FlextInfraWorkspaceFleetGaps(s[p.Infra.FleetGapsReport]):
             self._external_consumer_row(consumer, quality.value)
             for consumer in workspace.external_consumers
         )
-        report = m.Infra.FleetGapsReport(
-            schema_version=c.Infra.FLEET_GAPS_REPORT_SCHEMA_VERSION,
-            workspace_root=root.resolve(),
-            workspace_name=workspace.name,
-            repos=tuple(rows),
-        )
+        report = m.Infra.FleetGapsReport.model_validate({
+            "schema_version": (c.Infra.FLEET_GAPS_REPORT_SCHEMA_VERSION),
+            "workspace_root": (root.resolve()),
+            "workspace_name": (workspace.name),
+            "repos": (tuple(rows)),
+        })
         published = u.Infra.publish_refactor_report_evidence(
             root,
             report,
@@ -141,25 +141,29 @@ class FlextInfraWorkspaceFleetGaps(s[p.Infra.FleetGapsReport]):
         """
         present = repo_root.is_dir()
         stamp = self._skills_stamp_payload(repo_root)
-        return m.Infra.FleetRepoGaps(
-            name=name,
-            root=repo_root,
-            present=present,
-            dirty_paths=self._dirty_paths(repo_root) if present else (),
-            open_pull_requests=self._open_pull_requests(repo_root) if present else (),
-            unmerged_branches=(
+        return m.Infra.FleetRepoGaps.model_validate({
+            "name": (name),
+            "root": (repo_root),
+            "present": (present),
+            "dirty_paths": (self._dirty_paths(repo_root) if present else ()),
+            "open_pull_requests": (
+                self._open_pull_requests(repo_root) if present else ()
+            ),
+            "unmerged_branches": (
                 self._unmerged_branches(repo_root, declared=declared) if present else 0
             ),
-            lint_findings=quality.get((repo_root.resolve(), c.Infra.LINT)),
-            pyrefly_findings=quality.get((repo_root.resolve(), c.Infra.PYREFLY)),
-            codemod_findings=self._codemod_findings(repo_root),
-            agents_doc_present=(repo_root / c.Infra.AGENTS_DOC_FILENAME).is_file(),
-            skills_stamp_present=stamp is not None,
-            skills_stamp_distribution_version=(self._stamp_distribution_version(stamp)),
-            beads_config_present=(
+            "lint_findings": (quality.get((repo_root.resolve(), c.Infra.LINT))),
+            "pyrefly_findings": (quality.get((repo_root.resolve(), c.Infra.PYREFLY))),
+            "codemod_findings": (self._codemod_findings(repo_root)),
+            "agents_doc_present": ((repo_root / c.Infra.AGENTS_DOC_FILENAME).is_file()),
+            "skills_stamp_present": (stamp is not None),
+            "skills_stamp_distribution_version": (
+                self._stamp_distribution_version(stamp)
+            ),
+            "beads_config_present": (
                 (repo_root / c.Infra.BEADS_RUNTIME_CONFIG_RELPATH).is_file()
             ),
-        )
+        })
 
     @staticmethod
     def _dirty_paths(repo_root: Path) -> Sequence[str]:
@@ -214,7 +218,7 @@ class FlextInfraWorkspaceFleetGaps(s[p.Infra.FleetGapsReport]):
         return tuple(
             u.validate_value(m.Infra.FleetPullRequest, item).unwrap()
             for item in u.Cli.json_as_sequence(
-                u.Cli.json_parse(run.value.stdout).unwrap()
+                u.Cli.json_loads(run.value.stdout).unwrap()
             )
         )
 
@@ -271,9 +275,7 @@ class FlextInfraWorkspaceFleetGaps(s[p.Infra.FleetGapsReport]):
         stamp_path = repo_root / c.Infra.SKILLS_STAMP_RELPATH
         if not stamp_path.is_file():
             return None
-        parsed = u.Cli.json_parse(
-            stamp_path.read_text(encoding=c.DEFAULT_ENCODING),
-        )
+        parsed = u.Cli.json_loads(stamp_path.read_text(encoding=c.DEFAULT_ENCODING))
         if parsed.failure or not isinstance(parsed.value, dict):
             return None
         return u.json_mapping_adapter().validate_python(parsed.value)
@@ -444,9 +446,7 @@ class FlextInfraWorkspaceFleetGaps(s[p.Infra.FleetGapsReport]):
         report_path = repo_root / c.Infra.MOD_SCAN_REPORT_RELATIVE_PATH
         if not report_path.is_file():
             return 0
-        parsed = u.Cli.json_parse(
-            report_path.read_text(encoding=c.DEFAULT_ENCODING),
-        )
+        parsed = u.Cli.json_loads(report_path.read_text(encoding=c.DEFAULT_ENCODING))
         if parsed.failure or not isinstance(parsed.value, dict):
             return 0
         findings = parsed.value.get("findings")

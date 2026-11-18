@@ -11,446 +11,11 @@ from pathlib import Path
 from git import BadName, GitCommandError
 
 from flext_infra import c, m, p, r
-from flext_infra._utilities._git import (
-    FlextInfraUtilitiesGitStatePublication,
-    FlextInfraUtilitiesGitWorktreeRoots,
-    FlextInfraUtilitiesGitWorktreeStatus,
-)
+from flext_infra._utilities._git import FlextInfraUtilitiesGitRepo
 
 
-class FlextInfraUtilitiesGitSemanticRefs(
-    FlextInfraUtilitiesGitStatePublication,
-    FlextInfraUtilitiesGitWorktreeRoots,
-):
+class FlextInfraUtilitiesGitSemanticRefs(FlextInfraUtilitiesGitRepo):
     """Own semantic refs operations."""
-
-    @classmethod
-    def git_verify_lane(
-        cls,
-        request: p.Infra.GitLaneVerificationRequest,
-    ) -> p.Result[p.Infra.GitOidReport]:
-        """Verify stash absence and live-tip ancestry without changing Git state.
-
-        Creation and retirement remain closed until the canonical ownership and
-        preservation contracts reach those mutation requests. Correlation rows
-        and caller assertions are not authority to admit either effect.
-
-        Returns:
-            The unchanged, twice-advertised integration tip, or a precise refusal.
-
-        """
-        stash_absent = cls._git_lane_no_stash(request.repo_root)
-        if stash_absent.failure:
-            return r[p.Infra.GitOidReport].from_failure(stash_absent)
-        tip = cls._git_lane_tip(request)
-        if tip.failure:
-            return tip
-        if request.operation == "create":
-            return cls._git_lane_ownership(request, tip.value.oid)
-        if request.operation == "retire":
-            return r[p.Infra.GitOidReport].fail(
-                "retirement refused: the native removal contract carries no verified "
-                "published preservation or active-session ownership proof; ancestry "
-                "alone does not authorize removal",
-            )
-        return tip
-
-    @classmethod
-    def _git_lane_ownership(
-        cls,
-        request: p.Infra.GitLaneVerificationRequest,
-        tip: str,
-    ) -> p.Result[p.Infra.GitOidReport]:
-        """Authenticate retained prior state and its integration before creation.
-
-        Returns:
-            The live tip only when the existing ownership receipt proves closure.
-
-        """
-        retained = cls._git_lane_retained_ownership(request, tip)
-        if retained.failure:
-            return retained
-        receipt = request.ownership
-        if receipt is None or receipt.checkpoint.snapshot.branch is None:
-            return r[p.Infra.GitOidReport].fail("owned branch receipt is required")
-        return cls._git_lane_clean_owned_branch(
-            request,
-            receipt.checkpoint.snapshot.branch,
-            tip,
-        )
-
-    @classmethod
-    def _git_lane_retained_ownership(
-        cls,
-        request: p.Infra.GitLaneVerificationRequest,
-        tip: str,
-    ) -> p.Result[p.Infra.GitOidReport]:
-        """Verify prior retained state independently of the current working layers.
-
-        Returns:
-            The integration tip containing the independently published checkpoint.
-
-        """
-        receipt = request.ownership
-        if receipt is None:
-            return r[p.Infra.GitOidReport].fail(
-                "new lane refused: authoritative Beads ownership and previous owned "
-                "lane integration are not available in the native admission contract; "
-                "continue the existing candidate, not another lane",
-            )
-        snapshot = receipt.checkpoint.snapshot
-        if (
-            snapshot.repo_root.resolve() != request.repo_root.resolve()
-            or snapshot.paths != (Path(),)
-            or snapshot.branch is None
-        ):
-            return r[p.Infra.GitOidReport].fail(
-                "lane ownership receipt does not cover this entire repository "
-                "on an owned branch",
-            )
-        retained = cls.git_verify_worktree_checkpoint_publication(
-            receipt.checkpoint,
-            receipt.publication,
-        )
-        if retained.failure:
-            return r[p.Infra.GitOidReport].from_failure(retained)
-        integrated = cls.git_is_ancestor(
-            m.Infra.GitAncestryRequest(
-                repo_root=request.repo_root,
-                ancestor=receipt.checkpoint.worktree_commit,
-                descendant=tip,
-            )
-        )
-        if integrated.failure:
-            return r[p.Infra.GitOidReport].from_failure(integrated)
-        if not integrated.value.value:
-            return r[p.Infra.GitOidReport].fail(
-                "prior owned checkpoint has not landed on the latest integration tip",
-            )
-        return r[p.Infra.GitOidReport].ok(m.Infra.GitOidReport(oid=tip))
-
-    @classmethod
-    def _git_lane_checkpoint_receipt(
-        cls,
-        request: p.Infra.GitLaneOwnershipRequest,
-    ) -> p.Infra.GitLaneOwnershipReceipt:
-        reference = request.checkpoint_ref
-        repo = cls._repo(request.repo_root)
-        repo.git.check_ref_format(reference)
-        commit = repo.commit(reference)
-        match commit.parents:
-            case [_, indexed, *_]:
-                return m.Infra.GitLaneOwnershipReceipt(
-                    checkpoint=m.Infra.GitWorktreeStateCheckpoint(
-                        snapshot=m.Infra.GitWorktreeStateSnapshot.model_validate_json(
-                            commit.message,
-                        ),
-                        checkpoint_ref=reference,
-                        index_commit=indexed.hexsha,
-                        worktree_commit=commit.hexsha,
-                    ),
-                    publication=m.Infra.GitWorktreeCheckpointPublication(
-                        remote_name=request.remote,
-                        remote_url=cls._state_remote_url(
-                            request.repo_root,
-                            request.remote,
-                        ),
-                        checkpoint_ref=reference,
-                        checkpoint_oid=commit.hexsha,
-                    ),
-                )
-            case _:
-                msg = "checkpoint must retain both original layers"
-                raise ValueError(msg)
-
-    @classmethod
-    def git_lane_ownership(
-        cls,
-        request: p.Infra.GitLaneOwnershipRequest,
-    ) -> p.Result[p.Infra.GitLaneOwnershipReceipt]:
-        """Produce ownership evidence from native retained history, never caller JSON.
-
-        This reads existing Git objects and the live remote only. It does not
-        capture, publish, integrate, switch branches, or modify either Git layer.
-
-        Returns:
-            Authenticated prior-state evidence, or the original proof failure.
-
-        """
-        result = r[p.Infra.GitLaneOwnershipReceipt]
-        reference = request.checkpoint_ref
-        if not reference.startswith("refs/") or reference.startswith((
-            c.Infra.GIT_REFS_HEADS,
-            c.Infra.GIT_REFS_TAGS,
-            c.Infra.GIT_REFS_REMOTES,
-        )):
-            return result.fail("ownership requires a dedicated checkpoint reference")
-        try:
-            receipt = cls._git_lane_checkpoint_receipt(request)
-        except (BadName, GitCommandError, OSError, ValueError) as exc:
-            return result.fail(str(exc), exception=exc)
-        verification = m.Infra.GitLaneVerificationRequest(
-            repo_root=request.repo_root,
-            remote=request.remote,
-            expected_tip=request.expected_tip,
-            ownership=receipt,
-        )
-        tip = cls.git_verify_lane(verification)
-        if tip.failure:
-            return result.from_failure(tip)
-        retained = cls._git_lane_retained_ownership(verification, tip.value.oid)
-        if retained.failure:
-            return result.from_failure(retained)
-        return cls.git_verify_lane(
-            m.Infra.GitLaneVerificationRequest(
-                repo_root=request.repo_root,
-                remote=request.remote,
-                expected_tip=tip.value.oid,
-            ),
-        ).map(lambda _tip: receipt)
-
-    @classmethod
-    def _git_lane_clean_owned_branch(
-        cls,
-        request: p.Infra.GitLaneVerificationRequest,
-        owned_branch: str,
-        tip: str,
-    ) -> p.Result[p.Infra.GitOidReport]:
-        branch = cls.git_current_branch(
-            m.Infra.GitRepoRequest(repo_root=request.repo_root)
-        )
-        if branch.failure:
-            return r[p.Infra.GitOidReport].from_failure(branch)
-        if branch.value.text != owned_branch:
-            return r[p.Infra.GitOidReport].fail(
-                "current branch is not the receipt's recorded owned branch",
-            )
-        status = FlextInfraUtilitiesGitWorktreeStatus.git_status(
-            m.Infra.GitStatusRequest(repo_root=request.repo_root)
-        )
-        if status.failure:
-            return r[p.Infra.GitOidReport].from_failure(status)
-        if status.value.dirty:
-            return r[p.Infra.GitOidReport].fail(
-                "new lane refuses unpublished current WIP"
-            )
-        return r[p.Infra.GitOidReport].ok(m.Infra.GitOidReport(oid=tip))
-
-    @classmethod
-    def _git_lane_no_stash(cls, root: Path) -> p.Result[bool]:
-        """Require both the stash log and its incident reference to be absent.
-
-        Returns:
-            Stash absence or the original query failure.
-
-        """
-        stashes = cls.git_stash_oids(m.Infra.GitRepoRequest(repo_root=root))
-        if stashes.failure:
-            return r[bool].from_failure(stashes)
-        retained = cls.git_ref_exists(
-            m.Infra.GitRefRequest(repo_root=root, reference="refs/stash"),
-        )
-        if retained.failure:
-            return r[bool].from_failure(retained)
-        if stashes.value.oids or retained.value.value:
-            return r[bool].fail(
-                "lane admission refuses existing stash state; preserve and integrate "
-                "the incident without creating, applying, or popping a stash",
-            )
-        return r[bool].ok(value=True)
-
-    @classmethod
-    def _git_lane_tip(
-        cls,
-        request: p.Infra.GitLaneVerificationRequest,
-    ) -> p.Result[p.Infra.GitOidReport]:
-        """Bind the declared integration branch to a live, unchanged remote OID.
-
-        Returns:
-            Verified integration tip without fetching or writing refs.
-
-        """
-        remote = cls._git_lane_declared_remote(request)
-        if remote.failure:
-            return r[p.Infra.GitOidReport].from_failure(remote)
-        tip = cls._git_lane_cached_tip(remote.value, request.expected_tip)
-        if tip.failure:
-            return tip
-        ancestry = cls._git_lane_ancestry(request, tip.value.oid)
-        if ancestry.failure:
-            return ancestry
-        confirmed = cls.git_remote_branch_oid(remote.value)
-        if confirmed.failure:
-            return r[p.Infra.GitOidReport].from_failure(confirmed)
-        if confirmed.value.text != tip.value.oid:
-            return r[p.Infra.GitOidReport].fail(
-                "integration tip changed during preflight",
-            )
-        return ancestry
-
-    @classmethod
-    def _git_lane_declared_remote(
-        cls,
-        request: p.Infra.GitLaneVerificationRequest,
-    ) -> p.Result[p.Infra.GitRemoteBranchRequest]:
-        """Resolve the integration branch the lane's repository declares.
-
-        A member composed by a superproject declares its line in that
-        superproject's ``.gitmodules`` ``branch`` key; an undeclared member or a
-        member that follows the superproject (``.``) fails closed. A standalone
-        checkout declares its line through its forge default branch, read live
-        from the remote's ``HEAD``. No branch is inferred from names or cached
-        refs.
-
-        Returns:
-            Declared integration query or a missing-authority diagnostic.
-
-        """
-        result = r[p.Infra.GitRemoteBranchRequest]
-
-        def declared(branch: str) -> p.Infra.GitRemoteBranchRequest:
-            return m.Infra.GitRemoteBranchRequest(
-                repo_root=request.repo_root,
-                remote=request.remote,
-                branch=branch,
-            )
-
-        def member_line(
-            superproject: Path,
-            primary: Path,
-        ) -> p.Result[p.Infra.GitRemoteBranchRequest]:
-            return cls.git_submodule_declaration(
-                m.Infra.GitSubmoduleContractRequest(
-                    repo_root=superproject,
-                    member_path=primary.relative_to(superproject).as_posix(),
-                ),
-            ).flat_map(
-                lambda declaration: (
-                    result.fail(
-                        "lane admission requires a named .gitmodules branch; "
-                        f"{declaration.path} follows its superproject",
-                    )
-                    if declaration.branch == c.Infra.FOLLOW_SUPERPROJECT_BRANCH
-                    else result.ok(declared(declaration.branch))
-                ),
-            )
-
-        def integration_line(
-            primary: Path,
-        ) -> p.Result[p.Infra.GitRemoteBranchRequest]:
-            return cls._git_repository_root_path(primary).flat_map(
-                lambda superproject: (
-                    cls.git_remote_default_branch(
-                        m.Infra.GitRemoteRequest(
-                            repo_root=request.repo_root,
-                            remote=request.remote,
-                        ),
-                    ).map(lambda default: declared(default.text))
-                    if superproject == primary
-                    else member_line(superproject, primary)
-                ),
-            )
-
-        return cls._git_primary_worktree_root_path(request.repo_root).flat_map(
-            integration_line,
-        )
-
-    @classmethod
-    def _git_lane_cached_tip(
-        cls,
-        request: p.Infra.GitRemoteBranchRequest,
-        expected_tip: str | None,
-    ) -> p.Result[p.Infra.GitOidReport]:
-        """Compare the advertised integration OID with its local cached commit.
-
-        Returns:
-            Current cached identity or a precise freshness refusal.
-
-        """
-        tip = cls.git_remote_branch_oid(request)
-        if tip.failure:
-            return r[p.Infra.GitOidReport].from_failure(tip)
-        if not tip.value.text:
-            return r[p.Infra.GitOidReport].fail(
-                f"declared integration branch is absent on {request.remote}: "
-                f"{request.branch}",
-            )
-        if expected_tip is not None and expected_tip != tip.value.text:
-            return r[p.Infra.GitOidReport].fail("integration tip changed before effect")
-        cached = cls.git_resolve_commit(
-            m.Infra.GitCommitishRequest(
-                repo_root=request.repo_root,
-                commitish=f"refs/remotes/{request.remote}/{request.branch}",
-            ),
-        )
-        if cached.failure:
-            return r[p.Infra.GitOidReport].from_failure(cached)
-        if cached.value.oid != tip.value.text:
-            return r[p.Infra.GitOidReport].fail(
-                "stale integration cache; refresh through the canonical fetch owner "
-                "before lane admission",
-            )
-        return cached
-
-    @classmethod
-    def _git_lane_ancestry(
-        cls,
-        request: p.Infra.GitLaneVerificationRequest,
-        tip: str,
-    ) -> p.Result[p.Infra.GitOidReport]:
-        """Check the appropriate ancestry direction and retirement cleanliness.
-
-        Returns:
-            Integration OID when the measured Git boundary is valid.
-
-        """
-        if request.operation == "retire":
-            clean = cls._git_lane_retirement_clean(request.repo_root)
-            if clean.failure:
-                return r[p.Infra.GitOidReport].from_failure(clean)
-        ancestry = cls.git_is_ancestor(
-            m.Infra.GitAncestryRequest(
-                repo_root=request.repo_root,
-                ancestor=(request.candidate if request.operation == "retire" else tip),
-                descendant=(
-                    tip if request.operation == "retire" else request.candidate
-                ),
-            ),
-        )
-        if ancestry.failure:
-            return r[p.Infra.GitOidReport].from_failure(ancestry)
-        if not ancestry.value.value:
-            return r[p.Infra.GitOidReport].fail(
-                "retirement refuses an unintegrated candidate"
-                if request.operation == "retire"
-                else "lane has not absorbed the latest integration tip; merge forward",
-            )
-        return r[p.Infra.GitOidReport].ok(m.Infra.GitOidReport(oid=tip))
-
-    @classmethod
-    def _git_lane_retirement_clean(cls, root: Path) -> p.Result[bool]:
-        """Require a clean, unlocked retirement subject without index writes.
-
-        Returns:
-            Cleanliness or the original inspection failure.
-
-        """
-        status = FlextInfraUtilitiesGitWorktreeStatus.git_status(
-            m.Infra.GitStatusRequest(repo_root=root)
-        )
-        if status.failure:
-            return r[bool].from_failure(status)
-        if status.value.dirty:
-            return r[bool].fail("retirement refuses a dirty worktree")
-        entries = cls.git_list_worktrees(m.Infra.GitRepoRequest(repo_root=root))
-        if entries.failure:
-            return r[bool].from_failure(entries)
-        if any(
-            entry.locked and entry.path == root.resolve()
-            for entry in entries.value.entries
-        ):
-            return r[bool].fail("retirement refuses a locked worktree")
-        return r[bool].ok(value=True)
 
     @classmethod
     def git_list_worktrees(
@@ -476,11 +41,11 @@ class FlextInfraUtilitiesGitSemanticRefs(
                 exception=exc,
             )
         return r[p.Infra.GitWorktreeListReport].ok(
-            m.Infra.GitWorktreeListReport(
-                root=repo_root,
-                entries=entries,
-                porcelain=porcelain,
-            ),
+            m.Infra.GitWorktreeListReport.model_validate({
+                "root": (repo_root),
+                "entries": (entries),
+                "porcelain": (porcelain),
+            }),
         )
 
     @classmethod
@@ -577,8 +142,11 @@ class FlextInfraUtilitiesGitSemanticRefs(
             The resulting ``p.Result[p.Infra.GitRootReport]``.
 
         """
+        opened = cls._open_repo(request.repo_root)
+        if opened.failure:
+            return r[p.Infra.GitRootReport].from_failure(opened)
+        repo = opened.value
         try:
-            repo = cls._repo(request.repo_root)
             root = (
                 Path(repo.working_tree_dir).resolve() if repo.working_tree_dir else None
             )
@@ -753,6 +321,37 @@ class FlextInfraUtilitiesGitSemanticRefs(
         )
 
     @classmethod
+    def git_stash_drop(
+        cls,
+        request: p.Infra.GitStashDropRequest,
+    ) -> p.Result[p.Infra.GitBoolReport]:
+        """Drop exactly the stash entry whose commit is ``oid``.
+
+        Stash indexes shift on every drop, so the entry is located by its
+        commit; an oid no longer stashed is a failure, never a guess.
+
+        Returns:
+            The resulting ``p.Result[p.Infra.GitBoolReport]``.
+
+        """
+        listed = cls.git_stash_oids(m.Infra.GitRepoRequest(repo_root=request.repo_root))
+        if listed.failure:
+            return r[p.Infra.GitBoolReport].from_failure(listed)
+        if request.oid not in listed.value.oids:
+            return r[p.Infra.GitBoolReport].fail(f"stash entry {request.oid} not found")
+        index = listed.value.oids.index(request.oid)
+        try:
+            cls._repo(request.repo_root).git.stash("drop", f"stash@{{{index}}}")
+        except GitCommandError as exc:
+            return r[p.Infra.GitBoolReport].fail(str(exc), exception=exc)
+        except (OSError, ValueError) as exc:
+            return r[p.Infra.GitBoolReport].fail(
+                f"failed to drop stash {request.oid}: {exc}",
+                exception=exc,
+            )
+        return r[p.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
+
+    @classmethod
     def git_remote_branch_oid(
         cls,
         request: p.Infra.GitRemoteBranchRequest,
@@ -783,79 +382,6 @@ class FlextInfraUtilitiesGitSemanticRefs(
         output = text if isinstance(text, str) else str(text)
         return r[p.Infra.GitTextReport].ok(
             m.Infra.GitTextReport(text=output.partition("\t")[0].strip()),
-        )
-
-    @classmethod
-    def git_remote_default_branch(
-        cls,
-        request: p.Infra.GitRemoteRequest,
-    ) -> p.Result[p.Infra.GitTextReport]:
-        """Ask the remote itself which branch its ``HEAD`` declares.
-
-        The forge default branch is the integration declaration of a
-        standalone repository; it is read live, never from a cached
-        ``refs/remotes/<remote>/HEAD``.
-
-        Returns:
-            The declared branch name, or a failure when the remote declares none.
-
-        """
-        try:
-            text = cls._repo(request.repo_root).git.ls_remote(
-                "--symref",
-                request.remote,
-                c.Infra.GIT_HEAD,
-            )
-        except GitCommandError as exc:
-            return r[p.Infra.GitTextReport].fail(str(exc), exception=exc)
-        except (OSError, ValueError) as exc:
-            return r[p.Infra.GitTextReport].fail(
-                f"failed to query {request.remote} for its default branch: {exc}",
-                exception=exc,
-            )
-        output = text if isinstance(text, str) else str(text)
-        symref_prefix = f"ref: {c.Infra.GIT_REFS_HEADS}"
-        for line in output.splitlines():
-            target, _, name = line.partition("\t")
-            if name == c.Infra.GIT_HEAD and target.startswith(symref_prefix):
-                return r[p.Infra.GitTextReport].ok(
-                    m.Infra.GitTextReport(text=target.removeprefix(symref_prefix)),
-                )
-        return r[p.Infra.GitTextReport].fail(
-            f"{request.remote} declares no default branch through its HEAD",
-        )
-
-    @classmethod
-    def git_unique_patch_oids(
-        cls,
-        request: p.Infra.GitMergeProbeRequest,
-    ) -> p.Result[p.Infra.GitOidListReport]:
-        """List commits whose patch identity is not represented in the baseline.
-
-        Returns:
-            Real unique patch OIDs from read-only git cherry, without merge-tree writes.
-
-        """
-        try:
-            text = cls._repo(request.repo_root).git.cherry(
-                request.base,
-                request.commitish,
-            )
-        except GitCommandError as exc:
-            return r[p.Infra.GitOidListReport].fail(str(exc), exception=exc)
-        except (OSError, ValueError) as exc:
-            return r[p.Infra.GitOidListReport].fail(
-                f"failed to inspect unique patches: {exc}",
-                exception=exc,
-            )
-        return r[p.Infra.GitOidListReport].ok(
-            m.Infra.GitOidListReport(
-                oids=tuple(
-                    line.removeprefix("+ ")
-                    for line in text.splitlines()
-                    if line.startswith("+ ")
-                ),
-            ),
         )
 
     @classmethod

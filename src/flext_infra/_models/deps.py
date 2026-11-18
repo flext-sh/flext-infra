@@ -87,20 +87,15 @@ class FlextInfraModelsDeps(
     class ProjectMetadataState(m.ArbitraryTypesModel):
         """One TOML ingress retaining metadata and its native packaging declaration."""
 
-        source: Annotated[
-            p.Cli.AtomicFileState, t.schema_for_model(lambda: m.Cli.AtomicFileState)
-        ] = m.Field(exclude=True, description="Original TOML observation parsed here")
+        source: m.Cli.AtomicFileState = m.Field(
+            exclude=True, description="Original TOML observation parsed here"
+        )
         metadata: Annotated[
             t.Port[p.ProjectMetadata],
             m.Field(description="Original canonical PEP 621 and FLEXT metadata"),
         ]
         packaging: Annotated[
-            Annotated[
-                p.Infra.ProjectPackagingDeclaration,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsDeps.ProjectPackagingDeclaration
-                ),
-            ],
+            FlextInfraModelsDeps.ProjectPackagingDeclaration,
             m.Field(description="Packaging facts from the same parsed document"),
         ]
 
@@ -137,13 +132,14 @@ class FlextInfraModelsDeps(
         target_root: Annotated[Path, m.Field(description="Selected repository root")]
         python: Annotated[Path, m.Field(description="Elected consumer interpreter")]
         lock: Annotated[
-            Annotated[
-                p.Cli.AtomicFileState, t.schema_for_model(lambda: m.Cli.AtomicFileState)
-            ],
+            m.Cli.AtomicFileState,
             m.Field(description="Captured native UV lock of the selected runtime"),
         ]
         providers: Annotated[
-            tuple[FlextInfraModelsDeps.RuntimeDependencyProvider, ...],
+            tuple[
+                FlextInfraModelsDeps.RuntimeDependencyProvider,
+                ...,
+            ],
             m.Field(description="All matching suppliers; ambiguity is preserved"),
         ]
         development_only: Annotated[
@@ -188,9 +184,7 @@ class FlextInfraModelsDeps(
             ),
         ]
         before: Annotated[
-            Annotated[
-                p.Cli.AtomicFileState, t.schema_for_model(lambda: m.Cli.AtomicFileState)
-            ],
+            m.Cli.AtomicFileState,
             m.Field(
                 description="Authenticated pyproject state consumed by native deptry"
             ),
@@ -318,6 +312,7 @@ class FlextInfraModelsDeps(
     class PyprojectDocumentState(m.ArbitraryTypesModel):
         """Centralized normalized TOML state reused across deps workflows.
 
+        m.Cli.AtomicFileState
         Enforcement exemption: internal tooling model with intentional
         mutable state.
         """
@@ -325,12 +320,7 @@ class FlextInfraModelsDeps(
         model_config: ClassVar[t.ConfigDict] = m.ConfigDict(validate_default=False)
 
         pyproject_path: Annotated[Path, m.Field(description="Resolved pyproject path")]
-        before: (
-            Annotated[
-                p.Cli.AtomicFileState, t.schema_for_model(lambda: m.Cli.AtomicFileState)
-            ]
-            | None
-        ) = m.Field(
+        before: m.Cli.AtomicFileState | None = m.Field(
             None,
             exclude=True,
             description="Original physical read; absent for pure source rendering",
@@ -567,10 +557,7 @@ class FlextInfraModelsDeps(
     ):
         """Project-level dependency report combining deptry results."""
 
-        deptry: Annotated[
-            p.Infra.DeptryReport,
-            t.schema_for_model(lambda: FlextInfraModelsDeps.DeptryReport),
-        ] = m.Field(description="Deptry report")
+        deptry: FlextInfraModelsDeps.DeptryReport = m.Field(description="Deptry report")
 
     class WorkspaceDependencyReport(m.ArbitraryTypesModel):
         """Workspace-level dependency analysis report aggregating all projects.
@@ -582,24 +569,30 @@ class FlextInfraModelsDeps(
         workspace: Annotated[str, m.Field(description="Workspace name")]
         projects: MutableMapping[
             str,
-            Annotated[
-                p.Infra.ProjectDependencyReport,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsDeps.ProjectDependencyReport
-                ),
-            ],
+            FlextInfraModelsDeps.ProjectDependencyReport,
         ] = m.Field(description="Per-project reports")
-        pip_check: (
-            Annotated[
-                p.Infra.PipCheckReport,
-                t.schema_for_model(lambda: FlextInfraModelsDeps.PipCheckReport),
-            ]
-            | None
-        ) = m.Field(
+        pip_check: FlextInfraModelsDeps.PipCheckReport | None = m.Field(
             None,
             description="Pip check report",
             validate_default=True,
         )
+
+    class UpgBounds(m.ExternalContractModel):
+        """The ``[tool.flext.upg]`` record of the bounds ``make upg`` owns.
+
+        ``make upg`` writes each named requirement's floor (``>=``) or pin
+        (``==``) from its cooldown-respecting resolution; every other
+        requirement line is authored and only reported.
+        """
+
+        floors: Annotated[
+            Sequence[t.NonEmptyStr],
+            m.Field(description="Distributions whose >= floor upg writes"),
+        ] = ()
+        pins: Annotated[
+            Sequence[t.NonEmptyStr],
+            m.Field(description="Distributions whose == pin upg writes"),
+        ] = ()
 
     class ToolingContextRequest(m.ArbitraryTypesModel):
         """Declared inputs the modernizer resolves into a runtime context."""
@@ -620,29 +613,23 @@ class FlextInfraModelsDeps(
             m.Field(description="Distribution name of the project"),
         ]
         package_name: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Importable package name of the project"),
+            t.NonEmptyStr | None,
+            m.Field(
+                description=(
+                    "Importable package name of the project; absent without a package"
+                ),
+            ),
         ]
         path: Annotated[
             Path,
             m.Field(description="Absolute path of the project's pyproject file"),
         ]
         topology: Annotated[
-            Annotated[
-                p.Infra.PyprojectDeclaredTopology,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsDeps.PyprojectDeclaredTopology
-                ),
-            ],
+            FlextInfraModelsDeps.PyprojectDeclaredTopology,
             m.Field(description="Declared repository topology"),
         ]
         codegen: Annotated[
-            Annotated[
-                p.Infra.CodegenConfigSpec,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsConfigArtifact.CodegenConfigSpec
-                ),
-            ],
+            FlextInfraModelsConfigArtifact.CodegenConfigSpec,
             m.Field(description="Elected effective target codegen policy"),
         ]
         runtime_dependency_overlay: Annotated[

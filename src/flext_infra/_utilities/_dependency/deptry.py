@@ -73,16 +73,16 @@ class FlextInfraUtilitiesDependencyDeptry:
                 "deptry report state has no captured bytes to authenticate",
             )
         return result_type.ok(
-            m.Infra.DeptryScan(
-                scanned_files=coverage.value,
-                venv_bin=venv_bin,
-                source=sources,
-                native=output,
-                settings=settings,
-                report_state=report_state,
-                report_sha256=u.Cli.sha256_bytes(report_state.content),
-                report=parsed,
-            )
+            m.Infra.DeptryScan.model_validate({
+                "scanned_files": (coverage.value),
+                "venv_bin": (venv_bin),
+                "source": (sources),
+                "native": (output),
+                "settings": (settings),
+                "report_state": (report_state),
+                "report_sha256": (u.Cli.sha256_bytes(report_state.content)),
+                "report": (parsed),
+            })
         )
 
     @staticmethod
@@ -260,6 +260,31 @@ class FlextInfraUtilitiesDependencyDeptry:
         return result_type.ok(tuple(manifests))
 
     @staticmethod
+    def _deptry_source_identity(
+        manifest: p.Cli.AtomicPhysicalTreeManifest,
+    ) -> tuple[p.Cli.AtomicPhysicalTreeEntry | Mapping[str, object], ...]:
+        """Authenticate source bytes and physical bindings independently of bytecode.
+
+        Returns:
+            Ordered entries with directory counters and Python cache artifacts omitted.
+
+        """
+        root = manifest.root.path
+        return tuple(
+            entry.model_dump(exclude={"mtime_ns", "ctime_ns", "link_count"})
+            if entry.kind == "directory"
+            else entry
+            for entry in (manifest.root, *manifest.entries)
+            if not (
+                "__pycache__" in entry.path.relative_to(root).parts
+                and (
+                    entry.kind == "directory"
+                    or (entry.kind == "file" and entry.path.suffix == ".pyc")
+                )
+            )
+        )
+
+    @staticmethod
     def _verified_deptry_sources(
         sources: Sequence[p.Cli.AtomicPhysicalTreeManifest],
         *,
@@ -273,10 +298,11 @@ class FlextInfraUtilitiesDependencyDeptry:
         """
         result_type = r[bool]
         for source in sources:
-            current = u.Cli.atomic_inventory_physical_tree(source.root.path)
+            current = u.Cli.atomic_inventory_physical_tree(source.root.path, source)
             if current.failure:
                 return result_type.from_failure(current)
-            if current.value != source:
+            identity = FlextInfraUtilitiesDependencyDeptry._deptry_source_identity
+            if identity(current.value) != identity(source):
                 return result_type.fail(
                     f"deptry production source changed {moment}: {source.root.path}"
                 )
@@ -290,7 +316,7 @@ class FlextInfraUtilitiesDependencyDeptry:
         config_path: Path,
     ) -> p.Result[
         tuple[
-            m.Cli.AtomicFileState,
+            p.Cli.AtomicFileState,
             t.StrTuple,
             tuple[p.Cli.AtomicPhysicalTreeManifest, ...],
         ]
@@ -378,7 +404,7 @@ class FlextInfraUtilitiesDependencyDeptry:
     @staticmethod
     def _parsed_deptry_report(
         json_output_path: Path,
-    ) -> p.Result[tuple[p.Cli.AtomicFileState, m.Infra.DeptryNativeReport]]:
+    ) -> p.Result[tuple[p.Cli.AtomicFileState, p.Infra.DeptryNativeReport]]:
         """Read and strictly parse the fresh native deptry report.
 
         Returns:
@@ -416,7 +442,7 @@ class FlextInfraUtilitiesDependencyDeptry:
         config_path: Path,
         json_output_path: Path,
     ) -> p.Result[
-        tuple[p.Cli.CommandOutput, m.Cli.AtomicFileState, m.Infra.DeptryNativeReport]
+        tuple[p.Cli.CommandOutput, p.Cli.AtomicFileState, p.Infra.DeptryNativeReport]
     ]:
         """Run deptry once and strictly parse its fresh native report.
 

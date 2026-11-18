@@ -45,7 +45,7 @@ message: >-
   no old+new coexistence.
 note: >-
   Migration: keep only the canonical name ($NEW), delete the alias, update
-  all importers of $NAME in the same change, and let pyrefly/mypy pinpoint
+  all importers of $NAME in the same change, and let pyrefly pinpoint
   any missed consumer. A name the module publishes in its __all__ is its
   declared facade alias, not a compatibility name.
 files:
@@ -70,10 +70,18 @@ severity: error
 metadata:
   enforce: [ENFORCE-010, ENFORCE-066]
 files:
-  - "*/*/**/*.py"
+  - "**/*.py"
 ignores:
   - "src/*/*.py"
   - "**/__init__.py"
+  # Family facade modules own the short alias their namespace root imports,
+  # matching the add-facade-module-* declarations regardless of depth.
+  - "**/constants.py"
+  - "**/models.py"
+  - "**/protocols.py"
+  - "**/typings.py"
+  - "**/utilities.py"
+  - "**/utils.py"
 rule:
   kind: expression_statement
   inside:
@@ -102,10 +110,18 @@ severity: error
 metadata:
   enforce: [ENFORCE-010, ENFORCE-066]
 files:
-  - "*/*/**/*.py"
+  - "**/*.py"
 ignores:
   - "src/*/*.py"
   - "**/__init__.py"
+  # Family facade modules own the short alias their namespace root imports,
+  # matching the add-facade-module-* declarations regardless of depth.
+  - "**/constants.py"
+  - "**/models.py"
+  - "**/protocols.py"
+  - "**/typings.py"
+  - "**/utilities.py"
+  - "**/utils.py"
 rule:
   kind: string
   regex: "^[\"'][a-z][\"']$"
@@ -140,10 +156,18 @@ severity: error
 metadata:
   enforce: [ENFORCE-010, ENFORCE-066]
 files:
-  - "*/*/**/*.py"
+  - "**/*.py"
 ignores:
   - "src/*/*.py"
   - "**/__init__.py"
+  # Family facade modules own the short alias their namespace root imports,
+  # matching the add-facade-module-* declarations regardless of depth.
+  - "**/constants.py"
+  - "**/models.py"
+  - "**/protocols.py"
+  - "**/typings.py"
+  - "**/utilities.py"
+  - "**/utils.py"
 rule:
   kind: string
   regex: "^[\"'][a-z][\"']$"

@@ -52,10 +52,7 @@ class FlextInfraModelsRefactor(
         findings: Sequence[
             tuple[
                 c.Infra.CodemodRelocation,
-                Annotated[
-                    p.Infra.ModScanFinding,
-                    t.schema_for_model(lambda: FlextInfraModelsScan.ModScanFinding),
-                ],
+                FlextInfraModelsScan.ModScanFinding,
             ]
         ] = m.Field(description="Native relocation selections")
         py_files: Sequence[Path] = m.Field(description="Selected Python sources")
@@ -67,12 +64,9 @@ class FlextInfraModelsRefactor(
         working: MutableMapping[Path, str] = m.Field(
             description="Candidate sources changed only by native planning effects"
         )
-        originals: MutableMapping[
-            Path,
-            Annotated[
-                p.Cli.AtomicFileState, t.schema_for_model(lambda: m.Cli.AtomicFileState)
-            ],
-        ] = m.Field(description="Complete original dependency closure")
+        originals: t.Port[MutableMapping[Path, p.Cli.AtomicFileState]] = m.Field(
+            description="Complete original dependency closure"
+        )
         modes: MutableMapping[Path, int | None] = m.Field(
             description="Authenticated file modes preserved by publication"
         )
@@ -101,12 +95,7 @@ class FlextInfraModelsRefactor(
 
         path: Annotated[Path, m.Field(description="Consumer source identity")]
         inventory: Annotated[
-            Annotated[
-                p.Infra.SemanticBehaviorOwners,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsRefactor.SemanticBehaviorOwners
-                ),
-            ],
+            FlextInfraModelsRefactor.SemanticBehaviorOwners,
             m.Field(description="Declared behavior owners"),
         ]
         typing_directory: Annotated[
@@ -127,6 +116,11 @@ class FlextInfraModelsRefactor(
 
     class ModTextCommand(FlextInfraModelsMixins.WriteMixin, m.ContractModel):
         """Repository-scoped request for authenticated Sed rule replay."""
+
+        rule_ids: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(description="Exact text rule IDs; empty selects the catalogue"),
+        ] = ()
 
     class ModuleMoveCommand(m.ContractModel):
         """Move a declared source module and its semantic import references."""
@@ -185,14 +179,27 @@ class FlextInfraModelsRefactor(
             ),
         ] = False
 
+    class RopeMoveOptions(m.ArbitraryTypesModel):
+        """Declared search scope and filter policy for one semantic move."""
+
+        resources: Annotated[
+            Sequence[t.Port[t.Infra.RopeResource]],
+            m.Field(description="Resources included in the semantic move scope"),
+        ] = m.Field(default_factory=tuple)
+        destination_offset: Annotated[
+            int | None,
+            m.Field(description="Optional offset within the destination resource"),
+        ] = None
+        match_filter: Annotated[
+            t.Port[t.Infra.RopeOccurrenceFilter] | None,
+            m.Field(description="Optional predicate to filter moved occurrences"),
+        ] = None
+
     class SemanticRenameDecision(m.ImmutableValueModel):
         """Domain-selected name for an observed introducing declaration."""
 
         declaration: Annotated[
-            Annotated[
-                p.Infra.Object,
-                t.schema_for_model(lambda: FlextInfraModelsCensus.Object),
-            ],
+            FlextInfraModelsCensus.Object,
             m.Field(
                 description="Actual introducing declaration from semantic discovery"
             ),
@@ -205,10 +212,7 @@ class FlextInfraModelsRefactor(
         ]
         contracts: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.Object,
-                    t.schema_for_model(lambda: FlextInfraModelsCensus.Object),
-                ],
+                FlextInfraModelsCensus.Object,
                 ...,
             ],
             m.Field(
@@ -232,12 +236,7 @@ class FlextInfraModelsRefactor(
         """JSON input carrying explicit decisions, not a lexical naming policy."""
 
         decisions: tuple[
-            Annotated[
-                p.Infra.SemanticRenameSelection,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsRefactor.SemanticRenameSelection
-                ),
-            ],
+            FlextInfraModelsRefactor.SemanticRenameSelection,
             ...,
         ] = m.Field(description="Explicit domain names for inventoried owners")
         consumer_roots: tuple[Path, ...] = m.Field(
@@ -245,33 +244,114 @@ class FlextInfraModelsRefactor(
             description="Explicit external consumer checkout roots for this run",
         )
 
+    class SemanticRewireIntent(m.ImmutableValueModel):
+        """Portable native identities backed by the producer's captured sources."""
+
+        supplier_root: Path = m.Field(
+            description="Supplier repository relative to the artifact workspace"
+        )
+        source_path: Path = m.Field(description="Supplier-relative original module")
+        destination_path: Path = m.Field(
+            description="Supplier-relative destination module"
+        )
+        kind: t.NonEmptyStr = m.Field(description="Native census binding kind")
+        source_module: t.NonEmptyStr = m.Field(description="Original import identity")
+        source_scope: str = m.Field(
+            description="Original lexical binding path; empty for a module"
+        )
+        destination_module: t.NonEmptyStr = m.Field(
+            description="Current supplier import identity"
+        )
+        destination_scope: str = m.Field(
+            description="Current lexical binding path; empty for a module"
+        )
+        public_routes: tuple[tuple[str, str], ...] = m.Field(
+            default=(), description="Native module and public binding routes retained"
+        )
+        receiver_rewrites: Mapping[str, str] = m.Field(
+            default_factory=lambda: MappingProxyType[str, str]({}),
+            description="Native receiver member paths retained by a method transfer",
+        )
+
+        @m.model_validator(mode="after")
+        def relative_supplier_paths(self) -> Self:
+            """Keep supplier provenance independent of machine checkout paths.
+
+            Returns:
+                The validated native identity intent.
+
+            Raises:
+                ValueError: Supplier paths escape their declared relative owner.
+
+            """
+            if any(
+                path.is_absolute() or ".." in path.parts
+                for path in (
+                    self.supplier_root,
+                    self.source_path,
+                    self.destination_path,
+                )
+            ):
+                msg = "portable supplier paths must remain relative to their owner"
+                raise ValueError(msg)
+            if self.kind == "module":
+                if self.source_scope or self.destination_scope:
+                    msg = "portable module identities have no declaration scope"
+                    raise ValueError(msg)
+            elif not self.source_scope or not self.destination_scope:
+                msg = "portable declaration identities require lexical scopes"
+                raise ValueError(msg)
+            return self
+
     class SemanticRenamePlan(FlextInfraModelsCodegenTransaction.SemanticSourcePlan):
         """Reversible native rename artifact with its complete authenticated closure."""
 
         decisions: tuple[
-            Annotated[
-                p.Infra.SemanticRenameDecision,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsRefactor.SemanticRenameDecision
-                ),
-            ],
+            FlextInfraModelsRefactor.SemanticRenameDecision,
             ...,
         ] = m.Field(
-            min_length=1,
+            default=(),
             description="Resolved declarations and their domain naming decisions",
         )
+        rewires: tuple[FlextInfraModelsRefactor.SemanticRewireIntent, ...] = m.Field(
+            default=(),
+            description="Census-derived portable identities for external consumers",
+        )
+        rewire_sources: Mapping[Path, str] = m.Field(
+            default_factory=lambda: MappingProxyType[Path, str]({}),
+            description="Workspace-relative pre-move source/scaffold overlay bytes",
+        )
         edits: tuple[
-            Annotated[
-                p.Infra.SemanticMigrationEdit,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsTransformers.SemanticMigrationEdit
-                ),
-            ],
+            FlextInfraModelsTransformers.SemanticMigrationEdit,
             ...,
         ] = m.Field(description="Exact source bytes before and after the native rename")
         moves: tuple[tuple[Path, Path], ...] = m.Field(
             default=(), description="Native module source and destination effects"
         )
+
+        @m.model_validator(mode="after")
+        def observed_native_intent(self) -> Self:
+            """Require naming decisions or an observed declaration relocation.
+
+            Returns:
+                The artifact with its native execution intent.
+
+            Raises:
+                ValueError: The artifact has no native identity transformation.
+
+            """
+            if not self.decisions and not self.rewires:
+                msg = (
+                    "semantic rename artifact requires naming decisions "
+                    "or portable rewires"
+                )
+                raise ValueError(msg)
+            if any(
+                path.is_absolute() or ".." in path.parts for path in self.rewire_sources
+            ):
+                msg = "portable source overlays must remain workspace-relative"
+                raise ValueError(msg)
+            return self
 
     class RuleDeltaOptions(FlextInfraModelsBase.FrozenArbitrary):
         """Optional scope and authentication inputs for one rule delta comparison."""
@@ -352,12 +432,7 @@ class FlextInfraModelsRefactor(
         project_root: Annotated[str, m.Field(description="Project root path")]
         rule_deltas: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.ViolationsRuleDelta,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsRefactor.ViolationsRuleDelta
-                    ),
-                ],
+                FlextInfraModelsRefactor.ViolationsRuleDelta,
                 ...,
             ],
             m.Field(
@@ -413,14 +488,7 @@ class FlextInfraModelsRefactor(
 
         workspace: Annotated[t.NonEmptyStr, m.Field(description="Repository root path")]
         projects: Annotated[
-            Sequence[
-                Annotated[
-                    p.Infra.ProjectEnforcementReport,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsRefactor.ProjectEnforcementReport
-                    ),
-                ]
-            ],
+            Sequence[FlextInfraModelsRefactor.ProjectEnforcementReport],
             m.Field(description="Per-project enforcement reports for the workspace"),
         ] = m.Field(default_factory=tuple)
 
@@ -439,12 +507,7 @@ class FlextInfraModelsRefactor(
         ] = False
 
         plan: Annotated[
-            Annotated[
-                p.Infra.CodemodRulePlan,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsRefactorGrep.CodemodRulePlan
-                ),
-            ],
+            FlextInfraModelsRefactorGrep.CodemodRulePlan,
             m.Field(description="Elected full rule catalog and provider digests"),
         ]
         scope: Annotated[
@@ -463,32 +526,19 @@ class FlextInfraModelsRefactor(
             m.Field(description="Observed governed project topology"),
         ]
         ast_report: Annotated[
-            Annotated[
-                p.Infra.ModScanEvidence,
-                t.schema_for_model(lambda: FlextInfraModelsScan.ModScanEvidence),
-            ]
-            | None,
+            FlextInfraModelsScan.ModScanEvidence | None,
             m.Field(
                 description="Complete normalized scan evidence, None if unobserved"
             ),
         ] = None
         text_report: Annotated[
-            Annotated[
-                p.Infra.ModTextReport,
-                t.schema_for_model(lambda: FlextInfraModelsScan.ModTextReport),
-            ]
-            | None,
+            FlextInfraModelsScan.ModTextReport | None,
             m.Field(description="Actual native text scan, None if unobserved"),
         ] = None
         lint: Annotated[
             Mapping[
                 str,
-                t.Infra.LintSnapshot[
-                    Annotated[
-                        p.Infra.LintGateResult,
-                        t.schema_for_model(lambda: FlextInfraModelsBase.LintGateResult),
-                    ]
-                ],
+                t.Infra.LintSnapshot[FlextInfraModelsBase.LintGateResult],
             ]
             | None,
             m.Field(description="Canonical Ruff snapshots by source path"),
@@ -527,13 +577,7 @@ class FlextInfraModelsRefactor(
             ),
         ]
         delta: Annotated[
-            Annotated[
-                p.Infra.ViolationsRuleDelta,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsRefactor.ViolationsRuleDelta
-                ),
-            ]
-            | None,
+            FlextInfraModelsRefactor.ViolationsRuleDelta | None,
             m.Field(description="Occurrence evidence only for successful native scans"),
         ]
         error: Annotated[
@@ -574,10 +618,7 @@ class FlextInfraModelsRefactor(
             m.Field(description="Whether Make was invoked"),
         ] = True
         outcome: Annotated[
-            Annotated[
-                p.Cli.ProcessOutcome, t.schema_for_model(lambda: m.Cli.ProcessOutcome)
-            ]
-            | None,
+            m.Cli.ProcessOutcome | None,
             m.Field(description="Original process exit, timeout and signal state"),
         ]
         error: Annotated[
@@ -585,25 +626,13 @@ class FlextInfraModelsRefactor(
             m.Field(description="Original operation or inspection failure"),
         ]
         audit_before: Annotated[
-            Annotated[
-                p.Infra.ViolationsSweepSources,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsRefactor.ViolationsSweepSources
-                ),
-            ]
-            | None,
+            FlextInfraModelsRefactor.ViolationsSweepSources | None,
             m.Field(
                 description="Authenticated source snapshot immediately before audit"
             ),
         ] = None
         audit_after: Annotated[
-            Annotated[
-                p.Infra.ViolationsSweepSources,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsRefactor.ViolationsSweepSources
-                ),
-            ]
-            | None,
+            FlextInfraModelsRefactor.ViolationsSweepSources | None,
             m.Field(description="After audit snapshot, retained for failed operations"),
         ] = None
         source_inventory_unchanged: Annotated[
@@ -618,24 +647,14 @@ class FlextInfraModelsRefactor(
         ] = None
         rule_evaluations: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.ViolationsRuleEvaluation,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsRefactor.ViolationsRuleEvaluation
-                    ),
-                ],
+                FlextInfraModelsRefactor.ViolationsRuleEvaluation,
                 ...,
             ],
             m.Field(description="Every rule's actual disposition in this repository"),
         ] = ()
         engine_coverage: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.ViolationsEngineCoverage,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsRefactor.ViolationsEngineCoverage
-                    ),
-                ],
+                FlextInfraModelsRefactor.ViolationsEngineCoverage,
                 ...,
             ],
             m.Field(description="Native coverage, including engines without an audit"),
@@ -646,10 +665,7 @@ class FlextInfraModelsRefactor(
         ] = None
         introduced_text: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.ModTextFinding,
-                    t.schema_for_model(lambda: FlextInfraModelsScan.ModTextFinding),
-                ],
+                FlextInfraModelsScan.ModTextFinding,
                 ...,
             ]
             | None,
@@ -681,12 +697,7 @@ class FlextInfraModelsRefactor(
         ] = ()
         stages: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.ViolationsSweepStage,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsRefactor.ViolationsSweepStage
-                    ),
-                ],
+                FlextInfraModelsRefactor.ViolationsSweepStage,
                 ...,
             ],
             m.Field(description="Independent operation receipts in invocation order"),
@@ -701,53 +712,30 @@ class FlextInfraModelsRefactor(
         model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
 
         before: Annotated[
-            Annotated[
-                p.Infra.ViolationsTotals,
-                t.schema_for_model(lambda: FlextInfraModelsRefactor.ViolationsTotals),
-            ]
-            | None,
+            FlextInfraModelsRefactor.ViolationsTotals | None,
             m.Field(description="Scan totals before the repair sequence"),
         ]
         after: Annotated[
-            Annotated[
-                p.Infra.ViolationsTotals,
-                t.schema_for_model(lambda: FlextInfraModelsRefactor.ViolationsTotals),
-            ]
-            | None,
+            FlextInfraModelsRefactor.ViolationsTotals | None,
             m.Field(description="Scan totals after the repair sequence"),
         ]
         rule_deltas: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.ViolationsRuleDelta,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsRefactor.ViolationsRuleDelta
-                    ),
-                ],
+                FlextInfraModelsRefactor.ViolationsRuleDelta,
                 ...,
             ],
             m.Field(description="Occurrence-aware rule and repository comparisons"),
         ] = ()
         rule_evaluations: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.ViolationsRuleEvaluation,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsRefactor.ViolationsRuleEvaluation
-                    ),
-                ],
+                FlextInfraModelsRefactor.ViolationsRuleEvaluation,
                 ...,
             ],
             m.Field(description="Final project and native rule coverage dispositions"),
         ] = ()
         engine_coverage: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.ViolationsEngineCoverage,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsRefactor.ViolationsEngineCoverage
-                    ),
-                ],
+                FlextInfraModelsRefactor.ViolationsEngineCoverage,
                 ...,
             ],
             m.Field(
@@ -773,41 +761,21 @@ class FlextInfraModelsRefactor(
             ),
         ] = None
         before_evidence: Annotated[
-            Annotated[
-                p.Infra.ModScanEvidenceReceipt,
-                t.schema_for_model(lambda: FlextInfraModelsScan.ModScanEvidenceReceipt),
-            ]
-            | None,
+            FlextInfraModelsScan.ModScanEvidenceReceipt | None,
             m.Field(
                 description="Invocation-local full before evidence and byte digest"
             ),
         ] = None
         after_evidence: Annotated[
-            Annotated[
-                p.Infra.ModScanEvidenceReceipt,
-                t.schema_for_model(lambda: FlextInfraModelsScan.ModScanEvidenceReceipt),
-            ]
-            | None,
+            FlextInfraModelsScan.ModScanEvidenceReceipt | None,
             m.Field(description="Invocation-local full after evidence and byte digest"),
         ] = None
         before_plan: Annotated[
-            Annotated[
-                p.Infra.CodemodRulePlan,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsRefactorGrep.CodemodRulePlan
-                ),
-            ]
-            | None,
+            FlextInfraModelsRefactorGrep.CodemodRulePlan | None,
             m.Field(description="Before elected rules, providers, sources and digests"),
         ] = None
         after_plan: Annotated[
-            Annotated[
-                p.Infra.CodemodRulePlan,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsRefactorGrep.CodemodRulePlan
-                ),
-            ]
-            | None,
+            FlextInfraModelsRefactorGrep.CodemodRulePlan | None,
             m.Field(description="After elected rules, providers, sources and digests"),
         ] = None
         before_source_sha256: Annotated[
@@ -878,13 +846,11 @@ class FlextInfraModelsRefactor(
         kinds: Annotated[
             Sequence[str] | None, m.Field(description="Optional symbol-kind filters")
         ] = None
-        census_kinds: Annotated[
-            Sequence[str] | None,
-            m.Field(
-                alias="census-kinds",
-                description="Optional extermination-kind filters",
-            ),
-        ] = None
+        census_kinds: Sequence[str] | None = m.Field(
+            None,
+            alias="census-kinds",
+            description="Optional extermination-kind filters",
+        )
         rules: Annotated[
             Sequence[str] | None, m.Field(description="Optional violation-rule filters")
         ] = None
@@ -1054,11 +1020,11 @@ class FlextInfraModelsRefactor(
         ``refactor mod`` performs the transformation directly. ``--rule``
         selects one concrete owner route, ``--rule-ids`` selects exact
         ast-grep catalog identities and ``--laws`` selects one theme: every
-        planned rule whose ``enforce`` claims a selected law. Exactly one
-        selector is accepted; a run without a selection is refused (ADR-028
-        Decision 18 item 2). Selection resolution happens before any scan or
-        write. ``check`` and ``dry-run`` are the inspection modes; without
-        them the invocation writes.
+        planned rule whose ``enforce`` claims a selected law. At most one
+        selector is accepted; an unselected run executes the declared catalog
+        (ADR-028 Decision 18 item 2). Selection resolution happens before any
+        scan or write. ``check`` and ``dry-run`` are the inspection modes;
+        without them the invocation writes.
         """
 
         check: Annotated[bool, m.Field(description="Validate without writing")] = False
@@ -1327,10 +1293,7 @@ class FlextInfraModelsRefactor(
         """One parsed module and the facts one import-law pass reads from it."""
 
         scope: Annotated[
-            Annotated[
-                p.Infra.ImportLawScope,
-                t.schema_for_model(lambda: FlextInfraModelsRefactor.ImportLawScope),
-            ],
+            FlextInfraModelsRefactor.ImportLawScope,
             m.Field(description="Module facts of the pass"),
         ]
         tree: Annotated[t.Port[ast.Module], m.Field(description="Parsed module")]

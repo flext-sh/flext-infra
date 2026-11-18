@@ -11,10 +11,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from typing import override
 
-from flext_infra import m, p, r, s
+from flext_infra import m, p, r, s, u
 from flext_infra.codemod import FlextInfraModGateEngine
 
 
@@ -51,7 +51,7 @@ class FlextInfraNamespaceValidator(s[bool]):
             return r[p.Infra.ValidationReport].from_failure(scanned)
         violations = tuple(
             f"[{entry.rule_id}] {entry.file.as_posix()}:"
-            f"{self._line(entry)} — {self._message(entry)}"
+            f"{u.Infra.codemod_finding_start(entry)[0] + 1} — {self._message(entry)}"
             for entry in scanned.value.entries
         )
         passed = not violations
@@ -66,24 +66,6 @@ class FlextInfraNamespaceValidator(s[bool]):
                 ),
             ),
         )
-
-    @staticmethod
-    def _line(entry: p.Infra.ModScanFinding) -> int:
-        """Return the 1-based starting line of one finding.
-
-        Returns:
-            The 1-based starting line of one finding.
-
-        Raises:
-            TypeError: If ast-grep finding without a start line.
-
-        """
-        start = entry.range["start"]
-        line = start.get("line") if isinstance(start, Mapping) else None
-        if not isinstance(line, int):
-            msg = f"ast-grep finding without a start line: {entry.rule_id}"
-            raise TypeError(msg)
-        return line + 1
 
     @staticmethod
     def _message(entry: p.Infra.ModScanFinding) -> str:

@@ -1,0 +1,155 @@
+id: model-field-schema-owner
+snapshots:
+  "from flext_infra import m, p\nclass Payload(m.Value):\n    document: p.ConfigDocument\n":
+    fixed: |
+      from flext_infra import m, p
+      class Payload(m.Value):
+          document: m.ConfigDocument
+    labels:
+    - source: p.ConfigDocument
+      style: primary
+      start: 67
+      end: 83
+    - source: m.Value
+      style: secondary
+      start: 43
+      end: 50
+    - source: m.Value
+      style: secondary
+      start: 43
+      end: 50
+    - source: |-
+        class Payload(m.Value):
+            document: p.ConfigDocument
+      style: secondary
+      start: 29
+      end: 83
+    - source: "document: p.ConfigDocument"
+      style: secondary
+      start: 57
+      end: 83
+    - source: "document: p.ConfigDocument"
+      style: secondary
+      start: 57
+      end: 83
+    - source: "document: p.ConfigDocument"
+      style: secondary
+      start: 57
+      end: 83
+    - source: p.ConfigDocument
+      style: secondary
+      start: 67
+      end: 83
+    - source: from flext_infra import m, p
+      style: secondary
+      start: 0
+      end: 28
+    - source: |
+        from flext_infra import m, p
+        class Payload(m.Value):
+            document: p.ConfigDocument
+      style: secondary
+      start: 0
+      end: 84
+  "from flext_infra import m, p\nclass Payload(m.Value):\n    documents: Annotated[Sequence[p.ConfigDocument] | None, m.Field(description='Docs')]\n":
+    fixed: |
+      from flext_infra import m, p
+      class Payload(m.Value):
+          documents: Annotated[Sequence[m.ConfigDocument] | None, m.Field(description='Docs')]
+    labels:
+    - source: p.ConfigDocument
+      style: primary
+      start: 87
+      end: 103
+    - source: m.Value
+      style: secondary
+      start: 43
+      end: 50
+    - source: m.Value
+      style: secondary
+      start: 43
+      end: 50
+    - source: |-
+        class Payload(m.Value):
+            documents: Annotated[Sequence[p.ConfigDocument] | None, m.Field(description='Docs')]
+      style: secondary
+      start: 29
+      end: 141
+    - source: "documents: Annotated[Sequence[p.ConfigDocument] | None, m.Field(description='Docs')]"
+      style: secondary
+      start: 57
+      end: 141
+    - source: "documents: Annotated[Sequence[p.ConfigDocument] | None, m.Field(description='Docs')]"
+      style: secondary
+      start: 57
+      end: 141
+    - source: "documents: Annotated[Sequence[p.ConfigDocument] | None, m.Field(description='Docs')]"
+      style: secondary
+      start: 57
+      end: 141
+    - source: Annotated[Sequence[p.ConfigDocument] | None, m.Field(description='Docs')]
+      style: secondary
+      start: 68
+      end: 141
+    - source: from flext_infra import m, p
+      style: secondary
+      start: 0
+      end: 28
+    - source: |
+        from flext_infra import m, p
+        class Payload(m.Value):
+            documents: Annotated[Sequence[p.ConfigDocument] | None, m.Field(description='Docs')]
+      style: secondary
+      start: 0
+      end: 142
+  "from flext_infra import m, p\nclass Payload(m.Value):\n    nested: Mapping[str, p.Infra.Outer.Inner]\n":
+    fixed: |
+      from flext_infra import m, p
+      class Payload(m.Value):
+          nested: Mapping[str, m.Infra.Outer.Inner]
+    labels:
+    - source: p.Infra.Outer.Inner
+      style: primary
+      start: 78
+      end: 97
+    - source: m.Value
+      style: secondary
+      start: 43
+      end: 50
+    - source: m.Value
+      style: secondary
+      start: 43
+      end: 50
+    - source: |-
+        class Payload(m.Value):
+            nested: Mapping[str, p.Infra.Outer.Inner]
+      style: secondary
+      start: 29
+      end: 98
+    - source: "nested: Mapping[str, p.Infra.Outer.Inner]"
+      style: secondary
+      start: 57
+      end: 98
+    - source: "nested: Mapping[str, p.Infra.Outer.Inner]"
+      style: secondary
+      start: 57
+      end: 98
+    - source: "nested: Mapping[str, p.Infra.Outer.Inner]"
+      style: secondary
+      start: 57
+      end: 98
+    - source: Mapping[str, p.Infra.Outer.Inner]
+      style: secondary
+      start: 65
+      end: 98
+    - source: from flext_infra import m, p
+      style: secondary
+      start: 0
+      end: 28
+    - source: |
+        from flext_infra import m, p
+        class Payload(m.Value):
+            nested: Mapping[str, p.Infra.Outer.Inner]
+      style: secondary
+      start: 0
+      end: 99

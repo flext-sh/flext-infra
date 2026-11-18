@@ -32,7 +32,7 @@ class FlextInfraPyprojectModernizerTooling(FlextInfraPyprojectModernizerDocument
         """Return one canonical pyproject using the same phases as workspace apply.
 
         An atomic scaffold declares future roots before they exist on disk.
-        Pyright combines those declarations with the canonical inventory of
+        Pyrefly combines those declarations with the canonical inventory of
         existing owned Python sources; a scaffold declaration cannot hide them.
 
         Returns:
@@ -90,14 +90,14 @@ class FlextInfraPyprojectModernizerTooling(FlextInfraPyprojectModernizerDocument
         request: p.Infra.ToolingContextRequest,
         *,
         source_project: p.Infra.RopeProject | None = None,
-    ) -> p.Result[p.Infra.ToolingRuntimeContext]:
+    ) -> p.Result[m.Infra.ToolingRuntimeContext]:
         """Resolve typed Jinja values from the seed conformed to one topology.
 
         Returns:
-            The resulting ``p.Result[p.Infra.ToolingRuntimeContext]``.
+            The resulting ``p.Result[m.Infra.ToolingRuntimeContext]``.
 
         """
-        result_type = r[p.Infra.ToolingRuntimeContext]
+        result_type = r[m.Infra.ToolingRuntimeContext]
         selected = u.Infra.load_tooling_inputs(
             request.path.parent, source_project=source_project
         )
@@ -156,14 +156,14 @@ class FlextInfraPyprojectModernizerTooling(FlextInfraPyprojectModernizerDocument
         project_kind: str,
         tool_config: p.Infra.ToolConfigDocument,
         sources: tuple[p.Cli.AtomicFileState, ...] = (),
-    ) -> p.Result[p.Infra.ToolingRuntimeContext]:
+    ) -> p.Result[m.Infra.ToolingRuntimeContext]:
         """Project every declared table from one conformed native document.
 
         Returns:
             One synchronized configuration fragment and its native table views.
 
         """
-        result_type = r[p.Infra.ToolingRuntimeContext]
+        result_type = r[m.Infra.ToolingRuntimeContext]
         options: MutableMapping[str, t.JsonMapping] = {}
         for table_path in tool_config.settings:
             table = u.Cli.toml_mapping_path(
@@ -242,6 +242,15 @@ class FlextInfraPyprojectModernizerTooling(FlextInfraPyprojectModernizerDocument
         if live_dev_result.failure:
             return result_type.from_failure(live_dev_result)
         live_dev = live_dev_result.value
+        docs_seed: t.JsonMapping = (
+            {}
+            if request.package_name is None
+            else {
+                c.Infra.TOOL: {
+                    "flext": {"docs": {"package_name": request.package_name}}
+                }
+            }
+        )
         # Seed only the target's requirements before deriving analyzer ownership.
         seed: t.JsonMapping = {
             c.Infra.PROJECT: {
@@ -256,12 +265,11 @@ class FlextInfraPyprojectModernizerTooling(FlextInfraPyprojectModernizerDocument
                     u.Infra.project_development_requirements(
                         request.codegen.scaffold.project,
                         distribution=request.project_name,
-                        kind=declaration.value.kind,
                         declared=live_dev,
                     )
                 ),
             },
-            c.Infra.TOOL: {"flext": {"docs": {"package_name": request.package_name}}},
+            **docs_seed,
         }
         # Atomic scaffolds provide validated future roots;
         # existing repositories keep filesystem discovery through empty ones.

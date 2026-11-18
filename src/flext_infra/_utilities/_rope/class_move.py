@@ -64,7 +64,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
                 plan.path: plan for plan in declared_files
             })
 
-        def authenticate(self, source: Path) -> Mapping[Path, m.Cli.AtomicFileState]:
+        def authenticate(self, source: Path) -> Mapping[Path, p.Cli.AtomicFileState]:
             """Require candidate text and witnesses to describe the same source view.
 
             Returns:
@@ -318,14 +318,14 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
             return r[tuple[p.Infra.CodegenFilePlan, ...]].fail(
                 f"module move source and target are identical: {source}"
             )
-        validation = cls._validate_module_resource_paths(root, source, target)
+        validation = cls._validate_module_resource_paths(project, root, source, target)
         if validation.failure:
             return r[tuple[p.Infra.CodegenFilePlan, ...]].from_failure(validation)
         return cls._module_resource_move_plans(project, root, (source, target), view)
 
     @staticmethod
     def _validate_module_resource_paths(
-        root: Path, source: Path, target: Path
+        project: p.Infra.RopeProject, root: Path, source: Path, target: Path
     ) -> p.Result[bool]:
         """Reject invalid module identifiers and occupied package parents.
 
@@ -338,7 +338,16 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
                 return r[bool].fail(
                     f"module resource move requires a Python file module: {path}"
                 )
-            names = (*path.parent.relative_to(root).parts, path.stem)
+            source_root = max(
+                (
+                    folder
+                    for resource in project.get_source_folders()
+                    if path.is_relative_to(folder := Path(resource.real_path).resolve())
+                ),
+                key=lambda folder: len(folder.parts),
+                default=root,
+            )
+            names = (*path.parent.relative_to(source_root).parts, path.stem)
             if any(
                 not name.isidentifier() or keyword.iskeyword(name) for name in names
             ):
@@ -385,10 +394,15 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
             return r[tuple[p.Infra.CodegenFilePlan, ...]].fail(
                 f"module source has no observed mode: {source}"
             )
-        target_plan = cls._module_destination_plan(root, target, "", mode)
-        if target.with_suffix("").exists():
+        target_plan = declared.get(target)
+        if target_plan is None:
+            target_plan = cls._module_destination_plan(root, target, "", mode)
+        if (
+            target_plan.desired_content not in {None, b""}
+            or target.with_suffix("").exists()
+        ):
             return r[tuple[p.Infra.CodegenFilePlan, ...]].fail(
-                f"module destination is occupied: {target.with_suffix('')}"
+                f"module destination is occupied: {target}"
             )
         candidate = dict(sources)
         virtual = [target_plan]
@@ -584,9 +598,10 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
                 return r[Path].fail(
                     f"module intermediate is occupied: {intermediate.with_suffix('')}"
                 )
-            declaration = cls._module_destination_plan(root, intermediate, "", mode)
             if intermediate != target:
-                virtual.append(declaration)
+                virtual.append(
+                    cls._module_destination_plan(root, intermediate, "", mode)
+                )
             native = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
                 project, candidate, declared_files=tuple(virtual)
             )
@@ -601,7 +616,9 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
                     target.stem,
                     options=m.Infra.RopeRenameOptions(
                         resources=tuple(
-                            cls._resource(native, root, path) for path in candidate
+                            cls._resource(native, root, path)
+                            for path in candidate
+                            if path.suffix in c.Infra.PYTHON_SOURCE_SUFFIXES
                         ),
                     ),
                 )
@@ -626,9 +643,11 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
                     native, cls._resource(native, root, intermediate), None
                 )
                 changes = mover.get_changes(
-                    native.get_resource(target.parent.relative_to(root).as_posix()),
+                    native.get_folder(target.parent.relative_to(root).as_posix()),
                     resources=tuple(
-                        cls._resource(native, root, path) for path in candidate
+                        cls._resource(native, root, path)
+                        for path in candidate
+                        if path.suffix in c.Infra.PYTHON_SOURCE_SUFFIXES
                     ),
                 )
                 cls._module_resource_changes(changes, candidate, intermediate, target)
@@ -668,7 +687,11 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         source, target = paths
         expected = id(cls._elected_move_module(project, root, source, role="source"))
         for path, text in consumers.items():
-            if path == source or not cls._binds_name(text, source.stem):
+            if (
+                path == source
+                or path.suffix not in c.Infra.PYTHON_SOURCE_SUFFIXES
+                or not cls._binds_name(text, source.stem)
+            ):
                 continue
             module = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(
                 project, cls._resource(project, root, path)
@@ -1139,8 +1162,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         before_scopes = cls._module_scopes(before_module)
         current_scopes = cls._module_scopes(module)
         cls._validate_module_quoted_scopes(before_scopes, current_scopes, paths)
-        # The rewrite reads the pre-move text: its scopes are ``before_module``'s.
-        positions = {id(scope): key for key, scope in before_scopes.items()}
+        positions = cls._module_quoted_positions(composed, before_module, text)
         required: dict[tuple[t.StrTuple, str], int] = {}
         binding: str | None = None
 
@@ -1314,6 +1336,35 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
             raise ValueError(msg)
         return elected
 
+    @classmethod
+    def _module_quoted_positions(
+        cls,
+        project: p.Infra.RopeProject,
+        module: p.Infra.RopeParsedModule,
+        source: str,
+    ) -> dict[int, t.StrTuple]:
+        """Pair native annotation environments with their structural declarations.
+
+        Returns:
+            Annotation identities keyed to authenticated lexical positions.
+
+        """
+        native = FlextInfraUtilitiesRopeRuntime.require_source_module(module)
+        declarations = {
+            id(scope): key for key, scope in cls._module_scopes(native).items()
+        }
+        bindings = native.get_source_binding_index()
+        return {
+            id(environment): declarations[
+                id(bindings.context_at(begin).structural_scope)
+            ]
+            for begin, _end, _literal, environment in (
+                FlextInfraUtilitiesTypesSemanticNesting.quoted_type_regions(
+                    source, project, native
+                )
+            )
+        }
+
     @staticmethod
     def _module_quoted_exports(
         original: p.Infra.RopeParsedModule,
@@ -1372,9 +1423,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         root = Path(project.root.real_path).resolve()
         resource = cls._resource(project, root, path)
         module = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(project, resource)
-        positions = {
-            id(scope): key for key, scope in cls._module_scopes(module).items()
-        }
+        positions = cls._module_quoted_positions(project, module, text)
         seen: set[tuple[t.StrTuple, str]] = set()
 
         def validate(scope: p.Infra.RopeScope, expression: str) -> None:
@@ -1394,7 +1443,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
             seen.add(key)
 
         FlextInfraUtilitiesTypesSemanticNesting.quoted_type_edits(
-            (project, resource), text, validate
+            (project, resource), text, validate, module=module
         )
         if seen != set(required):
             msg = f"module relocation lost original quoted type positions: {path}"
@@ -1429,7 +1478,14 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
                     or Path(change.resource.real_path).resolve() != source
                     or Path(change.new_resource.real_path).resolve() != target
                 ):
-                    msg = "native module move disagrees with its exact destination"
+                    msg = (
+                        "native module move disagrees with its exact destination: "
+                        f"source={change.resource.real_path} "
+                        f"expected_source={source}; "
+                        f"target={change.new_resource.real_path} "
+                        f"expected_target={target}; "
+                        f"folder={change.resource.is_folder()} duplicate={moved}"
+                    )
                     raise ValueError(msg)
                 moved = True
             else:
@@ -1448,11 +1504,11 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         source: Path,
         target: Path,
         sources: Mapping[Path, str],
-        states: Mapping[Path, m.Cli.AtomicFileState],
+        states: Mapping[Path, p.Cli.AtomicFileState],
     ) -> p.Result[
         tuple[
-            m.Infra.ClassMoveRequest,
-            m.Infra.CodegenFilePlan,
+            p.Infra.ClassMoveRequest,
+            p.Infra.CodegenFilePlan,
             dict[Path, str],
             tuple[p.Infra.CodegenFilePlan, ...],
             str,

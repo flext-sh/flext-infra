@@ -11,7 +11,8 @@ from collections.abc import Mapping, Set as AbstractSet
 
 from flext_cli import u
 
-from flext_infra import c, m, p, r
+from flext_infra import c, p, r
+from flext_infra._models.transformers import FlextInfraModelsTransformers
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
     FlextInfraUtilitiesRopeRuntimeTypes,
@@ -41,7 +42,7 @@ class FlextInfraUtilitiesRopeMovePublication:
             Candidate source or the original typed publication refusal.
 
         """
-        edits: dict[tuple[int, int], m.Infra.SourceRewrite] = {}
+        edits: dict[tuple[int, int], p.Infra.SourceRewrite] = {}
         index = module.get_source_binding_index()
         imported = cls._import_provider_edits(
             index, package=package, moves=moves, edits=edits
@@ -74,7 +75,7 @@ class FlextInfraUtilitiesRopeMovePublication:
         *,
         package: str,
         moves: Mapping[str, str],
-        edits: dict[tuple[int, int], m.Infra.SourceRewrite],
+        edits: dict[tuple[int, int], p.Infra.SourceRewrite],
     ) -> p.Result[bool]:
         """Record executable import providers relocated by the module move.
 
@@ -96,7 +97,7 @@ class FlextInfraUtilitiesRopeMovePublication:
             relocated = moves.get(absolute)
             if relocated is not None:
                 start, end = declaration.module_region
-                edits[start, end] = m.Infra.SourceRewrite(
+                edits[start, end] = FlextInfraModelsTransformers.SourceRewrite(
                     start=start, end=end, text=relocated
                 )
         return r[bool].ok(value=True)
@@ -158,7 +159,7 @@ class FlextInfraUtilitiesRopeMovePublication:
         package: str,
         moves: Mapping[str, str],
         exports: Mapping[str, AbstractSet[str]] | None,
-        edits: dict[tuple[int, int], m.Infra.SourceRewrite],
+        edits: dict[tuple[int, int], p.Infra.SourceRewrite],
     ) -> p.Result[bool]:
         """Record relocated provider literals of one admitted installer mapping.
 
@@ -196,7 +197,7 @@ class FlextInfraUtilitiesRopeMovePublication:
             if literal.failure:
                 return r[bool].from_failure(literal)
             start, end = regions[0]
-            edits[start, end] = m.Infra.SourceRewrite(
+            edits[start, end] = FlextInfraModelsTransformers.SourceRewrite(
                 start=start, end=end, text=literal.value
             )
         return r[bool].ok(value=True)

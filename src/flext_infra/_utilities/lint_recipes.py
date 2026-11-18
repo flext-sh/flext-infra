@@ -33,12 +33,16 @@ from flext_infra._config import FlextInfraConfig
 from flext_infra._utilities import (
     FlextInfraUtilitiesLintSourcePositions,
     FlextInfraUtilitiesProjectManagedArtifacts,
+    FlextInfraUtilitiesScriptMetadata,
 )
 from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
 from flext_infra._utilities._rope import FlextInfraUtilitiesRopeAnalysis
 
 
-class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
+class FlextInfraUtilitiesLintRecipes(
+    FlextInfraUtilitiesLintSourcePositions,
+    FlextInfraUtilitiesScriptMetadata,
+):
     """Lint-gate policy and repair utilities behind the ``u.Infra`` facade."""
 
     @staticmethod
@@ -178,8 +182,13 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
                 license, or ``module`` has no identity.
 
         """
-        for candidate in (pkg_dir, *pkg_dir.parents):
-            if not (
+        candidates = (
+            (pkg_dir,)
+            if declaration_inputs is not None
+            else (pkg_dir, *pkg_dir.parents)
+        )
+        for candidate in candidates:
+            if declaration_inputs is None and not (
                 (candidate / c.PYPROJECT_FILENAME).is_file()
                 if source_project is None
                 else source_project.source_query(
@@ -269,8 +278,8 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
         whose declared author signs the notice; the notice is derived only
         when a copyright finding asks for it.
 
-        Whole-module import normalization and line wrapping belong to the Ruff
-        lint gate, which runs them before passing planned edits to this utility.
+        Callers compose whole-module import normalization and line wrapping
+        before passing planned edits to this utility.
 
         Returns:
             The repaired module source.
@@ -520,6 +529,26 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
             The span to replace and the summary text that replaces it.
 
         """
+        width = FlextInfraUtilitiesProjectManagedArtifacts.native_tool_setting(
+            config.Infra.tooling, "ruff", "line-length", int
+        )
+
+        def literal(indent: str) -> str:
+            delimiter = chr(34) * 3
+            single = f"{delimiter}{text}{delimiter}"
+            if len(indent) + len(single) <= width:
+                return single
+            available = max(width - len(indent) - 3, 1)
+            short = textwrap.shorten(text, width=available, placeholder=".")
+            description = textwrap.wrap(
+                text,
+                width=max(width - len(indent), 1),
+                break_long_words=False,
+                break_on_hyphens=False,
+            )
+            body = "\n".join(f"{indent}{line}" for line in description)
+            return f"{delimiter}{short}\n\n{body}\n{indent}{delimiter}"
+
         first = definition.body[0]
         line = lines[first.lineno - 1]
         body_at = cls._utf8_chars(line, first.col_offset)
@@ -534,7 +563,8 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
             )
             first_line = min((first.lineno, *(item.lineno for item in decorators)))
             offset = cls._offset(lines, first_line, 0)
-            return (offset, offset, f'{" " * first.col_offset}"""{text}"""\n')
+            indent = " " * first.col_offset
+            return (offset, offset, f"{indent}{literal(indent)}\n")
         suite = line[body_at:].removesuffix("\n").removesuffix("\r")
         header = lines[definition.lineno - 1]
         block = " " * (cls._utf8_chars(header, definition.col_offset) + 4)
@@ -542,7 +572,7 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
         return (
             start,
             start + len(line),
-            f'{line[:colon]}\n{block}"""{text}"""\n{block}{suite}\n',
+            f"{line[:colon]}\n{block}{literal(block)}\n{block}{suite}\n",
         )
 
     @classmethod
@@ -1189,6 +1219,8 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
                 if name.startswith("Tests") and name != "Tests"
                 else f"Define ``{name}``."
             )
+        if name == "__init__":
+            return "Initialize the instance."
         if name.startswith("test_"):
             return f"Test {name.removeprefix('test_').replace('_', ' ')}."
         return f"Provide ``{name}``."
@@ -1363,33 +1395,56 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
         Ruff format wraps expressions but never splits a string literal or a
         comment. A long single-line string literal is split after spaces into
         implicit concatenation, inside its enclosing brackets or inside new
-        parentheses; a long full-line comment is reflowed at the same indent.
-        The parser folds implicit concatenation and drops comments, so the
-        repaired module's AST must equal the original one. A line holding
-        neither keeps its text and its finding.
+        parentheses; a long full-line comment is reflowed at the same indent,
+        and a trailing comment on an otherwise fitting code line moves to its
+        own line at the same indent. Directives that bind to their line
+        (``type:``, ``noqa``, ``fmt:``, ``ruff:``, ``pylint:``, ``isort:``)
+        keep their position. The parser folds implicit
+        concatenation and drops comments, so the repaired module's AST must
+        equal the original one. A line holding neither keeps its text and its
+        finding.
+
+        A line inside a ``# /// <type>`` structured comment block keeps its
+        text and its finding: the block carries TOML that a reflow breaks
+        while the AST stays equal, so the repaired module must also keep
+        every such block byte for byte.
 
         Returns:
             The repaired source.
 
         Raises:
-            ValueError: If a repair would change the module AST.
+            ValueError: If a repair would change the module AST or the text of
+                a structured comment block.
 
         """
         before = FlextInfraUtilitiesRopeAnalysis.Tree.dump(
             FlextInfraUtilitiesRopeAnalysis.Tree.parse_module_source(source)
         )
+        blocks = cls.script_metadata_blocks(source)
+        structured = {
+            number
+            for block in blocks
+            for number in range(
+                source.count("\n", 0, block.start()) + 1,
+                source.count("\n", 0, block.end()) + 2,
+            )
+        }
         lines = source.splitlines(keepends=True)
         tokens = tuple(tokenize.generate_tokens(io.StringIO(source).readline))
-        for number in sorted(set(line_numbers), reverse=True):
+        for number in sorted(set(line_numbers) - structured, reverse=True):
             line = lines[number - 1]
             if len(line.rstrip("\r\n")) <= limit:
                 continue
-            replacement = cls._line_wrap_comment(
-                line,
-                number,
-                tokens,
-                limit,
-            ) or cls._line_wrap_literal(line, number, tokens, limit)
+            replacement = (
+                cls._line_wrap_trailing_comment(line, number, tokens, limit)
+                or cls._line_wrap_comment(
+                    line,
+                    number,
+                    tokens,
+                    limit,
+                )
+                or cls._line_wrap_literal(line, number, tokens, limit)
+            )
             if replacement is not None:
                 lines[number - 1] = replacement
         repaired = "".join(lines)
@@ -1401,7 +1456,54 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
         ):
             msg = "line wrap changed the module AST"
             raise ValueError(msg)
+        if [block.group(0) for block in cls.script_metadata_blocks(repaired)] != [
+            block.group(0) for block in blocks
+        ]:
+            msg = "line wrap changed a structured comment block"
+            raise ValueError(msg)
         return repaired
+
+    @staticmethod
+    def _line_wrap_trailing_comment(
+        line: str,
+        number: int,
+        tokens: Sequence[tokenize.TokenInfo],
+        limit: int,
+    ) -> str | None:
+        """Move a trailing comment above its code line when the code fits.
+
+        Returns:
+            The code line with the comment on its own line, or ``None`` when
+            the line has no trailing comment, when the code part alone exceeds
+            the limit, or when the comment is a line-binding directive.
+
+        """
+        comment = next(
+            (
+                token
+                for token in tokens
+                if token.start[0] == number and token.type == tokenize.COMMENT
+            ),
+            None,
+        )
+        indent = line[: len(line) - len(line.lstrip())]
+        if comment is None or comment.start[1] == len(indent):
+            return None
+        code = line[: comment.start[1]].rstrip()
+        if not code or len(code) > limit:
+            return None
+        directive = comment.string.lstrip("# ").lower()
+        if directive.startswith((
+            "type:",
+            "noqa",
+            "fmt:",
+            "ruff:",
+            "pylint:",
+            "isort:",
+        )):
+            return None
+        newline = line[len(line.rstrip("\r\n")) :]
+        return f"{indent}{comment.string}{newline}{code}{newline}"
 
     @staticmethod
     def _line_wrap_comment(
@@ -1465,7 +1567,9 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
         for literal in literals:
             text = line[literal.start : literal.end]
             column = literal.start if literal.bracketed else literal.start + 1
-            cuts = cls._line_wrap_cuts(text, literal, column, limit)
+            cuts = cls._line_wrap_cuts(
+                text, literal, column, limit - len(line[literal.end :].rstrip("\r\n"))
+            )
             if not cuts:
                 continue
             pieces = cls._line_wrap_pieces(text, literal, cuts)
@@ -1505,7 +1609,7 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
                 braces += 1
             elif char == "}":
                 braces = max(braces - 1, 0)
-            elif char == " " and not braces:
+            elif char in {" ", ",", ";"} and not braces:
                 safe.append(index + 1)
         cuts: list[int] = []
         anchor = 0

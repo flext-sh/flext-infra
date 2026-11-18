@@ -1,0 +1,48 @@
+id: model-annotation-to-protocol
+valid:
+- |
+  def factory():
+      class Payload(m.Value):
+          member: m.Infra.Record
+      return Payload
+- |
+  class Envelope(m.Value):
+      @m.computed_field
+      @property
+      def record(self) -> m.Infra.Record: ...
+- |
+  @m.validate_call
+  def validate(value: m.Infra.Record) -> m.Infra.Record: ...
+- |
+  from flext_core import p
+  def load(entry: p.Ldif.Entry) -> p.Ldif.Entry:
+      return entry
+- |
+  from flext_core import m, t
+  def build(model: type[p.Ldif.Entry]) -> t.ModelClass[p.Ldif.Entry]:
+      return model
+- |
+  from flext_core import m
+  def make[M: m.Ldif.Entry](value: M) -> M:
+      return value
+- |
+  from flext_core import m
+  class Holder(m.BaseModel):
+      entry: m.Ldif.Entry
+- |
+  from flext_core import m
+  def create() -> None:
+      entry = m.Ldif.Entry(dn="cn=a")
+invalid:
+- |
+  from flext_core import m
+  def load(entry: m.Ldif.Entry) -> p.Ldif.Entry:
+      return entry
+- |
+  from flext_core import m
+  def collect(entries: list[m.Ldif.Entry] | None) -> None:
+      kept: tuple[m.Ldif.Entry, ...] = ()
+- |
+  from flext_ldif import FlextLdifModels
+  def stats(entry: FlextLdifModels.Ldif.Entry) -> None:
+      return None

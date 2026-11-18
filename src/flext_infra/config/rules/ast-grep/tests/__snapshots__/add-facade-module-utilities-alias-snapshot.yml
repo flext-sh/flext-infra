@@ -5,7 +5,7 @@ snapshots:
       class FlextDemoUtilities:
           pass
       u = FlextDemoUtilities
-      
+
       __all__: list[str] = ["FlextDemoUtilities", "u"]
     labels:
     - source: "__all__: list[str] = [\"FlextDemoUtilities\"]"

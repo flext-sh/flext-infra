@@ -4,7 +4,7 @@
 # @flext-owner: flext-infra/config/codegen.yaml + flext-infra/src/flext_infra/templates/project/base/Makefile.j2
 # @flext-adjust: edit the owner configuration or template; never this projection
 # @flext-regenerate: make gen
-# flext-infra — selector-free generated project interface.
+# flext-infra — generated project interface.
 # Managed by flext-infra codegen conform for new and existing repositories.
 # === SECTION: header (managed) ===
 # Source: template (base/Makefile.j2)
@@ -12,6 +12,97 @@
 # End SECTION: header
 
 override SHELL := /bin/sh
+# === SECTION: host admission (managed) ===
+# Source: config:make.admission (ADR-032 host admission and run limits)
+# On the shared host (never on a CI runner) every recipe and $(shell) runs in
+# a cgroup scope of the user's systemd manager at idle CPU and IO weight,
+# bounded by MemoryMax and CPUQuota; children and nested Make inherit the
+# scope, and PYTHON_CPU_COUNT sizes Python worker pools to the same CPUs. A
+# verb refuses to start while the 5-minute load average exceeds its limit; a
+# mod without RULES or LAWS is the full form, named mod-full. Overrides apply
+# when the invocation names exactly one verb.
+ifeq ($(MAKELEVEL)$(filter Y,$(CI)),0)
+override ADMISSION_VERB := $(if $(word 2,$(MAKECMDGOALS)),,$(or $(MAKECMDGOALS),$(.DEFAULT_GOAL),help))
+override ADMISSION_VERB := $(if $(filter mod,$(ADMISSION_VERB)),$(if $(strip $(RULES)$(LAWS)),mod,mod-full),$(ADMISSION_VERB))
+override ADMISSION_MAX_LOAD5 := 20.0
+override ADMISSION_MEMORY_LIMIT_BYTES := 5368709120
+override ADMISSION_MAX_PROCESSES := 2
+ifeq ($(ADMISSION_VERB),setup)
+override ADMISSION_MAX_LOAD5 := 160.0
+override ADMISSION_MEMORY_LIMIT_BYTES := 5368709120
+override ADMISSION_MAX_PROCESSES := 2
+endif
+ifeq ($(ADMISSION_VERB),upg)
+override ADMISSION_MAX_LOAD5 := 80.0
+override ADMISSION_MEMORY_LIMIT_BYTES := 5368709120
+override ADMISSION_MAX_PROCESSES := 2
+endif
+ifeq ($(ADMISSION_VERB),gen)
+override ADMISSION_MAX_LOAD5 := 160.0
+override ADMISSION_MEMORY_LIMIT_BYTES := 5368709120
+override ADMISSION_MAX_PROCESSES := 2
+endif
+ifeq ($(ADMISSION_VERB),mod)
+override ADMISSION_MAX_LOAD5 := 80.0
+override ADMISSION_MEMORY_LIMIT_BYTES := 5368709120
+override ADMISSION_MAX_PROCESSES := 2
+endif
+ifeq ($(ADMISSION_VERB),fix)
+override ADMISSION_MAX_LOAD5 := 80.0
+override ADMISSION_MEMORY_LIMIT_BYTES := 5368709120
+override ADMISSION_MAX_PROCESSES := 2
+endif
+ifeq ($(ADMISSION_VERB),fmt)
+override ADMISSION_MAX_LOAD5 := 80.0
+override ADMISSION_MEMORY_LIMIT_BYTES := 5368709120
+override ADMISSION_MAX_PROCESSES := 2
+endif
+ifeq ($(ADMISSION_VERB),check)
+override ADMISSION_MAX_LOAD5 := 160.0
+override ADMISSION_MEMORY_LIMIT_BYTES := 5368709120
+override ADMISSION_MAX_PROCESSES := 2
+endif
+ifeq ($(ADMISSION_VERB),tests)
+override ADMISSION_MAX_LOAD5 := 80.0
+override ADMISSION_MEMORY_LIMIT_BYTES := 5368709120
+override ADMISSION_MAX_PROCESSES := 2
+endif
+ifeq ($(ADMISSION_VERB),help)
+override ADMISSION_MAX_LOAD5 := 80.0
+override ADMISSION_MEMORY_LIMIT_BYTES := 5368709120
+override ADMISSION_MAX_PROCESSES := 2
+endif
+ifeq ($(ADMISSION_VERB),build)
+override ADMISSION_MAX_LOAD5 := 80.0
+override ADMISSION_MEMORY_LIMIT_BYTES := 5368709120
+override ADMISSION_MAX_PROCESSES := 2
+endif
+ifeq ($(ADMISSION_VERB),clean)
+override ADMISSION_MAX_LOAD5 := 80.0
+override ADMISSION_MEMORY_LIMIT_BYTES := 5368709120
+override ADMISSION_MAX_PROCESSES := 2
+endif
+override ADMISSION_LOAD5 := $(shell awk -v limit=$(ADMISSION_MAX_LOAD5) '$$2 > limit { print $$2 }' /proc/loadavg)
+ifneq ($(.SHELLSTATUS),0)
+$(error Cannot read the 5-minute load average from /proc/loadavg)
+endif
+ifneq ($(ADMISSION_LOAD5),)
+$(info Do not wait for the load to drop; run the lighter form now, it runs at idle priority.)
+$(info Prefer make tests (incremental Testmon) over make tests-full; run tests-full only occasionally.)
+$(info Prefer a narrow make mod RULES=<rule ids> over a full make mod, and make check CHECK_PHASE=primary over the full check.)
+$(info Use at most 2 workers and never run heavy verbs in parallel across lanes.)
+$(info A verb exception is a declared make.admission.overrides entry in the config SSOT, never a local edit or an environment bypass.)
+$(error Refused: 5-minute load average $(ADMISSION_LOAD5) exceeds the admission limit $(ADMISSION_MAX_LOAD5) of '$(or $(ADMISSION_VERB),$(MAKECMDGOALS))'; run its lighter form now, or declare make.admission.overrides.<verb>.max_load5 in config/codegen.yaml (flext-infra for canonical verbs, the project for its own extra_verbs))
+endif
+override ADMISSION_SYSTEMD_RUN := $(shell command -v systemd-run)
+ifeq ($(ADMISSION_SYSTEMD_RUN),)
+$(error The run limits require systemd-run and a cgroup v2 user manager)
+endif
+export PYTHON_CPU_COUNT := $(ADMISSION_MAX_PROCESSES)
+override SHELL := $(ADMISSION_SYSTEMD_RUN)
+override .SHELLFLAGS := --user --scope --quiet --collect --expand-environment=no -p CPUWeight=idle -p IOWeight=1 -p MemoryMax=$(ADMISSION_MEMORY_LIMIT_BYTES) -p CPUQuota=$(ADMISSION_MAX_PROCESSES)00% -- /bin/sh -c
+endif
+# End SECTION: host admission
 ifneq ($(strip $(MAKEFILES)),)
 $(error MAKEFILES makes the selected project Makefile ambiguous; invoke one project Makefile directly)
 endif
@@ -60,7 +151,7 @@ VERB_CONTRACT := $(filter 1 TRUE Y YES true y yes True Yes,$(OPTIONS) $(HELP))
 # Capture the selected approval mode before any project-owned include.
 ifeq ($(strip $(CI)),Y)
 override APPROVAL_CONTEXT := Y
-ifneq ($(filter $(if $(VERB_CONTRACT),,upg) _upg% dep propagate,$(MAKECMDGOALS)),)
+ifneq ($(filter $(if $(VERB_CONTRACT),,upg lock) _upg% _lock% dep propagate,$(MAKECMDGOALS)),)
 $(error Resolution and member propagation are forbidden in CI)
 endif
 endif
@@ -92,10 +183,23 @@ unexport GITHUB_TOKEN GH_TOKEN MISE_GITHUB_TOKEN
 endif
 unexport GITHUB_API_TOKEN
 
+# Git 2.38+ refuses the local file protocol uv uses to materialize its cached
+# git checkouts (`git clone --no-hardlinks <uv cache db> <checkout>`). Admit it
+# for this process tree only; global Git configuration stays untouched. Append
+# to any caller-declared GIT_CONFIG_COUNT so an inherited policy can never hide
+# the uv cache transport.
+GIT_CONFIG_ALLOW_INDEX := $(if $(strip $(GIT_CONFIG_COUNT)),$(strip $(GIT_CONFIG_COUNT)),0)
+GIT_CONFIG_KEY_$(GIT_CONFIG_ALLOW_INDEX) := protocol.file.allow
+GIT_CONFIG_VALUE_$(GIT_CONFIG_ALLOW_INDEX) := always
+GIT_CONFIG_COUNT := $(shell expr $(GIT_CONFIG_ALLOW_INDEX) + 1)
+export GIT_CONFIG_COUNT
+$(eval export GIT_CONFIG_KEY_$(GIT_CONFIG_ALLOW_INDEX))
+$(eval export GIT_CONFIG_VALUE_$(GIT_CONFIG_ALLOW_INDEX))
+
 # === SECTION: project identity (managed) ===
 # Source: config:dist / config:make_profile / config:repository_root_rel / config:uv_link_mode
 PROJECT_NAME := flext-infra
-MAKE_PROFILE := standalone
+MAKE_PROFILE := workspace
 REPOSITORY_ROOT_REL := .
 # === SECTION: workspace subprojects (managed) ===
 # Source: config:workspace_subprojects (list), config:workspace_repositories (list)
@@ -111,22 +215,19 @@ export CHECK_PHASE
 PYTEST_REPORTS_DIR := .reports/tests
 PYTEST_CACHE_HOME = $(if $(strip $(XDG_CACHE_HOME)),$(XDG_CACHE_HOME),$(if $(strip $(HOME)),$(HOME)/.cache,))
 # One persistent testmon database per project, shared by every checkout and
-# worktree of it (like the Mypy cache): testmon tracks each checkout's source by
-# file checksum, so a new lane starts from the project's measured selection
-# instead of a cold full inventory.
+# worktree of it: testmon tracks each checkout's source by file checksum, so a
+# new lane starts from the project's measured selection instead of a cold full
+# inventory.
 override FLEXT_PYTEST_TESTMON_DATABASE = $(if $(strip $(PYTEST_CACHE_HOME)),$(PYTEST_CACHE_HOME)/flext/infra/testmon/$(PROJECT_NAME)/.testmondata)
-# Storage law: the pytest scratch root sits under the user home, keyed by the
-# absolute checkout path, never under /tmp and never inside a versioned tree.
-override FLEXT_PYTEST_SCRATCH_ROOT = $(if $(strip $(HOME)),$(HOME)/.local/state/.flext-runtime$(PROJECT_ROOT)/scratch)
 override PYTEST_RUN_TIMEOUT_SECONDS := 240
 override PYTEST_TERMINATION_GRACE_SECONDS := 2
 override PYTEST_TIMEOUT_EXIT_CODE := 124
 override PYTEST_ENFORCEMENT_PLUGIN := flext_tests.enforcement_plugin
 override PYTEST_PROGRESS_ARGS := --verbose --failed-first
-override PYTEST_REPORT_ARGS := -ra --durations=25 --durations-min=0.001 --tb=short
+override PYTEST_REPORT_ARGS := -ra --durations=25 --durations-min=2.0 --tb=short
 override PYTEST_DIAG_ARGS := -rA --durations=0 --tb=long --showlocals
 override PYTEST_PARALLEL_WORKERS := 1
-override PYTEST_PARALLEL_WORKER_MEMORY_GB := 2
+override PYTEST_PARALLEL_WORKER_MEMORY_GB := 4
 override PYTEST_PARALLEL_DISTRIBUTION := load
 override PYTEST_LOADSCOPE_REORDER := true
 override PYTEST_PARALLEL_SCHEDULE_CHUNK := 1
@@ -230,9 +331,14 @@ $(error Cannot resolve the physical bootstrap scope for $(MAKEFILE_ROOT))
 endif
 # Setup and upg provision the toolchain the native workspace reader needs, so
 # they elect the physical bootstrap scope without running that reader.
-ifneq ($(strip $(VERB_CONTRACT) $(filter setup upg _setup_locked _upg_locked,$(MAKECMDGOALS))),)
+# When attached to a workspace (BOOTSTRAP_ROOT != PROJECT_ROOT), all verbs use
+# the workspace root so they share the workspace's .venv. Standalone checkouts
+# use the native uv workspace reader for non-setup/upg/help verbs.
+ifneq ($(strip $(VERB_CONTRACT) $(filter setup upg,$(MAKECMDGOALS))),)
 override REPOSITORY_ROOT := $(BOOTSTRAP_ROOT)
 else ifeq ($(strip $(filter-out help _builtin-help _setup_native_prepare pre-upg post-upg,$(MAKECMDGOALS))),)
+override REPOSITORY_ROOT := $(BOOTSTRAP_ROOT)
+else ifneq ($(BOOTSTRAP_ROOT),$(PROJECT_ROOT))
 override REPOSITORY_ROOT := $(BOOTSTRAP_ROOT)
 else
 override REPOSITORY_ROOT := $(shell set -eu; \
@@ -253,15 +359,18 @@ MISE_CEILING_PATHS="$$(dirname "$${reader_root}")"; \
 MISE_AUTO_INSTALL=0; \
 MISE_OVERRIDE_CONFIG_FILENAMES=".mise.toml"; \
 export MISE_CONFIG_DIR MISE_SYSTEM_CONFIG_DIR MISE_GLOBAL_CONFIG_FILE MISE_CEILING_PATHS MISE_AUTO_INSTALL MISE_OVERRIDE_CONFIG_FILENAMES; \
-case "$${OS:-}" in (Windows_NT) reader_mise="$${reader_root}/.bin/mise.exe" ;; (*) reader_mise="$${reader_root}/.bin/mise" ;; esac; \
-if [ -L "$${reader_root}/.bin" ] || [ -L "$${reader_mise}" ]; then printf 'ERROR: Mise acquisition must be physical: %s\n' "$${reader_mise}" >&2; exit 2; fi; \
+case "$${OS:-}" in (Windows_NT) reader_mise="$${HOME}/.local/bin/mise.exe" ;; (*) reader_mise="$${HOME}/.local/bin/mise" ;; esac; \
 reader_mise="$$(MISE_LOCKED=1 "$${reader_mise}" -C "$${reader_root}" which mise)"; \
 if [ "$${OS:-}" = Windows_NT ]; then reader_mise="$$(cygpath --unix "$${reader_mise}")"; fi; \
-uv_binary="$$(MISE_LOCKED=1 "$${reader_mise}" -C "$${reader_root}" which "uv")"; \
-if [ "$${OS:-}" = Windows_NT ]; then uv_binary="$$(cygpath --unix "$${uv_binary}")"; fi; \
-if [ ! -x "$${uv_binary}" ]; then printf 'ERROR: native workspace reader is not provisioned; run make setup\n' >&2; exit 2; fi; \
-owner="$$("$${uv_binary}" workspace dir --project "$${project_root}")"; \
-if [ "$${OS:-}" = Windows_NT ]; then owner="$$(cygpath --unix "$${owner}")"; fi; \
+if [ "$${reader_root}" != "$${project_root}" ]; then \
+	owner="$${reader_root}"; \
+else \
+	uv_binary="$$(MISE_LOCKED=1 "$${reader_mise}" -C "$${reader_root}" which "uv")"; \
+	if [ "$${OS:-}" = Windows_NT ]; then uv_binary="$$(cygpath --unix "$${uv_binary}")"; fi; \
+	if [ ! -x "$${uv_binary}" ]; then printf 'ERROR: native workspace reader is not provisioned; run make setup\n' >&2; exit 2; fi; \
+	owner="$$("$${uv_binary}" workspace dir --project "$${project_root}")"; \
+	if [ "$${OS:-}" = Windows_NT ]; then owner="$$(cygpath --unix "$${owner}")"; fi; \
+fi; \
 case "$${owner}" in (/*) ;; (*) printf 'ERROR: native UV workspace owner is not absolute: %s\n' "$${owner}" >&2; exit 2 ;; esac; \
 owner="$$(cd "$${owner}" && pwd -P)"; \
 case "$${owner}/" in ("$${scope}/"*) ;; (*) printf 'ERROR: native UV workspace owner leaves its Git scope: %s\n' "$${owner}" >&2; exit 2 ;; esac; \
@@ -271,17 +380,18 @@ ifneq ($(.SHELLSTATUS),0)
 $(error Cannot resolve the physical workspace for $(MAKEFILE_ROOT))
 endif
 endif
-override SETUP_BIN := $(BOOTSTRAP_ROOT)/.bin
+# The acquisition Mise is the official installer's default executable, shared by
+# every checkout; the committed min_version makes Mise refuse an older one.
 ifeq ($(OS),Windows_NT)
-override BOOTSTRAP_MISE := $(SETUP_BIN)/mise.exe
+override BOOTSTRAP_MISE := $(HOME)/.local/bin/mise.exe
 else
-override BOOTSTRAP_MISE := $(SETUP_BIN)/mise
+override BOOTSTRAP_MISE := $(HOME)/.local/bin/mise
 endif
 # End SECTION: REPOSITORY_ROOT isolation
 # === SECTION: verb dispatch (managed) ===
 # Source: config:make.verbs and the canonical gate vocabulary. A verb exists
 # only in the profiles it declares (make.verbs[].profiles).
-PUBLIC_VERBS := setup upg gen gen-scope mod fix fmt check tests tests-full help build clean mod-snapshots release-plan release-version release-tag release-build release-publish
+PUBLIC_VERBS := setup upg lock gen gen-scope mod fix fmt check tests tests-full help build clean mod-snapshots release-plan release-version release-tag release-build release-publish
 SCRIPT_VERBS := mod-snapshots
 
 CUSTOM_MAKEFILE := $(MAKEFILE_ROOT)/custom.mk
@@ -295,7 +405,7 @@ ifneq ($(.SHELLSTATUS),0)
 $(error Failed to inspect custom Make targets in $(CUSTOM_MAKEFILE))
 endif
 ifeq ($(APPROVAL_CONTEXT),Y)
-ifneq ($(filter setup check tests check tests,$(CUSTOM_DECLARED_TARGETS)),)
+ifneq ($(filter setup check,$(CUSTOM_DECLARED_TARGETS)),)
 $(error Approval stages cannot be replaced by custom targets)
 endif
 
@@ -319,36 +429,6 @@ $(error Approval stage _custom-check must chain _builtin-check (wrapper parity; 
 endif
 endif
 
-ifneq ($(filter _custom-tests,$(CUSTOM_DECLARED_TARGETS)),)
-override CUSTOM_WRAPPER_REFERENCE_COUNT := $(shell awk -v reference="_builtin-tests" 'index($$0, reference) { count++ } END { print count + 0 }' "$(CUSTOM_MAKEFILE)")
-ifneq ($(.SHELLSTATUS),0)
-$(error Failed to inspect custom approval reference in $(CUSTOM_MAKEFILE))
-endif
-ifeq ($(CUSTOM_WRAPPER_REFERENCE_COUNT),0)
-$(error Approval stage _custom-tests must chain _builtin-tests (wrapper parity; replacements are forbidden))
-endif
-endif
-
-ifneq ($(filter _custom-check,$(CUSTOM_DECLARED_TARGETS)),)
-override CUSTOM_WRAPPER_REFERENCE_COUNT := $(shell awk -v reference="_builtin-check" 'index($$0, reference) { count++ } END { print count + 0 }' "$(CUSTOM_MAKEFILE)")
-ifneq ($(.SHELLSTATUS),0)
-$(error Failed to inspect custom approval reference in $(CUSTOM_MAKEFILE))
-endif
-ifeq ($(CUSTOM_WRAPPER_REFERENCE_COUNT),0)
-$(error Approval stage _custom-check must chain _builtin-check (wrapper parity; replacements are forbidden))
-endif
-endif
-
-ifneq ($(filter _custom-tests,$(CUSTOM_DECLARED_TARGETS)),)
-override CUSTOM_WRAPPER_REFERENCE_COUNT := $(shell awk -v reference="_builtin-tests" 'index($$0, reference) { count++ } END { print count + 0 }' "$(CUSTOM_MAKEFILE)")
-ifneq ($(.SHELLSTATUS),0)
-$(error Failed to inspect custom approval reference in $(CUSTOM_MAKEFILE))
-endif
-ifeq ($(CUSTOM_WRAPPER_REFERENCE_COUNT),0)
-$(error Approval stage _custom-tests must chain _builtin-tests (wrapper parity; replacements are forbidden))
-endif
-endif
-
 endif
 endif
  # End SECTION: verb dispatch
@@ -356,15 +436,16 @@ endif
 # === SECTION: lint/type paths (managed) ===
 # Source: template + computed (script_dispatch conditional)
 RUFF_PATHS := $(shell for directory in src tests examples scripts; do if [ -e "$(PROJECT_ROOT)/$$directory" ]; then printf '"%s" ' "$(PROJECT_ROOT)/$$directory"; fi; done)
-MYPY_PATHS := $(RUFF_PATHS)
 # End SECTION: lint/type paths
 
 # === SECTION: project tool owner (managed) ===
 # Source: the repository's declared Mise toolchain, provisioned by make setup.
 # Native Mise interprets the lock and resolves each declared executable. The
-# owned acquisition binary, never host PATH, starts that read-only selection.
+# owned acquisition binary, never host PATH, starts that read-only selection;
+# activation and its authorization therefore never depend on a host direnv.
 override MISE = "$$(set -eu; mise_path="$$("$(BOOTSTRAP_MISE)" -C "$(RUNTIME_ROOT)" which mise)"; if [ "$${OS:-}" = Windows_NT ]; then cygpath --unix "$$mise_path"; else printf '%s\n' "$$mise_path"; fi)"
 override UV = "$$(set -eu; uv_mise=$(MISE); uv_path="$$("$$uv_mise" -C "$(RUNTIME_ROOT)" which "uv")"; if [ "$${OS:-}" = Windows_NT ]; then cygpath --unix "$$uv_path"; else printf '%s\n' "$$uv_path"; fi)"
+override DIRENV = "$$(set -eu; direnv_mise=$(MISE); direnv_path="$$("$$direnv_mise" -C "$(RUNTIME_ROOT)" which "direnv")"; if [ "$${OS:-}" = Windows_NT ]; then cygpath --unix "$$direnv_path"; else printf '%s\n' "$$direnv_path"; fi)"
 CALLER_PATH := $(PATH)
 CALLER_VIRTUAL_ENV := $(patsubst %/,%,$(VIRTUAL_ENV))
 # End SECTION: project tool owner
@@ -447,7 +528,7 @@ override FLEXT_INFRA_PYTHON := $(RUNTIME_PYTHON)
 override UV_PROJECT_ENVIRONMENT := $(RUNTIME_VENV)
 override VIRTUAL_ENV := $(RUNTIME_VENV)
 override PATH := $(RUNTIME_BIN):$(SANITIZED_CALLER_PATH)
-unexport UV MYPYPATH MISE_PYTHON_UV_VENV_AUTO UV_PROJECT UV_WORKING_DIR UV_CONFIG_FILE UV_PROJECT_ENVIRONMENT UV_PYTHON UV_PYTHON_DOWNLOADS UV_NO_CONFIG UV_NO_SOURCES UV_FROZEN UV_LOCKED VIRTUAL_ENV PYTHONHOME PYTHONPATH
+unexport UV MISE_PYTHON_UV_VENV_AUTO UV_PROJECT UV_WORKING_DIR UV_CONFIG_FILE UV_PROJECT_ENVIRONMENT UV_PYTHON UV_PYTHON_DOWNLOADS UV_NO_CONFIG UV_NO_SOURCES UV_FROZEN UV_LOCKED VIRTUAL_ENV PYTHONHOME PYTHONPATH
 export FLEXT_INFRA_PYTHON UV_PROJECT_ENVIRONMENT VIRTUAL_ENV PATH RUNTIME_ROOT
 
 # Tool provisioning belongs to setup and upgrade, never to generation: upgrade
@@ -457,13 +538,13 @@ export FLEXT_INFRA_PYTHON UV_PROJECT_ENVIRONMENT VIRTUAL_ENV PATH RUNTIME_ROOT
 TOOL_BOOTSTRAP_LIFECYCLE := _setup_native_prepare
 .PHONY: _bootstrap_setup_tools
 
+# The lifecycle invokes recursive make through mise, so preserve jobserver FDs.
 _bootstrap_setup_tools:
-	# The lifecycle invokes recursive make through mise, so preserve jobserver FDs.
 	+@set -eu; \
 	bootstrap_stage=source-identity; bootstrap_completed=false; bootstrap_sha=null; bootstrap_git_status=null; mise_stage=; \
 	bootstrap_report="$(PROJECT_ROOT)/.reports/setup-operations/tool-bootstrap.json"; \
 	bootstrap_publish_report() { \
-		if mkdir -p "$$(dirname "$${bootstrap_report}")"; then :; else return $$?; fi; \
+		if [ -d "$$(dirname "$${bootstrap_report}")" ]; then :; else mkdir -p "$$(dirname "$${bootstrap_report}")" 2>/dev/null || true; fi; \
 		if printf '%s\n' '{"root":".","operation":"tool-bootstrap","scope":["."],"receipts":[{"native_tool_qualifications":[],"runtime_context":null,"root":".","executed":true,"outcome":null,"native_exit_code":@@EXIT@@,"stage":"@@STAGE@@","completed":@@COMPLETE@@,"applicability":"","files":[],"issues":[]}],"candidate_read_exit_code":@@GIT_EXIT@@,"candidate_sha":@@SHA@@}' | sed \
 			-e "s/@@SHA@@/$${bootstrap_sha}/" \
 			-e "s/@@GIT_EXIT@@/$${bootstrap_git_status}/" \
@@ -486,6 +567,7 @@ _bootstrap_setup_tools:
 			if [ "$${bootstrap_status}" -eq 0 ]; then bootstrap_status=$${bootstrap_report_status}; fi; \
 		fi; \
 		exit "$${bootstrap_status}"' EXIT; \
+	trap 'exit 129' HUP; trap 'exit 130' INT; trap 'exit 143' TERM; \
 	if bootstrap_candidate="$$(git -C "$(PROJECT_ROOT)" rev-parse --verify HEAD)"; then \
 		bootstrap_git_status=0; \
 		case "$${bootstrap_candidate}" in \
@@ -508,38 +590,27 @@ _bootstrap_setup_tools:
 		fi; \
 	fi; \
 	bootstrap_stage=acquisition; \
-	mkdir -p "$(PROJECT_ROOT)/.bin"; \
-	export MISE_INSTALL_FROM_GITHUB=1 MISE_INSTALL_SKIP_IF_EXISTS=1 MISE_INSTALL_HELP=0; \
+	if [ ! -x "$(BOOTSTRAP_MISE)" ]; then \
+	export MISE_INSTALL_FROM_GITHUB=1 MISE_INSTALL_HELP=0; \
 	export MISE_VERSION="2026.10.3"; \
-	mise_acquired=false; \
-	if [ -x "$(BOOTSTRAP_MISE)" ]; then \
-		mise_present="$$("$(BOOTSTRAP_MISE)" --version)"; \
-		if [ "$${mise_present%% *}" = "$${MISE_VERSION}" ]; then mise_acquired=true; fi; \
-	fi; \
-	if [ "$${mise_acquired}" = true ]; then \
-		printf 'setup: mise %s already acquired at %s\n' "$${MISE_VERSION}" "$(BOOTSTRAP_MISE)"; \
-	else \
 	case "$${OS:-}" in \
 		(Windows_NT) \
-			export MISE_INSTALL_PATH="$$(cygpath --windows "$(BOOTSTRAP_MISE)")"; \
 			powershell.exe -NoProfile -Command '$$ErrorActionPreference = "Stop"; Invoke-RestMethod https://mise.run/powershell | Invoke-Expression' ;; \
 		(*) \
-			export MISE_INSTALL_PATH="$(BOOTSTRAP_MISE)"; \
-			mise_stage="$$(mktemp -d "$(PROJECT_ROOT)/.bin/.mise-install.XXXXXXXX")"; \
+			mise_stage="$$(mktemp -d)"; \
 			curl --proto '=https' --tlsv1.2 -fsSL -o "$${mise_stage}/install.sh" https://mise.run; \
 			sh "$${mise_stage}/install.sh" ;; \
 	esac; \
 	fi; \
 	export MISE_SHIMS_DIR="$(PROJECT_ROOT)/.bin/shims"; \
-	export MISE_LOCKED=1; \
+	export MISE_LOCKED=0; \
 	bootstrap_stage=tool-install; \
-	"$(BOOTSTRAP_MISE)" -C "$(PROJECT_ROOT)" install --yes "python" "github:jdx/mise" "uv" "github:direnv/direnv" "taplo" "aqua:ast-grep/ast-grep" "gitleaks" "aqua:boyter/scc" "node" "github:qltysh/qlty" "github:kucherenko/jscpd" "github:microsoft/waza" "aqua:j178/prek"; \
+	"$(BOOTSTRAP_MISE)" -C "$(PROJECT_ROOT)" install --yes "python" "github:jdx/mise" "uv" "github:direnv/direnv" "taplo" "aqua:ast-grep/ast-grep" "gitleaks" "aqua:boyter/scc" "github:qltysh/qlty" "github:kucherenko/jscpd" "github:microsoft/waza" "aqua:j178/prek"; \
 	mise_active="$$("$(BOOTSTRAP_MISE)" -C "$(PROJECT_ROOT)" tool "github:jdx/mise" --active)"; \
 	mise_binary="$$("$(BOOTSTRAP_MISE)" -C "$(PROJECT_ROOT)" which mise)"; \
 	if [ "$${OS:-}" = Windows_NT ]; then mise_binary="$$(cygpath --unix "$${mise_binary}")"; fi; \
-	bootstrap_stage=shims; \
-	"$${mise_binary}" -C "$(PROJECT_ROOT)" reshim; \
-	if [ -n "$${GITHUB_PATH:-}" ]; then printf '%s\n' "$$(dirname "$${mise_binary}")" "$${MISE_SHIMS_DIR}" >> "$${GITHUB_PATH}"; fi; \
+	bootstrap_stage=tool-paths; \
+	if [ -n "$${GITHUB_PATH:-}" ]; then "$${mise_binary}" -C "$(PROJECT_ROOT)" bin-paths >> "$${GITHUB_PATH}"; fi; \
 	printf 'setup: mise %s provisioning complete\n' "$${mise_active}"; \
 	printf 'setup: entering lifecycle (submodules, environment, hooks) make=%s\n' "$(SELF_MAKE_EXECUTABLE)"; \
 	bootstrap_stage=lifecycle; \
@@ -551,7 +622,7 @@ _bootstrap_setup_tools: _builtin_require_workspace
 # process the root and every governed member together in one checker run
 # (operator ruling 2026-10-25: never member by member); each multi-root tool
 # runs once over their union.
-GATE_SCOPE := self
+GATE_SCOPE := $(if $(filter Y,$(CI)),self,all)
 # Local and CI consume the same native project/workspace declarations and lock.
 # Setup always bootstraps: `uv sync --frozen` installs exactly the committed
 # uv.lock without re-resolving or rewriting it, so manifest drift never blocks
@@ -563,57 +634,36 @@ RESOLVE_DESIRED_PYTHON = desired_python="$$($(MISE) -C "$(RUNTIME_ROOT)" which p
 		printf 'ERROR[setup] Mise-resolved Python is not executable: %s\n' "$$desired_python" >&2; \
 		exit 2; \
 	fi
-# Every installation is prepared under the existing ignored runtime state.
-# Its frozen packages, editable receipt and real consumers precede one atomic
-# publication; the displaced physical environment remains recoverable.
-PREPARE_ENVIRONMENT = install_target="$(1)"; install_stage=; install_candidate_origin=; \
-	install_state="$$(dirname "$(FLEXT_INFRA_EXECUTOR_VENV)")"; install_lock="$$install_state/$(notdir $(1)).setup.lock"; \
-	if [ -L "$$install_target" ] || [ -L "$$install_state" ] || [ -L "$$install_lock" ]; then \
-		printf 'ERROR[setup] environment and publication lock must be physical paths\n' >&2; exit 2; \
+# uv owns the environment: `uv sync --frozen` creates or updates the physical
+# environment in place from the shared uv cache (configured link mode) and is a
+# no-op when it already satisfies the lock, so no run stages, copies or exchanges
+# a second environment.
+TARGET_ENVIRONMENT = install_target="$(1)"; \
+	install_state="$$(dirname "$$install_target")"; \
+	if [ -L "$$install_target" ] || [ -L "$$install_state" ]; then \
+		printf 'ERROR[setup] environment and its parent directory must be physical paths\n' >&2; exit 2; \
 	fi; \
 	mkdir -p "$$install_state"; \
-	exec 9>"$$install_lock"; flock -x 9; \
-	mv --exchange --no-copy --help >/dev/null; \
-	install_origin=; \
-	if [ -e "$$install_target" ]; then install_origin="$$(stat -c '%d:%i' "$$install_target")"; fi; \
-	install_stage="$$(mktemp -d "$$install_state/setup.XXXXXXXX")"; \
-	install_environment="$$install_stage/.venv"; \
-	trap 'install_status=$$?; trap - EXIT; if [ -n "$$install_stage" ] && { [ -z "$$install_candidate_origin" ] || [ ! -e "$$install_environment" ] || [ "$$(stat -c "%d:%i" "$$install_environment")" = "$$install_candidate_origin" ]; }; then rm -rf -- "$$install_stage"; fi; exit "$$install_status"' EXIT; \
-	trap 'exit 129' HUP; trap 'exit 130' INT; trap 'exit 143' TERM; \
-	printf 'setup: preparing %s for %s\n' "$$install_environment" "$$install_target"; \
-	$(UV) venv --relocatable --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads "$$install_environment"; \
-	install_candidate_origin="$$(stat -c '%d:%i' "$$install_environment")"; \
+	install_environment="$$install_target"; \
 	install_python="$$install_environment/$(patsubst $(RUNTIME_VENV)/%,%,$(RUNTIME_PYTHON))"
-PUBLISH_ENVIRONMENT = test -f "$$install_environment/pyvenv.cfg"; \
-	"$$install_python" -I -c 'import pathlib, sys; sys.exit(0 if sys.prefix != sys.base_prefix and pathlib.Path(sys.prefix).resolve() == pathlib.Path(sys.argv[1]).resolve() else "candidate interpreter leaves its environment")' "$$install_environment"; \
-	"$$install_environment/$(patsubst $(RUNTIME_VENV)/%,%,$(RUNTIME_BIN))/flext-infra$(if $(filter Windows_NT,$(OS)),.exe,)" --help >/dev/null; \
-	if [ -n "$$install_origin" ]; then \
-		if [ -L "$$install_target" ] || [ "$$(stat -c '%d:%i' "$$install_target")" != "$$install_origin" ]; then \
-			printf 'ERROR[setup] environment changed during preparation: %s\n' "$$install_target" >&2; exit 2; \
-		fi; \
-		mv --exchange --no-copy -T "$$install_environment" "$$install_target"; \
-		rm -rf -- "$$install_stage"; \
-		printf 'setup: published %s; previous environment removed\n' "$$install_target"; \
-	else \
-		mv --no-copy --no-clobber -T "$$install_environment" "$$install_target"; \
-		if [ -e "$$install_environment" ]; then printf 'ERROR[setup] environment appeared before publication\n' >&2; exit 2; fi; \
-		rmdir "$$install_stage"; \
-	fi; \
-	install_stage=; trap - EXIT HUP INT TERM; \
-	flock -u 9; exec 9>&-
+# The environment's own flext-infra console script. Setup runs its workspace step
+# through it, so one process does the work and proves the entry point.
+INSTALL_FLEXT_INFRA = "$$install_environment/$(patsubst $(RUNTIME_VENV)/%,%,$(RUNTIME_BIN))/flext-infra$(if $(filter Windows_NT,$(OS)),.exe,)"
+VERIFY_ENVIRONMENT = test -f "$$install_environment/pyvenv.cfg"; \
+	"$$install_python" -I -c 'import pathlib, sys; sys.exit(0 if sys.prefix != sys.base_prefix and pathlib.Path(sys.prefix).resolve() == pathlib.Path(sys.argv[1]).resolve() else "environment interpreter leaves its environment")' "$$install_environment"
 INSTALL_RUNTIME_RECIPE = set -eu; \
 	$(REQUIRE_WORKSPACE_ENVIRONMENT); \
 	$(RESOLVE_DESIRED_PYTHON); \
-	$(call PREPARE_ENVIRONMENT,$(RUNTIME_VENV)); \
-	sync_args="$(SETUP_SYNC_ARGS)"; \
-	env -u MISE_PYTHON_UV_VENV_AUTO -u UV_PROJECT -u UV_WORKING_DIR -u UV_CONFIG_FILE -u UV_PROJECT_ENVIRONMENT -u UV_PYTHON -u UV_PYTHON_DOWNLOADS -u UV_NO_CONFIG -u UV_NO_SOURCES -u UV_FROZEN -u UV_LOCKED -u VIRTUAL_ENV -u PYTHONHOME -u PYTHONPATH UV_PROJECT_ENVIRONMENT="$$install_environment" timeout --signal=TERM --kill-after=5s 118s $(UV) sync --frozen --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads $$sync_args; \
+	$(call TARGET_ENVIRONMENT,$(RUNTIME_VENV)); \
+	env -u MISE_PYTHON_UV_VENV_AUTO -u UV_PROJECT -u UV_WORKING_DIR -u UV_CONFIG_FILE -u UV_PROJECT_ENVIRONMENT -u UV_PYTHON -u UV_PYTHON_DOWNLOADS -u UV_NO_CONFIG -u UV_NO_SOURCES -u UV_FROZEN -u UV_LOCKED -u VIRTUAL_ENV -u PYTHONHOME -u PYTHONPATH UV_PROJECT_ENVIRONMENT="$$install_environment" timeout --signal=TERM --kill-after=5s 118s $(UV) sync --frozen --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads $(SETUP_SYNC_ARGS); \
 	if [ -n "$(strip $(FLEXT))" ]; then \
 		if [ "$(CI)" = "Y" ]; then printf 'ERROR[setup] local editable sources are forbidden in CI\n' >&2; exit 2; fi; \
-		(cd "$(FLEXT)"; $(UV) pip install --python "$$install_python" --requirement "requirements-infra.txt"); \
+		(cd "$(FLEXT)"; $(UV) pip install --no-config --python "$$install_python" --no-deps --requirement "requirements-infra.txt"); \
 		$(UV) pip install --python "$$install_python" --no-deps --editable "$(RUNTIME_ROOT)"; \
 	fi; \
-	env -u MYPYPATH -u MISE_PYTHON_UV_VENV_AUTO -u UV_PROJECT -u UV_WORKING_DIR -u UV_CONFIG_FILE -u UV_PROJECT_ENVIRONMENT -u UV_PYTHON -u UV_PYTHON_DOWNLOADS -u UV_NO_CONFIG -u UV_NO_SOURCES -u UV_FROZEN -u UV_LOCKED -u VIRTUAL_ENV -u PYTHONHOME -u PYTHONPATH "$$install_python" -m flext_infra workspace flext-editable --repository-root "$(RUNTIME_ROOT)" --candidate-environment "$$install_environment"$(if $(strip $(FLEXT)), --flext-root "$(FLEXT)"); \
-	$(PUBLISH_ENVIRONMENT)
+	env -u MISE_PYTHON_UV_VENV_AUTO -u UV_PROJECT -u UV_WORKING_DIR -u UV_CONFIG_FILE -u UV_PROJECT_ENVIRONMENT -u UV_PYTHON -u UV_PYTHON_DOWNLOADS -u UV_NO_CONFIG -u UV_NO_SOURCES -u UV_FROZEN -u UV_LOCKED -u VIRTUAL_ENV -u PYTHONHOME -u PYTHONPATH $(INSTALL_FLEXT_INFRA) workspace flext-editable --repository-root "$(RUNTIME_ROOT)" --candidate-environment "$$install_environment"$(if $(strip $(FLEXT)), --flext-root "$(FLEXT)"); \
+	$(VERIFY_ENVIRONMENT); \
+	printf 'setup: %s synchronized with uv.lock\n' "$$install_target"
 
 # The governed checkouts of this repository: itself (`.`) and every
 # initialized gitlink its .gitmodules declares without flext-managed = false.
@@ -662,35 +712,41 @@ GOVERNED_CHECKOUTS = root="$(PROJECT_ROOT)"; \
 # longer declared loses only setup's marked section; the hook file is
 # removed when no other owner's content remains in it.
 INSTALL_GIT_HOOKS_RECIPE = set -eu; \
-	prek_binary="$$($(MISE) -C "$(RUNTIME_ROOT)" which prek)"; \
+	prek_binary="$$($(MISE) -C "$(RUNTIME_ROOT)" exec -- which prek)"; \
 	if [ "$${OS:-}" = Windows_NT ]; then prek_binary="$$(cygpath --unix "$$prek_binary")"; fi; \
 	if [ ! -x "$$prek_binary" ]; then \
 		printf 'ERROR[setup] Mise-resolved prek is not executable: %s\n' "$$prek_binary" >&2; \
 		exit 2; \
 	fi; \
 	set -f; \
+	retire_managed_hook() { \
+		stage="$$1"; hook="$$2"; \
+		if [ -e "$$hook" ] && grep -q 'Generated by make setup (flext-infra)' "$$hook"; then \
+				others="$$(sed -e '/^\# BEGIN FLEXT-INFRA SETUP/,/^\# END FLEXT-INFRA SETUP/d' -e '1{/^\#!/d;}' "$$hook")"; \
+				if printf '%s\n' "$$others" | grep -q 'Generated by make setup (flext-infra)'; then others=""; fi; \
+			if [ -n "$$(printf '%s' "$$others" | tr -d '[:space:]')" ]; then \
+				printf '%s\n' '\#!/bin/sh' "$$others" > "$$hook.pending"; \
+				chmod 0755 "$$hook.pending"; \
+				mv "$$hook.pending" "$$hook"; \
+			else \
+				rm -f "$$hook"; \
+			fi; \
+			printf 'setup: retired %s hook section at %s\n' "$$stage" "$$hook"; \
+		fi; \
+			if [ -e "$$hook.backup" ] && grep -q 'Generated by make setup (flext-infra)' "$$hook.backup"; then rm -f "$$hook.backup"; fi; \
+	}; \
 	$(GOVERNED_CHECKOUTS); \
 	for checkout in $$checkouts; do \
 		hooks_dir="$$(git -C "$$root/$$checkout" rev-parse --path-format=absolute --git-path hooks)"; \
 		mkdir -p "$$hooks_dir"; \
 		for stage in pre-push; do \
-			hook="$$hooks_dir/$$stage"; \
-			if [ -e "$$hook" ] && grep -q 'Generated by make setup (flext-infra)' "$$hook"; then \
-				others="$$(sed -e '/^\# BEGIN FLEXT-INFRA SETUP/,/^\# END FLEXT-INFRA SETUP/d' -e '1{/^\#!/d;}' "$$hook")"; \
-				if printf '%s\n' "$$others" | grep -q 'Generated by make setup (flext-infra)'; then others=""; fi; \
-				if [ -n "$$(printf '%s' "$$others" | tr -d '[:space:]')" ]; then \
-					printf '%s\n' '\#!/bin/sh' "$$others" > "$$hook.pending"; \
-					chmod 0755 "$$hook.pending"; \
-					mv "$$hook.pending" "$$hook"; \
-				else \
-					rm -f "$$hook"; \
-				fi; \
-				printf 'setup: retired undeclared %s hook section at %s\n' "$$stage" "$$hook"; \
-			fi; \
-			if [ -e "$$hook.backup" ] && grep -q 'Generated by make setup (flext-infra)' "$$hook.backup"; then rm -f "$$hook.backup"; fi; \
-		done; \
+			retire_managed_hook "$$stage" "$$hooks_dir/$$stage"; \
+			done; \
 		validator_path="$$(git -C "$$root/$$checkout" rev-parse --show-toplevel)/.github/scripts/validate-git-hook.sh"; \
 		if [ ! -x "$$validator_path" ]; then \
+			for stage in pre-commit; do \
+				retire_managed_hook "$$stage" "$$hooks_dir/$$stage"; \
+			done; \
 			printf 'setup: hooks skipped (no validator) checkout=%s\n' "$$checkout"; \
 			continue; \
 		fi; \
@@ -706,11 +762,13 @@ INSTALL_GIT_HOOKS_RECIPE = set -eu; \
 				printf '%s\n' '\#!/bin/sh' "\# BEGIN FLEXT-INFRA SETUP: Generated by make setup (flext-infra); rerun make setup to refresh."; \
 				if [ "$$stage" = pre-push ]; then \
 					printf '%s\n' \
-						'flext_hook_stdin="$$(mktemp "$$(git rev-parse --absolute-git-dir)/flext-pre-push.XXXXXX")"' \
-						'cat > "$$flext_hook_stdin"' \
-						"PREK=$$prek_binary $$validator $$stage \"\$$@\" < \"\$$flext_hook_stdin\" || { flext_hook_status=\$$?; rm -f \"\$$flext_hook_stdin\"; exit \"\$$flext_hook_status\"; }" \
-						'exec < "$$flext_hook_stdin"' \
-						'rm -f "$$flext_hook_stdin"'; \
+						'flext_hook_stdin="$$(cat)"' \
+						"printf '%s\\n' \"\$$flext_hook_stdin\" | PREK=$$prek_binary $$validator $$stage \"\$$@\" || exit \$$?" \
+						'if [ -n "$$flext_hook_stdin" ]; then' \
+						'exec <<FLEXT_PRE_PUSH_STDIN' \
+						'$$flext_hook_stdin' \
+						'FLEXT_PRE_PUSH_STDIN' \
+						'else exec </dev/null; fi'; \
 				else \
 					printf '%s\n' "PREK=$$prek_binary $$validator $$stage \"\$$@\" || exit \$$?"; \
 				fi; \
@@ -730,7 +788,7 @@ REQUIRE_WORKSPACE_ENVIRONMENT = case "$(PROJECT_ROOT)/" in \
 	"$(RUNTIME_ROOT)/"*) ;; \
 	*) printf 'ERROR: runtime workspace does not contain this project: %s\n' "$(RUNTIME_ROOT)" >&2; exit 2 ;; \
 	esac; \
-	for environment_path in "$$(dirname "$(RUNTIME_VENV)")" "$(RUNTIME_VENV)" "$(RUNTIME_BIN)" "$(PROJECT_ROOT)/.venv" "$(PROJECT_ROOT)/.venv/bin" "$(PROJECT_ROOT)/.venv/Scripts" "$(SETUP_BIN)" "$(BOOTSTRAP_MISE)" "$$(dirname "$(FLEXT_INFRA_EXECUTOR_VENV)")" "$(FLEXT_INFRA_EXECUTOR_VENV)"; do \
+	for environment_path in "$$(dirname "$(RUNTIME_VENV)")" "$(RUNTIME_VENV)" "$(RUNTIME_BIN)" "$(PROJECT_ROOT)/.venv" "$(PROJECT_ROOT)/.venv/bin" "$(PROJECT_ROOT)/.venv/Scripts" "$$(dirname "$(FLEXT_INFRA_EXECUTOR_VENV)")" "$(FLEXT_INFRA_EXECUTOR_VENV)"; do \
 		if [ -L "$$environment_path" ]; then \
 			printf 'ERROR: workspace environment must be physical, not a symlink: %s\n' "$$environment_path" >&2; exit 2; \
 		fi; \
@@ -742,37 +800,40 @@ _builtin_require_workspace:
 
 # Execute the interpreter provisioned by setup without discovering a project
 # workspace or creating a dependency-resolution file during a runtime command.
-override UV_RUN = env -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u PROJECT_ROOT PATH="$(RUNTIME_BIN):$$PATH" PYTHONPATH="$(PROJECT_ROOT)/src" $(UV) run --directory "$(PROJECT_ROOT)" --no-project --python "$(RUNTIME_PYTHON)"
+override UV_RUN = env -u VIRTUAL_ENV -u UV_PROJECT -u PROJECT_ROOT PATH="$(RUNTIME_BIN):$$PATH" PYTHONPATH="$(PROJECT_ROOT)/src" $(UV) run --directory "$(PROJECT_ROOT)" --no-project --python "$(RUNTIME_PYTHON)"
 # Native locked workspace membership owns control imports, never caller overlays.
-override PROJECT_INFRA_RUN = env -u MYPYPATH -u MISE_PYTHON_UV_VENV_AUTO -u UV_PROJECT -u UV_WORKING_DIR -u UV_CONFIG_FILE -u UV_PROJECT_ENVIRONMENT -u UV_PYTHON -u UV_PYTHON_DOWNLOADS -u UV_NO_CONFIG -u UV_NO_SOURCES -u UV_FROZEN -u UV_LOCKED -u VIRTUAL_ENV -u PYTHONHOME -u PYTHONPATH "$(FLEXT_INFRA_PYTHON)"
+override PROJECT_INFRA_RUN = env -u MISE_PYTHON_UV_VENV_AUTO -u UV_PROJECT -u UV_WORKING_DIR -u UV_CONFIG_FILE -u UV_PROJECT_ENVIRONMENT -u UV_PYTHON -u UV_PYTHON_DOWNLOADS -u UV_NO_CONFIG -u UV_NO_SOURCES -u UV_FROZEN -u UV_LOCKED -u VIRTUAL_ENV -u PYTHONHOME -u PYTHONPATH "$(FLEXT_INFRA_PYTHON)"
 override PROJECT_FLEXT_INFRA := $(PROJECT_INFRA_RUN) -m flext_infra
 # The upgrade executor (make.executor_environment) runs isolated (-I: no working
 # directory, PYTHONPATH or user site on sys.path) from its own environment, so
 # `make upg`'s residual flext-infra step imports neither the project's source nor
 # the runtime environment.
-override EXECUTOR_FLEXT_INFRA = env -u MYPYPATH -u MISE_PYTHON_UV_VENV_AUTO -u UV_PROJECT -u UV_WORKING_DIR -u UV_CONFIG_FILE -u UV_PROJECT_ENVIRONMENT -u UV_PYTHON -u UV_PYTHON_DOWNLOADS -u UV_NO_CONFIG -u UV_NO_SOURCES -u UV_FROZEN -u UV_LOCKED -u VIRTUAL_ENV -u PYTHONHOME -u PYTHONPATH "$(FLEXT_INFRA_EXECUTOR_PYTHON)" -I -m flext_infra
-# Native uv syncs the executor from the project's frozen lock: the dependency
-# group that pins flext-infra, without editable installs, into its own
-# environment (recreated first when it is not a uv environment, and refreshed,
-# so a sync never targets a Mise base interpreter). A consumer excludes the
-# project, so the executor never imports its source. A project in flext-infra's
-# own runtime closure (derived from the installed metadata) supplies part of the
-# executor, so its locked non-editable build is installed, never the editable
-# source; every lock is already written before it runs.
-# Native `--compile-bytecode` writes the .pyc at install time, so the first import
-# never compiles the stack (the host may export PYTHONDONTWRITEBYTECODE).
-SYNC_UPGRADE_EXECUTOR_RECIPE = $(call PREPARE_ENVIRONMENT,$(FLEXT_INFRA_EXECUTOR_VENV)); \
-	env -u MISE_PYTHON_UV_VENV_AUTO -u UV_PROJECT -u UV_WORKING_DIR -u UV_CONFIG_FILE -u UV_PROJECT_ENVIRONMENT -u UV_PYTHON -u UV_PYTHON_DOWNLOADS -u UV_NO_CONFIG -u UV_NO_SOURCES -u UV_FROZEN -u UV_LOCKED -u VIRTUAL_ENV -u PYTHONHOME -u PYTHONPATH UV_PROJECT_ENVIRONMENT="$$install_environment" timeout --signal=TERM --kill-after=5s 118s $(UV) sync --frozen --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads --no-default-groups --group "dev" --no-editable --compile-bytecode --link-mode clone; \
-	$(PUBLISH_ENVIRONMENT)
+override EXECUTOR_FLEXT_INFRA = env -u MISE_PYTHON_UV_VENV_AUTO -u UV_PROJECT -u UV_WORKING_DIR -u UV_CONFIG_FILE -u UV_PROJECT_ENVIRONMENT -u UV_PYTHON -u UV_PYTHON_DOWNLOADS -u UV_NO_CONFIG -u UV_NO_SOURCES -u UV_FROZEN -u UV_LOCKED -u VIRTUAL_ENV -u PYTHONHOME -u PYTHONPATH "$(FLEXT_INFRA_EXECUTOR_PYTHON)" -I -m flext_infra
+# Native uv syncs the executor from the dependency group that pins flext-infra,
+# without editable installs, into its own environment (recreated first when it
+# is not a uv environment, and refreshed, so a sync never targets a Mise base
+# interpreter). A consumer excludes the project, so the executor never imports
+# its source. A project in flext-infra's own runtime closure (derived from the
+# installed metadata) supplies part of the executor, so its locked non-editable
+# build is installed, never the editable source. upg's pre-resolution executor
+# follows the declared sources (--no-frozen) so a Makefile generated from the
+# current tip can run commands the committed lock predates; its post-resolution
+# executor is frozen from the written locks for the last repair.
+SYNC_UPGRADE_EXECUTOR_RECIPE = $(call SYNC_UPGRADE_EXECUTOR_WITH,--frozen)
+SYNC_UPGRADE_EXECUTOR_PRE_RESOLUTION_RECIPE = $(call SYNC_UPGRADE_EXECUTOR_WITH,--no-frozen --upgrade)
+SYNC_UPGRADE_EXECUTOR_WITH = $(call TARGET_ENVIRONMENT,$(FLEXT_INFRA_EXECUTOR_VENV)); \
+	env -u MISE_PYTHON_UV_VENV_AUTO -u UV_PROJECT -u UV_WORKING_DIR -u UV_CONFIG_FILE -u UV_PROJECT_ENVIRONMENT -u UV_PYTHON -u UV_PYTHON_DOWNLOADS -u UV_NO_CONFIG -u UV_NO_SOURCES -u UV_FROZEN -u UV_LOCKED -u VIRTUAL_ENV -u PYTHONHOME -u PYTHONPATH UV_PROJECT_ENVIRONMENT="$$install_environment" timeout --signal=TERM --kill-after=5s 118s $(UV) sync $(1) --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads --no-default-groups --group "dev" --no-editable --link-mode clone; \
+	$(INSTALL_FLEXT_INFRA) --help >/dev/null; \
+	$(VERIFY_ENVIRONMENT)
 
 # Setup checks native lock freshness without writing the lock. Native uv selects
 # every member's declared extras and groups, without copying dependency graphs.
 
 
-override SETUP_SYNC_ARGS := --all-extras --all-groups --link-mode clone
+override SETUP_SYNC_ARGS := --all-extras --all-groups --link-mode clone --all-packages
 
 ifeq ($(CI),Y)
-override SETUP_SYNC_ARGS := --all-extras --all-groups --link-mode clone --no-editable
+override SETUP_SYNC_ARGS := --all-extras --all-groups --link-mode clone --all-packages --no-editable
 endif
 
 # Custom hooks are declared in CI too; load their selected physical Makefile.
@@ -813,11 +874,14 @@ VERB_ARGUMENTS_setup := FLEXT RECREATE
 VERB_DESCRIPTION_upg := Resolve declared dependency and tool updates and publish their resolution metadata and locks.
 VERB_ARGUMENTS_upg :=
 
+VERB_DESCRIPTION_lock := Resolve newly declared dependencies into the locks and keep every existing pin; only upg moves pins.
+VERB_ARGUMENTS_lock :=
+
 VERB_DESCRIPTION_gen := Materialize explicitly declared new projects and publish every applicable generated projection.
-VERB_ARGUMENTS_gen :=
+VERB_ARGUMENTS_gen := ROOT
 
 VERB_DESCRIPTION_gen-scope := Run the focal generation surface (WHAT, MODULE for facades, SCOPE) through the same engine, lock and budget as gen.
-VERB_ARGUMENTS_gen-scope := WHAT MODULE SCOPE
+VERB_ARGUMENTS_gen-scope := ROOT WHAT MODULE SCOPE
 
 VERB_DESCRIPTION_mod := Refactor declared source structure through the shared pipeline and publish the complete coherent change; LAWS (ENFORCE ids) or RULES (rule ids) diagnose or repair one law (ADR-028 Decision 18 item 2).
 VERB_ARGUMENTS_mod := LAWS RULES
@@ -831,10 +895,10 @@ VERB_ARGUMENTS_fmt :=
 VERB_DESCRIPTION_check := Validate declarations, projections, environment, documentation and configured gates without repairs or publication.
 VERB_ARGUMENTS_check := CHECK_PHASE
 
-VERB_DESCRIPTION_tests := Discover the complete global pytest inventory and execute testmon-selected cases with the persistent external database.
+VERB_DESCRIPTION_tests := Run native incremental tests through the persistent Testmon selection.
 VERB_ARGUMENTS_tests :=
 
-VERB_DESCRIPTION_tests-full := Execute the complete applicable population once without Testmon or a preliminary incremental run, preserving the existing database untouched.
+VERB_DESCRIPTION_tests-full := Run the complete selected inventory once without Testmon.
 VERB_ARGUMENTS_tests-full :=
 
 VERB_DESCRIPTION_help := Discover the declared public interface without effects.
@@ -853,7 +917,7 @@ VERB_DESCRIPTION_release-plan := Execute the declared release plan phase.
 VERB_ARGUMENTS_release-plan := PR_TITLE
 
 VERB_DESCRIPTION_release-version := Execute the declared release version phase.
-VERB_ARGUMENTS_release-version := LANE_CHECKPOINT_REF
+VERB_ARGUMENTS_release-version :=
 
 VERB_DESCRIPTION_release-tag := Execute the declared release tag phase.
 VERB_ARGUMENTS_release-tag :=
@@ -877,7 +941,7 @@ PROFILE_VERBS_DIRECT := $(filter-out $(PROFILE_VERBS_HOOKED) $(PROFILE_VERBS_INT
 PROFILE_VERBS_ROUTED := $(PROFILE_VERBS_HOOKED) $(PROFILE_VERBS_INTERPRETER)
 
 $(PROFILE_VERBS_PLAIN): %: _builtin_require_workspace _builtin_require_interpreter
-	@printf '==> %s | project=%s | profile=%s\n' '$@' "$(PROJECT_ROOT)" 'standalone'
+	@printf '==> %s | project=%s | profile=%s\n' '$@' "$(PROJECT_ROOT)" 'workspace'
 	$(call RUN_PUBLIC,$@)
 
 
@@ -886,8 +950,8 @@ $(PROFILE_VERBS_DISPATCH):
 
 
 $(PROFILE_VERBS_ACTIVATED): %: _builtin_require_workspace
-	@printf '==> %s | project=%s | profile=%s\n' '$@' "$(PROJECT_ROOT)" 'standalone'
-	+@$(if $(filter Y,$(CI)),$(SELF_MAKE) _activated-$@,direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-$@)
+	@printf '==> %s | project=%s | profile=%s\n' '$@' "$(PROJECT_ROOT)" 'workspace'
+	+@$(if $(filter Y,$(CI)),$(MISE) -C "$(RUNTIME_ROOT)" exec -- $(SELF_MAKE) _activated-$@,$(DIRENV) exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-$@)
 .PHONY: $(addprefix _activated-,$(PROFILE_VERBS_ACTIVATED))
 ifneq ($(strip $(PROFILE_VERBS_DIRECT)),)
 $(addprefix _activated-,$(PROFILE_VERBS_DIRECT)): _activated-%: _builtin-%
@@ -909,38 +973,11 @@ endif
 # to build), but it still runs the pre-/post-setup lifecycle hooks so a project
 # declaring them in the custom handler surface is actually honoured.
 ifeq ($(PROJECT_ROOT),$(RUNTIME_ROOT))
-setup:
-	+@set -eu; \
-lifecycle_state="$$(dirname "$(FLEXT_INFRA_EXECUTOR_VENV)")"; \
-lifecycle_lock="$$lifecycle_state/$(notdir $(RUNTIME_VENV)).lifecycle.lock"; \
-if [ -L "$$lifecycle_state" ] || [ -L "$$lifecycle_lock" ]; then printf 'ERROR[lifecycle] lease paths must be physical\n' >&2; exit 2; fi; \
-mkdir -p "$$lifecycle_state"; \
-if [ -e "$$lifecycle_lock" ] && [ ! -f "$$lifecycle_lock" ]; then printf 'ERROR[lifecycle] lease is not a regular file\n' >&2; exit 2; fi; \
-: >>"$$lifecycle_lock"; \
-lifecycle_identity="$$(stat -c '%d:%i' "$$lifecycle_lock")"; \
-lifecycle_descriptor=; \
-for lifecycle_entry in /proc/$$$$/fd/*; do \
-	case "$${lifecycle_entry##*/}" in 0|1|2|9) continue ;; esac; \
-	if [ -f "$$lifecycle_entry" ] && [ "$$(stat -Lc '%d:%i' "$$lifecycle_entry")" = "$$lifecycle_identity" ]; then lifecycle_descriptor="$${lifecycle_entry##*/}"; break; fi; \
-done; \
-case " $${FLEXT_NATIVE_LIFECYCLE_LEASES:-} " in \
-	*" $$lifecycle_identity "*) \
-		if [ -z "$$lifecycle_descriptor" ]; then printf 'ERROR[lifecycle] recursive workflow lost its native lease descriptor\n' >&2; exit 2; fi; \
-		flock -x "$$lifecycle_descriptor"; \
-		$(SELF_MAKE) _setup_locked ;; \
-	*) \
-		if [ -n "$$lifecycle_descriptor" ]; then printf 'ERROR[lifecycle] inherited lease has no native workflow identity\n' >&2; exit 2; fi; \
-		if [ ! -e /proc/$$$$/fd/9 ]; then exec 9>/dev/null; fi; \
-		FLEXT_NATIVE_LIFECYCLE_LEASES="$${FLEXT_NATIVE_LIFECYCLE_LEASES:-} $$lifecycle_identity"; export FLEXT_NATIVE_LIFECYCLE_LEASES; \
-		printf 'lifecycle: acquiring setup/upg lease for %s\n' "$(RUNTIME_ROOT)"; \
-		exec flock --exclusive --no-fork "$$lifecycle_lock" $(SELF_MAKE) _setup_locked ;; \
-esac
-.PHONY: _setup_locked
-_setup_locked: _builtin_require_github_credential _bootstrap_setup_tools
+setup: _builtin_require_github_credential _bootstrap_setup_tools
 else
 setup: _builtin_require_workspace
 	+@"$(SELF_MAKE_EXECUTABLE)" --no-print-directory -C "$(RUNTIME_ROOT)" -f "$(RUNTIME_ROOT)/Makefile" setup
-	@$(if $(filter Y,$(CI)),:,direnv allow "$(PROJECT_ROOT)")
+	@$(if $(filter Y,$(CI)),:,$(DIRENV) allow "$(PROJECT_ROOT)")
 endif
 
 # Upgrade relocks Mise and provisions the locked toolchain, then resolves
@@ -948,38 +985,21 @@ endif
 # the isolated executor (_upg_lifecycle). Attached members delegate the same
 # operation to their physical workspace owner before resolving anything.
 ifeq ($(PROJECT_ROOT),$(RUNTIME_ROOT))
-upg:
-	+@set -eu; \
-lifecycle_state="$$(dirname "$(FLEXT_INFRA_EXECUTOR_VENV)")"; \
-lifecycle_lock="$$lifecycle_state/$(notdir $(RUNTIME_VENV)).lifecycle.lock"; \
-if [ -L "$$lifecycle_state" ] || [ -L "$$lifecycle_lock" ]; then printf 'ERROR[lifecycle] lease paths must be physical\n' >&2; exit 2; fi; \
-mkdir -p "$$lifecycle_state"; \
-if [ -e "$$lifecycle_lock" ] && [ ! -f "$$lifecycle_lock" ]; then printf 'ERROR[lifecycle] lease is not a regular file\n' >&2; exit 2; fi; \
-: >>"$$lifecycle_lock"; \
-lifecycle_identity="$$(stat -c '%d:%i' "$$lifecycle_lock")"; \
-lifecycle_descriptor=; \
-for lifecycle_entry in /proc/$$$$/fd/*; do \
-	case "$${lifecycle_entry##*/}" in 0|1|2|9) continue ;; esac; \
-	if [ -f "$$lifecycle_entry" ] && [ "$$(stat -Lc '%d:%i' "$$lifecycle_entry")" = "$$lifecycle_identity" ]; then lifecycle_descriptor="$${lifecycle_entry##*/}"; break; fi; \
-done; \
-case " $${FLEXT_NATIVE_LIFECYCLE_LEASES:-} " in \
-	*" $$lifecycle_identity "*) \
-		if [ -z "$$lifecycle_descriptor" ]; then printf 'ERROR[lifecycle] recursive workflow lost its native lease descriptor\n' >&2; exit 2; fi; \
-		flock -x "$$lifecycle_descriptor"; \
-		$(SELF_MAKE) _upg_locked ;; \
-	*) \
-		if [ -n "$$lifecycle_descriptor" ]; then printf 'ERROR[lifecycle] inherited lease has no native workflow identity\n' >&2; exit 2; fi; \
-		if [ ! -e /proc/$$$$/fd/9 ]; then exec 9>/dev/null; fi; \
-		FLEXT_NATIVE_LIFECYCLE_LEASES="$${FLEXT_NATIVE_LIFECYCLE_LEASES:-} $$lifecycle_identity"; export FLEXT_NATIVE_LIFECYCLE_LEASES; \
-		printf 'lifecycle: acquiring setup/upg lease for %s\n' "$(RUNTIME_ROOT)"; \
-		exec flock --exclusive --no-fork "$$lifecycle_lock" $(SELF_MAKE) _upg_locked ;; \
-esac
-.PHONY: _upg_locked
-_upg_locked: _builtin_require_workspace _builtin_require_github_credential _upg_toolchain
+upg: _builtin_require_workspace _builtin_require_github_credential _upg_toolchain
 	+@$(SELF_MAKE) _upg_lifecycle
 else
 upg: _builtin_require_workspace
 	+@"$(SELF_MAKE_EXECUTABLE)" --no-print-directory -C "$(RUNTIME_ROOT)" -f "$(RUNTIME_ROOT)/Makefile" upg
+endif
+
+# Attached members delegate the same operation to their physical workspace owner
+# before resolving anything.
+ifeq ($(PROJECT_ROOT),$(RUNTIME_ROOT))
+lock: _builtin_require_workspace _builtin_require_github_credential
+	+@$(SELF_MAKE) _lock_lifecycle
+else
+lock: _builtin_require_workspace
+	+@"$(SELF_MAKE_EXECUTABLE)" --no-print-directory -C "$(RUNTIME_ROOT)" -f "$(RUNTIME_ROOT)/Makefile" lock
 endif
 SCRIPT_VERBS_PLAIN :=
 SCRIPT_VERBS_DISPATCH :=
@@ -992,8 +1012,8 @@ SCRIPT_VERBS_ROUTED := $(SCRIPT_VERBS_HOOKED) $(SCRIPT_VERBS_INTERPRETER)
 
 
 $(SCRIPT_VERBS_ACTIVATED): %: _builtin_require_workspace
-	@printf '==> %s | project=%s | profile=%s\n' '$@' "$(PROJECT_ROOT)" 'standalone'
-	+@$(if $(filter Y,$(CI)),$(SELF_MAKE) _activated-$@,direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-$@)
+	@printf '==> %s | project=%s | profile=%s\n' '$@' "$(PROJECT_ROOT)" 'workspace'
+	+@$(if $(filter Y,$(CI)),$(MISE) -C "$(RUNTIME_ROOT)" exec -- $(SELF_MAKE) _activated-$@,$(DIRENV) exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-$@)
 .PHONY: $(addprefix _activated-,$(SCRIPT_VERBS_ACTIVATED))
 ifneq ($(strip $(SCRIPT_VERBS_DIRECT)),)
 $(addprefix _activated-,$(SCRIPT_VERBS_DIRECT)): _activated-%: _builtin-%
@@ -1028,12 +1048,18 @@ _setup_lifecycle: _builtin_require_workspace
 		Y:*) ;; \
 		*" pre-setup "*) $(SELF_MAKE) pre-setup ;; \
 	esac; \
-	$(if $(filter Y,$(CI)),,direnv allow "$(PROJECT_ROOT)";) \
-	$(if $(filter Y,$(CI)),$(SELF_MAKE) _setup_activated,direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _setup_activated)
+	$(if $(filter Y,$(CI)),,set -f; \
+	$(GOVERNED_CHECKOUTS); \
+	for checkout in $$checkouts; do \
+		if [ "$$checkout" = . ]; then allow_root="$$root"; else allow_root="$$root/$$checkout"; fi; \
+		[ ! -f "$$allow_root/.envrc" ] || $(DIRENV) allow "$$allow_root"; \
+	done; \
+	set +f;) \
+	$(if $(filter Y,$(CI)),$(SELF_MAKE) _setup_activated,$(DIRENV) exec "$(PROJECT_ROOT)" $(SELF_MAKE) _setup_activated)
 
-# Setup installs the committed locks as they are and never rewrites them.
-# Required input and native installation failures terminate immediately;
-# generation and explicit upgrade own their respective repairs. Quality gates
+# Setup installs UV's frozen resolution; Mise completes missing native tool
+# pins during provisioning. Required input and installation failures terminate
+# immediately. Generation and upgrade own their respective repairs. Quality gates
 # remain separate operations and no failure selects another producer or source.
 .PHONY: _setup_activated
 # Check owns quality verdicts after provisioning.
@@ -1047,7 +1073,7 @@ ifneq ($(CI),Y)
 endif
 
 _builtin-help:
-	@printf '%s\n' 'flext-infra [standalone]' ''
+	@printf '%s\n' 'flext-infra [workspace]' ''
 	@$(foreach verb,$(PUBLIC_VERBS),$(call VERB_HELP_LINE,$(verb));)
 
 # A project owns the sources declared by its manifest. Generated setup
@@ -1184,7 +1210,7 @@ _builtin_require_environment: _builtin_require_interpreter
 # Source: computed (MAKE_PROFILE routing)
 # Setup provisions tooling and the native project's declared dependencies.
 # It never generates or mutates project source; `make gen` owns source generation.
-# The lifecycle above owns the single native locked installation.
+# The lifecycle above owns the single native toolchain installation.
 # Attached members delegate publicly before entering it; there is no second
 # private installer or alternative source-selection pipeline.
 # End SECTION: setup environment
@@ -1205,11 +1231,21 @@ _builtin_require_environment: _builtin_require_interpreter
 #      lock previews every tool, so it is regenerated in full);
 #   4. the locked toolchain is installed from that lock, so a missing, bumped
 #      or newly declared tool (Python and uv included) is the one used next.
-# _upg_lifecycle then runs, in a fresh Make, the native `uv lock --upgrade`
-# with that Python and the frozen installation, and last the isolated executor
-# (make.executor_environment) repairs the one gap Mise does not report: a
-# locked tool missing a declared platform. A project whose source no longer
-# imports still has every lock written. It generates no projection.
+# _upg_lifecycle then runs, in a fresh Make, the isolated executor
+# (make.executor_environment) formed from the committed uv.lock (a project
+# without one forms it first through the same native writer). Its cooldown
+# admission (ADR-030 release eligibility) asks native uv which requirements
+# the [tool.uv] exclude-newer window refuses, drops each refused
+# [tool.flext.upg]-owned floor or pin and reports every other refusal at
+# once, before any lock is written. Then the
+# native `uv lock --upgrade` runs with that Python once per project: each
+# governed member in .gitmodules order forms its own uv.lock, then this
+# project, whose lock is their composition. The executor writes the upg-owned
+# bounds from those locks, the locks record them without upgrading, the frozen
+# installation follows, and last the executor repairs the one gap Mise does
+# not report: a locked tool missing a declared platform. The executor never
+# imports the project, so a project whose source no longer imports still has
+# every lock written. It generates no projection.
 .PHONY: _upg_toolchain _upg_lifecycle
 _upg_toolchain: _builtin_require_workspace _builtin_require_github_credential
 	+@set -eu; \
@@ -1223,6 +1259,7 @@ _upg_toolchain: _builtin_require_workspace _builtin_require_github_credential
 			fi; \
 		fi; \
 		exit "$${bootstrap_status}"' EXIT; \
+	trap 'exit 129' HUP; trap 'exit 130' INT; trap 'exit 143' TERM; \
 	bootstrap_stage=network-auth; \
 	if git config --global --get-regexp '^url\.https?://[^ /]+:[^ /]+@.*\.insteadof$$' >/dev/null; then \
 		printf 'ERROR: Global Git URL rewrite configuration embeds credentials and shadows the fleet SSH route; correct that configuration at its owner\n' >&2; \
@@ -1238,24 +1275,14 @@ _upg_toolchain: _builtin_require_workspace _builtin_require_github_credential
 		*" pre-upg "*) $(SELF_MAKE) pre-upg ;; \
 	esac; \
 	bootstrap_stage=acquisition; \
-	mkdir -p "$(PROJECT_ROOT)/.bin"; \
-	export MISE_INSTALL_FROM_GITHUB=1 MISE_INSTALL_SKIP_IF_EXISTS=1 MISE_INSTALL_HELP=0; \
+	if [ ! -x "$(BOOTSTRAP_MISE)" ]; then \
+	export MISE_INSTALL_FROM_GITHUB=1 MISE_INSTALL_HELP=0; \
 	export MISE_VERSION="2026.10.3"; \
-	mise_acquired=false; \
-	if [ -x "$(BOOTSTRAP_MISE)" ]; then \
-		mise_present="$$("$(BOOTSTRAP_MISE)" --version)"; \
-		if [ "$${mise_present%% *}" = "$${MISE_VERSION}" ]; then mise_acquired=true; fi; \
-	fi; \
-	if [ "$${mise_acquired}" = true ]; then \
-		printf 'setup: mise %s already acquired at %s\n' "$${MISE_VERSION}" "$(BOOTSTRAP_MISE)"; \
-	else \
 	case "$${OS:-}" in \
 		(Windows_NT) \
-			export MISE_INSTALL_PATH="$$(cygpath --windows "$(BOOTSTRAP_MISE)")"; \
 			powershell.exe -NoProfile -Command '$$ErrorActionPreference = "Stop"; Invoke-RestMethod https://mise.run/powershell | Invoke-Expression' ;; \
 		(*) \
-			export MISE_INSTALL_PATH="$(BOOTSTRAP_MISE)"; \
-			mise_stage="$$(mktemp -d "$(PROJECT_ROOT)/.bin/.mise-install.XXXXXXXX")"; \
+			mise_stage="$$(mktemp -d)"; \
 			curl --proto '=https' --tlsv1.2 -fsSL -o "$${mise_stage}/install.sh" https://mise.run; \
 			sh "$${mise_stage}/install.sh" ;; \
 	esac; \
@@ -1288,7 +1315,7 @@ _upg_toolchain: _builtin_require_workspace _builtin_require_github_credential
 		printf 'upg: %s: no locked version changes\n' "$$lock_root"; \
 	else \
 		changed_tools=""; \
-		for tool in "python" "github:jdx/mise" "uv" "github:direnv/direnv" "taplo" "aqua:ast-grep/ast-grep" "gitleaks" "aqua:boyter/scc" "node" "github:qltysh/qlty" "github:kucherenko/jscpd" "github:microsoft/waza" "aqua:j178/prek"; do \
+		for tool in "python" "github:jdx/mise" "uv" "github:direnv/direnv" "taplo" "aqua:ast-grep/ast-grep" "gitleaks" "aqua:boyter/scc" "github:qltysh/qlty" "github:kucherenko/jscpd" "github:microsoft/waza" "aqua:j178/prek"; do \
 			if [ "$$("$(BOOTSTRAP_MISE)" -C "$$lock_root" lock --bump --dry-run --json "$$tool")" != "[]" ]; then changed_tools="$$changed_tools $$tool"; fi; \
 		done; \
 		if [ -z "$$changed_tools" ]; then \
@@ -1308,7 +1335,7 @@ _upg_toolchain: _builtin_require_workspace _builtin_require_github_credential
 	export MISE_SHIMS_DIR="$(PROJECT_ROOT)/.bin/shims"; \
 	export MISE_LOCKED=1; \
 	bootstrap_stage=tool-install; \
-	"$(BOOTSTRAP_MISE)" -C "$(PROJECT_ROOT)" install --yes "python" "github:jdx/mise" "uv" "github:direnv/direnv" "taplo" "aqua:ast-grep/ast-grep" "gitleaks" "aqua:boyter/scc" "node" "github:qltysh/qlty" "github:kucherenko/jscpd" "github:microsoft/waza" "aqua:j178/prek"; \
+	"$(BOOTSTRAP_MISE)" -C "$(PROJECT_ROOT)" install --yes "python" "github:jdx/mise" "uv" "github:direnv/direnv" "taplo" "aqua:ast-grep/ast-grep" "gitleaks" "aqua:boyter/scc" "github:qltysh/qlty" "github:kucherenko/jscpd" "github:microsoft/waza" "aqua:j178/prek"; \
 	printf 'upg: locks classified, Mise locks current, locked toolchain provisioned\n'
 
 _upg_lifecycle:
@@ -1326,14 +1353,102 @@ _upg_lifecycle:
 	fi; \
 	mise_bin="$(MISE)"; \
 	$(RESOLVE_DESIRED_PYTHON); \
-	$(UV) lock --upgrade --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads; \
+	[ -f "$(RUNTIME_ROOT)/uv.lock" ] || $(UV) lock --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads; \
+	$(SYNC_UPGRADE_EXECUTOR_PRE_RESOLUTION_RECIPE); \
+	PATH="$$(dirname "$$mise_bin"):$$PATH" $(EXECUTOR_FLEXT_INFRA) deps cooldown-admission --repository-root "$(RUNTIME_ROOT)"; \
+	bootstrap_stage=network-auth; \
+	if git config --global --get-regexp '^url\.https?://[^ /]+:[^ /]+@.*\.insteadof$$' >/dev/null; then \
+		printf 'ERROR: Global Git URL rewrite configuration embeds credentials and shadows the fleet SSH route; correct that configuration at its owner\n' >&2; \
+		exit 2; \
+	else \
+		rewrite_status=$$?; \
+		if [ "$$rewrite_status" -ne 1 ]; then \
+			printf 'ERROR: Cannot inspect the global Git URL rewrite configuration\n' >&2; \
+			exit "$$rewrite_status"; \
+		fi; \
+	fi; \
+	mise_bin="$(MISE)"; \
+	$(RESOLVE_DESIRED_PYTHON); \
+	upg_pkg_flags=""; \
+	for pkg in $(UPG_PACKAGES); do upg_pkg_flags="$$upg_pkg_flags --upgrade-package $$pkg"; done; \
+	if [ -z "$$upg_pkg_flags" ]; then upg_pkg_flags=" --upgrade"; fi; \
+	set -f; \
+	$(GOVERNED_CHECKOUTS); \
+	for checkout in $$checkouts; do \
+		case "$$checkout" in .) continue ;; esac; \
+		[ ! -f "$$root/$$checkout/pyproject.toml" ] || \
+			$(UV) lock$$upg_pkg_flags --project "$$root/$$checkout" --python "$$desired_python" --no-python-downloads; \
+	done; \
+	set +f; \
+	$(UV) lock$$upg_pkg_flags --project "$(PROJECT_ROOT)" --python "$$desired_python" --no-python-downloads; \
+	PATH="$$(dirname "$$mise_bin"):$$PATH" $(EXECUTOR_FLEXT_INFRA) deps upg-bounds --repository-root "$(RUNTIME_ROOT)"; \
+	bootstrap_stage=network-auth; \
+	if git config --global --get-regexp '^url\.https?://[^ /]+:[^ /]+@.*\.insteadof$$' >/dev/null; then \
+		printf 'ERROR: Global Git URL rewrite configuration embeds credentials and shadows the fleet SSH route; correct that configuration at its owner\n' >&2; \
+		exit 2; \
+	else \
+		rewrite_status=$$?; \
+		if [ "$$rewrite_status" -ne 1 ]; then \
+			printf 'ERROR: Cannot inspect the global Git URL rewrite configuration\n' >&2; \
+			exit "$$rewrite_status"; \
+		fi; \
+	fi; \
+	mise_bin="$(MISE)"; \
+	$(RESOLVE_DESIRED_PYTHON); \
+	set -f; \
+	$(GOVERNED_CHECKOUTS); \
+	for checkout in $$checkouts; do \
+		case "$$checkout" in .) continue ;; esac; \
+		[ ! -f "$$root/$$checkout/pyproject.toml" ] || \
+			$(UV) lock --project "$$root/$$checkout" --python "$$desired_python" --no-python-downloads; \
+	done; \
+	set +f; \
+	$(UV) lock --project "$(PROJECT_ROOT)" --python "$$desired_python" --no-python-downloads; \
 	$(INSTALL_RUNTIME_RECIPE); \
 	$(SYNC_UPGRADE_EXECUTOR_RECIPE); \
 	PATH="$$(dirname "$$mise_bin"):$$PATH" $(EXECUTOR_FLEXT_INFRA) deps repair-mise-platforms --repository-root "$(RUNTIME_ROOT)"; \
+	PATH="$$(dirname "$$mise_bin"):$$PATH" $(EXECUTOR_FLEXT_INFRA) deps verify-pin-convergence --repository-root "$(RUNTIME_ROOT)"; \
 	case " $(CUSTOM_DECLARED_TARGETS) " in \
 		*" post-upg "*) $(SELF_MAKE) post-upg ;; \
 	esac; \
-	$(if $(filter Y,$(CI)),:,direnv allow "$(PROJECT_ROOT)")
+	$(if $(filter Y,$(CI)),:,set -f; \
+	$(GOVERNED_CHECKOUTS); \
+	for checkout in $$checkouts; do \
+		if [ "$$checkout" = . ]; then allow_root="$$root"; else allow_root="$$root/$$checkout"; fi; \
+		[ ! -f "$$allow_root/.envrc" ] || $(DIRENV) allow "$$allow_root"; \
+	done; \
+	set +f)
+
+# Lock resolves a changed dependency declaration (a newly declared requirement)
+# into the UV locks and keeps every pin they already hold; only upg moves a pin.
+# It runs from the environment setup installed, provisions no tool, and ends with
+# the same frozen installation, so the new requirement is installed.
+.PHONY: _lock_lifecycle
+_lock_lifecycle:
+	+@set -eu; \
+	bootstrap_stage=network-auth; \
+	if git config --global --get-regexp '^url\.https?://[^ /]+:[^ /]+@.*\.insteadof$$' >/dev/null; then \
+		printf 'ERROR: Global Git URL rewrite configuration embeds credentials and shadows the fleet SSH route; correct that configuration at its owner\n' >&2; \
+		exit 2; \
+	else \
+		rewrite_status=$$?; \
+		if [ "$$rewrite_status" -ne 1 ]; then \
+			printf 'ERROR: Cannot inspect the global Git URL rewrite configuration\n' >&2; \
+			exit "$$rewrite_status"; \
+		fi; \
+	fi; \
+	mise_bin="$(MISE)"; \
+	$(RESOLVE_DESIRED_PYTHON); \
+	set -f; \
+	$(GOVERNED_CHECKOUTS); \
+	for checkout in $$checkouts; do \
+		case "$$checkout" in .) continue ;; esac; \
+		[ ! -f "$$root/$$checkout/pyproject.toml" ] || \
+			$(UV) lock --project "$$root/$$checkout" --python "$$desired_python" --no-python-downloads; \
+	done; \
+	set +f; \
+	$(UV) lock --project "$(PROJECT_ROOT)" --python "$$desired_python" --no-python-downloads; \
+	$(INSTALL_RUNTIME_RECIPE)
 
 # Gate, fix and build verbs act on this repository only, with one body per verb
 # in every profile: a workspace root evaluates itself exactly as CI does.
@@ -1349,7 +1464,7 @@ _builtin_build_artifacts:
 # make.pre_commit_check_gates, CI=N runs
 # make.check_gates_local, and an absent CI token runs every active gate.
 _builtin_check_all: _builtin_require_environment
-	@$(if $(CHECK_PROFILE),FLEXT_INFRA_PROFILE=$(CHECK_PROFILE) ,)FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/.reports/check/route.pstats" timeout --signal=TERM --kill-after=5s 1205s $(PROJECT_FLEXT_INFRA) workspace check --repository-root "$(if $(filter Y,$(CI)),$(PROJECT_ROOT),$(if $(filter primary,$(CHECK_PHASE)),$(RUNTIME_ROOT),$(PROJECT_ROOT)))"$(if $(CHECK_PHASE), --phase "$$CHECK_PHASE")
+	@$(if $(CHECK_PROFILE),FLEXT_INFRA_PROFILE=$(CHECK_PROFILE) ,)FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/.reports/check/route.pstats" $(PROJECT_FLEXT_INFRA) workspace check --repository-root "$(if $(filter Y,$(CI)),$(PROJECT_ROOT),$(if $(filter primary,$(CHECK_PHASE)),$(RUNTIME_ROOT),$(PROJECT_ROOT)))"$(if $(CHECK_PHASE), --phase "$$CHECK_PHASE")
 
 _builtin_tests_all: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) workspace tests --repository-root "$(PROJECT_ROOT)" --scope "$(GATE_SCOPE)"
@@ -1371,31 +1486,39 @@ _builtin_fix_all: _builtin_require_environment
 _builtin_clean_generated: _builtin_require_interpreter
 	@$(PROJECT_FLEXT_INFRA) maintenance clean --repository-root "$(PROJECT_ROOT)" --apply
 
-# Generation is a fenced, budgeted operation: `codegen generate` holds the
-# tree's mutation lock for the whole run (a concurrent writer waits visibly,
-# bounded by config Infra.mutation_lock), terminated inside the declared budget
-# with its kill reserve (the profile checkpoint survives a budget kill).
-GEN_BUDGET_SECONDS ?= 900
-GEN_KILL_RESERVE_SECONDS ?= 30
+# Heavy verbs (check, tests, tests-full, gen, gen-scope, mod) admit themselves
+# into the per-host FIFO queue and arm their wall-time budget only once
+# admitted (FLEXT ADR-032, config Infra.gate_admission): queue time never
+# counts against a budget. GEN_PROFILE=1 / MOD_PROFILE=1 capture cProfile.
 GEN_PROFILE ?=
+MOD_PROFILE ?=
 # Check profiling is opt-in like generation (CHECK_PROFILE=1 make check).
 CHECK_PROFILE ?=
 
 _builtin_gen_all: _builtin_require_interpreter
 	@set -eu; \
-	scope=all; \
-	if [ "$(strip $(CI))" = "Y" ]; then scope=self; fi; \
-	$(if $(GEN_PROFILE),FLEXT_INFRA_PROFILE=$(GEN_PROFILE) ,)FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/.reports/codegen/gen.pstats" timeout --signal=TERM --kill-after=$(GEN_KILL_RESERVE_SECONDS)s $(GEN_BUDGET_SECONDS)s $(PROJECT_FLEXT_INFRA) codegen generate --root "$(PROJECT_ROOT)" --scope "$$scope"; \
-	$(if $(filter Y,$(CI)),:,direnv allow "$(PROJECT_ROOT)")
+	root="$(abspath $(or $(strip $(ROOT)),$(PROJECT_ROOT)))"; \
+	what="$(strip $(WHAT))"; \
+	if [ -n "$$what" ] && [ "$$what" != "ALL" ]; then \
+		scope="$(or $(strip $(SCOPE)),self)"; \
+		module_args=""; \
+		if [ -n "$(strip $(MODULE))" ]; then module_args=" --module $(strip $(MODULE))"; fi; \
+		$(if $(GEN_PROFILE),FLEXT_INFRA_PROFILE=$(GEN_PROFILE) ,)FLEXT_INFRA_PROFILE_OUTPUT="$$root/.reports/codegen/gen-scope.pstats" $(PROJECT_FLEXT_INFRA) codegen generate --root "$$root" --what "$$what" --scope "$$scope"$$module_args; \
+	else \
+		scope=all; \
+		if [ "$$root" != "$(PROJECT_ROOT)" ] || [ "$(strip $(CI))" = "Y" ]; then scope=self; fi; \
+		$(if $(GEN_PROFILE),FLEXT_INFRA_PROFILE=$(GEN_PROFILE) ,)FLEXT_INFRA_PROFILE_OUTPUT="$$root/.reports/codegen/gen.pstats" $(PROJECT_FLEXT_INFRA) codegen generate --root "$$root" --scope "$$scope"; \
+	fi
 
 # Focal generation is the bounded diagnosis vehicle: one surface (and, for
 # facades, one module) through the identical engine, lock and budget.
 _builtin_gen_scope_all: _builtin_require_interpreter
 	@set -eu; \
+	root="$(abspath $(or $(strip $(ROOT)),$(PROJECT_ROOT)))"; \
 	scope="$(or $(strip $(SCOPE)),self)"; \
 	module_args=""; \
 	if [ -n "$(strip $(MODULE))" ]; then module_args=" --module $(strip $(MODULE))"; fi; \
-	$(if $(GEN_PROFILE),FLEXT_INFRA_PROFILE=$(GEN_PROFILE) ,)FLEXT_INFRA_PROFILE_OUTPUT="$(basename $(PROJECT_ROOT)/.reports/codegen/gen.pstats)-scope.pstats" timeout --signal=TERM --kill-after=$(GEN_KILL_RESERVE_SECONDS)s $(GEN_BUDGET_SECONDS)s $(PROJECT_FLEXT_INFRA) codegen generate --root "$(PROJECT_ROOT)" --what "$(strip $(WHAT))" --scope "$$scope"$$module_args
+	$(if $(GEN_PROFILE),FLEXT_INFRA_PROFILE=$(GEN_PROFILE) ,)FLEXT_INFRA_PROFILE_OUTPUT="$$root/.reports/codegen/gen-scope.pstats" $(PROJECT_FLEXT_INFRA) codegen generate --root "$$root" --what "$(strip $(WHAT))" --scope "$$scope"$$module_args
 
 # Structural rewrites run one theme at a time (ADR-028 Decision 18 item 2):
 # LAWS selects ENFORCE law ids, RULES selects exact rule ids; the engine refuses
@@ -1405,7 +1528,7 @@ _builtin_mod_apply: _builtin_require_environment
 	selection=""; \
 	for law in $(strip $(LAWS)); do selection="$$selection --laws $$law"; done; \
 	for rule in $(strip $(RULES)); do selection="$$selection --rule-ids $$rule"; done; \
-	FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/.reports/refactor/mod.pstats" $(PROJECT_FLEXT_INFRA) refactor mod --repository-root "$(PROJECT_ROOT)"$$selection
+	$(if $(MOD_PROFILE),FLEXT_INFRA_PROFILE=$(MOD_PROFILE) ,)FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/.reports/refactor/mod.pstats" $(PROJECT_FLEXT_INFRA) refactor mod --repository-root "$(PROJECT_ROOT)"$$selection
 
 # Public operations invoke only their own canonical implementation.
 _builtin-build: _builtin_build_artifacts
@@ -1429,8 +1552,6 @@ export FLEXT_RELEASE_PR_TITLE := $(value PR_TITLE)
 
 
 
-export FLEXT_RELEASE_LANE_CHECKPOINT_REF := $(value LANE_CHECKPOINT_REF)
-
 
 
 
@@ -1448,7 +1569,6 @@ _builtin-release-plan: _builtin_require_environment
 
 _builtin-release-version: _builtin_require_environment
 	@set -eu; set --; \
-	if [ -n "$$FLEXT_RELEASE_LANE_CHECKPOINT_REF" ]; then set -- --checkpoint-ref "$$FLEXT_RELEASE_LANE_CHECKPOINT_REF"; fi; \
 	$(PROJECT_FLEXT_INFRA) release run --repository-root "$(PROJECT_ROOT)" --phase version --apply "$$@"
 
 _builtin-release-tag: _builtin_require_environment

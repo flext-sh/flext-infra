@@ -7,16 +7,25 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-from collections.abc import Generator, MutableMapping, MutableSequence, Sequence
+from collections.abc import (
+    Generator,
+    Mapping,
+    MutableMapping,
+    MutableSequence,
+    Sequence,
+)
 from contextlib import contextmanager
 from contextvars import ContextVar
 from keyword import iskeyword
 from pathlib import Path
 from typing import ClassVar
 
+from flext_cli import u
+from flext_core import build_lazy_import_map
 from rope.base import exceptions as rope_exceptions
+from typing_extensions import TypeForm
 
-from flext_infra import c, p, t
+from flext_infra import c, m, p, t
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeAst,
     FlextInfraUtilitiesRopeAstBindings,
@@ -29,6 +38,427 @@ class FlextInfraUtilitiesRopeRuntimeAliasIndices(
     FlextInfraUtilitiesRopeRuntimeModuleQueries,
 ):
     """Retain candidate-scoped indexes for deferred annotation aliases."""
+
+    _lazy_bindings_memo: ClassVar[
+        dict[tuple[str, str, str, str], dict[str, p.Infra.SourceClassReference]]
+    ] = {}
+
+    @classmethod
+    def resolve_lazy_export_bindings(
+        cls,
+        module: str,
+        path: Path,
+        source: str,
+        *,
+        project: p.Infra.RopeProject,
+        pymodule: p.Infra.RopeSemanticModule | None = None,
+    ) -> Mapping[str, p.Infra.SourceClassReference]:
+        """Read native lazy routes without losing their exported attributes.
+
+        ``install_lazy_exports`` accepts both a provider string and an explicit
+        ``(provider, attribute)`` pair. An empty attribute elects the module
+        itself. The same typed binding feeds source and upstream resolution;
+        module-only consumers derive their projection from these bindings.
+        The owning project supplies native import identities even when the
+        initializer is parsed from proposed source rather than a live module.
+
+        Returns:
+            The absolute provider and exact attribute of every declared export.
+
+        Raises:
+            ValueError: The parsed module differs from its native Rope snapshot.
+
+        """
+        # Lazy package propagation belongs to initializers. Ordinary module
+        # bindings are resolved by the lexical inventory, so their executable
+        # bodies are not inputs to this package-alias reader.
+        if path.name != c.Infra.INIT_PY or not module:
+            return {}
+        # Only an initializer that names the installer can declare a lazy
+        # route; any other one (a third-party distribution) is never handed to
+        # the semantic scope analysis below.
+        installer = "install_lazy_exports"
+        if installer not in source:
+            return {}
+        # The bindings are a pure function of the initializer text, so one
+        # read per distinct text serves every facade render of the process.
+        key = (str(project), module, str(path), source)
+        if pymodule is None and key in cls._lazy_bindings_memo:
+            return dict(cls._lazy_bindings_memo[key])
+        parsed = cls._lazy_initializer(project, source, pymodule)
+        if key in cls._lazy_bindings_memo:
+            return dict(cls._lazy_bindings_memo[key])
+        aliases: dict[str, p.Infra.SourceClassReference] = {}
+        for node in ast.walk(parsed.get_ast()):
+            if not isinstance(node, ast.Call):
+                continue
+            scope = parsed.get_scope().get_inner_scope_for_line(node.lineno)
+            if scope.get_kind() != c.Infra.RopeScopeKind.MODULE or not (
+                cls._lazy_callable(
+                    node.func,
+                    scope,
+                    ("flext_core", "flext_core.lazy"),
+                    installer,
+                )
+            ):
+                continue
+            mapping = cls._lazy_alias_source(source, node, parsed)
+            for name, (provider, attribute) in cls._lazy_exports(mapping).items():
+                resolved = cls._lazy_absolute(module, provider)
+                if resolved is None:
+                    message = f"Lazy provider escapes its package: {module}.{name}"
+                    raise ValueError(message)
+                aliases[name] = m.Infra.SourceClassReference(
+                    target=resolved,
+                    attributes=(attribute,) if attribute else (),
+                    qualified_base=f"{module}.{name}",
+                )
+        cls._lazy_bindings_memo[key] = aliases
+        return dict(aliases)
+
+    @staticmethod
+    def _lazy_initializer(
+        project: p.Infra.RopeProject,
+        source: str,
+        pymodule: p.Infra.RopeSemanticModule | None,
+    ) -> p.Infra.RopeSourceModule:
+        """Return the native Rope module of one initializer text.
+
+        A required initializer that does not parse remains a real input error.
+
+        Returns:
+            The supplied module, or the one Rope builds from ``source``.
+
+        Raises:
+            TypeError: The parsed module is not a native Rope source module.
+            ValueError: The parsed module differs from its native Rope snapshot.
+
+        """
+        parsed = (
+            pymodule.get_module()
+            if pymodule is not None
+            else FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
+                project, source
+            )
+        )
+        if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(parsed):
+            message = "Lazy aliases require a native Rope source module"
+            raise TypeError(message)
+        if parsed.source_code != source:
+            message = "Lazy aliases differ from their native Rope snapshot"
+            raise ValueError(message)
+        return parsed
+
+    @classmethod
+    def _lazy_alias_source(
+        cls,
+        source: str,
+        call: ast.Call,
+        module: p.Infra.RopeParsedModule,
+    ) -> str:
+        """Return the alias-mapping argument text of one lazy-exports call.
+
+        Args:
+            source: Full native source text of the parsed package initializer.
+            call: Native call authenticated against the SDK import binding.
+            module: Authenticated native module supplying the call bindings.
+
+        Returns:
+            The literal mapping source declared by the actual call argument.
+
+        Raises:
+            ValueError: The call does not declare one inspectable mapping argument.
+
+        """
+        arguments = [
+            keyword.value for keyword in call.keywords if keyword.arg == "lazy_imports"
+        ]
+        arguments.extend(call.args[2:3])
+        if len(arguments) != 1:
+            message = "Lazy exports require one declared mapping argument"
+            raise ValueError(message)
+        expression = ast.get_source_segment(source, arguments[0])
+        if expression is None:
+            message = "Lazy export mapping has no native source span"
+            raise ValueError(message)
+        return cls._lazy_mapping_source(expression, module)
+
+    @classmethod
+    def _lazy_mapping_source(
+        cls,
+        expression: str,
+        module: p.Infra.RopeParsedModule,
+        ancestors: frozenset[tuple[str, int]] = frozenset(),
+    ) -> str:
+        """Read one declared alias map without executing its source expressions.
+
+        Returns:
+            The dictionary literal supplied directly or through native bindings.
+
+        Raises:
+            TypeError: A native assignment has no expression value.
+            ValueError: The map is ambiguous, cyclic, or not a declared literal.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        node = ast.parse(expression, mode="eval").body
+        scope = module.get_scope()
+        visited = set(ancestors)
+        while True:
+            if isinstance(node, ast.Dict):
+                return cls._lazy_literal_source(expression, node)
+            if isinstance(node, ast.Call):
+                if cls._lazy_callable(
+                    node.func,
+                    scope,
+                    ("flext_core", "flext_core.lazy"),
+                    "build_lazy_import_map",
+                ):
+                    return cls._lazy_built_mapping(
+                        node, expression, module, frozenset(visited)
+                    )
+                if (
+                    not cls._lazy_callable(
+                        node.func, scope, ("types",), "MappingProxyType"
+                    )
+                    or len(node.args) != 1
+                    or node.keywords
+                ):
+                    message = "Lazy alias mapping requires its native immutable wrapper"
+                    raise ValueError(message)
+                node = node.args[0]
+                continue
+            binding = runtime.resolve_symbol(scope, node)
+            if (
+                binding is None
+                or not FlextInfraUtilitiesRopeRuntimeTypes.assigned_name(binding)
+                or len(binding.assignments) != 1
+            ):
+                message = "Lazy alias mapping requires one native assignment"
+                raise ValueError(message)
+            provider, line = runtime.definition_location(binding)
+            if (
+                not FlextInfraUtilitiesRopeRuntimeTypes.source_module(provider)
+                or line is None
+            ):
+                message = "Lazy alias mapping requires a source declaration"
+                raise ValueError(message)
+            identity = provider.get_name(), line
+            if identity in visited:
+                message = f"Cyclic lazy alias mapping declaration: {identity!r}"
+                raise ValueError(message)
+            visited.add(identity)
+            value = binding.assignments[0].ast_node
+            if not isinstance(value, ast.expr):
+                message = "Lazy alias mapping assignment has no native expression"
+                raise TypeError(message)
+            node = value
+            module = provider
+            expression = provider.source_code
+            scope = provider.get_scope()
+
+    @staticmethod
+    def _lazy_literal_source(source: str, node: ast.Dict) -> str:
+        """Read the authenticated mapping's native source span.
+
+        Returns:
+            The complete dictionary expression.
+
+        Raises:
+            ValueError: The native mapping has no source span.
+
+        """
+        literal = ast.get_source_segment(source, node)
+        if literal is None:
+            message = "Lazy alias mapping has no native source span"
+            raise ValueError(message)
+        return literal
+
+    @staticmethod
+    def _lazy_callable(
+        expression: ast.expr,
+        scope: p.Infra.RopeScope,
+        expected_modules: Sequence[str],
+        expected_attribute: str,
+    ) -> bool:
+        """Prove a declared SDK callable from native import metadata alone.
+
+        Returns:
+            Whether the expression is the elected absolute native import.
+
+        """
+        types = FlextInfraUtilitiesRopeRuntimeTypes
+        declarations = scope.get_defined_names()
+        if isinstance(expression, ast.Name):
+            binding = declarations.get(expression.id)
+            if not types.imported_name(binding):
+                return False
+            module = binding.imported_module
+            attribute = binding.imported_name
+        elif isinstance(expression, ast.Attribute) and isinstance(
+            expression.value, ast.Name
+        ):
+            binding = declarations.get(expression.value.id)
+            if not types.imported_module(binding):
+                return False
+            module = binding
+            attribute = expression.attr
+        else:
+            return False
+        return (
+            module.module_name in expected_modules
+            and module.level == 0
+            and attribute == expected_attribute
+        )
+
+    @classmethod
+    def _lazy_built_mapping(
+        cls,
+        call: ast.Call,
+        source: str,
+        module: p.Infra.RopeParsedModule,
+        ancestors: frozenset[tuple[str, int]],
+    ) -> str:
+        """Compile literal SDK builder arguments through the native map owner.
+
+        Returns:
+            The canonical flat mapping literal produced by the SDK.
+
+        Raises:
+            ValueError: If arguments are ambiguous, dynamic or unsupported.
+
+        """
+        arguments = {keyword.arg: keyword.value for keyword in call.keywords}
+        if (
+            len(call.args) > 1
+            or len(arguments) != len(call.keywords)
+            or set(arguments) - {"module_groups", "alias_groups", "sort_keys"}
+            or (call.args and "module_groups" in arguments)
+        ):
+            message = "Lazy builder requires its declared literal arguments"
+            raise ValueError(message)
+        if call.args:
+            arguments["module_groups"] = call.args[0]
+        modules: Mapping[str, Sequence[str]] = {}
+        aliases: Mapping[str, Sequence[tuple[str, str]]] = {}
+        for name in ("module_groups", "alias_groups"):
+            argument = arguments.get(name)
+            if argument is None or (
+                isinstance(argument, ast.Constant) and argument.value is None
+            ):
+                continue
+            expression = ast.get_source_segment(source, argument)
+            if expression is None:
+                message = "Lazy builder mapping has no native source span"
+                raise ValueError(message)
+            literal = ast.literal_eval(
+                cls._lazy_mapping_source(expression, module, ancestors)
+            )
+            if name == "module_groups":
+                modules = u.type_adapter(
+                    TypeForm(Mapping[str, Sequence[str]])
+                ).validate_python(literal, strict=True)
+            else:
+                aliases = u.type_adapter(
+                    TypeForm(Mapping[str, Sequence[tuple[str, str]]])
+                ).validate_python(literal, strict=True)
+        sort = arguments.get("sort_keys", ast.Constant(value=True))
+        match sort:
+            case ast.Constant(value=True):
+                sort_keys = True
+            case ast.Constant(value=False):
+                sort_keys = False
+            case _:
+                message = "Lazy builder ordering requires a literal boolean"
+                raise ValueError(message)
+        return repr(
+            build_lazy_import_map(modules, alias_groups=aliases, sort_keys=sort_keys)
+        )
+
+    @staticmethod
+    def _lazy_absolute(package: str, value: str) -> str | None:
+        """Rewrite one relative alias value to an absolute provider module path.
+
+        Args:
+            package: Absolute name of the package owning the alias map.
+            value: Raw alias value read from the native mapping literal.
+
+        Returns:
+            The absolute module path, or None when the relative depth escapes
+            the package root.
+
+        """
+        if not value.startswith("."):
+            return value
+        parts = package.split(".") if package else []
+        depth = len(value) - len(value.lstrip("."))
+        remainder = value.lstrip(".")
+        if depth > len(parts):
+            return None
+        base = ".".join(parts[: len(parts) - depth + 1]) if depth else package
+        return ".".join(part for part in (base, remainder) if part)
+
+    @staticmethod
+    def _lazy_literal_string(node: ast.expr) -> str | None:
+        """Decode one native string constant without executing its expression.
+
+        Returns:
+            The sole primitive string constant, or None for another expression.
+
+        """
+        code = compile(
+            ast.Expression(body=node), "<native constant>", "eval", dont_inherit=True
+        )
+        if code.co_names or code.co_freevars or len(code.co_consts) != 1:
+            return None
+        value = code.co_consts[0]
+        return value if isinstance(value, str) else None
+
+    @classmethod
+    def _lazy_exports(cls, source: str) -> t.LazyAliasMap:
+        """Read the current native lazy export encodings from source regions.
+
+        Returns:
+            Provider and attribute pairs, including explicit module exports.
+
+        Raises:
+            ValueError: An export name or provider binding is not a literal string
+                or a provider/attribute pair.
+
+        """
+        source = source.strip()
+        if not (source.startswith("{") and source.endswith("}")):
+            return {}
+        result: MutableMapping[str, tuple[str, str]] = {}
+        mapping = ast.parse(source, mode="eval").body
+        if not isinstance(mapping, ast.Dict):
+            return {}
+        for key_node, value_node in zip(mapping.keys, mapping.values, strict=True):
+            if key_node is None:
+                return {}
+            key = cls._lazy_literal_string(key_node)
+            if key is None:
+                message = "Lazy export names require literal strings"
+                raise ValueError(message)
+            provider = cls._lazy_literal_string(value_node)
+            if provider is not None:
+                result[key] = (provider, key)
+                continue
+            pair = (
+                tuple(cls._lazy_literal_string(element) for element in value_node.elts)
+                if isinstance(value_node, ast.Tuple)
+                else ()
+            )
+            match pair:
+                case (str() as provider, str() as attribute):
+                    result[key] = (provider, attribute)
+                case _:
+                    message = (
+                        "Lazy export requires a provider or provider/attribute "
+                        f"pair: {key}"
+                    )
+                    raise ValueError(message)
+        return result
 
     _alias_indices: ClassVar[
         ContextVar[
@@ -152,13 +582,19 @@ class FlextInfraUtilitiesRopeRuntimeModules(
 
     @classmethod
     def annotation_assignment_outer_type(
-        cls, project: p.Infra.RopeProject, binding: p.Infra.RopePyName
+        cls,
+        project: p.Infra.RopeProject,
+        binding: p.Infra.RopePyName,
+        *,
+        path: tuple[int, ...] | None = None,
     ) -> tuple[p.Infra.RopePyName, bool] | None:
-        """Resolve an annotation's native identity and whether it is the value.
+        """Resolve a native annotation identity and its value provenance.
+
+        ``path`` selects a payload argument through the native declaration's
+        Annotated and alias bindings; None retains its written outer identity.
 
         Returns:
-            The lexical outer identity and RHS provenance, or None when the
-            assignment has no resolved annotation expression.
+            The native identity and RHS provenance, or None without proof.
 
         """
         supplier = cls.source_import_binding(binding)
@@ -166,8 +602,6 @@ class FlextInfraUtilitiesRopeRuntimeModules(
             supplier
         ):
             return None
-        # Method-body writes join the same binding without a type hint; only
-        # the declared AnnAssign carries the annotation this contract resolves.
         assignments = [
             assignment for assignment in supplier.assignments if assignment.type_hint
         ]
@@ -179,7 +613,6 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         module, _line = cls.definition_location(supplier)
         if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module):
             return None
-        # Scalar model fields carry the same declaration proof as generic fields.
         if isinstance(annotation, ast.Name | ast.Attribute | ast.Subscript):
             expression = annotation
             from_value = False
@@ -190,8 +623,8 @@ class FlextInfraUtilitiesRopeRuntimeModules(
             return None
         scope = cls.scope_at(module, cls.source_offset(module.source_code, expression))
         origin = (
-            cls.annotation_origin(project, expression, scope)
-            if from_value
+            cls.annotation_origin(project, expression, scope, path=path or ())
+            if from_value or path is not None
             else cls.resolve_symbol(
                 scope,
                 expression.value
@@ -209,11 +642,12 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         scope: p.Infra.RopeScope,
         *,
         visiting: frozenset[tuple[str, int]] = frozenset(),
+        path: tuple[int, ...] = (),
     ) -> p.Infra.RopePyName | None:
-        """Resolve outer native types and aliases without evaluating element types.
+        """Resolve native payload types and argument paths without alias execution.
 
         Returns:
-            The native outer type identity, or None when no safe origin is proven.
+            The native type identity, or None when no safe origin is proven.
 
         """
         if isinstance(node, ast.Constant) and isinstance(node.value, str):
@@ -222,6 +656,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
                 ast.parse(node.value, mode="eval").body,
                 scope,
                 visiting=visiting,
+                path=path,
             )
         primary = node.value if isinstance(node, ast.Subscript) else node
         binding = cls.resolve_symbol(scope, primary)
@@ -233,18 +668,119 @@ class FlextInfraUtilitiesRopeRuntimeModules(
             if not isinstance(node.slice, ast.Tuple) or not node.slice.elts:
                 return None
             return cls.annotation_origin(
-                project, node.slice.elts[0], scope, visiting=visiting
+                project, node.slice.elts[0], scope, visiting=visiting, path=path
             )
+        if path:
+            return cls._annotation_argument_origin(
+                project, node, scope, (path, visiting)
+            )
+        return cls._annotation_root_origin(project, binding, visiting)
+
+    @classmethod
+    def _annotation_root_origin(
+        cls,
+        project: p.Infra.RopeProject,
+        binding: p.Infra.RopePyName | None,
+        visiting: frozenset[tuple[str, int]],
+    ) -> p.Infra.RopePyName | None:
+        """Follow the existing native alias chain at its declaring scope.
+
+        Returns:
+            The resolved native origin, or None when the alias chain cycles.
+
+        """
         alias = None if binding is None else cls.annotation_alias_definition(binding)
         if alias is None:
             return binding
         declaration, lexical = alias
-        module = lexical.pyobject.get_module()
-        if (module.get_name(), declaration.lineno) in visiting:
+        identity = (lexical.pyobject.get_module().get_name(), declaration.lineno)
+        if identity in visiting:
             return None
-        identity = (module.get_name(), declaration.lineno)
         return cls.annotation_origin(
             project, declaration.value, lexical, visiting=visiting | {identity}
+        )
+
+    @classmethod
+    def _annotation_argument_origin(
+        cls,
+        project: p.Infra.RopeProject,
+        node: ast.expr,
+        scope: p.Infra.RopeScope,
+        traversal: tuple[tuple[int, ...], frozenset[tuple[str, int]]],
+    ) -> p.Infra.RopePyName | None:
+        """Select an argument from its authenticated source or direct alias.
+
+        Returns:
+            The selected argument's native origin, or None when it cannot be
+            authenticated.
+
+        """
+        if not isinstance(node, ast.Subscript):
+            return None
+        path, visiting = traversal
+        arguments = (
+            node.slice.elts if isinstance(node.slice, ast.Tuple) else [node.slice]
+        )
+        binding = cls.resolve_symbol(scope, node.value)
+        alias = None if binding is None else cls.annotation_alias_definition(binding)
+        selected = (
+            cls._annotation_alias_argument(alias, (arguments, scope), path[0])
+            if alias is not None
+            else (arguments[path[0]], scope)
+            if 0 <= path[0] < len(arguments)
+            else None
+        )
+        return (
+            None
+            if selected is None
+            else cls.annotation_origin(
+                project, selected[0], selected[1], visiting=visiting, path=path[1:]
+            )
+        )
+
+    @classmethod
+    def _annotation_alias_argument(
+        cls,
+        alias: tuple[ast.TypeAlias, p.Infra.RopeScope],
+        supplied: tuple[Sequence[ast.expr], p.Infra.RopeScope],
+        index: int,
+    ) -> tuple[ast.expr, p.Infra.RopeScope] | None:
+        """Project a direct generic alias's argument using declared parameter order.
+
+        Returns:
+            The argument expression and its lexical scope, or None when the
+            alias does not project one declared parameter.
+
+        """
+        declaration, lexical = alias
+        if not isinstance(declaration.value, ast.Subscript):
+            return None
+        binding = cls.resolve_symbol(lexical, declaration.value.value)
+        if binding is None or cls.annotation_alias_definition(binding) is not None:
+            return None
+        arguments = (
+            declaration.value.slice.elts
+            if isinstance(declaration.value.slice, ast.Tuple)
+            else [declaration.value.slice]
+        )
+        parameters = tuple(
+            parameter.name
+            for parameter in declaration.type_params
+            if isinstance(parameter, ast.TypeVar)
+        )
+        if (
+            not 0 <= index < len(arguments)
+            or len(parameters) != len(declaration.type_params)
+            or len(supplied[0]) != len(parameters)
+        ):
+            return None
+        selected = arguments[index]
+        if not isinstance(selected, ast.Name):
+            return None
+        return (
+            (supplied[0][parameters.index(selected.id)], supplied[1])
+            if selected.id in parameters
+            else (selected, lexical)
         )
 
     @classmethod
@@ -411,87 +947,63 @@ class FlextInfraUtilitiesRopeRuntimeModules(
             # quoted-move troca conteúdos no mesmo path): resolve pela
             # rota lazy do pacote publicador quando existe; sem rota, a
             # identidade é ilegível neste ponto fixo — propaga limpa.
-            target = (
-                FlextInfraUtilitiesRopeRuntimeModules._lazy_route(
-                    project, module.rpartition(".")[0], attributes[0]
+            identity = (
+                FlextInfraUtilitiesRopeRuntimeModules._lazy_export_identity(
+                    project, module.rpartition(".")[0], attributes
                 )
                 if "." in module
                 else None
             )
-            if target is None:
+            if identity is None:
                 raise
-            owner = f"{module.rpartition('.')[0]}{target}"
-            return FlextInfraUtilitiesRopeRuntimeModules.qualified_name(
-                project,
-                ".".join(attributes),
-                module_name=owner,
-            )
+            return identity
         try:
             identity = value.get_attribute(attributes[0])
         except rope_exceptions.AttributeNotFoundError:
             # Fachadas lazy-init (``install_lazy_exports``) publicam o mapa
             # de rotas como argumento literal do call no __init__ (SSOT
             # estática: ``nome -> ".caminho"`` ou ``(".caminho", nome)``).
-            target = FlextInfraUtilitiesRopeRuntimeModules._lazy_route(
-                project, module, attributes[0]
+            identity = FlextInfraUtilitiesRopeRuntimeModules._lazy_export_identity(
+                project, module, attributes
             )
-            if target is None:
+            if identity is None:
                 raise
-            owner = f"{module}{target}" if target.startswith(".") else target
-            return FlextInfraUtilitiesRopeRuntimeModules.qualified_name(
-                project,
-                ".".join(attributes[1:]) or attributes[0],
-                module_name=owner,
-            )
+            return identity
         for attribute in attributes[1:]:
             identity = identity.get_object().get_attribute(attribute)
         return identity
 
-    @staticmethod
-    def _lazy_route(
+    @classmethod
+    def _lazy_export_identity(
+        cls,
         project: p.Infra.RopeProject,
         module_name: str,
-        name: str,
-    ) -> str | None:
-        """Reads the lazy-init route of one export from the package's SSOT call.
+        attributes: Sequence[str],
+    ) -> p.Infra.RopePyName | None:
+        """Resolve a lazy-published export and its remaining attribute path.
 
         Returns:
-            The relative module path bound to ``name``, or none without the
-            lazy contract.
+            The native binding the initializer publishes for the first
+            attribute, or none without a declared route.
 
         """
         package = project.get_module(module_name)
         resource = package.get_resource()
         if resource is None:
             return None
-        tree = project.get_pymodule(resource).get_ast()
-        for node in ast.walk(tree):
-            if not (
-                isinstance(node, ast.Expr)
-                and isinstance(node.value, ast.Call)
-                and getattr(node.value.func, "id", "") == "install_lazy_exports"
-            ):
-                continue
-            mapping_index = c.Infra.LAZY_EXPORT_MAPPING_ARGUMENT_INDEX
-            if len(node.value.args) <= mapping_index:
-                continue
-            mapping = node.value.args[mapping_index]
-            inner = (
-                mapping.args[0]
-                if isinstance(mapping, ast.Call) and mapping.args
-                else mapping
-            )
-            if not isinstance(inner, ast.Dict):
-                continue
-            for key_node, value_node in zip(inner.keys, inner.values, strict=False):
-                if (
-                    isinstance(key_node, ast.Constant)
-                    and key_node.value == name
-                    and isinstance(value_node, ast.Constant)
-                    and isinstance(value_node.value, str)
-                ):
-                    return value_node.value
-        return None
+        path = Path(resource.real_path)
+        if path.is_dir():
+            path /= c.Infra.INIT_PY
+        reference = cls.resolve_lazy_export_bindings(
+            module_name,
+            path,
+            project.source_text(path),
+            project=project,
+        ).get(attributes[0])
+        if reference is None:
+            return None
+        route = ".".join((*reference.attributes, *attributes[1:])) or attributes[0]
+        return cls.qualified_name(project, route, module_name=reference.target)
 
     @classmethod
     def name_definition_resource_path(

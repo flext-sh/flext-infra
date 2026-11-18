@@ -3,9 +3,9 @@ snapshots:
   "from __future__ import annotations\n\nfrom typing import Protocol\nclass Reader(Protocol):\n    def read(self) -> str: ...\n":
     fixed: |
       from __future__ import annotations
-      
+
       from typing import runtime_checkable
-      
+
       from typing import Protocol
       class Reader(Protocol):
           def read(self) -> str: ...
@@ -34,7 +34,7 @@ snapshots:
       end: 118
     - source: |
         from __future__ import annotations
-        
+
         from typing import Protocol
         class Reader(Protocol):
             def read(self) -> str: ...
@@ -44,9 +44,9 @@ snapshots:
   "from __future__ import annotations\n\nimport typing\nclass Reader(typing.Protocol):\n    def read(self) -> str: ...\n":
     fixed: |
       from __future__ import annotations
-      
+
       from typing import runtime_checkable
-      
+
       import typing
       class Reader(typing.Protocol):
           def read(self) -> str: ...
@@ -75,7 +75,7 @@ snapshots:
       end: 111
     - source: |
         from __future__ import annotations
-        
+
         import typing
         class Reader(typing.Protocol):
             def read(self) -> str: ...

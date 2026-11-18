@@ -4,7 +4,7 @@ snapshots:
     fixed: |+
       if result.failure:
           return r[p.Sample.Plan].from_failure(result)
-      
+
     labels:
     - source: |-
         if result.failure:

@@ -9,6 +9,8 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
+from typing_extensions import TypeForm
+
 from flext_infra.deps import FlextInfraConfigFixer, FlextInfraExtraPathsManager
 from tests import c, t, tm, u
 
@@ -107,8 +109,6 @@ class TestsFlextInfraExtendedConfigFixer:
             pyproject = tmp_path / c.PYPROJECT_FILENAME
             pyproject.write_text(
                 (
-                    "[tool.pyright]\n"
-                    "include = ['src']\n\n"
                     "[tool.pyrefly]\n"
                     "search-path = ['src']\n"
                     "project-includes = ['src/**/*.py*', 'tests/**/*.py*']\n"
@@ -151,9 +151,9 @@ class TestsFlextInfraExtendedConfigFixer:
                     "project-excludes = []\n\n"
                     "[tool.pyrefly.errors]\n"
                     'bad-return = "error"\n\n'
-                    "# [MANAGED] pyright\n"
-                    "[tool.pyright]\n"
-                    "include = ['src']\n"
+                    "# [MANAGED] vulture\n"
+                    "[tool.vulture]\n"
+                    "paths = ['src']\n"
                 ),
                 encoding="utf-8",
             )
@@ -167,7 +167,7 @@ class TestsFlextInfraExtendedConfigFixer:
             tm.that(updated, contains="# keep dependency context")
             tm.that(updated, contains="# keep dependency item comment")
             tm.that(updated, contains="line-length = 120")
-            tm.that(updated, contains="# [MANAGED] pyright")
+            tm.that(updated, contains="# [MANAGED] vulture")
             tm.that(result.value, has="synchronized search-path from YAML rules")
 
         @staticmethod
@@ -233,7 +233,7 @@ class TestsFlextInfraExtendedConfigFixer:
                             tm.ok(u.Infra.load_tooling_inputs(tmp_path)).document,
                             c.Infra.PYREFLY,
                             c.Infra.PROJECT_EXCLUDES,
-                            t.TypeForm(Sequence[str]),
+                            TypeForm(Sequence[str]),
                         ),
                         codegen=u.Infra.load_codegen_inputs(tmp_path).unwrap().spec,
                     )

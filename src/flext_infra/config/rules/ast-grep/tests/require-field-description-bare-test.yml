@@ -1,0 +1,12 @@
+id: require-field-description-bare
+valid:
+- |
+  class Order(m.FrozenModel):
+      total: Annotated[int, m.Field(description="Order total")]
+- |
+  class Order(m.FrozenModel):
+      total: int = 0
+invalid:
+- |
+  class Order(m.FrozenModel):
+      parallel_workers: int

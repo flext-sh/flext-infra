@@ -409,13 +409,13 @@ class TestsFlextInfraFailedInvocationProgress:
         tm.ok(
             FlextInfraTransformersSemantic.publish_semantic_file_plans(
                 (
-                    m.Infra.SemanticFilePlan(
-                        project=mod_workspace,
-                        path=accepted,
-                        before=before,
-                        desired_content=b'value = "accepted"\n',
-                        desired_mode=before.mode,
-                    ),
+                    m.Infra.SemanticFilePlan.model_validate({
+                        "project": (mod_workspace),
+                        "path": (accepted),
+                        "before": (before),
+                        "desired_content": (b'value = "accepted"\n'),
+                        "desired_mode": (before.mode),
+                    }),
                 ),
                 repository_root=mod_workspace,
             ),
@@ -429,20 +429,20 @@ class TestsFlextInfraFailedInvocationProgress:
 
         outcome = FlextInfraTransformersSemantic.publish_semantic_file_plans(
             (
-                m.Infra.SemanticFilePlan(
-                    project=mod_workspace,
-                    path=accepted,
-                    before=next_before,
-                    desired_content=b'value = "next pass"\n',
-                    desired_mode=next_before.mode,
-                ),
-                m.Infra.SemanticFilePlan(
-                    project=mod_workspace,
-                    path=unrelated,
-                    before=stale,
-                    desired_content=b'value = "stale replacement"\n',
-                    desired_mode=stale.mode,
-                ),
+                m.Infra.SemanticFilePlan.model_validate({
+                    "project": (mod_workspace),
+                    "path": (accepted),
+                    "before": (next_before),
+                    "desired_content": (b'value = "next pass"\n'),
+                    "desired_mode": (next_before.mode),
+                }),
+                m.Infra.SemanticFilePlan.model_validate({
+                    "project": (mod_workspace),
+                    "path": (unrelated),
+                    "before": (stale),
+                    "desired_content": (b'value = "stale replacement"\n'),
+                    "desired_mode": (stale.mode),
+                }),
             ),
             repository_root=mod_workspace,
         )

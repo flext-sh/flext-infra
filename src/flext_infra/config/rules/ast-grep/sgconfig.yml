@@ -13,7 +13,7 @@ ruleDirs:
   - rules
 
 # utilDirs: global utility rules referenced by rules via `matches: <util-id>`.
-# One audited guard (e.g. tm-imported-from-flext) shared by the whole family,
+# One audited guard (e.g. tm-binding-admissible) shared by the whole family,
 # instead of duplicating the block in every rule (SSOT for codemod guards).
 # `fixture-utils/` holds the fixture values of the generated utilities
 # (own-package, facade-package, ...). It is never declared here: a native stage

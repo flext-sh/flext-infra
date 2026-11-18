@@ -74,4 +74,17 @@ install_lazy_exports(
         "FlextInfraUtilitiesCodemodTypeSetRules": ".type_set_rules",
     },
     public_exports=__all__,
+    deferred_members=(
+        "FlextInfraUtilitiesCodemodBindingChain",
+        "FlextInfraUtilitiesCodemodImportLawRules",
+        "FlextInfraUtilitiesCodemodNative",
+        "FlextInfraUtilitiesCodemodNativeCascade",
+        "FlextInfraUtilitiesCodemodNativePackage",
+        "FlextInfraUtilitiesCodemodProject",
+        "FlextInfraUtilitiesCodemodProjectFacts",
+        "FlextInfraUtilitiesCodemodRules",
+        "FlextInfraUtilitiesCodemodRulesDistributions",
+        "FlextInfraUtilitiesCodemodScopes",
+        "FlextInfraUtilitiesCodemodTypeSetRules",
+    ),
 )

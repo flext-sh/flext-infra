@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra.workspace import FlextInfraRopeWorkspace
-from tests import c, tm, u
+from tests import c, p, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -17,6 +17,57 @@ if TYPE_CHECKING:
 
 class TestsFlextInfraRopeImports:
     """Validate fail-fast behavior for Rope import utility wrappers."""
+
+    @staticmethod
+    def test_native_self_imports_preserve_recursive_protocol_hints(
+        tmp_path: Path, native_consumer: p.Tests.NativeConsumer
+    ) -> None:
+        """Native import tools remove self qualification without losing recursion."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        directory = package / "_protocols" / "_external"
+        directory.mkdir(parents=True)
+        for parent in (directory.parent, directory):
+            (parent / c.Infra.INIT_PY).write_text("", encoding=c.DEFAULT_ENCODING)
+        path = directory / "combined.py"
+        module_name = f"{package.name}._protocols._external.combined"
+        owner = f"{module_name}.ProtocolsExternalCombined"
+        path.write_text(
+            "from __future__ import annotations\n"
+            "from typing import Protocol\n"
+            f"import {module_name}\n"
+            "class ProtocolsExternalCombined:\n"
+            "    class ExternalPath(Protocol):\n        @property\n"
+            f"        def parent(self) -> {owner}.ExternalDirectory: ...\n"
+            "    class ExternalDirectory(Protocol):\n        @property\n"
+            f"        def parent(self) -> {owner}.ExternalPath: ...\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        with FlextInfraRopeWorkspace.open_workspace(root) as workspace:
+            resource = tm.not_none(workspace.resource(path))
+            module = u.Infra.require_source_module(
+                workspace.rope_project.get_pymodule(resource)
+            )
+            source = u.Infra.import_organizer(
+                workspace.rope_project
+            ).import_tools.organize_imports(
+                module, unused=False, duplicates=False, sort=False
+            )
+        tm.that(source, lacks=f"{module_name}.ProtocolsExternalCombined")
+        path.write_text(
+            tm.ok(u.Infra.normalize_python_text(path, source)),
+            encoding=c.DEFAULT_ENCODING,
+        )
+        native_consumer(
+            f"sys.path.insert(0, {str(package.parent)!r})\n"
+            "from typing import get_type_hints\n"
+            f"from {module_name} import ProtocolsExternalCombined as contracts\n"
+            "assert (get_type_hints(contracts.ExternalPath.parent.fget)['return']\n"
+            "        is contracts.ExternalDirectory)\n"
+            "assert (get_type_hints(contracts.ExternalDirectory.parent.fget)\n"
+            "        ['return']\n"
+            "        is contracts.ExternalPath)\n",
+            cwd=root,
+        )
 
     @staticmethod
     @c.Tests.MARK.parametrize("statements", [False, True])

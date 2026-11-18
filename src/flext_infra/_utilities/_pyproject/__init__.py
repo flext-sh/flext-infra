@@ -58,4 +58,13 @@ install_lazy_exports(
         "FlextInfraUtilitiesPyprojectUvSources": ".uv_sources",
     },
     public_exports=__all__,
+    deferred_members=(
+        "FlextInfraUtilitiesPyprojectConform",
+        "FlextInfraUtilitiesPyprojectConformBase",
+        "FlextInfraUtilitiesPyprojectDocument",
+        "FlextInfraUtilitiesPyprojectOverlay",
+        "FlextInfraUtilitiesPyprojectRequirements",
+        "FlextInfraUtilitiesPyprojectTomlPhases",
+        "FlextInfraUtilitiesPyprojectUvSources",
+    ),
 )

@@ -62,10 +62,7 @@ class FlextInfraProtocolsProjectArtifacts:
     class ProjectManagedArtifactsSnapshot(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def sources(self) -> tuple[p.Cli.AtomicFileState, ...]:
-            """Ordered exact project configuration sources."""
-            ...
+        sources: tuple[p.Cli.AtomicFileState, ...]
 
         @property
         def resolution(

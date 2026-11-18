@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Iterator, Mapping, Sequence, Set as AbstractSet
+from collections.abc import Callable, Iterator, Mapping, Sequence, Set as AbstractSet
 from typing import TYPE_CHECKING, ClassVar, Literal, Protocol, runtime_checkable
 
 from flext_infra._protocols import FlextInfraProtocolsWorkspaceSnapshot
@@ -20,8 +20,7 @@ if TYPE_CHECKING:
     from flext_infra import p, t
 
 
-@runtime_checkable
-class FlextInfraProtocolsRopeRuntime(FlextInfraProtocolsWorkspaceSnapshot, Protocol):
+class FlextInfraProtocolsRopeRuntime(FlextInfraProtocolsWorkspaceSnapshot):
     """Rope object contracts used instead of importing untyped Rope classes."""
 
     @runtime_checkable
@@ -157,12 +156,16 @@ class FlextInfraProtocolsRopeRuntime(FlextInfraProtocolsWorkspaceSnapshot, Proto
     class RopeSourceClass(RopeSourceObject, RopeClassObject, Protocol):
         """A source-defined class retaining its native superclass graph."""
 
+        def get_ast(self) -> ast.ClassDef: ...
+
         def invalidate_bases(self) -> None:
             """Drop the cached bases and MRO for one settled re-read."""
 
     @runtime_checkable
     class RopeSourceFunction(RopeSourceObject, Protocol):
         """A source-defined function retaining its native callable role."""
+
+        def get_ast(self) -> ast.FunctionDef | ast.AsyncFunctionDef: ...
 
         def get_kind(self) -> str: ...
 
@@ -215,9 +218,10 @@ class FlextInfraProtocolsRopeRuntime(FlextInfraProtocolsWorkspaceSnapshot, Proto
     class RopeAstNode(Protocol):
         """Raw AST node shape from ``RopePyModule.get_ast()``.
 
-        Minimal contract for Python ``ast.AST`` nodes as exposed by Rope.
-        Consumers access attributes via ``getattr``/``hasattr``; the protocol
-        declares the common fields that appear across all node types.
+        Minimal contract for Python ``ast.AST`` nodes as exposed by Rope. It
+        declares only the fields common to every node type; a consumer that
+        needs a node's own fields reads them through the concrete source
+        protocol (``RopeSourceClass``/``RopeSourceFunction``), never by probing.
         """
 
         _fields: ClassVar[tuple[str, ...]]
@@ -843,6 +847,10 @@ class FlextInfraProtocolsRopeRuntime(FlextInfraProtocolsWorkspaceSnapshot, Proto
             self, defined_pyobject: FlextInfraProtocolsRopeRuntime.RopeParsedModule
         ) -> Sequence[FlextInfraProtocolsRopeRuntime.RopeImportInfo]: ...
 
+        def get_used_names(
+            self, defined_pyobject: FlextInfraProtocolsRopeRuntime.RopeParsedModule
+        ) -> set[str]: ...
+
         def add_import(
             self,
             import_info: FlextInfraProtocolsRopeRuntime.RopeImportInfo,
@@ -860,6 +868,15 @@ class FlextInfraProtocolsRopeRuntime(FlextInfraProtocolsWorkspaceSnapshot, Proto
     class RopeImportTools(Protocol):
         """Native import translation used by observational relocation plans."""
 
+        def organize_imports(
+            self,
+            module: FlextInfraProtocolsRopeRuntime.RopePyModule,
+            *,
+            unused: bool = True,
+            duplicates: bool = True,
+            sort: bool = True,
+        ) -> str: ...
+
         def relatives_to_absolutes(
             self,
             module: FlextInfraProtocolsRopeRuntime.RopePyModule,
@@ -868,6 +885,8 @@ class FlextInfraProtocolsRopeRuntime(FlextInfraProtocolsWorkspaceSnapshot, Proto
     @runtime_checkable
     class RopeImportOrganizer(Protocol):
         """Rope import organizer shape."""
+
+        import_tools: FlextInfraProtocolsRopeRuntime.RopeImportTools
 
         def organize_imports(
             self,
@@ -886,8 +905,28 @@ class FlextInfraProtocolsRopeRuntime(FlextInfraProtocolsWorkspaceSnapshot, Proto
         ) -> FlextInfraProtocolsRopeRuntime.RopeChangeSet: ...
 
     @runtime_checkable
+    class RopeMoveClass(Protocol):
+        """Native nested-class transfer, distinct from global/module moves."""
+
+        def get_changes(
+            self,
+            target: FlextInfraProtocolsRopeRuntime.RopeResource,
+            resources: Sequence[FlextInfraProtocolsRopeRuntime.RopeResource]
+            | None = None,
+            *,
+            destination_offset: int | None = None,
+            match_filter: Callable[
+                [FlextInfraProtocolsRopeRuntime.RopeOccurrence], bool
+            ]
+            | None = None,
+        ) -> FlextInfraProtocolsRopeRuntime.RopeChangeSet: ...
+
+    @runtime_checkable
     class RopeOccurrence(Protocol):
         """Rope occurrence shape."""
+
+        @property
+        def resource(self) -> FlextInfraProtocolsRopeRuntime.RopeResource | None: ...
 
         offset: int
 
@@ -900,6 +939,16 @@ class FlextInfraProtocolsRopeRuntime(FlextInfraProtocolsWorkspaceSnapshot, Proto
         def is_written(self) -> bool: ...
 
         def is_defined(self) -> bool: ...
+
+        def get_primary_and_pyname(
+            self,
+        ) -> (
+            tuple[
+                FlextInfraProtocolsRopeRuntime.RopePyName | None,
+                FlextInfraProtocolsRopeRuntime.RopePyName | None,
+            ]
+            | None
+        ): ...
 
     @runtime_checkable
     class RopeOccurrenceFinder(Protocol):

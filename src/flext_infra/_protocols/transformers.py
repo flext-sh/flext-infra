@@ -216,6 +216,11 @@ class FlextInfraProtocolsTransformers:
             """Proven upstream identities preceding local aliases."""
             ...
 
+        @property
+        def root_published_modules(self) -> frozenset[str]:
+            """Service modules whose aliases the package root publishes."""
+            ...
+
     @runtime_checkable
     class PrivateImportRewritePlan(FlextInfraProtocolsBase.FrozenArbitrary, Protocol):
         """Structural data contract projected from the owning model."""

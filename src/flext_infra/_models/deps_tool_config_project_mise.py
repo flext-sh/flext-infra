@@ -11,7 +11,7 @@ from typing import Annotated
 
 from flext_cli import m
 
-from flext_infra import p, t
+from flext_infra import t
 
 
 class FlextInfraModelsDepsToolConfigProjectMise:
@@ -31,14 +31,7 @@ class FlextInfraModelsDepsToolConfigProjectMise:
         tools: Annotated[
             Mapping[
                 t.NonEmptyStr,
-                Annotated[
-                    p.Infra.ProjectMiseTool,
-                    t.schema_for_model(
-                        lambda: (
-                            FlextInfraModelsDepsToolConfigProjectMise.ProjectMiseTool
-                        )
-                    ),
-                ],
+                (FlextInfraModelsDepsToolConfigProjectMise.ProjectMiseTool),
             ],
             m.Field(description="Project-local Mise tools added to generated config."),
         ]

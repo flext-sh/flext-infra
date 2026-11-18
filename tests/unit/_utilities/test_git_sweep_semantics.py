@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tests import c, m, tm, u
+from tests import c, m, p, tm, u
 
 
 class TestsFlextInfraGitSweepSemantics:
@@ -50,7 +50,7 @@ class TestsFlextInfraGitSweepSemantics:
     def _retained(
         repository: Path,
     ) -> tuple[
-        m.Infra.GitWorktreeStateCheckpoint, m.Infra.GitWorktreeCheckpointPublication
+        p.Infra.GitWorktreeStateCheckpoint, p.Infra.GitWorktreeCheckpointPublication
     ]:
         """Capture and publish actual index/working layers through their owner.
 
@@ -136,15 +136,6 @@ class TestsFlextInfraGitSweepSemantics:
             "refs/stash",
             checkpoint.worktree_commit,
         )
-        tm.fail(
-            u.Infra.git_create_branch(
-                m.Infra.GitBranchCreateRequest(
-                    repo_root=repository,
-                    branch="unsafe",
-                )
-            ),
-            has="existing stash state",
-        )
         tm.ok(
             u.Infra.git_verify_worktree_checkpoint_publication(checkpoint, publication)
         )
@@ -155,10 +146,10 @@ class TestsFlextInfraGitSweepSemantics:
         )
 
     @staticmethod
-    def test_create_branch_switch_carries_changes_and_refuses_duplicates(
+    def test_checkpoint_branch_keeps_the_checkout_and_refuses_duplicates(
         tmp_path: Path,
     ) -> None:
-        """Unsafe lane switching refuses WIP; a published recovery alias is valid."""
+        """A published recovery alias leaves the checkout in place; a repeat fails."""
         repository, _ = TestsFlextInfraGitSweepSemantics._published(tmp_path)
         readme = repository / "README.md"
         readme.write_text("index layer\n", encoding="utf-8")
@@ -176,16 +167,6 @@ class TestsFlextInfraGitSweepSemantics:
         original = tm.ok(
             u.Infra.git_current_branch(m.Infra.GitRepoRequest(repo_root=repository))
         ).text
-        tm.fail(
-            u.Infra.git_create_branch(
-                m.Infra.GitBranchCreateRequest(
-                    repo_root=repository,
-                    branch="preserve",
-                    switch=True,
-                ),
-            ),
-            has="authoritative Beads ownership",
-        )
         tm.ok(u.Infra.git_create_checkpoint_branch(checkpoint, publication, "preserve"))
         duplicate = u.Infra.git_create_checkpoint_branch(
             checkpoint, publication, "preserve"

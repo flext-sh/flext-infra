@@ -1,0 +1,68 @@
+id: protocol-namespace-part-plain
+snapshots:
+  "from typing import Protocol\nclass FlextDemoProtocolsRuntime(FlextDemoProtocolsSnapshot, Protocol):\n    \"\"\"Namespace.\"\"\"\n":
+    fixed: |
+      from typing import Protocol
+      class FlextDemoProtocolsRuntime(FlextDemoProtocolsSnapshot):
+          """Namespace."""
+    labels:
+    - source: |-
+        class FlextDemoProtocolsRuntime(FlextDemoProtocolsSnapshot, Protocol):
+            """Namespace."""
+      style: primary
+      start: 28
+      end: 119
+    - source: Protocol
+      style: secondary
+      start: 88
+      end: 96
+    - source: Protocol
+      style: secondary
+      start: 88
+      end: 96
+    - source: |
+        from typing import Protocol
+        class FlextDemoProtocolsRuntime(FlextDemoProtocolsSnapshot, Protocol):
+            """Namespace."""
+      style: secondary
+      start: 0
+      end: 120
+  "from typing import Protocol, runtime_checkable\n@runtime_checkable\nclass FlextDemoProtocolsBase(Protocol):\n    class Source(Protocol):\n        def read(self) -> str: ...\n":
+    fixed: |
+      from typing import Protocol, runtime_checkable
+      class FlextDemoProtocolsBase:
+          class Source(Protocol):
+              def read(self) -> str: ...
+    labels:
+    - source: |-
+        @runtime_checkable
+        class FlextDemoProtocolsBase(Protocol):
+            class Source(Protocol):
+                def read(self) -> str: ...
+      style: primary
+      start: 47
+      end: 168
+    - source: Protocol
+      style: secondary
+      start: 95
+      end: 103
+    - source: Protocol
+      style: secondary
+      start: 95
+      end: 103
+    - source: |-
+        class FlextDemoProtocolsBase(Protocol):
+            class Source(Protocol):
+                def read(self) -> str: ...
+      style: secondary
+      start: 66
+      end: 168
+    - source: |
+        from typing import Protocol, runtime_checkable
+        @runtime_checkable
+        class FlextDemoProtocolsBase(Protocol):
+            class Source(Protocol):
+                def read(self) -> str: ...
+      style: secondary
+      start: 0
+      end: 169

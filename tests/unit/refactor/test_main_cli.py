@@ -13,7 +13,7 @@ from pathlib import Path
 from types import CodeType
 
 from flext_infra import FlextInfraCli, infra
-from flext_infra.refactor.census import FlextInfraRefactorCensus
+from flext_infra.refactor import FlextInfraRefactorCensus
 from tests import c, m, p, r, t, tm, u
 
 

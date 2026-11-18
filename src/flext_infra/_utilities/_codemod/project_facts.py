@@ -22,6 +22,7 @@ import re
 import sys
 from collections.abc import Mapping, Sequence
 from pathlib import Path
+from typing import cast
 
 from packaging.utils import canonicalize_name
 
@@ -84,6 +85,7 @@ class FlextInfraUtilitiesCodemodProjectFacts:
         ``local-alias`` matches a name the own package publishes as a runtime
         alias. ``runtime-alias`` matches an imported name that is a runtime
         alias of the very package its import statement names.
+        Both identities remain present with empty facts for non-package roots.
 
         Returns:
             The ``local-alias`` and ``runtime-alias`` utility rules.
@@ -93,11 +95,9 @@ class FlextInfraUtilitiesCodemodProjectFacts:
         own = FlextInfraUtilitiesPyprojectConform.project_package_name(
             project.absolute()
         )
-        if not own:
-            return {}
         return {
             c.Infra.CODEMOD_LOCAL_ALIAS_UTILITY: cls._fact_exact_names(
-                tuple(aliases[own])
+                tuple(aliases[own]) if own else ()
             ),
             c.Infra.CODEMOD_RUNTIME_ALIAS_UTILITY: cls._fact_imported_from(aliases),
         }
@@ -285,10 +285,12 @@ class FlextInfraUtilitiesCodemodProjectFacts:
         module of every private family package it lives in. The letter
         vocabulary is the tooling import-layer order; no file name is mapped
         to a letter. ``private-family-<family>`` groups the modules of each
-        private family package.
+        private family package and ``top-package-<package>`` the modules of
+        each top-level package.
 
         Returns:
-            Project-relative POSIX paths keyed by scope selector.
+            Project-relative POSIX paths keyed by scope selector. Fixed selectors
+            remain present and empty when a non-package root has no source layout.
 
         """
         root = project.resolve()
@@ -331,7 +333,7 @@ class FlextInfraUtilitiesCodemodProjectFacts:
                 )
                 for letter in sorted(letters)
             },
-            **cls._private_family_scopes(snapshot, root),
+            **cls._module_group_scopes(snapshot, root),
         }
 
     @staticmethod
@@ -353,6 +355,22 @@ class FlextInfraUtilitiesCodemodProjectFacts:
                 snapshot, module
             )
         )
+
+    @staticmethod
+    def _has_authored_sources(root: Path) -> bool:
+        """Report whether ``src`` holds Python sources.
+
+        A repository without a package (a consumer, or one whose package was
+        deleted) owns no source tree even when an empty ``src`` directory
+        remains: that is an absent layout, not an unresolved one. Sources
+        beside a missing layout stay a loud contradiction.
+
+        Returns:
+            Whether any Python module lives under ``src``.
+
+        """
+        source = root / c.Infra.DEFAULT_SRC_DIR
+        return source.is_dir() and any(source.rglob(c.Infra.EXT_PYTHON_GLOB))
 
     @classmethod
     def codemod_layout_scopes(
@@ -380,14 +398,25 @@ class FlextInfraUtilitiesCodemodProjectFacts:
             ValueError: If the project layout is unresolved.
 
         """
+        order = tuple(config.Infra.tooling.lazy_init.import_layer_order)
+        # Fixed selectors exist even when the project supplies no package layout.
+        scopes: dict[str, list[str]] = {
+            c.Infra.CODEMOD_FAMILY_WITHOUT_BASE_SCOPE: [],
+            c.Infra.CODEMOD_FAMILY_BASE_SCOPE: [],
+            c.Infra.CODEMOD_COMPOSITION_ROOT_SCOPE: [],
+            c.Infra.CODEMOD_FAMILY_ROLE_SCOPE: [],
+            **{
+                f"{c.Infra.CODEMOD_LACKS_LAYER_SCOPE_PREFIX}{layer}": []
+                for layer in order
+            },
+        }
         root = project.resolve()
         layout = FlextInfraUtilitiesCodegenNamespace.layout(root)
         if layout is None:
-            if not (root / c.Infra.DEFAULT_SRC_DIR).is_dir():
-                return {}
+            if not cls._has_authored_sources(root):
+                return dict.fromkeys(scopes, ())
             msg = f"project layout is unresolved: {root}"
             raise ValueError(msg)
-        order = tuple(config.Infra.tooling.lazy_init.import_layer_order)
         files = frozenset(
             FlextInfraUtilitiesWorkspaceSnapshot.workspace_python_files(snapshot, root)
         )
@@ -406,17 +435,6 @@ class FlextInfraUtilitiesCodemodProjectFacts:
                 and bool(frozenset(order) & exported(facade))
             )
 
-        # The fixed selectors and every layer's lack are published, empty or
-        # not, so a rule may name any of them.
-        scopes: dict[str, list[str]] = {
-            c.Infra.CODEMOD_FAMILY_WITHOUT_BASE_SCOPE: [],
-            c.Infra.CODEMOD_FAMILY_BASE_SCOPE: [],
-            c.Infra.CODEMOD_COMPOSITION_ROOT_SCOPE: [],
-            **{
-                f"{c.Infra.CODEMOD_LACKS_LAYER_SCOPE_PREFIX}{layer}": []
-                for layer in order
-            },
-        }
         namespaces = FlextInfraUtilitiesCodegenNamespace.repository_namespace_packages(
             root
         )
@@ -843,7 +861,9 @@ class FlextInfraUtilitiesCodemodProjectFacts:
 
         """
         owner = FlextInfraUtilitiesPytest.Pytest
-        function_letter = config.Infra.tooling.facade_members.owners["function"]
+        function_letter = config.Infra.tooling.facade_members.owners[
+            c.Infra.FacadeMemberKind.FUNCTION
+        ]
         if letter != function_letter or library != owner.__name__.lower():
             return classified
         published = frozenset(name for name in dir(owner) if not name.startswith("_"))
@@ -914,6 +934,12 @@ class FlextInfraUtilitiesCodemodProjectFacts:
         """
         letters = (c.Infra.FacadeFamily.P, c.Infra.FacadeFamily.M)
         project_source = snapshot.engine
+        referenced_pairs, _paths = FlextInfraUtilitiesFacadeMembers.facade_references(
+            snapshot, project
+        )
+        referenced = frozenset(
+            name for letter, name in referenced_pairs if letter in letters
+        )
         resolver_factory = (
             FlextInfraUtilitiesRopeSourceBasesRuntime.source_member_resolver_factory(
                 project_source,
@@ -933,7 +959,9 @@ class FlextInfraUtilitiesCodemodProjectFacts:
             protocols, models = (facades.get(letter) for letter in letters)
             if protocols is None:
                 continue
-            for path, model, orphan in cls._facade_class_pairs(protocols, models):
+            for path, model, orphan in cls._facade_class_pairs(
+                protocols, models, referenced=referenced
+            ):
                 if orphan or (
                     model is not None
                     and (
@@ -1057,6 +1085,8 @@ class FlextInfraUtilitiesCodemodProjectFacts:
         cls,
         protocols: p.Infra.RopeClassObject,
         models: p.Infra.RopeClassObject | None,
+        *,
+        referenced: frozenset[str] | None = None,
     ) -> Sequence[tuple[str, p.Infra.RopeClassObject | None, bool]]:
         """Pair every nested class of the protocol facade with its model path twin.
 
@@ -1083,16 +1113,23 @@ class FlextInfraUtilitiesCodemodProjectFacts:
         ] = [("", protocols, models, frozenset({id(protocols)}))]
         while pending:
             prefix, protocol, model, lineage = pending.pop()
-            twins = {} if model is None else model.get_attributes()
+            twins = (
+                cast(Mapping[str, p.Infra.RopePyName], {})
+                if model is None
+                else model.get_attributes()
+            )
             published = protocol.get_attributes()
             pairs.extend(
                 (f"{prefix}{name}", None, True)
                 for name, twin in twins.items()
                 if name not in published
                 and not name.startswith("_")
+                and (referenced is None or name in referenced)
                 and types.abstract_class(twin.get_object())
             )
             for name, binding in published.items():
+                if referenced is not None and name not in referenced:
+                    continue
                 nested = binding.get_object()
                 if name.startswith("_") or not types.abstract_class(nested):
                     continue
@@ -1252,19 +1289,20 @@ class FlextInfraUtilitiesCodemodProjectFacts:
         return rendered
 
     @staticmethod
-    def _private_family_scopes(
+    def _module_group_scopes(
         snapshot: p.Infra.WorkspaceSnapshot, root: Path
     ) -> Mapping[str, t.StrTuple]:
-        """Group the project's modules by the private family package they belong to.
+        """Group the project's modules by private family and by top-level package.
 
         A private family is a dotted module path up to its first
         ``_``-prefixed segment; its members are the modules inside that tree,
         the family package itself and its facade (the path with the
-        underscore removed).
+        underscore removed). A top-level package groups every module whose
+        dotted name starts with it.
 
         Returns:
             Project-relative POSIX paths keyed by
-            ``private-family-<dotted family>``.
+            ``private-family-<dotted family>`` and ``top-package-<package>``.
 
         """
         modules: dict[str, str] = {}
@@ -1277,8 +1315,10 @@ class FlextInfraUtilitiesCodemodProjectFacts:
             if located is not None:
                 modules[located[1]] = path.relative_to(root).as_posix()
         members: dict[str, set[str]] = {}
+        tops: dict[str, set[str]] = {}
         for module, relative in modules.items():
             parts = module.split(".")
+            tops.setdefault(parts[0], set()).add(relative)
             private = next(
                 (
                     index
@@ -1295,10 +1335,18 @@ class FlextInfraUtilitiesCodemodProjectFacts:
             if facade is not None:
                 members[family].add(facade)
         return {
-            f"{c.Infra.CODEMOD_PRIVATE_FAMILY_SCOPE_PREFIX}{family}": tuple(
-                sorted(found)
-            )
-            for family, found in sorted(members.items())
+            **{
+                f"{c.Infra.CODEMOD_PRIVATE_FAMILY_SCOPE_PREFIX}{family}": tuple(
+                    sorted(found)
+                )
+                for family, found in sorted(members.items())
+            },
+            **{
+                f"{c.Infra.CODEMOD_TOP_PACKAGE_SCOPE_PREFIX}{package}": tuple(
+                    sorted(found)
+                )
+                for package, found in sorted(tops.items())
+            },
         }
 
     @staticmethod
@@ -1321,7 +1369,7 @@ class FlextInfraUtilitiesCodemodProjectFacts:
         own = FlextInfraUtilitiesPyprojectConform.project_package_name(root)
         layout = FlextInfraUtilitiesCodegenNamespace.layout(root)
         if layout is None:
-            if not (root / c.Infra.DEFAULT_SRC_DIR).is_dir():
+            if not FlextInfraUtilitiesCodemodProjectFacts._has_authored_sources(root):
                 return {}
             msg = f"project layout is unresolved: {root}"
             raise ValueError(msg)

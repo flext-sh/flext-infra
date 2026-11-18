@@ -85,11 +85,12 @@ class FlextInfraUtilitiesSemanticCutoverAliasCst:
 
         def _alias_target(
             self, node: t.Infra.Cst.Name | t.Infra.Cst.Attribute
-        ) -> str | None:
+        ) -> tuple[str, str] | None:
             """Require all possible bindings to agree before changing a reference.
 
             Returns:
-                The unique alias destination, or None for an unrelated reference.
+                The unique alias destination and its proven identity, or None
+                for an unrelated reference.
 
             Raises:
                 ValueError: If a retiring binding has competing identities.
@@ -117,8 +118,9 @@ class FlextInfraUtilitiesSemanticCutoverAliasCst:
                     )
                 )
                 if not names and upstream_read:
-                    return self._checked_target(
-                        node, self.plan.local_aliases[node.value]
+                    return (
+                        self._checked_target(node, self.plan.local_aliases[node.value]),
+                        node.value,
                     )
             matched = [
                 name
@@ -142,7 +144,7 @@ class FlextInfraUtilitiesSemanticCutoverAliasCst:
                     f"{sorted(name.name for name in names)}"
                 )
                 raise ValueError(msg)
-            return self._checked_target(node, targets.pop())
+            return self._checked_target(node, targets.pop()), matched[0].name
 
         def _checked_target(
             self, node: t.Infra.Cst.Name | t.Infra.Cst.Attribute, target: str
@@ -271,8 +273,10 @@ class FlextInfraUtilitiesSemanticCutoverAliasCst:
             ):
                 return updated_node
             self._require_module_access(original_node)
-            target = self._alias_target(original_node)
-            return updated_node.with_changes(value=target) if target else updated_node
+            matched = self._alias_target(original_node)
+            return (
+                updated_node.with_changes(value=matched[0]) if matched else updated_node
+            )
 
         @override
         def leave_Assign(
@@ -347,12 +351,25 @@ class FlextInfraUtilitiesSemanticCutoverAliasCst:
         ) -> t.Infra.Cst.BaseExpression:
 
             self._require_module_access(original_node)
-            target = self._alias_target(original_node)
-            return (
-                updated_node.with_changes(attr=cst.Name(target))
-                if target
-                else updated_node
-            )
+            matched = self._alias_target(original_node)
+            if matched is None:
+                return updated_node
+            target = matched[0]
+            lexical = FlextInfraUtilitiesQualifiedNames.dotted_name(original_node)
+            if lexical is None or "." not in lexical:
+                return updated_node.with_changes(attr=cst.Name(target))
+            module, _, alias = lexical.rpartition(".")
+            root = module.partition(".")[0]
+            if (
+                module != root
+                and module in self.plan.root_published_modules
+                and self.plan.qualified_aliases.get(f"{root}.{alias}") == target
+            ):
+                receiver = FlextInfraUtilitiesQualifiedNames.lexical_root(original_node)
+                if not isinstance(receiver, c.Infra.Cst.Name | c.Infra.Cst.Attribute):
+                    return updated_node.with_changes(attr=cst.Name(target))
+                return cst.Attribute(value=receiver, attr=cst.Name(target))
+            return updated_node.with_changes(attr=cst.Name(target))
 
     @classmethod
     def _rewrite_compatibility_alias_source(

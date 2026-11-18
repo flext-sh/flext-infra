@@ -161,7 +161,7 @@ class FlextInfraUtilitiesSemanticCutoverBase(
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         sources: Mapping[Path, str],
         findings: Sequence[p.Infra.ModOccurrence],
-        dependency_codegen: Mapping[Path, m.Infra.CodegenInputs],
+        dependency_codegen: Mapping[Path, p.Infra.CodegenInputs],
     ) -> p.ResultView[tuple[p.Infra.SemanticMigrationEdit, ...]]:
         """Plan the dynamic-environment phase over explicitly projected policy.
 
@@ -211,7 +211,7 @@ class FlextInfraUtilitiesSemanticCutoverBase(
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         sources: Mapping[Path, str],
         selected: Sequence[p.Infra.ModOccurrence],
-        dependency_codegen: Mapping[Path, m.Infra.CodegenInputs] | None,
+        dependency_codegen: Mapping[Path, p.Infra.CodegenInputs] | None,
     ) -> p.ResultView[tuple[p.Infra.SemanticMigrationEdit, ...]]:
         """Plan a phase whose policy is captured through one source project.
 
@@ -321,7 +321,9 @@ class FlextInfraUtilitiesSemanticCutoverBase(
                 )
             ),
             c.Infra.SemanticCutoverPhase.TEST_NAMESPACE_IMPORT: lambda: (
-                cls._plan_test_namespace_imports(root, sources, selected)
+                cls._plan_test_namespace_imports(
+                    root, sources, selected, project=rope_workspace.rope_project
+                )
             ),
             c.Infra.SemanticCutoverPhase.TEST_ASSERT_TO_MATCHER: lambda: (
                 cls._plan_test_assertions(root, sources, selected)

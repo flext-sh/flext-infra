@@ -14,7 +14,7 @@ import time
 from collections.abc import Generator, Mapping, Sequence
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Annotated, override
+from typing import Annotated, cast, override
 
 from flext_infra import c, m, p, r, u
 from flext_infra._models import FlextInfraModelsMixins
@@ -59,10 +59,10 @@ class FlextInfraCodegenLazyInit(
         cls,
         root: Path,
         *,
-        declared_files: tuple[FlextInfraModelsCodegenTransaction.CodegenFilePlan, ...],
+        declared_files: tuple[p.Infra.CodegenFilePlan, ...],
         snapshot: FlextInfraProtocolsWorkspaceSnapshot.WorkspaceSnapshot,
         selection: tuple[Path, c.Infra.FacadeFamily | None] | None = None,
-    ) -> p.Result[tuple[FlextInfraModelsCodegenTransaction.CodegenFilePlan, ...]]:
+    ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]]:
         """Plan this candidate's exports through the existing public initializer.
 
         A selected facade retains its package and private-family projections,
@@ -247,9 +247,20 @@ class FlextInfraCodegenLazyInit(
                 )
                 for root in roots
             }
-            targets = self._targets(indexes, scoped=scoped)
+            targets = self._targets(
+                cast(
+                    Mapping[Path, FlextInfraModelsCodegenLazyInit.RopeWorkspaceIndex],
+                    indexes,
+                ),
+                scoped=scoped,
+            )
             if targets.failure:
                 return result_type.from_failure(targets)
+            providers = {
+                package: directory / c.Infra.INIT_PY
+                for other_index in indexes.values()
+                for package, directory in other_index.package_dir_by_name.items()
+            }
             by_path: dict[Path, FlextInfraModelsCodegenTransaction.CodegenFilePlan] = {}
             for root, target in targets.value.items():
                 planned = self._plan_root(
@@ -258,7 +269,7 @@ class FlextInfraCodegenLazyInit(
                         indexes[root],
                         root=root,
                         scoped=scoped,
-                        snapshot=shared,
+                        overrides=(shared, providers),
                     ),
                     target,
                 )

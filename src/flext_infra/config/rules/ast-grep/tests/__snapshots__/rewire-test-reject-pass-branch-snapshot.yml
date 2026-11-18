@@ -1,0 +1,53 @@
+id: rewire-test-reject-pass-branch
+snapshots:
+  "if isinstance(item, Entry):\n    pass\nelse:\n    tm.reject(\"not an entry\")\n":
+    fixed: |
+      if not (isinstance(item, Entry)):
+          tm.reject("not an entry")
+    labels:
+    - source: |-
+        if isinstance(item, Entry):
+            pass
+        else:
+            tm.reject("not an entry")
+      style: primary
+      start: 0
+      end: 72
+    - source: isinstance(item, Entry)
+      style: secondary
+      start: 3
+      end: 26
+  "if result.success:\n    pass\nelse:\n    tm.reject(result.error)\n":
+    fixed: |
+      if not (result.success):
+          tm.reject(result.error)
+    labels:
+    - source: |-
+        if result.success:
+            pass
+        else:
+            tm.reject(result.error)
+      style: primary
+      start: 0
+      end: 61
+    - source: result.success
+      style: secondary
+      start: 3
+      end: 17
+  "if value is not None:\n    pass\nelse:\n    tm.reject()\n":
+    fixed: |
+      if not (value is not None):
+          tm.reject()
+    labels:
+    - source: |-
+        if value is not None:
+            pass
+        else:
+            tm.reject()
+      style: primary
+      start: 0
+      end: 52
+    - source: value is not None
+      style: secondary
+      start: 3
+      end: 20

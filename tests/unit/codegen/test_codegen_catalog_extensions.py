@@ -10,6 +10,7 @@ from pathlib import Path
 
 from flext_infra import config
 from flext_infra.codegen import FlextInfraCodegenConform
+from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, m, p, tm, u
 
 pytestmark = c.Tests.MARK.slow
@@ -687,14 +688,14 @@ class TestsFlextInfraCodegenCatalogExtensions:
             scope=c.Infra.CodegenConformScope.ALL,
             mode=c.Infra.CodegenConformMode.CHECK,
         )
-        result = FlextInfraCodegenConform.Generate(
-            repository_root=repository_root,
-            state=m.Infra.CodegenConformState(
-                repository_root=repository_root,
-                request=request,
-                initial_workspace=workspace,
-            ),
-        ).plan(request)
+        # Planning consumes the detector's authenticated workspace, never a
+        # hand-built specification without its observed inputs.
+        detected = tm.ok(
+            FlextInfraWorkspaceDetector.load_workspace_spec(repository_root)
+        )
+        result = u.Tests.conform_plan_result(
+            repository_root, request, workspace=detected
+        )
 
         plan = tm.ok(result)
         tm.that(

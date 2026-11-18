@@ -128,6 +128,23 @@ class FlextInfraUtilitiesDocsGithubLinks:
         )
 
     @staticmethod
+    def docs_github_repo_lookup_in(
+        repositories: Sequence[p.Infra.DocsGithubRepoSpec],
+        organization: str,
+        repository: str,
+    ) -> p.Infra.DocsGithubRepoSpec | None:
+        """Find one governed repo in an already derived declaration set.
+
+        Returns:
+            The resulting ``m.Infra.DocsGithubRepoSpec | None``.
+
+        """
+        for repo in repositories:
+            if repo.organization == organization and repo.repository == repository:
+                return repo
+        return None
+
+    @staticmethod
     def docs_github_repo_lookup(
         organization: str,
         repository: str,
@@ -140,12 +157,11 @@ class FlextInfraUtilitiesDocsGithubLinks:
             The resulting ``m.Infra.DocsGithubRepoSpec | None``.
 
         """
-        for repo in FlextInfraUtilitiesDocsGithubLinks.docs_github_repos(
-            repository_root
-        ):
-            if repo.organization == organization and repo.repository == repository:
-                return repo
-        return None
+        return FlextInfraUtilitiesDocsGithubLinks.docs_github_repo_lookup_in(
+            FlextInfraUtilitiesDocsGithubLinks.docs_github_repos(repository_root),
+            organization,
+            repository,
+        )
 
     @staticmethod
     def docs_expand_local_checkout(path: str) -> Path | None:
@@ -282,12 +298,16 @@ class FlextInfraUtilitiesDocsGithubLinks:
     def docs_github_local_path(
         target: str,
         *,
-        repository_root: Path,
+        repository_root: Path | None = None,
+        repositories: Sequence[p.Infra.DocsGithubRepoSpec] | None = None,
     ) -> Path | None:
         """Resolve a governed GitHub URL to a local checkout path when configured.
 
         Returns:
             The resulting ``Path | None``.
+
+        Raises:
+            ValueError: If neither a repository root nor a declaration set is given.
 
         """
         match = FlextInfraUtilitiesDocsGithubLinks.docs_parse_github_doc_url(target)
@@ -297,10 +317,21 @@ class FlextInfraUtilitiesDocsGithubLinks:
         repository = match.group("repo")
         if org in FlextInfraUtilitiesDocsGithubLinks.docs_stale_github_organizations():
             return None
-        repo = FlextInfraUtilitiesDocsGithubLinks.docs_github_repo_lookup(
+        if repositories is not None:
+            specs = repositories
+        elif repository_root is not None:
+            specs = FlextInfraUtilitiesDocsGithubLinks.docs_github_repos(
+                repository_root
+            )
+        else:
+            message = (
+                "docs GitHub lookup requires a repository root or a declaration set"
+            )
+            raise ValueError(message)
+        repo = FlextInfraUtilitiesDocsGithubLinks.docs_github_repo_lookup_in(
+            specs,
             org,
             repository,
-            repository_root=repository_root,
         )
         if repo is None:
             return None
@@ -348,6 +379,31 @@ class FlextInfraUtilitiesDocsGithubLinks:
             The resulting ``Sequence[p.Infra.AuditIssue]``.
 
         """
+        return FlextInfraUtilitiesDocsGithubLinks.docs_github_link_issues_in(
+            file=file,
+            line_number=line_number,
+            raw=raw,
+            target=target,
+            repositories=FlextInfraUtilitiesDocsGithubLinks.docs_github_repos(
+                repository_root
+            ),
+        )
+
+    @staticmethod
+    def docs_github_link_issues_in(
+        *,
+        file: str,
+        line_number: int,
+        raw: str,
+        target: str,
+        repositories: Sequence[p.Infra.DocsGithubRepoSpec],
+    ) -> Sequence[p.Infra.AuditIssue]:
+        """Emit audit issues against an already derived declaration set.
+
+        Returns:
+            The resulting ``Sequence[p.Infra.AuditIssue]``.
+
+        """
         issues: list[p.Infra.AuditIssue] = []
         match = FlextInfraUtilitiesDocsGithubLinks.docs_parse_github_doc_url(target)
         if match is None:
@@ -367,10 +423,11 @@ class FlextInfraUtilitiesDocsGithubLinks:
             )
             return issues
         repository = match.group("repo")
-        repo = FlextInfraUtilitiesDocsGithubLinks.docs_github_repo_lookup(
+        specs = repositories
+        repo = FlextInfraUtilitiesDocsGithubLinks.docs_github_repo_lookup_in(
+            specs,
             org,
             repository,
-            repository_root=repository_root,
         )
         if (
             repo is not None
@@ -393,7 +450,7 @@ class FlextInfraUtilitiesDocsGithubLinks:
             )
         local = FlextInfraUtilitiesDocsGithubLinks.docs_github_local_path(
             target,
-            repository_root=repository_root,
+            repositories=specs,
         )
         if local is not None and not local.exists():
             issues.append(

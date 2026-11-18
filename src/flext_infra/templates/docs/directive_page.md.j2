@@ -3,10 +3,14 @@
 
 {{ generated_header }}
 
+{% if dotted_path -%}
 ::: {{ dotted_path }}
 
     options:
       show_root_heading: true
       show_root_full_path: false
       show_source: false
+{% else -%}
+{{ text.NO_PUBLIC_API }}
+{% endif -%}
 {% endfilter -%}

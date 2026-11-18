@@ -16,6 +16,15 @@ from typing import ClassVar
 class FlextInfraConstantsCensus:
     """Census pipeline constants for object detection and classification."""
 
+    @unique
+    class ProtocolOrigin(StrEnum):
+        """Canonical source categories of structural contracts."""
+
+        MODEL = "model"
+        SERVICE = "service"
+        EXTERNAL = "external"
+        UNRESOLVED = "unresolved"
+
     DUPLICATE_BUILTIN_NAMES: ClassVar[frozenset[str]] = frozenset(dir(builtins))
     "Native builtin bindings available to pure duplicate definitions."
     DUPLICATE_PURE_CONSTRUCTORS: ClassVar[frozenset[str]] = frozenset({

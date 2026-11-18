@@ -17,8 +17,7 @@ if TYPE_CHECKING:
     from flext_infra._protocols import FlextInfraProtocolsRelease
 
 
-@runtime_checkable
-class FlextInfraProtocolsReleaseForge(Protocol):
+class FlextInfraProtocolsReleaseForge:
     """Release forge protocols exposed through ``p.Infra``."""
 
     @runtime_checkable

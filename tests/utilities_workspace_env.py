@@ -11,9 +11,9 @@ import tempfile
 from collections.abc import MutableMapping
 from pathlib import Path
 
-from flext_infra import config
+from flext_infra import config, u
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-from tests import c, p, t, tm, u
+from tests import c, p, t, tm
 
 
 class TestsFlextInfraUtilitiesWorkspaceEnv:
@@ -92,7 +92,7 @@ class TestsFlextInfraUtilitiesWorkspaceEnv:
         with tempfile.TemporaryDirectory() as raw_root:
             probe_root = Path(raw_root)
             tm.ok(u.Cli.run_checked(["git", "init", "-q", str(probe_root)]))
-            (probe_root / ".ignore").write_text(rendered, encoding="utf-8")
+            (probe_root / c.Infra.GITIGNORE).write_text(rendered, encoding="utf-8")
             target = probe_root / relative_path
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text("", encoding="utf-8")

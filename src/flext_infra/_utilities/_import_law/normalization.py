@@ -53,9 +53,10 @@ class FlextInfraUtilitiesImportLawNormalization(
     1. Every import lives at module level; ``try/except ImportError`` guards
        become plain imports.
     2. Imports follow the tooling layer order (settings, config, c, p, t, p, m,
-       u, other, base, services, api, cli): a reverse import read only in
-       annotations moves under ``if TYPE_CHECKING:``; a reverse import read
-       at runtime keeps its place and its finding, for manual repair.
+       u, other, base, services, api, cli). An enclosing facade that depends on
+       its fragment is also a reverse edge, even at the same layer. A reverse
+       import read only in annotations moves under ``if TYPE_CHECKING:``; a
+       runtime read keeps its place and its finding for repair.
     3. A root alias (facade and operational letters, ``config``,
        ``settings``, names the namespace root re-exports) binds through the
        module's own namespace root; facade modules keep the letters they
@@ -504,14 +505,11 @@ class FlextInfraUtilitiesImportLawNormalization(
             return r[tuple[p.Infra.ImportLawPass | None, str]].fail(
                 f"{namespace_dir} is a namespace without an owned package init",
             )
-        if import_graph is None:
-            return r[tuple[p.Infra.ImportLawPass | None, str]].fail(
-                "import normalization requires its captured runtime graph",
-            )
         project = inputs[2]
-        if project is None:
+        if import_graph is None or project is None:
             return r[tuple[p.Infra.ImportLawPass | None, str]].fail(
-                "Import normalization requires its bound native source project",
+                "import normalization requires its captured runtime graph "
+                "and its bound native source project",
             )
         candidate = cls._import_law_candidate_module(
             project, file_path, source, namespace
@@ -873,7 +871,7 @@ class FlextInfraUtilitiesImportLawNormalization(
 
         """
         scope = state.scope
-        if scope.family_letter is None or scope.direct_imports:
+        if scope.family_letter is None:
             return r[str].ok(value=source)
         elected = cls._import_law_own_family_imports(state)
         if not elected:
@@ -893,13 +891,17 @@ class FlextInfraUtilitiesImportLawNormalization(
             )
             if providers.failure:
                 return r[str].from_failure(providers)
-            if providers.value and not cls._import_law_binds_from(
-                state, bound, next(iter(providers.value))
-            ):
-                upstream[bound] = next(iter(providers.value))
+            if providers.value:
+                bound_from_provider = cls._import_law_binds_from(
+                    state, bound, next(iter(providers.value))
+                ) or cls._import_law_bound_from_ancestor_publisher(
+                    state, bound, tuple(providers.value)
+                )
+                if not bound_from_provider:
+                    upstream[bound] = next(iter(providers.value))
         cls._import_law_own_family_annotations(state.tree, scope.file_path)
         with FlextInfraUtilitiesWorkspaceSnapshot.facade_source_project(
-            scope.project_root,
+            Path(state.source_project.root.real_path),
             planned_sources={scope.file_path: source},
             source_project=state.source_project,
         ) as (project, _sources):
@@ -1061,18 +1063,22 @@ class FlextInfraUtilitiesImportLawNormalization(
             return declaring, owners[0], suffix
         module = declaring.rpartition(".")[0]
         cls._import_law_own_family_publication(state, project, module, owners[0])
-        exported = cls.resolve_declared_binding(
-            project, (module, owners[0]), state.scope.project_root, state.sources or {}
+        exported = member_resolver(
+            m.Infra.SourceClassReference(target=module, attributes=(owners[0],))
         )
         declared = holder.get_scope().get_defined_names().get(owners[0])
         after = member_resolver(f"{module}.{owners[0]}.{suffix}")
         if (
-            exported is None
-            or declared is None
+            declared is None
             or not FlextInfraUtilitiesRopeRuntime.same_name(exported, declared)
             or not FlextInfraUtilitiesRopeRuntime.same_name(before, after)
         ):
-            message = "Own-family replacement changes native identity"
+            message = (
+                "Own-family replacement changes native identity: "
+                f"path={state.scope.file_path} original={qualified} "
+                f"replacement={module}.{owners[0]}.{suffix} "
+                f"declared_owner={declared is not None}"
+            )
             raise ValueError(message)
         return module, owners[0], suffix
 
@@ -1112,6 +1118,33 @@ class FlextInfraUtilitiesImportLawNormalization(
             f"{holder.get_name()}: {state.scope.file_path}"
         )
         raise ValueError(message)
+
+    @classmethod
+    def _import_law_bound_from_ancestor_publisher(
+        cls, state: p.Infra.ImportLawPass, bound: str, providers: tuple[str, ...]
+    ) -> bool:
+        """Return whether an ancestor package import already binds the name.
+
+        A package initializer that lazy-exports a name (``"X": "._utilities"``)
+        publishes it, so ``from <ancestor> import X`` is canonical: demoting it
+        to the declaring module would oscillate against the routing category
+        that hoists published names to their nearest initializer.
+
+        Returns:
+            Whether an ancestor-provider import already binds ``bound``.
+
+        """
+        return any(
+            isinstance(node, ast.ImportFrom)
+            and not node.level
+            and node.module is not None
+            and any((alias.asname or alias.name) == bound for alias in node.names)
+            and any(
+                provider == node.module or provider.startswith(f"{node.module}.")
+                for provider in providers
+            )
+            for node in cls._import_law_iter_imports(state.tree)
+        )
 
     @classmethod
     def _import_law_binds_from(
@@ -1281,6 +1314,20 @@ class FlextInfraUtilitiesImportLawNormalization(
             node, state.parents
         )
 
+    @staticmethod
+    def _import_law_layer_zero_direct_leaf(
+        state: p.Infra.ImportLawPass,
+        target: str,
+    ) -> bool:
+        """Allow a layer-zero settings module to import a leaf directly.
+
+        Returns:
+            Whether the target is a non-root descendant of the module's own
+            namespace and the module keeps direct leaf imports.
+
+        """
+        return state.scope.direct_imports and target != state.scope.namespace
+
     @classmethod
     def _import_law_validate_import_boundary(
         cls, state: p.Infra.ImportLawPass
@@ -1315,7 +1362,9 @@ class FlextInfraUtilitiesImportLawNormalization(
                 ):
                     continue
                 if role == "layer0":
-                    if cls.import_law_layer_zero_helper(state, target):
+                    if cls.import_law_layer_zero_helper(
+                        state, target
+                    ) or cls._import_law_layer_zero_direct_leaf(state, target):
                         continue
                     return r[bool].fail(
                         f"{scope.file_path}: layer-zero module imports its own "
@@ -1334,7 +1383,12 @@ class FlextInfraUtilitiesImportLawNormalization(
                 if provider not in {
                     f"{scope.namespace}.{family.module}",
                     f"{scope.namespace}.{scope.family_letter}",
-                }:
+                } or (
+                    isinstance(node, ast.ImportFrom)
+                    and cls.import_law_family_type_checking_exempt(
+                        node, state, family.module
+                    )
+                ):
                     continue
                 if (
                     isinstance(node, ast.ImportFrom)
@@ -1356,6 +1410,31 @@ class FlextInfraUtilitiesImportLawNormalization(
                     f"{target}.{alias.name}",
                 )
         return r[bool].ok(value=True)
+
+    @classmethod
+    def import_law_family_type_checking_exempt(
+        cls,
+        node: ast.ImportFrom,
+        state: p.Infra.ImportLawPass,
+        family_module: str,
+    ) -> bool:
+        """Whether a family TYPE_CHECKING import is outside the facade ban.
+
+        A type-checking import never executes, so it cannot create the
+        runtime cycle the family ban targets (the layer-zero rationale).
+        The settings/config roots keep ADR-005's stricter law.
+
+        Returns:
+            Whether the import is exempt.
+
+        """
+        if not cls._import_law_inside_type_checking(node, state.parents):
+            return False
+        stem = family_module.split(".", maxsplit=1)[0]
+        return not any(
+            stem == root or stem.startswith(f"{root}_")
+            for root in c.Infra.IMPORT_LAW_ROOT_SINGLETONS
+        )
 
     @staticmethod
     def import_law_runtime_only_layer_zero(module: str, *, namespace: str) -> bool:

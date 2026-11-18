@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated, override
+from typing import override
 
 from flext_infra import c, m, p, r, u
 from flext_infra._conform import FlextInfraConformWiring
@@ -22,17 +22,10 @@ class FlextInfraCodegenMakeBootstrap(
     """Compose the existing Make planner, publisher and receipt verifier."""
 
     model_config = m.ConfigDict(use_enum_values=False)
-    kind: Annotated[
-        c.Infra.ProjectKind | None,
-        m.Field(
-            description=(
-                "Explicit governance kind belonging only to the requested target"
-            ),
-        ),
-    ] = None
 
-    def _admit_new_target(self, requested: Path) -> p.Result[bool]:
-        """Admit a new target's own declaration against the requested kind.
+    @staticmethod
+    def _admit_new_target(requested: Path) -> p.Result[bool]:
+        """Admit a new target's own project declaration.
 
         Returns:
             Success, or the admission failure or kind conflict.
@@ -41,11 +34,6 @@ class FlextInfraCodegenMakeBootstrap(
         admitted = FlextInfraWorkspaceDetector.load_workspace_spec(requested)
         if admitted.failure:
             return r[bool].from_failure(admitted)
-        if self.kind is not None and self.kind is not admitted.value.repository.kind:
-            return r[bool].fail(
-                "bootstrap kind conflicts with the new target's own declaration: "
-                f"{requested}",
-            )
         return r[bool].ok(value=True)
 
     def _conform_existing_target(
@@ -66,7 +54,6 @@ class FlextInfraCodegenMakeBootstrap(
                     if self.effective_dry_run
                     else c.Infra.CodegenConformMode.APPLY
                 ),
-                declaration_kind=self.kind,
             ),
             execution_context=self,
         )
@@ -97,14 +84,19 @@ class FlextInfraCodegenMakeBootstrap(
                     .flat_map(lambda executor: executor.check_managed(request))
                     .map(lambda _: True)
                 )
-            conformed = FlextInfraCodegenConform.Generate.execute_request(
-                request, execution_context=self
+            # Each generation documents the tree the previous one published;
+            # bootstrap repeats until a pass writes nothing (its fixed point).
+            for _ in range(c.Infra.BOOTSTRAP_GENERATION_PASSES_MAX):
+                generated = FlextInfraCodegenConform.Generate.execute_request(
+                    request, execution_context=self
+                )
+                if generated.failure or not generated.value.written_files:
+                    return generated.map(lambda _: True)
+            return r[bool].fail(
+                f"bootstrap of {requested} did not reach a generation fixed point "
+                f"within {c.Infra.BOOTSTRAP_GENERATION_PASSES_MAX} passes"
             )
-        else:
-            conformed = self._conform_existing_target(requested)
-            if self.effective_dry_run:
-                return conformed.map(lambda _: True)
-        return conformed.map(lambda _: True)
+        return self._conform_existing_target(requested).map(lambda _: True)
 
 
 __all__: list[str] = ["FlextInfraCodegenMakeBootstrap"]

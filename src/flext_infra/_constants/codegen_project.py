@@ -182,6 +182,25 @@ class FlextInfraConstantsCodegenProject(FlextInfraConstantsConfig):
     WORKSPACE_MANIFEST_FILENAME: ClassVar[str] = "workspace.yaml"
     UV_LOCK_FILENAME: ClassVar[str] = "uv.lock"
     MISE_LOCK_FILENAME: ClassVar[str] = "mise.lock"
+    UV_SOURCES_KEY: ClassVar[str] = "sources"
+    UV_CONSTRAINT_DEPENDENCIES_KEY: ClassVar[str] = "constraint-dependencies"
+    UV_CONSTRAINT_DEPENDENCIES_SECTION: ClassVar[str] = (
+        "tool.uv.constraint-dependencies"
+    )
+    "Section label of the SSOT-projected security floors."
+    UV_COOLDOWN_COMPILE_ARGUMENTS: ClassVar[tuple[str, ...]] = (
+        "pip",
+        "compile",
+        "--quiet",
+        "--no-deps",
+        "--universal",
+        "--no-header",
+    )
+    "Native resolution, under the project's own cooldown, the admission asks of uv."
+    UPG_BOUNDS_TABLE: ClassVar[tuple[str, ...]] = ("tool", "flext", "upg")
+    "Pyproject table recording the requirement bounds ``make upg`` owns."
+    UPG_FLOOR_OPERATOR: ClassVar[str] = ">="
+    UPG_PIN_OPERATOR: ClassVar[str] = "=="
     MISE_LOCK_JOURNAL_FILENAME: ClassVar[str] = "transaction.json"
     "Staged journal the mise.lock publisher commits before the lock rename."
     MISE_LOCK_NEW_FILENAME: ClassVar[str] = "new.lock"
@@ -192,12 +211,16 @@ class FlextInfraConstantsCodegenProject(FlextInfraConstantsConfig):
         FlextInfraConstantsSharedInfra.MAKEFILE_FILENAME,
     })
     "The Makefile surface: the generated Makefile alone."
+    BOOTSTRAP_GENERATION_PASSES_MAX: ClassVar[int] = 4
+    "Generation passes a new project's bootstrap may take to reach its fixed point."
     MISE_LOCK_ANNOTATION: ClassVar[str] = "~"
     "Lockfile cache-key fragment (``<version>~<hash>``); never a selector."
     MISE_MOVING_SELECTOR: ClassVar[str] = "latest"
     "Selector resolved only by ``make upg`` into the committed ``mise.lock``."
     MISE_VERSION_PLACEHOLDER: ClassVar[str] = "{version}"
     "Placeholder a toolchain version_probe pattern carries for the lock version."
+    MISE_CEILING_PATHS: ClassVar[str] = "MISE_CEILING_PATHS"
+    "Native Mise configuration discovery boundary for the selected owner."
     MISE_IDENTITY_PROBE_ENVIRONMENT: ClassVar[Mapping[str, str]] = MappingProxyType({
         "MISE_DISABLE_UPDATE_WARNING": c.ParserBooleanToken.ONE,
     })
@@ -243,10 +266,6 @@ class FlextInfraConstantsCodegenProject(FlextInfraConstantsConfig):
     TEMPLATE_TEST_MODULE_SKELETON: ClassVar[str] = "test_module_skeleton.py.j2"
     "Scaffold template for canonical test c/t/p/m/u facades."
     TEMPLATE_MODEL_PROTOCOL: ClassVar[str] = "model_protocol.py.j2"
-    TEMPLATE_MODEL_PROTOCOL_CONFORMANCE: ClassVar[str] = (
-        "model_protocol_conformance.py.j2"
-    )
-    MODEL_PROTOCOL_CONFORMANCE_FILENAME: ClassVar[str] = "model_conformance.py"
     PROTOCOL_EXCLUDED_DUNDERS: ClassVar[frozenset[str]] = frozenset({
         "__init__",
         "__new__",

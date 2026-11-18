@@ -6,6 +6,9 @@ valid:
   - |
     from foreign import t
     value: t.ForeignValue
+  - |
+    from flext_core import t
+    value: t.RegisterableService[t.Scalar]
 invalid:
   - |
     from flext_core import t

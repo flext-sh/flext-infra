@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import config, infra
-from tests import c, m, p, tm, u
+from tests import c, e, m, p, tm, u
 
 
 class TestsFlextInfraRopeSnapshot:
@@ -298,7 +298,7 @@ class TestsFlextInfraRopeCandidateViews:
                 desired_mode=owned_before.mode,
             )
             with (
-                u.Tests.raises(ValueError, match="competing declarations"),
+                u.Tests.raises(e.OperationError, match="competing declarations"),
                 u.Infra.facade_source_project(
                     root,
                     declared_files=(competing,),
@@ -513,7 +513,7 @@ class TestsFlextInfraRopeCandidateViews:
                 path=source,
                 before=before,
                 desired_content=None,
-                desired_mode=before.mode,
+                desired_mode=None,
             )
             with u.Infra.facade_source_project(
                 root, declared_files=(retirement,), source_project=project

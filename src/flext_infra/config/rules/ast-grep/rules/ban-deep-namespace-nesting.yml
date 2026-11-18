@@ -1,8 +1,10 @@
 # A facade nests one domain level: `Facade.Domain.Declaration`. A class with
-# three enclosing classes (`Facade.Domain.Declaration.Inner`) is a namespace
-# deeper than the single-nesting law allows; prefix-merge the inner class into
-# its parent domain class. Classes declared inside a function are local data;
-# an enumeration is a leaf value set, not a namespace.
+# three enclosing classes (`Facade.Redundant.Domain.Declaration`) nests a
+# redundant facade level; remove that level and keep the domain and declaration
+# as separate classes. Prefix-merging `Domain.Declaration` is forbidden: it
+# duplicates the inherited namespace instead of reusing it directly. Classes
+# declared inside a function are local data; an enumeration is a leaf value
+# set, not a namespace.
 id: ban-deep-namespace-nesting
 language: python
 severity: error
@@ -34,8 +36,10 @@ rule:
           field: superclasses
           regex: "Enum\\b"
 message: >-
-  `$NAME` nests a namespace three classes deep: flatten it by prefix-merging the
-  inner class into its parent domain class.
-  Detection only: flattening renames the class at every consumer.
+  `$NAME` nests a namespace three classes deep: remove the redundant facade
+  level and keep the canonical `Facade.Domain.Declaration` shape. Never
+  prefix-merge the domain and declaration into one class.
+  Detection only: removing the redundant level renames the class at every
+  consumer.
 metadata:
   enforce: [ENFORCE-069]

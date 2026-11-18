@@ -10,7 +10,7 @@ import keyword
 import os
 import re
 from collections.abc import Callable, Generator, Mapping, MutableMapping, Sequence
-from contextlib import ExitStack, closing, contextmanager
+from contextlib import AbstractContextManager, ExitStack, closing, contextmanager
 from functools import partial
 from pathlib import Path
 
@@ -73,12 +73,12 @@ class FlextInfraCodemodSemanticApply(
             )
         if planned.failure:
             return r[p.Infra.SemanticRenamePlan].from_failure(planned)
-        return cls.publish_source_plan(
+        return cls._publish_source_plan(
             root, target, planned.value, before=observed.value
         ).map(lambda _written: planned.value)
 
     @classmethod
-    def publish_source_plan(
+    def _publish_source_plan(
         cls,
         root: Path,
         target: Path,
@@ -220,6 +220,650 @@ class FlextInfraCodemodSemanticApply(
         )
 
     @classmethod
+    def _build_rewire_plan(
+        cls,
+        root: Path,
+        source_plan: p.Infra.SemanticSourcePlan,
+        intents: Sequence[p.Infra.SemanticRewireIntent],
+        *,
+        pre_move_sources: Mapping[Path, str],
+    ) -> p.Result[p.Infra.SemanticRenamePlan]:
+        """Retain census identities with the existing authenticated source receipt.
+
+        Supplier bytes stay in the candidate's original observations. Portable
+        intent carries only relative ownership and native binding identities;
+        external invocations derive their own edits instead of replaying this
+        producer's paths or offsets.
+
+        Returns:
+            The existing rename artifact with its portable relocation intent.
+
+        """
+        if not intents:
+            return r[p.Infra.SemanticRenamePlan].fail(
+                "native census has no relocation intent"
+            )
+        supplier = root.resolve().relative_to(source_plan.candidate.workspace)
+        if any(intent.supplier_root != supplier for intent in intents):
+            return r[p.Infra.SemanticRenamePlan].fail(
+                "native relocation supplier differs from its captured owner"
+            )
+        observed = {state.path: state.content for state in source_plan.candidate.inputs}
+        overlays = {
+            path.relative_to(source_plan.candidate.workspace): content
+            for path, content in pre_move_sources.items()
+            if observed.get(path) != content.encode(c.DEFAULT_ENCODING)
+        }
+        return r[p.Infra.SemanticRenamePlan].ok(
+            m.Infra.SemanticRenamePlan(
+                candidate=source_plan.candidate,
+                consumer_roots=source_plan.consumer_roots,
+                decisions=(),
+                rewires=tuple(intents),
+                rewire_sources=overlays,
+                edits=cls._rename_edits(
+                    u.Infra.candidate_python_sources(
+                        source_plan.candidate, source_plan.candidate.inputs
+                    ),
+                    source_plan.candidate.updates,
+                ),
+            )
+        )
+
+    @classmethod
+    def rewire_artifact_file_plans(
+        cls,
+        root: Path,
+        source_plan: p.Infra.SemanticSourcePlan,
+        intents: Sequence[p.Infra.SemanticRewireIntent],
+        *,
+        pre_move_sources: Mapping[Path, str],
+        directory: Path,
+    ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]]:
+        """Plan one immutable native artifact in the configured versioned directory.
+
+        Returns:
+            A file plan belonging to the same coherent source publication batch.
+
+        """
+        outcome = r[tuple[p.Infra.CodegenFilePlan, ...]]
+        if not intents:
+            return outcome.ok(())
+        built = cls._build_rewire_plan(
+            root,
+            source_plan,
+            intents,
+            pre_move_sources=pre_move_sources,
+        )
+        if built.failure:
+            return outcome.from_failure(built)
+        return cls._plan_rewire_artifact(root, built.value, directory=directory)
+
+    @classmethod
+    def _plan_rewire_artifact(
+        cls,
+        root: Path,
+        plan: p.Infra.SemanticRenamePlan,
+        *,
+        directory: Path,
+    ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]]:
+        """Plan the immutable artifact for one authenticated rewire.
+
+        Returns:
+            The file plan, the unchanged outcome, or the first refusal.
+
+        """
+        outcome = r[tuple[p.Infra.CodegenFilePlan, ...]]
+        root = root.resolve()
+        fingerprint = u.Cli.sha256_content(
+            plan.model_dump_json(indent=2, round_trip=True)
+        )
+        target = u.Infra.contained_write_targets(
+            root, (root / directory / f"{fingerprint}.json",)
+        )[0]
+        before = u.Cli.atomic_read_binary_file_state(target)
+        if before.failure:
+            return outcome.from_failure(before)
+        serialized = cls._validated_source_plan_content(
+            before.value, plan, target, root
+        )
+        if serialized.failure:
+            return outcome.from_failure(serialized)
+        content = f"{serialized.value}\n".encode(c.DEFAULT_ENCODING)
+        if before.value.content == content:
+            return outcome.ok(())
+        if before.value.content is not None:
+            return outcome.fail("immutable native rewire artifact content conflicts")
+        return outcome.ok((
+            m.Infra.CodegenFilePlan(
+                project=root,
+                path=target,
+                before=before.value,
+                desired_content=content,
+                desired_mode=config.Infra.codegen.modes.file_default,
+            ),
+        ))
+
+    @staticmethod
+    def _rewire_import_root(path: Path, module: str) -> Path:
+        """Resolve a native module's import root without assuming a src layout.
+
+        Returns:
+            The source root serving the qualified module.
+
+        Raises:
+            ValueError: The module identity disagrees with its observed resource.
+
+        """
+        suffix = Path(*module.split("."))
+        suffix = (
+            suffix / c.Infra.INIT_PY
+            if path.name == c.Infra.INIT_PY
+            else suffix.with_suffix(c.Infra.EXT_PYTHON)
+        )
+        if path.parts[-len(suffix.parts) :] != suffix.parts:
+            msg = f"supplier module identity disagrees with source path: {module}"
+            raise ValueError(msg)
+        return path.parents[len(suffix.parts) - 1]
+
+    @classmethod
+    def _rewire_supplier_sources(
+        cls,
+        artifact: p.Infra.SemanticRenamePlan,
+        project: p.Infra.RopeProject,
+    ) -> tuple[dict[Path, Path], dict[Path, str | None]]:
+        """Rebase recorded supplier sources onto the current native installation.
+
+        Returns:
+            Recorded/current import roots and the original pre-move source view.
+
+        Raises:
+            ValueError: A destination is absent or supplier provenance conflicts.
+
+        """
+        roots: dict[Path, Path] = {}
+        for intent in artifact.rewires:
+            if (
+                intent.source_scope.rsplit(".", 1)[-1]
+                != intent.destination_scope.rsplit(".", 1)[-1]
+            ):
+                msg = (
+                    "binding relocation preserves its name; naming is a preceding "
+                    "native phase"
+                )
+                raise ValueError(msg)
+            destination = project.find_module(intent.destination_module)
+            if destination is None or destination.is_folder():
+                msg = (
+                    f"rewire supplier destination is absent: "
+                    f"{intent.destination_module}"
+                )
+                raise ValueError(msg)
+            if intent.kind != "module":
+                u.Infra.qualified_name(
+                    project,
+                    intent.destination_scope,
+                    module_name=intent.destination_module,
+                )
+            recorded = cls._rewire_import_root(
+                artifact.candidate.workspace
+                / intent.supplier_root
+                / intent.destination_path,
+                intent.destination_module,
+            )
+            current = cls._rewire_import_root(
+                Path(destination.real_path), intent.destination_module
+            )
+            if roots.setdefault(recorded, current) != current:
+                msg = (
+                    "portable supplier source root resolves to conflicting "
+                    "installations"
+                )
+                raise ValueError(msg)
+        sources: dict[Path, str | None] = {}
+        retained = {
+            state.path: None
+            if state.content is None
+            else state.content.decode(c.DEFAULT_ENCODING)
+            for state in artifact.candidate.inputs
+            if state.path.suffix == c.Infra.EXT_PYTHON
+        }
+        retained.update({
+            artifact.candidate.workspace / path: source
+            for path, source in artifact.rewire_sources.items()
+        })
+        for original, source in retained.items():
+            for recorded, current in roots.items():
+                if original.is_relative_to(recorded):
+                    sources[current / original.relative_to(recorded)] = source
+        return roots, sources
+
+    @staticmethod
+    def _rewire_identifier_offset(
+        project: p.Infra.RopeProject,
+        module: str,
+        scope: str,
+        sources: Mapping[Path, str | None],
+    ) -> int:
+        """Read a binding's identifier position from its authenticated native source.
+
+        Returns:
+            The native declaration identifier offset in the current source view.
+
+        Raises:
+            ValueError: The identity lacks a source declaration or identifier.
+
+        """
+        binding = u.Infra.qualified_name(project, scope, module_name=module)
+        source_module, line = binding.get_definition_location()
+        resource = None if source_module is None else source_module.get_resource()
+        if resource is None or line is None:
+            msg = f"portable rewire binding has no native source: {module}.{scope}"
+            raise ValueError(msg)
+        source = sources[Path(resource.real_path)]
+        if source is None:
+            msg = f"portable rewire source is absent: {module}.{scope}"
+            raise ValueError(msg)
+        offset = u.Infra.find_identifier_offset_in_lines(
+            source.splitlines(keepends=True),
+            line=line,
+            symbol=scope.rsplit(".", 1)[-1],
+            pyname=binding,
+        )
+        if offset is None:
+            msg = f"portable rewire binding has no native identifier: {module}.{scope}"
+            raise ValueError(msg)
+        return offset
+
+    @classmethod
+    def _rebuild_rewire_plan(
+        cls,
+        root: Path,
+        artifact: p.Infra.SemanticRenamePlan,
+        workspace: p.Infra.RopeWorkspaceDsl,
+    ) -> p.Result[p.Infra.SemanticSourcePlan]:
+        """Derive this consumer's native edits using the supplier's saved source view.
+
+        Supplier overlays exist only in Rope. Native transfer effects on supplier
+        files are discarded; the final candidate validates consumer edits against
+        the actual installed destination, with fresh physical observations.
+
+        Returns:
+            This checkout's authenticated consumer candidate, never saved edits.
+
+        """
+        root = root.resolve()
+        roots, sources = cls._rewire_supplier_sources(artifact, workspace.rope_project)
+        originals = {
+            state.path: state
+            for project in u.Infra.import_project_roots(root)
+            for path in u.Infra.ast_grep_scan_targets(project)
+            for state in (
+                u.Cli.atomic_read_binary_file_state(
+                    project / path, required=True
+                ).unwrap(),
+            )
+        }
+        consumers = tuple(
+            path for path in originals if path.suffix == c.Infra.EXT_PYTHON
+        )
+        sources.update({
+            path: content.decode(c.DEFAULT_ENCODING)
+            for path in consumers
+            if (content := originals[path].content) is not None
+        })
+        for path in sources:
+            if path not in originals:
+                originals[path] = u.Cli.atomic_read_binary_file_state(path).unwrap()
+        source_folders = tuple(
+            dict.fromkeys((
+                *(
+                    Path(folder.real_path)
+                    for folder in workspace.rope_project.get_source_folders()
+                ),
+                *roots.values(),
+            ))
+        )
+        view_root = Path(os.path.commonpath((root, *source_folders)))
+        with u.Infra.open_project(
+            view_root,
+            project_roots=u.Infra.import_project_roots(root),
+            fscommands=FlextInfraRopeProject.OverlayFiles(()),
+        ) as live:
+            python_folders = workspace.rope_project.get_python_path_folders()
+            election = cls._planning_election(
+                live,
+                tuple(
+                    path.relative_to(view_root).as_posix() for path in source_folders
+                ),
+                tuple(
+                    dict.fromkeys((
+                        *(str(path) for path in source_folders),
+                        *(folder.real_path for folder in python_folders),
+                    ))
+                ),
+            )
+
+            def planned(
+                current_sources: Mapping[Path, str | None],
+                selected: Sequence[Path] | None = None,
+            ) -> tuple[
+                tuple[p.Infra.CodegenFilePlan, ...],
+                AbstractContextManager[p.Infra.RopeProject],
+            ]:
+                scope = set(current_sources) if selected is None else set(selected)
+                plans = tuple(
+                    m.Infra.CodegenFilePlan(
+                        project=view_root,
+                        path=path,
+                        before=originals[path],
+                        desired_content=None
+                        if source is None
+                        else source.encode(c.DEFAULT_ENCODING),
+                        desired_mode=None
+                        if source is None
+                        else (
+                            originals[path].mode
+                            or config.Infra.codegen.modes.file_default
+                        ),
+                    )
+                    for path, source in current_sources.items()
+                    if path in scope
+                )
+                return plans, closing(
+                    u.Infra.planned_project(
+                        live,
+                        election=election,
+                        declared_files=plans,
+                        observations=tuple(originals.values()),
+                    )
+                )
+
+            cls._replay_native_rewires(planned, artifact, roots, sources, originals)
+        updates = {
+            path: source
+            for path in consumers
+            if (source := sources[path]) is not None
+            and source.encode(c.DEFAULT_ENCODING) != originals[path].content
+        }
+        return FlextInfraStagedPackage.plan_sources(
+            root,
+            updates,
+            options=m.Infra.StageSourceOptions.model_validate({
+                "inputs": tuple(originals.values())
+            }),
+        ).map(lambda candidate: m.Infra.SemanticSourcePlan(candidate=candidate))
+
+    @classmethod
+    def _current_rewire_sites(
+        cls,
+        opened: AbstractContextManager[p.Infra.RopeProject],
+        intents: Sequence[p.Infra.SemanticRewireIntent],
+        consumers: tuple[Path, ...],
+    ) -> frozenset[tuple[Path, int]]:
+        """Prove current sites against every homonymous destination in the cohort.
+
+        Returns:
+            Exact native occurrence sites in the current consumer source epoch.
+
+        """
+        with opened as project:
+            sites = set[tuple[Path, int]]()
+            for intent in intents:
+                path = intent.destination_scope or intent.destination_module
+                binding = u.Infra.qualified_name(
+                    project,
+                    path,
+                    module_name=None
+                    if intent.kind == "module"
+                    else intent.destination_module,
+                )
+                finder = u.Infra.create_occurrence_finder(
+                    project,
+                    path.rsplit(".", 1)[-1],
+                    binding,
+                    imports=False,
+                    in_hierarchy=False,
+                )
+                sites.update(
+                    (consumer, occurrence.offset)
+                    for consumer in consumers
+                    for occurrence in finder.find_occurrences(
+                        resource=u.Infra.file_resource_at(project, consumer)
+                    )
+                )
+            return frozenset(sites)
+
+    @classmethod
+    def _module_rewire_plans(
+        cls,
+        project: p.Infra.RopeProject,
+        move: tuple[tuple[Path, Path], tuple[p.Infra.CodegenFilePlan, ...]],
+        sources: Mapping[Path, str | None],
+        originals: Mapping[Path, p.Cli.AtomicFileState],
+    ) -> tuple[p.Infra.CodegenFilePlan, ...]:
+        """Return the native module move, preserving its authenticated source view.
+
+        Returns:
+            The native module move plans.
+
+        """
+        (origin, target), declared = move
+        return u.Infra.plan_module_move(
+            project,
+            origin,
+            destination_file=target,
+            inputs=u.Infra.NativeSourceView(
+                {
+                    path: source
+                    for path, source in sources.items()
+                    if source is not None
+                },
+                tuple(originals.values()),
+                declared_files=declared,
+            ),
+        ).unwrap()
+
+    @classmethod
+    def _binding_rewire_changes(
+        cls,
+        project: p.Infra.RopeProject,
+        intent: p.Infra.SemanticRewireIntent,
+        endpoints: tuple[Path, Path],
+        sources: Mapping[Path, str | None],
+        selected: Callable[[p.Infra.RopeOccurrence], bool],
+    ) -> p.Infra.RopeChangeSet | None:
+        """Return the native binding transfer for one resolved declaration.
+
+        Returns:
+            Native unapplied changes retaining the source binding's kind, or None
+            when a method transfer is already complete.
+
+        """
+        origin, target = endpoints
+        destination_owner = intent.destination_scope.rpartition(".")[0]
+        if intent.kind == "method":
+            return u.Infra.method_transfer_changes(
+                project,
+                m.Infra.RopeMethodTransfer(
+                    id=f"{intent.source_module}.{intent.source_scope}",
+                    destination=(intent.destination_module, destination_owner),
+                    methods=((intent.source_module, intent.source_scope),),
+                    receiver_rewrites=intent.receiver_rewrites,
+                ),
+                tuple(path for path, source in sources.items() if source is not None),
+                u.Infra.source_member_resolver(project, sources={}),
+                match_filter=selected,
+            )
+        return u.Infra.move_binding_changes(
+            project,
+            u.Infra.file_resource_at(project, origin),
+            cls._rewire_identifier_offset(
+                project, intent.source_module, intent.source_scope, sources
+            ),
+            u.Infra.file_resource_at(project, target),
+            options=m.Infra.RopeMoveOptions(
+                resources=tuple(
+                    u.Infra.file_resource_at(project, path)
+                    for path in dict.fromkeys((
+                        *(
+                            path
+                            for path in sources
+                            if path.suffix == c.Infra.EXT_PYTHON
+                        ),
+                        origin,
+                        target,
+                    ))
+                ),
+                destination_offset=None
+                if not destination_owner
+                else cls._rewire_identifier_offset(
+                    project,
+                    intent.destination_module,
+                    destination_owner,
+                    sources,
+                ),
+                match_filter=selected,
+            ),
+        )
+
+    @classmethod
+    def _absorb_module_plans(
+        cls,
+        moved: tuple[p.Infra.CodegenFilePlan, ...],
+        sources: MutableMapping[Path, str | None],
+    ) -> None:
+        """Apply native module move plans to the in-memory source overlay.
+
+        Raises:
+            ValueError: If a native module plan escapes the source view.
+
+        """
+        for plan in moved:
+            if plan.path not in sources:
+                msg = "native module rewire escaped its source view"
+                raise ValueError(msg)
+            sources[plan.path] = (
+                None
+                if plan.desired_content is None
+                else plan.desired_content.decode(c.DEFAULT_ENCODING)
+            )
+
+    @classmethod
+    def _absorb_rewire_changes(
+        cls,
+        project: p.Infra.RopeProject,
+        changes: p.Infra.RopeChangeSet,
+        sources: MutableMapping[Path, str | None],
+    ) -> None:
+        """Apply native content changes to the in-memory source overlay.
+
+        Raises:
+            TypeError: If a native binding rewire returned a non-content effect.
+            ValueError: If a native binding rewire escaped the source view.
+
+        """
+        consumers = frozenset(
+            path for path in sources if path.suffix == c.Infra.EXT_PYTHON
+        )
+        for change in changes.changes:
+            if not isinstance(change, p.Infra.RopeChangeContents):
+                msg = "native binding rewire returned a non-content effect"
+                raise TypeError(msg)
+            path = Path(change.resource.real_path)
+            if path not in sources:
+                msg = "native binding rewire escaped its authenticated source view"
+                raise ValueError(msg)
+            previous = sources[path]
+            sources[path] = (
+                u.Infra.remove_orphaned_imports(
+                    project, change.resource, previous, change.new_contents
+                )
+                if path in consumers and previous is not None
+                else change.new_contents
+            )
+
+    @classmethod
+    def _replay_native_rewires(
+        cls,
+        planned: Callable[
+            [Mapping[Path, str | None], Sequence[Path] | None],
+            tuple[
+                tuple[p.Infra.CodegenFilePlan, ...],
+                AbstractContextManager[p.Infra.RopeProject],
+            ],
+        ],
+        artifact: p.Infra.SemanticRenamePlan,
+        roots: Mapping[Path, Path],
+        sources: MutableMapping[Path, str | None],
+        originals: Mapping[Path, p.Cli.AtomicFileState],
+    ) -> None:
+        """Replay old supplier sources while proving current destination sites."""
+        # The destination is resolved against the live supplier, so retain
+        # only consumer overlays when looking for already-current references.
+        consumers = tuple(
+            path
+            for path in sources
+            if path.suffix == c.Infra.EXT_PYTHON
+            and not any(path.is_relative_to(root) for root in roots.values())
+        )
+        for intent in artifact.rewires:
+            recorded = cls._rewire_import_root(
+                artifact.candidate.workspace
+                / intent.supplier_root
+                / intent.source_path,
+                intent.source_module,
+            )
+            current = roots[recorded]
+            original = artifact.candidate.workspace / intent.supplier_root
+            origin = current / (original / intent.source_path).relative_to(recorded)
+            target = current / (original / intent.destination_path).relative_to(
+                recorded
+            )
+            plans, opened = planned(sources, None)
+            with opened as project:
+                if intent.kind == "module":
+                    moved = cls._module_rewire_plans(
+                        project, ((origin, target), plans), sources, originals
+                    )
+                    cls._absorb_module_plans(moved, sources)
+                    continue
+                terminal = intent.destination_scope.rsplit(".", 1)[-1]
+                retained = cls._current_rewire_sites(
+                    planned(sources, consumers)[1],
+                    tuple(
+                        other
+                        for other in artifact.rewires
+                        if other.kind != "module"
+                        and other.destination_scope.rsplit(".", 1)[-1] == terminal
+                    ),
+                    consumers,
+                )
+                public = u.Infra.preserved_receiver_reference_filter(
+                    project, intent.public_routes
+                )
+
+                def selected(
+                    occurrence: p.Infra.RopeOccurrence,
+                    public: Callable[[p.Infra.RopeOccurrence], bool] = public,
+                    retained: frozenset[tuple[Path, int]] = retained,
+                ) -> bool:
+                    resource = occurrence.resource
+                    if (
+                        resource is not None
+                        and (Path(resource.real_path), occurrence.offset) in retained
+                    ):
+                        return False
+                    return public(occurrence)
+
+                changes = cls._binding_rewire_changes(
+                    project, intent, (origin, target), sources, selected
+                )
+                if changes is None:
+                    continue
+                cls._absorb_rewire_changes(project, changes, sources)
+
+    @classmethod
     def plan_module_names(
         cls,
         root: Path,
@@ -316,6 +960,28 @@ class FlextInfraCodemodSemanticApply(
             reason=reason,
         )
 
+    @staticmethod
+    def _skips_module_naming(
+        path: Path,
+        root: Path,
+        workspace: p.Infra.RopeWorkspaceDsl,
+    ) -> bool:
+        """Return whether a path owns no naming decision.
+
+        Dunder modules and paths outside the checkout never rename; legacy
+        federation trees outside the inventoried modules are left untouched.
+
+        Returns:
+            ``True`` when the path is not a candidatesource.
+
+        """
+        name = path.stem
+        if not path.is_relative_to(root.resolve()) or (
+            name.startswith("__") and name.endswith("__")
+        ):
+            return True
+        return workspace.module(path) is None
+
     @classmethod
     def _module_naming_candidates(
         cls,
@@ -338,11 +1004,9 @@ class FlextInfraCodemodSemanticApply(
         """
         selected: list[tuple[Path, str]] = []
         for path in sorted(sources):
-            name = path.stem
-            if not path.is_relative_to(root.resolve()) or (
-                name.startswith("__") and name.endswith("__")
-            ):
+            if cls._skips_module_naming(path, root, workspace):
                 continue
+            name = path.stem
             replacement = name.lstrip("_")
             part = re.search(r"_parts?(?:_?\d+)?$", name)
             if part is not None:
@@ -357,6 +1021,11 @@ class FlextInfraCodemodSemanticApply(
                     workspace, path, replacement
                 )
             if replacement == name:
+                continue
+            # A sibling data directory (YAML/JSON resources, no Python source)
+            # owns the public basename; the private module keeps its prefix.
+            data_dir = path.parent / replacement
+            if data_dir.is_dir() and not any(data_dir.rglob("*.py")):
                 continue
             # A public name of the parent package (the `config`/`settings`
             # singletons) cannot also be a submodule: importing the submodule
@@ -707,7 +1376,7 @@ class FlextInfraCodemodSemanticApply(
             )
         scopes = tuple(
             dict.fromkeys(
-                u.Infra.import_project_roots(path)[0].resolve()
+                u.Infra.rope_repository_root(path).resolve()
                 for path in (root, *consumer_roots)
             )
         )
@@ -734,19 +1403,27 @@ class FlextInfraCodemodSemanticApply(
         return FlextInfraStagedPackage.plan_sources(
             scopes[0],
             {},
-            options=m.Infra.StageSourceOptions(
-                workspaces=scopes if len(scopes) > 1 else (),
-                snapshot=snapshot,
-                inputs=tuple(
-                    cls._input_state(path, snapshot)
-                    for path in dict.fromkeys(
-                        project.resolve() / target
-                        for scope in scopes
-                        for project in u.Infra.import_project_roots(scope)
-                        for target in u.Infra.ast_grep_scan_targets(project.resolve())
+            options=m.Infra.StageSourceOptions.model_validate({
+                "workspaces": scopes,
+                "snapshot": (snapshot),
+                "inputs": (
+                    tuple(
+                        cls._input_state(path, snapshot)
+                        for path in dict.fromkeys(
+                            project.resolve() / target
+                            for scope in scopes
+                            for project in (
+                                u.Infra.import_project_roots(scope)
+                                if (scope / c.Infra.GITMODULES).is_file()
+                                else (scope,)
+                            )
+                            for target in u.Infra.ast_grep_scan_targets(
+                                project.resolve()
+                            )
+                        )
                     )
                 ),
-            ),
+            }),
         )
 
     @staticmethod
@@ -779,11 +1456,11 @@ class FlextInfraCodemodSemanticApply(
             The election the overlay project resolves imports through.
 
         """
-        return m.Infra.RopeProjectElection(
-            source_folders=source_folders,
-            ignored_resources=tuple(sorted(config.Infra.codegen.source_scan_ignored)),
-            extension_modules=u.Infra.extension_module_names(live),
-            python_path_folders=python_folders,
+        return u.Infra.native_election(live).model_copy(
+            update={
+                "source_folders": source_folders,
+                "python_path_folders": python_folders,
+            }
         )
 
     @classmethod
@@ -850,7 +1527,11 @@ class FlextInfraCodemodSemanticApply(
                 tuple[p.Infra.SemanticSourcePlan, tuple[tuple[Path, Path], ...]]
             ].from_failure(captured_sources)
         baseline = captured_sources.value
-        captured = m.Infra.CodemodBindingSnapshot(states=baseline.inputs)
+        captured = m.Infra.CodemodBindingSnapshot(
+            states=tuple(
+                m.Cli.AtomicFileState.model_validate(state) for state in baseline.inputs
+            )
+        )
         original = u.Infra.candidate_python_sources(baseline, captured.states)
         with ExitStack() as stack:
             # One native project per repository; a module elects in its owner only.
@@ -911,17 +1592,17 @@ class FlextInfraCodemodSemanticApply(
         return FlextInfraStagedPackage.plan_sources(
             scopes[0],
             updates,
-            options=m.Infra.StageSourceOptions(
-                workspaces=scopes if len(scopes) > 1 else (),
-                modes={
+            options=m.Infra.StageSourceOptions.model_validate({
+                "workspaces": (scopes if len(scopes) > 1 else ()),
+                "modes": ({
                     target: state.mode
                     for source, target in moves
                     for state in staged_inputs.value
                     if state.path == source and state.mode is not None
-                },
-                inputs=staged_inputs.value,
-                snapshot=snapshot,
-            ),
+                }),
+                "inputs": (staged_inputs.value),
+                "snapshot": (snapshot),
+            }),
         ).map(
             lambda candidate: (
                 m.Infra.SemanticSourcePlan(
@@ -975,7 +1656,12 @@ class FlextInfraCodemodSemanticApply(
         if any(state.content is not None for state in destinations):
             return result_type.fail("native module destination appeared before staging")
         return result_type.ok(
-            m.Infra.CodemodBindingSnapshot(states=(*base_states, *destinations)).states
+            m.Infra.CodemodBindingSnapshot(
+                states=tuple(
+                    m.Cli.AtomicFileState.model_validate(state)
+                    for state in (*base_states, *destinations)
+                )
+            ).states
         )
 
     @classmethod
@@ -998,7 +1684,11 @@ class FlextInfraCodemodSemanticApply(
             dict.fromkeys(
                 project
                 for scope in scopes
-                for project in u.Infra.import_project_roots(scope)
+                for project in (
+                    u.Infra.import_project_roots(scope)
+                    if (scope / c.Infra.GITMODULES).is_file()
+                    else (scope,)
+                )
             )
         )
         with ExitStack() as stack:
@@ -1094,7 +1784,17 @@ class FlextInfraCodemodSemanticApply(
                 message = f"candidate source has no authenticated input witness: {path}"
                 raise ValueError(message)
             desired = None if source is None else source.encode(c.DEFAULT_ENCODING)
-            if before.content == desired:
+            mode = (
+                None
+                if source is None
+                else candidate.modes.get(
+                    path,
+                    before.mode
+                    if before.content is not None
+                    else config.Infra.codegen.modes.file_default,
+                )
+            )
+            if before.content == desired and before.mode == mode:
                 continue
             planned.append(
                 m.Infra.CodegenFilePlan(
@@ -1102,14 +1802,7 @@ class FlextInfraCodemodSemanticApply(
                     path=path,
                     before=before,
                     desired_content=desired,
-                    desired_mode=None
-                    if desired is None
-                    else candidate.modes.get(
-                        path,
-                        before.mode
-                        if before.content is not None
-                        else config.Infra.codegen.modes.file_default,
-                    ),
+                    desired_mode=mode,
                 )
             )
         return tuple(planned)
@@ -1147,7 +1840,7 @@ class FlextInfraCodemodSemanticApply(
         cli.display_text(
             f"semantic rename {action}: "
             f"decisions={len(artifact.decisions)} "
-            f"files={len(artifact.candidate.updates)} runtime=validated"
+            f"rewires={len(artifact.rewires)} runtime=validated"
         )
         return r[bool].ok(value=True)
 
@@ -1175,7 +1868,7 @@ class FlextInfraCodemodSemanticApply(
         cls,
         root: Path,
         request: p.Infra.ModCommand,
-    ) -> p.Result[tuple[p.Infra.SemanticRenamePlan, m.Cli.AtomicFileState]]:
+    ) -> p.Result[tuple[p.Infra.SemanticRenamePlan, p.Cli.AtomicFileState]]:
         """Authenticate the semantic rename driver and parse its artifact.
 
         Returns:
@@ -1186,13 +1879,14 @@ class FlextInfraCodemodSemanticApply(
         if request.rename_plan is None:
             return loaded.fail("semantic rename consumption requires an artifact")
         path = (root / request.rename_plan).resolve()
-        if not path.is_relative_to(root):
-            return loaded.fail("semantic rename artifact escapes workspace")
         driver = u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
         if driver.content is None:
             return loaded.fail(f"semantic rename artifact disappeared: {path}")
+        artifact = m.Infra.SemanticRenamePlan.model_validate_json(driver.content)
+        if not path.is_relative_to(root) and not artifact.rewires:
+            return loaded.fail("semantic rename artifact escapes workspace")
         return loaded.ok((
-            m.Infra.SemanticRenamePlan.model_validate_json(driver.content),
+            artifact,
             driver,
         ))
 
@@ -1201,7 +1895,7 @@ class FlextInfraCodemodSemanticApply(
         cls,
         request: p.Infra.ModCommand,
         workspace: p.Infra.RopeWorkspaceDsl,
-        pair: tuple[p.Infra.SemanticRenamePlan, m.Cli.AtomicFileState],
+        pair: tuple[p.Infra.SemanticRenamePlan, p.Cli.AtomicFileState],
     ) -> p.Result[bool]:
         """Re-derive, candidate-validate, and re-authenticate the artifact.
 
@@ -1212,14 +1906,54 @@ class FlextInfraCodemodSemanticApply(
         root = u.Infra.resolve_repository_root_or_cwd(request.repository_root)
         root = u.Infra.import_project_roots(root)[0]
         artifact, driver = pair
+        return cls.plan_rename_artifact(root, artifact, driver, workspace).flat_map(
+            lambda seed: cls._publish_authenticated_source(
+                root,
+                seed,
+                publish=request.apply
+                and not request.check
+                and not request.dry_run_mode,
+            ).map(lambda _published: True)
+        )
+
+    @classmethod
+    def plan_rename_artifact(
+        cls,
+        root: Path,
+        artifact: p.Infra.SemanticRenamePlan,
+        driver: p.Cli.AtomicFileState,
+        workspace: p.Infra.RopeWorkspaceDsl,
+    ) -> p.Result[p.Infra.SemanticSourcePlan]:
+        """Admit native intent as this invocation's authenticated source seed.
+
+        Returns:
+            A fresh portable consumer candidate or the authenticated exact rename.
+
+        """
+        outcome = r[p.Infra.SemanticSourcePlan]
+        if artifact.rewires:
+            rebuilt = cls._rebuild_rewire_plan(root, artifact, workspace)
+            if rebuilt.failure:
+                return outcome.from_failure(rebuilt)
+            if any(
+                state.path == driver.path for state in rebuilt.value.candidate.inputs
+            ):
+                return outcome.fail(
+                    "portable rewire driver aliases a governed source input"
+                )
+            observed = u.Cli.atomic_verify_binary_file_states((driver,))
+            if observed.failure:
+                return outcome.from_failure(observed)
+            candidate = rebuilt.value.candidate.model_copy(
+                update={
+                    "inputs": (*rebuilt.value.candidate.inputs, driver),
+                }
+            )
+            return outcome.ok(m.Infra.SemanticSourcePlan(candidate=candidate))
         verified = cls.authenticate_rename_candidate(root, artifact, driver, workspace)
         if verified.failure:
-            return verified
-        return cls._publish_authenticated_source(
-            root,
-            artifact,
-            publish=request.apply and not request.check and not request.dry_run_mode,
-        ).map(lambda _published: True)
+            return outcome.from_failure(verified)
+        return outcome.ok(artifact)
 
     @classmethod
     def authenticate_rename_candidate(
@@ -1664,6 +2398,9 @@ class FlextInfraCodemodSemanticApply(
                 root, rope_repository_root=authority, source_project=source_project
             ) as captured,
         ):
+            # Contract normalization admits model envelopes through the
+            # composition-owned checker, which the captured graph must carry.
+            captured.model_envelope_checker = rope_workspace.model_envelope_checker
             original = cls.source_inventory(
                 root, preflight, source_project=source_project
             )
@@ -2202,33 +2939,6 @@ class FlextInfraCodemodSemanticApply(
                     ),
                 )
         return tuple(edits)
-
-    @staticmethod
-    def apply_plan(
-        sources: MutableMapping[Path, str],
-        edits: Sequence[p.Infra.SemanticMigrationEdit],
-        changed: set[Path],
-        *,
-        retirements: t.Infra.RopeMutablePaths | None = None,
-    ) -> None:
-        """Compose validated edit plans in memory without partial effects.
-
-        Raises:
-            ValueError: If semantic plans disagree for.
-
-        """
-        for edit in edits:
-            if edit.retire_file:
-                if retirements is None or edit.updated_source:
-                    msg = f"semantic retirement has no effect carrier: {edit.file_path}"
-                    raise ValueError(msg)
-                retirements.add(edit.file_path)
-            current = sources.get(edit.file_path)
-            if current != edit.original_source:
-                msg = f"semantic plans disagree for {edit.file_path}"
-                raise ValueError(msg)
-            sources[edit.file_path] = edit.updated_source
-            changed.add(edit.file_path)
 
     @classmethod
     def _publish(

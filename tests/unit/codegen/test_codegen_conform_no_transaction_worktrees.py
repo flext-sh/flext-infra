@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import infra
-from tests import c, tm, u
+from tests import c, p, tm, u
 
 _TRANSACTION_MARKER = "-transaction-"
 
@@ -39,7 +39,9 @@ class TestsFlextInfraCodegenConformNoTransactionWorktrees:
         )
 
     @staticmethod
-    def _seed_committed_drift(tmp_path: Path) -> tuple[Path, Path]:
+    def _seed_committed_drift(
+        tmp_path: Path, session_runtime: p.Tests.SessionRuntime
+    ) -> tuple[Path, Path]:
         """Materialize the managed tree, then commit one drifted managed Makefile.
 
         Returns the conformed repository root and the drifted file: the shared
@@ -49,7 +51,7 @@ class TestsFlextInfraCodegenConformNoTransactionWorktrees:
             The resulting ``tuple[Path, Path]``.
 
         """
-        root = u.Tests.WorktreeFixture.conformed_root(tmp_path)
+        root = u.Tests.WorktreeFixture.conformed_root(tmp_path, session_runtime)
         drifted = root / c.Infra.MAKEFILE_FILENAME
         drifted.write_text(
             f"{drifted.read_text(encoding='utf-8')}# managed drift\n",
@@ -61,9 +63,10 @@ class TestsFlextInfraCodegenConformNoTransactionWorktrees:
     def test_drift_check_error_path_leaves_no_transaction_worktree(
         self,
         tmp_path: Path,
+        session_runtime: p.Tests.SessionRuntime,
     ) -> None:
         """The read-only drift exit fails loud without spawning any worktree."""
-        root, drifted = self._seed_committed_drift(tmp_path)
+        root, drifted = self._seed_committed_drift(tmp_path, session_runtime)
         before = self._transaction_worktree_siblings(root)
         drifted_bytes = drifted.read_bytes()
 
@@ -75,16 +78,17 @@ class TestsFlextInfraCodegenConformNoTransactionWorktrees:
             ),
         )
 
-        tm.fail(result, has="codegen drift detected")
+        tm.fail(result, has=str(drifted))
         tm.that(self._transaction_worktree_siblings(root), eq=before)
         tm.that(drifted.read_bytes(), eq=drifted_bytes)
 
     def test_apply_convergence_leaves_no_transaction_worktree(
         self,
         tmp_path: Path,
+        session_runtime: p.Tests.SessionRuntime,
     ) -> None:
         """The apply path converges in place and never leaks a sibling worktree."""
-        root, drifted = self._seed_committed_drift(tmp_path)
+        root, drifted = self._seed_committed_drift(tmp_path, session_runtime)
         before = self._transaction_worktree_siblings(root)
 
         # Convergence is proven behaviorally: the drift marker is rewritten

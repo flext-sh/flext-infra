@@ -7,13 +7,28 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from flext_core.lazy import install_lazy_exports
 
-__all__: tuple[str, ...] = ()
+if TYPE_CHECKING:
+    from tests.unit.gates.test_wrap_structured_blocks import (
+        TestsFlextInfraWrapStructuredBlocks,
+        TestsFlextInfraWrapTrailingComment,
+    )
+
+
+__all__: tuple[str, ...] = (
+    "TestsFlextInfraWrapStructuredBlocks",
+    "TestsFlextInfraWrapTrailingComment",
+)
 
 install_lazy_exports(
     __name__,
     globals(),
-    {},
+    {
+        "TestsFlextInfraWrapStructuredBlocks": ".test_wrap_structured_blocks",
+        "TestsFlextInfraWrapTrailingComment": ".test_wrap_structured_blocks",
+    },
     public_exports=__all__,
 )

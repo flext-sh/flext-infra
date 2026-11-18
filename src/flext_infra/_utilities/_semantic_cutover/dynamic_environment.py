@@ -262,7 +262,7 @@ class FlextInfraUtilitiesSemanticCutoverDynamicEnvironment(
         selected: frozenset[Path],
         *,
         source_project: p.Infra.RopeProject,
-        owner_context: Callable[[Path], tuple[str, str, m.Infra.CodegenConfigSpec]],
+        owner_context: Callable[[Path], tuple[str, str, p.Infra.CodegenConfigSpec]],
     ) -> p.Result[tuple[p.Infra.SemanticMigrationEdit, ...]]:
 
         def rewrite(path: Path, source: str) -> t.Infra.TransformResult:
@@ -343,19 +343,19 @@ class FlextInfraUtilitiesSemanticCutoverDynamicEnvironment(
         repository_root: Path,
         codegen: p.Infra.CodegenConfigSpec,
         source_project: p.Infra.RopeProject,
-        dependency_codegen: Mapping[Path, m.Infra.CodegenInputs] | None,
-    ) -> Callable[[Path], tuple[str, str, m.Infra.CodegenConfigSpec]]:
+        dependency_codegen: Mapping[Path, p.Infra.CodegenInputs] | None,
+    ) -> Callable[[Path], tuple[str, str, p.Infra.CodegenConfigSpec]]:
         """Own one phase's memoized metadata elections.
 
         Returns:
             A lazy settings-owner election bound to the original source authority.
 
         """
-        contexts: dict[Path, tuple[str, str, m.Infra.CodegenConfigSpec]] = {}
+        contexts: dict[Path, tuple[str, str, p.Infra.CodegenConfigSpec]] = {}
 
         def owner_context(
             owner_root: Path,
-        ) -> tuple[str, str, m.Infra.CodegenConfigSpec]:
+        ) -> tuple[str, str, p.Infra.CodegenConfigSpec]:
             if owner_root not in contexts:
                 contexts[owner_root] = cls._settings_owner_context(
                     owner_root,
@@ -374,8 +374,8 @@ class FlextInfraUtilitiesSemanticCutoverDynamicEnvironment(
         source_project: p.Infra.RopeProject,
         repository_root: Path,
         codegen: p.Infra.CodegenConfigSpec,
-        dependency_codegen: Mapping[Path, m.Infra.CodegenInputs] | None,
-    ) -> tuple[str, str, m.Infra.CodegenConfigSpec]:
+        dependency_codegen: Mapping[Path, p.Infra.CodegenInputs] | None,
+    ) -> tuple[str, str, p.Infra.CodegenConfigSpec]:
         """Read the namespace and validate the exact policy inputs of one owner.
 
         Returns:
@@ -430,7 +430,7 @@ class FlextInfraUtilitiesSemanticCutoverDynamicEnvironment(
         sources: Mapping[Path, str],
         *,
         source_project: p.Infra.RopeProject,
-        owner_context: Callable[[Path], tuple[str, str, m.Infra.CodegenConfigSpec]],
+        owner_context: Callable[[Path], tuple[str, str, p.Infra.CodegenConfigSpec]],
     ) -> None:
         """Require the destination settings API to exist in the source inventory.
 

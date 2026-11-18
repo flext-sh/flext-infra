@@ -29,7 +29,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         codegen: p.Infra.CodegenConfigSpec,
         tooling_runtime: p.Infra.ToolingRuntimeContext | None,
         managed_artifacts: p.Infra.ProjectManagedArtifactsSnapshot,
-    ) -> p.Infra.CodegenRenderInputs:
+    ) -> m.Infra.CodegenRenderInputs:
         """Resolve every input shared by one repository's renders exactly once.
 
         The integration branch probes the manifest and, undeclared, the
@@ -47,14 +47,14 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
             workspace=workspace,
             codegen=codegen,
         )
-        return m.Infra.CodegenRenderInputs(
-            target=target,
-            workspace=workspace,
-            codegen=codegen,
-            tooling_runtime=tooling_runtime,
-            managed_artifacts=managed_artifacts,
-            integration_branch=branch.value if branch.success else None,
-        )
+        return m.Infra.CodegenRenderInputs.model_validate({
+            "target": (target),
+            "workspace": (workspace),
+            "codegen": (codegen),
+            "tooling_runtime": (tooling_runtime),
+            "managed_artifacts": (managed_artifacts),
+            "integration_branch": (branch.value if branch.success else None),
+        })
 
     @staticmethod
     def render_integration_branch(
@@ -145,14 +145,20 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
             required_dev_dependencies=u.Infra.project_development_requirements(
                 codegen.scaffold.project,
                 distribution=target.repository.distribution,
-                kind=target.repository.kind,
+                standalone=target.make_profile is c.Infra.MakeProfile.STANDALONE,
             ),
-            uv_resolution=m.Infra.UvResolutionSpec(
-                link_mode=cls.link_mode(target.repository, toolchain),
-                constraint_dependencies=tuple(toolchain.uv_constraint_dependencies),
-                override_dependencies=tuple(toolchain.uv_override_dependencies),
-                environments=tuple(toolchain.uv_environments),
-            ),
+            uv_resolution=m.Infra.UvResolutionSpec.model_validate({
+                "link_mode": (cls.link_mode(target.repository, toolchain)),
+                "cooldown_days": toolchain.dependency_cooldown_days,
+                "cooldown_exceptions": tuple(
+                    sorted(toolchain.dependency_cooldown_exceptions)
+                ),
+                "constraint_dependencies": (
+                    tuple(toolchain.uv_constraint_dependencies)
+                ),
+                "override_dependencies": (tuple(toolchain.uv_override_dependencies)),
+                "environments": (tuple(toolchain.uv_environments)),
+            }),
             options=u.Infra.PyprojectConformOptions(
                 flext_line=flext_line.value,
             ),
@@ -176,8 +182,6 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                     arguments=(
                         ("PR_TITLE",)
                         if phase is c.Infra.ReleasePhase.PLAN
-                        else ("LANE_CHECKPOINT_REF",)
-                        if phase is c.Infra.ReleasePhase.VERSION
                         else ("INDEX",)
                         if phase is c.Infra.ReleasePhase.PUBLISH
                         else ()
@@ -205,12 +209,42 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         return (
             *self._merge_extra_verbs(
                 repository.extra_verbs,
-                ()
-                if repository.script_dispatch is None
-                else self._discover_script_verbs(root),
+                (
+                    *self._discover_custom_verbs(root, codegen),
+                    *(
+                        ()
+                        if repository.script_dispatch is None
+                        else self._discover_script_verbs(
+                            root, repository.script_dispatch
+                        )
+                    ),
+                ),
                 frozenset(verb.name for verb in (*codegen.make.verbs, *release_verbs)),
             ),
             *release_verbs,
+        )
+
+    @staticmethod
+    def _discover_custom_verbs(
+        root: Path, codegen: p.Infra.CodegenConfigSpec
+    ) -> tuple[p.Infra.MakeVerbSpec, ...]:
+        """Publish existing whole-verb handlers without a second command list.
+
+        Returns:
+            The public names declared by private custom Make targets.
+
+        """
+        path = root / codegen.make.custom_handler_policy.filename
+        if not path.is_file():
+            return ()
+        content = u.Cli.files_read_text(path).unwrap()
+        return tuple(
+            m.Infra.MakeVerbSpec(name=name, description=f"Project command: {name}")
+            for name in sorted({
+                line.partition(":")[0].removeprefix("_custom-")
+                for line in content.splitlines()
+                if line.startswith("_custom-") and ":" in line
+            })
         )
 
     def make_render_context(
@@ -262,38 +296,38 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         except ValueError as exc:
             return r[p.Infra.MakeRenderContext].fail(str(exc), exception=exc)
         return r[p.Infra.MakeRenderContext].ok(
-            m.Infra.MakeRenderContext(
-                pytest=tooling.tools.pytest,
-                release_verbs=self._release_product_verbs(repository),
-                make=codegen.make,
-                mypy_timeout_exit_code=c.Infra.PROCESS_TIMEOUT_EXIT_CODE,
-                timeout_command=c.Infra.TIMEOUT_COMMAND,
-                timeout_kill_after_seconds=c.Infra.TIMEOUT_KILL_AFTER_SECONDS,
-                tooling_runtime=tooling_runtime,
-                dist=repository.distribution,
-                infra_cli=config.Infra.name,
-                examples_module=repository.examples_module,
-                python_version=codegen.toolchain.python_version,
-                uv_link_mode=self.link_mode(repository, codegen.toolchain),
-                ruff_delegated_rules=delegated_rules,
-                make_profile=profile,
-                workspace_cli_group=c.Infra.CLI_GROUP_WORKSPACE,
-                repository_root_rel=self._repository_root_rel(workspace),
-                makefile_custom_include=c.Infra.MAKEFILE_CUSTOM_INCLUDE,
-                workspace_subprojects=tuple(
-                    item.path.as_posix() for item in workspace.subprojects
+            m.Infra.MakeRenderContext.model_validate({
+                "pytest": (tooling.tools.pytest),
+                "release_verbs": (self._release_product_verbs(repository)),
+                "make": (codegen.make),
+                "timeout_exit_code": (c.Infra.PROCESS_TIMEOUT_EXIT_CODE),
+                "timeout_command": (c.Infra.TIMEOUT_COMMAND),
+                "timeout_kill_after_seconds": (c.Infra.TIMEOUT_KILL_AFTER_SECONDS),
+                "tooling_runtime": (tooling_runtime),
+                "dist": (repository.distribution),
+                "infra_cli": (config.Infra.name),
+                "examples_module": (repository.examples_module),
+                "python_version": (codegen.toolchain.python_version),
+                "uv_link_mode": (self.link_mode(repository, codegen.toolchain)),
+                "ruff_delegated_rules": (delegated_rules),
+                "make_profile": (profile),
+                "workspace_cli_group": (c.Infra.CLI_GROUP_WORKSPACE),
+                "repository_root_rel": (self._repository_root_rel(workspace)),
+                "makefile_custom_include": (c.Infra.MAKEFILE_CUSTOM_INCLUDE),
+                "workspace_subprojects": (
+                    tuple(item.path.as_posix() for item in workspace.subprojects)
                 ),
-                owns_workspace_manifest=(
-                    repository_root / "config/workspace.yaml"
-                ).is_file(),
-                workspace_repositories=subprojects,
-                environment_imports=self._declared_environment_imports(
-                    target, workspace
+                "owns_workspace_manifest": (
+                    (repository_root / "config/workspace.yaml").is_file()
                 ),
-                extra_verbs=extra_verbs,
-                script_dispatch=repository.script_dispatch,
-                verb_groups=repository.verb_groups,
-            ),
+                "workspace_repositories": (subprojects),
+                "environment_imports": (
+                    self._declared_environment_imports(target, workspace)
+                ),
+                "extra_verbs": (extra_verbs),
+                "script_dispatch": (repository.script_dispatch),
+                "verb_groups": (repository.verb_groups),
+            }),
         )
 
     @staticmethod
@@ -378,14 +412,26 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         protocol is its only writer, so conform reads it and never syncs it.
         A tree that has no pyproject yet is being created: it starts at the
         typed initial version and the protocol owns every change after that.
+        The version is read through the same managed-conflict recovery as the
+        pyproject it renders, so a conflicted projection can be regenerated.
 
         Returns:
             The resulting ``p.Result[str]``.
 
         """
-        if (repository_root / c.PYPROJECT_FILENAME).is_file():
-            return u.Infra.current_workspace_version(repository_root)
-        return r[str].ok(config.Infra.initial_project_version)
+        state = u.Cli.atomic_read_binary_file_state(
+            repository_root / c.PYPROJECT_FILENAME
+        )
+        if state.failure:
+            return r[str].from_failure(state)
+        if state.value.content is None:
+            return r[str].ok(config.Infra.initial_project_version)
+        return (
+            u.Infra
+            .recover_live_pyproject_text(state.value.content.decode(c.DEFAULT_ENCODING))
+            .flat_map(u.Infra.pyproject_regeneration_source)
+            .flat_map(u.Infra.project_version_from_text)
+        )
 
     def _resolved_render_project(
         self,
@@ -505,6 +551,8 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         repository: p.Infra.RepositoryRef,
         codegen: p.Infra.CodegenConfigSpec,
         project: p.Infra.ProjectSpec,
+        *,
+        standalone: bool,
     ) -> p.Result[tuple[tuple[t.NonEmptyStr, ...], tuple[t.NonEmptyStr, ...]]]:
         """Resolve declared and composed development dependencies of one render.
 
@@ -513,6 +561,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
             repository: Declared immutable repository identity.
             codegen: Codegen contract the repository renders under.
             project: Validated scaffold project of the conform request.
+            standalone: Whether the checkout is its own workspace root.
 
         Returns:
             The declared project dependencies and the validated development
@@ -520,15 +569,17 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
 
         """
         result_type = r[tuple[tuple[t.NonEmptyStr, ...], tuple[t.NonEmptyStr, ...]]]
-        declared = self._declared_dependency_facts(repository_root, project)
+        declared = self._declared_dependency_facts(
+            repository_root, project, profiles=codegen.scaffold.project.config_bases
+        )
         if declared.failure:
             return result_type.from_failure(declared)
         project_dependencies, declared_dev = declared.value
         composed_dev = u.Infra.project_development_requirements(
             codegen.scaffold.project,
             distribution=repository.distribution,
-            kind=repository.kind,
             declared=declared_dev,
+            standalone=standalone,
         )
         development_dependencies = r[tuple[t.NonEmptyStr, ...]].create_from_callable(
             partial(t.Infra.NON_EMPTY_STR_SEQ_ADAPTER.validate_python, composed_dev),
@@ -562,7 +613,11 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
             return r[p.Infra.ProjectRenderContext].from_failure(project)
         project = project.value
         dependencies = self._development_dependencies(
-            repository_root, repository, codegen, project
+            repository_root,
+            repository,
+            codegen,
+            project,
+            standalone=target.make_profile is c.Infra.MakeProfile.STANDALONE,
         )
         if dependencies.failure:
             return r[p.Infra.ProjectRenderContext].from_failure(dependencies)
@@ -593,44 +648,51 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         if version.failure:
             return r[p.Infra.ProjectRenderContext].from_failure(version)
         return r[p.Infra.ProjectRenderContext].ok(
-            m.Infra.ProjectRenderContext(
-                docs_audit=workspace.docs_audit,
-                dist=repository.distribution,
-                make_profile=profile,
-                uv_link_mode=self.link_mode(repository, codegen.toolchain),
-                tooling_runtime=tooling_runtime,
-                scaffold=codegen.scaffold,
-                gitignore_sections=u.Infra.gitignore_sections(
-                    codegen,
-                    profile=profile,
-                    # The declared distribution is the project identity: a
-                    # scaffold renders before its pyproject exists, so the
-                    # render never reads it back from disk.
-                    project_name=repository.distribution,
-                    workspace=workspace,
-                    project_patterns=(
-                        render_inputs.managed_artifacts.resolution.artifacts.Gitignore.patterns
-                    ),
+            m.Infra.ProjectRenderContext.model_validate({
+                "docs_audit": (workspace.docs_audit),
+                "dist": (repository.distribution),
+                "make_profile": (profile),
+                "uv_link_mode": (self.link_mode(repository, codegen.toolchain)),
+                "tooling_runtime": (tooling_runtime),
+                "scaffold": (codegen.scaffold),
+                "gitignore_sections": (
+                    u.Infra.gitignore_sections(
+                        codegen,
+                        profile=profile,
+                        # The declared distribution is the project identity: a
+                        # scaffold renders before its pyproject exists, so the
+                        # render never reads it back from disk.
+                        project_name=repository.distribution,
+                        workspace=workspace,
+                        project_patterns=(
+                            render_inputs.managed_artifacts.resolution.artifacts.Gitignore.patterns
+                        ),
+                    )
                 ),
-                project_dependencies=project_dependencies,
-                development_dependencies=tuple(development_dependencies),
-                tooling=tooling,
-                environment_path_prepends=(codegen.toolchain.environment_path_prepends),
-                beads=workspace.beads,
-                ownership_command_prefix=codegen.toolchain.beads.ownership_command_prefix,
-                canonical_project_name=target.canonical_project_name,
-                const_name=project.constant_name,
-                package_name=project.package_name,
-                packaged_data_paths=(
+                "project_dependencies": (project_dependencies),
+                "development_dependencies": (tuple(development_dependencies)),
+                "tooling": (tooling),
+                "environment_path_prepends": (
+                    codegen.toolchain.environment_path_prepends
+                ),
+                "beads": (workspace.beads),
+                "ownership_command_prefix": (
+                    codegen.toolchain.beads.ownership_command_prefix
+                ),
+                "canonical_project_name": (target.canonical_project_name),
+                "const_name": (project.constant_name),
+                "package": (repository.package),
+                "package_name": (project.package_name),
+                "packaged_data_paths": ((
                     *packaged_data_paths.files,
                     *packaged_data_paths.directories,
-                ),
-                project_declaration_resource=(
+                )),
+                "project_declaration_resource": (
                     (FlextInfraEnsurePackagingPhase.declaration_resource)(
                         package=repository.package,
                     )
                 ),
-                packaged_data_excludes=(
+                "packaged_data_excludes": (
                     (FlextInfraEnsurePackagingPhase.resolve_data_excludes)(
                         repository_root,
                         packaged_data_paths,
@@ -639,45 +701,52 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                     if profile is not c.Infra.MakeProfile.WORKSPACE
                     else ()
                 ),
-                namespace_scan_dirs=project.namespace_scan_dirs,
-                workspace_integration=workspace.integration,
-                # Carry only the validated
-                # project declaration; conform owns no inferred Hatch hook.
-                hatch_build_hook_path=project.hatch_build_hook_path,
-                uv_cache_key_files=(FlextInfraEnsurePackagingPhase.uv_cache_key_files)(
-                    project.hatch_build_hook_path,
+                "namespace_scan_dirs": (project.namespace_scan_dirs),
+                "workspace_integration": (workspace.integration),
+                "hatch_build_hook_path": (project.hatch_build_hook_path),
+                "uv_cache_key_files": (
+                    (FlextInfraEnsurePackagingPhase.uv_cache_key_files)(
+                        package=repository.package,
+                        data=packaged_data_paths,
+                        namespaces=project.repository_namespace_packages,
+                        hatch_build_hook_path=project.hatch_build_hook_path,
+                    )
                 ),
-                class_stem=project.class_stem,
-                ns=project.namespace,
-                ns_attr=project.namespace_attribute,
-                alias=project.alias,
-                env_prefix=project.environment_prefix,
-                upstream=project.upstream,
-                inherited_facets=project.inherited_facets,
-                root_packages=project.root_packages,
-                repository_namespace_packages=project.repository_namespace_packages,
-                root_modules=project.root_modules,
-                cli_module=project.cli_module,
-                console_scripts=project.console_scripts,
-                runtime_dependency_overlay=project.runtime_dependency_overlay,
-                description=project.description,
-                documentation_language=project.documentation_language,
-                version=version.value,
-                license=project.license,
-                python_required_version=codegen.toolchain.python_required_version,
-                dependency_cooldown_days=codegen.toolchain.dependency_cooldown_days,
-                author_name=project.author_name,
-                author_email=project.author_email,
-                repository=project.homepage,
-                homepage=project.homepage,
-                documentation=project.documentation,
-                flext_git_base_url=integration.value[2][0],
-                flext_git_branch=integration.value[2][1],
-                repository_provider=repository.provider,
-                repository_git_url=repository.url,
-                repository_branch=integration.value[1],
-                year=project.year,
-            ),
+                "class_stem": (project.class_stem),
+                "ns": (project.namespace),
+                "ns_attr": (project.namespace_attribute),
+                "alias": (project.alias),
+                "env_prefix": (project.environment_prefix),
+                "upstream": (project.upstream),
+                "inherited_facets": (project.inherited_facets),
+                "root_packages": (project.root_packages),
+                "repository_namespace_packages": (
+                    project.repository_namespace_packages
+                ),
+                "root_modules": (project.root_modules),
+                "cli_module": (project.cli_module and repository.package),
+                "console_scripts": (project.console_scripts),
+                "runtime_dependency_overlay": (project.runtime_dependency_overlay),
+                "description": (project.description),
+                "documentation_language": (project.documentation_language),
+                "version": (version.value),
+                "license": (project.license),
+                "python_required_version": (codegen.toolchain.python_required_version),
+                "dependency_cooldown_days": (
+                    codegen.toolchain.dependency_cooldown_days
+                ),
+                "author_name": (project.author_name),
+                "author_email": (project.author_email),
+                "repository": (project.homepage),
+                "homepage": (project.homepage),
+                "documentation": (project.documentation),
+                "flext_git_base_url": (integration.value[2][0]),
+                "flext_git_branch": (integration.value[2][1]),
+                "repository_provider": (repository.provider),
+                "repository_git_url": (repository.url),
+                "repository_branch": (integration.value[1]),
+                "year": (project.year),
+            }),
         )
 
     @staticmethod
@@ -685,17 +754,21 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         repository_root: Path,
         project: p.Infra.ProjectSpec,
         *,
+        profiles: Sequence[p.Infra.ScaffoldConfigBaseSpec],
         manifest_source: str | None = None,
     ) -> p.Result[tuple[tuple[t.NonEmptyStr, ...], tuple[t.NonEmptyStr, ...]]]:
         """Read the declared dependency facts of one render project.
 
         An existing ``pyproject.toml`` owns the declared runtime dependencies
-        and development extras. The repository overlay extends those runtime
-        requirements for existing projects as well as new scaffolds.
+        and development extras. A new project depends at runtime on its
+        declared upstream, whose distribution its dependency profile names;
+        the repository overlay comes ahead of that profile's runtime set. A
+        consumer needs no profile: its overlay names the consumed distribution.
 
         Args:
             repository_root: Project root whose pyproject declares the facts.
             project: Resolved render project used before the pyproject exists.
+            profiles: Dependency profiles naming each upstream's distribution.
             manifest_source: Original captured TOML; when provided, no file is read.
 
         Returns:
@@ -708,7 +781,25 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
             manifest_source is None
             and not (repository_root / c.PYPROJECT_FILENAME).is_file()
         ):
-            return result_type.ok((project.runtime_dependency_overlay, ()))
+            profile = next(
+                (base for base in profiles if base.module == project.upstream),
+                None,
+            )
+            # A consumer names its consumed distribution in its own overlay and
+            # needs no dependency profile for its upstream.
+            if profile is None and project.package_name is not None:
+                return result_type.fail(
+                    f"upstream has no declared dependency profile: {project.upstream}"
+                )
+            return result_type.ok((
+                tuple(
+                    dict.fromkeys((
+                        *project.runtime_dependency_overlay,
+                        *(() if profile is None else (profile.distribution,)),
+                    ))
+                ),
+                (),
+            ))
         declared = FlextInfraCodegenConformContextRender._declared_runtime_requirements(
             repository_root, manifest_source=manifest_source
         )
@@ -732,7 +823,9 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         return result_type.ok((
             tuple(
                 dict.fromkeys((
-                    *runtime,
+                    # A consumer owns no code: its requirements are its overlay,
+                    # never the leftovers of a former package.
+                    *(() if project.package_name is None else runtime),
                     *project.runtime_dependency_overlay,
                 ))
             ),
@@ -821,7 +914,8 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         """Resolve the packaged data selection of the target make profile.
 
         A workspace-profile render owns no packaged data selection: workspace
-        aggregation renders no installable project payload of its own.
+        aggregation renders no installable project payload of its own, and a
+        repository without a package ships no data.
 
         Args:
             repository_root: Project root holding the declared data paths.
@@ -833,7 +927,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
             The resolved packaged data selection of the render.
 
         """
-        if profile is c.Infra.MakeProfile.WORKSPACE:
+        if profile is c.Infra.MakeProfile.WORKSPACE or project.package_name is None:
             return m.Infra.PackagedDataSelection()
         return FlextInfraEnsurePackagingPhase.resolve_data_paths(
             repository_root,

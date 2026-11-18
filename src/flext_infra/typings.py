@@ -20,6 +20,7 @@ from flext_infra._typings import (
     FlextInfraTypesAdapters,
     FlextInfraTypesBase,
     FlextInfraTypesCollections,
+    FlextInfraTypesCst,
     FlextInfraTypesPytest,
     FlextInfraTypesRope,
 )
@@ -34,15 +35,11 @@ class FlextInfraTypes(FlextCliTypes):
     transparently from ``FlextTypes`` via FLEXT.
     """
 
-    Container = FlextInfraTypesCollections.Container
-
-    type PyrightScalarValue = str | bool | int
-    """Scalar value accepted by a Pyright setting."""
-
     class Infra(
         FlextInfraTypesAdapters,
         FlextInfraTypesBase,
         FlextInfraTypesCollections,
+        FlextInfraTypesCst,
         FlextInfraTypesPytest,
         FlextInfraTypesRope,
     ):

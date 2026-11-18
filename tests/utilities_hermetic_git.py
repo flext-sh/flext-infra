@@ -20,9 +20,9 @@ from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlsplit
 
-from flext_infra import config
+from flext_infra import config, u
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-from tests import c, m, p, t, tm, u
+from tests import c, m, p, t, tm
 from tests.utilities_fixture_project import TestsFlextInfraUtilitiesProjectFixture
 from tests.utilities_toml import TestsFlextInfraUtilitiesToml
 
@@ -302,7 +302,7 @@ class TestsFlextInfraUtilitiesHermeticGit:
             )
             tm.ok(
                 u.Cli.run_checked(
-                    [c.Infra.GIT, "update-ref", f"refs/heads/{rev}"],
+                    [c.Infra.GIT, "update-ref", f"refs/heads/{rev}", sha],
                     cwd=mirror,
                 ),
             )

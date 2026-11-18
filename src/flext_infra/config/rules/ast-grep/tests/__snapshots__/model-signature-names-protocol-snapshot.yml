@@ -1,0 +1,49 @@
+id: model-signature-names-protocol
+snapshots:
+  "class A(m.FrozenModel):\n    def build(self, leaf: FlextInfraModelsX.Leaf) -> tuple[FlextInfraModelsX.Leaf, ...]: ...":
+    fixed: |-
+      class A(m.FrozenModel):
+          def build(self, leaf: p.Infra.Leaf) -> tuple[FlextInfraModelsX.Leaf, ...]: ...
+    labels:
+    - source: FlextInfraModelsX.Leaf
+      style: primary
+      start: 50
+      end: 72
+    - source: "(self, leaf: FlextInfraModelsX.Leaf)"
+      style: secondary
+      start: 37
+      end: 73
+    - source: FlextInfraModelsX.Leaf
+      style: secondary
+      start: 50
+      end: 72
+  "def f() -> FlextInfraModelsX.Leaf: ...":
+    fixed: "def f() -> p.Infra.Leaf: ..."
+    labels:
+    - source: FlextInfraModelsX.Leaf
+      style: primary
+      start: 11
+      end: 33
+    - source: "def f() -> FlextInfraModelsX.Leaf: ..."
+      style: secondary
+      start: 0
+      end: 38
+    - source: FlextInfraModelsX.Leaf
+      style: secondary
+      start: 11
+      end: 33
+  "def f(x: FlextInfraModelsConfigMake.Leaf) -> None: ...":
+    fixed: "def f(x: p.Infra.Leaf) -> None: ..."
+    labels:
+    - source: FlextInfraModelsConfigMake.Leaf
+      style: primary
+      start: 9
+      end: 40
+    - source: "(x: FlextInfraModelsConfigMake.Leaf)"
+      style: secondary
+      start: 5
+      end: 41
+    - source: FlextInfraModelsConfigMake.Leaf
+      style: secondary
+      start: 9
+      end: 40

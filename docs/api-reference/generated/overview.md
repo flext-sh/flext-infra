@@ -9,7 +9,7 @@
 <!-- AUTO-GENERATED — DO NOT EDIT MANUALLY -->
 
 - Package: `flext_infra`
-- Version: `0.12.0`
+- Version: `0.12.1`
 - Description: FLEXT Infrastructure Tooling - Build automation, code generation, and
   workspace management
 - Doc summary: Flext Infra package.
@@ -22,14 +22,14 @@
 - Keywords: `automation`, `codegen`, `flext`, `infrastructure`, `tooling`
 - Main facades: `FlextInfra`, `FlextInfraCli`, `FlextInfraConfig`,
   `FlextInfraConstants`, `FlextInfraFlextInfraConfig`, `FlextInfraFlextInfraConform`,
-  `FlextInfraFlextInfraCprofile`, `FlextInfraFlextInfraPreview` (+14 more)
+  `FlextInfraFlextInfraCprofile`, `FlextInfraFlextInfraPreview` (+13 more)
 - Alias exports: `c`, `d`, `e`, `h`, `m`, `p`, `r`, `s`, `t`, `u`, `x`
 - Public symbol exports: `FlextInfra`, `FlextInfraCli`, `FlextInfraConfig`,
   `FlextInfraConstants`, `FlextInfraFlextInfraConfig`, `FlextInfraFlextInfraConform`,
   `FlextInfraFlextInfraCprofile`, `FlextInfraFlextInfraPreview`,
-  `FlextInfraFlextInfraPytest`, `FlextInfraGitLanes` (+15 more)
-- Exported module shortcuts: _none_
-- Generated module pages: `21`
+  `FlextInfraFlextInfraPytest`, `FlextInfraGitService` (+14 more)
+- Exported module shortcuts: *none*
+- Generated module pages: `20`
 
 ## Next Pages
 

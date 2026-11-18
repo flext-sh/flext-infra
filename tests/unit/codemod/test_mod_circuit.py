@@ -10,7 +10,7 @@ from collections.abc import MutableMapping
 from pathlib import Path
 
 from flext_infra import FlextInfraCli
-from tests import c, m, t, tm, u
+from tests import c, m, p, t, tm, u
 
 
 @c.Tests.MARK.slow
@@ -36,8 +36,6 @@ class TestsFlextInfraModCliRoute:
             "ast",
             "--repository-root",
             str(mod_workspace),
-            "--rules",
-            rule_id,
         ])
         console = capsys.readouterr()
         evidence = m.Infra.ModScanEvidence.model_validate_json(
@@ -45,10 +43,11 @@ class TestsFlextInfraModCliRoute:
         )
         tm.that(exit_code, ne=0, msg=console.out + console.err)
         tm.that(evidence.totals_by_rule[rule_id], eq=1)
-        tm.that(evidence.entries[0].text, eq=source)
+        entry = next(item for item in evidence.entries if item.rule_id == rule_id)
+        tm.that(entry.text, eq=source)
         with u.Infra.mod_native_readers(evidence.native_artifacts) as readers:
             tm.that(
-                u.Infra.mod_native_payload(evidence.entries[0], readers)["text"],
+                u.Infra.mod_native_payload(entry, readers)["text"],
                 eq=source,
             )
 
@@ -71,14 +70,12 @@ class TestsFlextInfraModCliRoute:
                 "    assert left == right\n",
             )
         )
-        rules = ("rewire-test-assert-truth", "test-assert-tm-binding-required")
+        rule_id = "rewire-test-assert-equal"
         exit_code = FlextInfraCli.infra_main([
             "refactor",
             "ast",
             "--repository-root",
             str(mod_workspace),
-            "--rules",
-            ",".join(rules),
         ])
         console = capsys.readouterr()
         state = tm.ok(
@@ -91,8 +88,8 @@ class TestsFlextInfraModCliRoute:
             tm.not_none(state.content)
         )
         tm.that(exit_code, ne=0, msg=console.out + console.err)
-        tm.that(evidence.totals_by_rule[rules[0]], eq=1)
-        tm.that(evidence.totals_by_rule[rules[1]], eq=1)
+        tm.that(evidence.totals_by_rule[rule_id], eq=1)
+        tm.that(evidence.totals_by_rule["ban-test-assert"], eq=2)
         tm.that(evidence.actionable, eq=1)
 
     @staticmethod
@@ -139,8 +136,6 @@ class TestsFlextInfraModCliRoute:
                 "ast",
                 "--repository-root",
                 str(root),
-                "--rules",
-                rule_id,
             ])
             console = capsys.readouterr()
             state = tm.ok(
@@ -167,7 +162,7 @@ class TestsFlextInfraModCliRoute:
     def _run_mod_scan(
         mod_workspace: Path,
         capsys: t.Tests.CaptureFixture[str],
-    ) -> tuple[int, m.Infra.ModScanEvidence, str, str]:
+    ) -> tuple[int, p.Infra.ModScanEvidence, str, str]:
         """Run one ``refactor mod`` scan and capture its receipt artifacts.
 
         Returns:
@@ -405,7 +400,7 @@ class TestsFlextInfraModCliRoute:
         tm.ok(
             u.Cli.atomic_write_text_file(
                 mod_workspace / "config" / "codegen.yaml",
-                "Infra:\n  codegen:\n    repository:\n      kind: internal_flext\n",
+                "Infra:\n  codegen:\n    repository: {}\n",
             ),
         )
         tm.ok(

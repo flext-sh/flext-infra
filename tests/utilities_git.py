@@ -8,10 +8,11 @@ from __future__ import annotations
 
 import venv
 from collections.abc import Mapping, Sequence
+from functools import cache
 from pathlib import Path
 
-from flext_infra import config
-from tests import c, m, t, tm, u
+from flext_infra import config, u
+from tests import c, m, t, tm
 from tests.utilities_fixture_project import TestsFlextInfraUtilitiesProjectFixture
 
 
@@ -136,7 +137,6 @@ class TestsFlextInfraUtilitiesGit:
         # The checkout carries the provider-declared integration branch, so the
         # bare origin publishes that same line as its default target.
         branch = TestsFlextInfraUtilitiesGit.integration_branch(repo_root)
-        # Initial remote construction is fixture bootstrap, not lane admission.
         bootstrap(
             repo_root,
             ("push", "-u", c.Infra.GIT_ORIGIN, f"HEAD:refs/heads/{branch}"),
@@ -158,6 +158,7 @@ class TestsFlextInfraUtilitiesGit:
         bootstrap(repository_root, ("config", "--local", "user.name", "Flext Tests"))
 
     @staticmethod
+    @cache
     def isolated_git_keys() -> Sequence[str]:
         """Return the repository-local Git variables a fixture must not inherit.
 
@@ -165,7 +166,8 @@ class TestsFlextInfraUtilitiesGit:
         hooks. A fixture that inherits them silently operates on the calling
         repository instead of its own tmp_path, so repository construction
         must never inherit them. The set is whatever the installed Git
-        declares, never a hardcoded list.
+        declares, never a hardcoded list. The installed Git is fixed for the
+        session, so the declaration is read once instead of once per command.
 
         Returns:
             The repository-local Git variables a fixture must not inherit.
@@ -253,15 +255,15 @@ class TestsFlextInfraUtilitiesGit:
             repo_root,
             c.Infra.GIT_ORIGIN,
         )
-        if existing_origin == declared_origin:
-            return
-        if existing_origin:
+        if existing_origin and existing_origin != declared_origin:
             bootstrap(
                 repo_root,
                 ("remote", "set-url", c.Infra.GIT_ORIGIN, declared_origin),
             )
-        else:
+        elif not existing_origin:
             bootstrap(repo_root, ("remote", "add", c.Infra.GIT_ORIGIN, declared_origin))
+        # Every call commits the current tree: content a fixture writes after an
+        # earlier initialization is tracked, as the gates read tracked files only.
         bootstrap(repo_root, ("add", "-A"))
         bootstrap(repo_root, ("commit", "--allow-empty", "-m", "init"))
         bootstrap(

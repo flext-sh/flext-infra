@@ -36,11 +36,7 @@ class TestsFlextInfraRenameCampaignMod:
     def test_packaged_owner_declares_the_compat_alias_cutover() -> None:
         """The shape-based alias rule has one declared semantic owner."""
         owners = FlextInfraConfig.fetch_global().Infra.refactor_csv_campaigns.owners
-        compat = next(
-            (owner for owner in owners if owner.id == "semantic:compat-alias"),
-            None,
-        )
-        tm.that(compat, none=False)
+        compat = next(owner for owner in owners if owner.id == "semantic:compat-alias")
         tm.that(compat.phase, eq="compat-alias")
 
     @c.Tests.MARK.slow

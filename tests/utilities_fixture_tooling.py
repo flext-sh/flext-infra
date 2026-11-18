@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import hashlib
 import os
 import shutil
 import sys
@@ -13,12 +14,10 @@ import time
 from collections.abc import Mapping, Sequence
 from functools import cache
 from pathlib import Path
-from textwrap import indent
+from tempfile import TemporaryDirectory, mkdtemp
 
-from typing_extensions import TypeForm
-
-from flext_infra import config, validate, workspace
-from tests import c, m, p, r, t, tm, u
+from flext_infra import config, u, validate, workspace
+from tests import c, m, p, r, t, tm
 from tests.utilities_git import TestsFlextInfraUtilitiesGit
 
 
@@ -223,91 +222,6 @@ class TestsFlextInfraUtilitiesToolingFixture:
             )
 
     @staticmethod
-    def mypy_deadline_limit() -> p.Infra.MypyResourceLimit:
-        """Reserve harness startup and cleanup inside the configured slow budget.
-
-        Returns:
-            The resulting ``m.Infra.MypyResourceLimit``.
-
-        """
-        policy = config.Infra.tooling.tools.pytest
-        available = (
-            policy.slow_timeout_seconds
-            - c.Infra.MYPY_TIMEOUT_GRACE_SECONDS
-            - policy.termination_grace_seconds
-        )
-        return m.Infra.MypyResourceLimit(
-            memory_limit_mb=c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT,
-            timeout_seconds=min(
-                config.Infra.tooling.tools.mypy.timeout_seconds,
-                available // 2,
-            ),
-        )
-
-    @staticmethod
-    def reap_mypy_descendant(pid_file: Path, timeout: int) -> None:
-        """Reap a registered workload in pytest teardown, preserving call failures.
-
-        Raises:
-            RuntimeError: If ``snapshot.outcome.raw_return_code not in {0, 1} or
-                snapshot.stderr``.
-
-        """
-        pid = pid_file.read_text(encoding=c.DEFAULT_ENCODING)
-        snapshot = u.Cli.run_raw(
-            ("/bin/ps", "-p", str(int(pid)), "-o", "stat="),
-            timeout=timeout,
-        ).unwrap()
-        if snapshot.outcome.raw_return_code not in {0, 1} or snapshot.stderr:
-            raise RuntimeError(snapshot.stderr)
-        state = snapshot.stdout.strip()
-        if state and not state.startswith("Z"):
-            u.Cli.run(("/bin/kill", "-KILL", pid), timeout=timeout).unwrap()
-
-    @staticmethod
-    def mypy_workload(root: Path, plugin_body: str = "") -> p.Infra.MypyInvocation:
-        """Create a real checker project with an optional workload plugin.
-
-        Returns:
-            The resulting ``m.Infra.MypyInvocation``.
-
-        """
-        source = root / "checked.py"
-        source.write_text("value: int = 1\n", encoding=c.DEFAULT_ENCODING)
-        config_file = root / c.PYPROJECT_FILENAME
-        # The workload checks through the governed checker settings, so its
-        # crash reporting (show_traceback) matches every managed project.
-        # Each workload owns its cache inside its root: mypy's default
-        # .mypy_cache is relative to the process cwd, which concurrent workers
-        # share, and its SQLite metastore then fails with "database is locked".
-        tooling = u.Infra.load_tooling_inputs(root).unwrap().document
-        options = u.Infra.native_tool_configuration(tooling, "mypy")
-        options["cache_dir"] = str(root / ".mypy_cache")
-        options["python_version"] = config.Infra.codegen.toolchain.python_version
-        if plugin_body:
-            plugin = root / "workload.py"
-            plugin.write_text(
-                "from mypy.plugin import Plugin\n\n"
-                "def plugin(version: str) -> type[Plugin]:\n"
-                + indent(plugin_body, "    ")
-                + "\n    return Plugin\n",
-                encoding=c.DEFAULT_ENCODING,
-            )
-            options["plugins"] = [
-                *u.Infra.native_tool_setting(
-                    tooling, "mypy", "plugins", TypeForm(Sequence[str])
-                ),
-                str(plugin),
-            ]
-        config_file.write_text(
-            u.Cli.toml_dumps(
-                u.Cli.toml_document_from_mapping({"tool": {"mypy": options}})
-            ),
-            encoding=c.DEFAULT_ENCODING,
-        )
-        return m.Infra.MypyInvocation(targets=(source,), config_file=config_file)
-
-    @staticmethod
     def managed_uv() -> str:
         """Resolve the checkout's Mise-managed UV executable, never a PATH shim.
 
@@ -324,7 +238,44 @@ class TestsFlextInfraUtilitiesToolingFixture:
         return str(tm.ok(u.Infra.managed_mise_binary(c.Infra.UV, checkout)))
 
     @staticmethod
-    def python_dependency_projects(root: Path) -> tuple[Path, ...]:
+    @cache
+    def workspace_source_projects() -> Mapping[str, Path]:
+        """Map each workspace distribution to its source owner once per session.
+
+        The workspace topology is read-only for the whole session, so every
+        fixture resolves its dependency closure from this one native load
+        instead of reloading the workspace for each case.
+
+        Returns:
+            Each declared distribution and the checkout that owns its source.
+
+        """
+        # A linked worktree is never a registered submodule: its primary
+        # checkout names the superproject that owns the sibling sources. The
+        # checkout under test stays its own source, never the primary's copy.
+        checkout = Path(__file__).resolve().parents[1]
+        primary = tm.ok(
+            u.Infra.git_primary_worktree_root(
+                m.Infra.GitRepoRequest(repo_root=checkout)
+            )
+        ).primary_root.resolve()
+        source_root = tm.ok(
+            u.Infra.git_repository_root(m.Infra.GitRepoRequest(repo_root=primary))
+        ).repository_root
+        specification = tm.ok(
+            workspace.FlextInfraWorkspaceDetector.load_workspace_spec(source_root),
+        )
+        return {
+            repository.distribution: (
+                checkout
+                if (source_root / repository.path).resolve() == primary
+                else source_root / repository.path
+            )
+            for repository in (specification.repository, *specification.subprojects)
+        }
+
+    @classmethod
+    def python_dependency_projects(cls, root: Path) -> tuple[Path, ...]:
         """Resolve declared fixture dependencies to actual workspace source owners.
 
         Only dependencies that are declared workspace members are resolved;
@@ -340,19 +291,7 @@ class TestsFlextInfraUtilitiesToolingFixture:
             ValueError: When a ``flext-`` dependency has no workspace source owner.
 
         """
-        checkout = Path(__file__).resolve().parents[1]
-        context = tm.ok(
-            workspace.FlextInfraWorkspaceDetector.resolution_context(checkout)
-        )
-        specification = tm.ok(
-            workspace.FlextInfraWorkspaceDetector.load_workspace_spec(
-                context.runtime_root
-            ),
-        )
-        projects = {
-            repository.distribution: context.runtime_root / repository.path
-            for repository in (specification.repository, *specification.subprojects)
-        }
+        projects = cls.workspace_source_projects()
         metadata = tm.ok(u.Infra.read_project_metadata_result(root))
         selected: t.MutableMappingKV[str, Path] = {}
         pending = list(metadata.project.dependencies)
@@ -380,15 +319,41 @@ class TestsFlextInfraUtilitiesToolingFixture:
         return tuple(selected.values())
 
     @staticmethod
+    def python_dependency_source_digest(project: Path) -> str:
+        """Return the content key of the sources one dependency wheel is built from.
+
+        The key covers the build declaration and every file below ``src``, so an
+        edited dependency source selects a new wheel and an unchanged one reuses
+        the published build.
+
+        Returns:
+            The SHA-256 hex digest of the project's build inputs.
+
+        """
+        digest = hashlib.sha256(sys.version.encode(c.DEFAULT_ENCODING))
+        sources = sorted(
+            path
+            for path in (project / c.Infra.DEFAULT_SRC_DIR).rglob("*")
+            if path.is_file() and c.Infra.DUNDER_PYCACHE not in path.parts
+        )
+        for path in (project / c.PYPROJECT_FILENAME, *sources):
+            digest.update(path.relative_to(project).as_posix().encode())
+            digest.update(b"\0")
+            digest.update(hashlib.sha256(path.read_bytes()).digest())
+        return digest.hexdigest()
+
+    @staticmethod
     @cache
     def python_dependency_wheels(
-        directory: Path,
+        storage: Path,
         dependency_projects: tuple[Path, ...],
     ) -> p.Result[tuple[Path, ...]]:
-        """Build current dependency sources once in the shared worker allocation.
+        """Build each dependency wheel once per source content, for every worker.
 
-        UV reuses its native artifact cache; no installed executor package or
-        environment is copied into a fixture. The session owner removes the wheels.
+        Wheels live in the persistent storage every xdist worker and run share,
+        keyed by the content of each dependency's sources. A build is staged
+        beside its destination and published by one atomic rename, so no worker
+        ever reads a partial wheel and a later worker reuses the first build.
 
         Returns:
             Real wheels, or the original build failure without retrying it.
@@ -397,32 +362,40 @@ class TestsFlextInfraUtilitiesToolingFixture:
         fixture = TestsFlextInfraUtilitiesToolingFixture
         binary = fixture.managed_uv()
         wheels: list[Path] = []
-        with u.Cli.file_changes_lock(directory / "dependency-wheels.lock"):
-            for project in dependency_projects:
-                metadata = tm.ok(u.Infra.read_project_metadata_result(project))
-                destination = directory / "dependency-wheels" / metadata.project.name
-                destination.mkdir(parents=True, exist_ok=True)
-                built = u.Cli.run_checked(
-                    (
-                        binary,
-                        "build",
-                        "--wheel",
-                        "--python",
-                        sys.executable,
-                        "--out-dir",
-                        str(destination),
-                        str(project),
-                    ),
-                    cwd=project,
-                )
-                if built.failure:
-                    return r[tuple[Path, ...]].from_failure(built)
-                artifacts = tuple(destination.glob("*.whl"))
-                if len(artifacts) != 1:
-                    return r[tuple[Path, ...]].fail(
-                        f"Dependency build must publish one wheel: {destination}",
+        for project in dependency_projects:
+            metadata = tm.ok(u.Infra.read_project_metadata_result(project))
+            owner = storage / "dependency-wheels" / metadata.project.name
+            destination = owner / fixture.python_dependency_source_digest(project)
+            owner.mkdir(parents=True, exist_ok=True)
+            with u.Cli.file_changes_lock(owner.with_suffix(".lock")):
+                if not destination.is_dir():
+                    # Earlier content keys and interrupted stagings are retired.
+                    for stale in owner.iterdir():
+                        shutil.rmtree(stale)
+                    staging = Path(mkdtemp(dir=owner, prefix=".staging-"))
+                    built = u.Cli.run_checked(
+                        (
+                            binary,
+                            "build",
+                            "--wheel",
+                            "--python",
+                            sys.executable,
+                            "--out-dir",
+                            str(staging),
+                            str(project),
+                        ),
+                        cwd=project,
                     )
-                wheels.extend(artifacts)
+                    if built.failure:
+                        shutil.rmtree(staging)
+                        return r[tuple[Path, ...]].from_failure(built)
+                    staging.rename(destination)
+            artifacts = tuple(destination.glob("*.whl"))
+            if len(artifacts) != 1:
+                return r[tuple[Path, ...]].fail(
+                    f"Dependency build must publish one wheel: {destination}",
+                )
+            wheels.extend(artifacts)
         return r[tuple[Path, ...]].ok(tuple(wheels))
 
     @staticmethod
@@ -453,7 +426,7 @@ class TestsFlextInfraUtilitiesToolingFixture:
         if session_runtime is None:
             return r[bool].fail("Fixture dependency builds require a session runtime")
         wheels = TestsFlextInfraUtilitiesToolingFixture.python_dependency_wheels(
-            session_runtime.directory,
+            session_runtime.storage,
             tuple(dependency_projects),
         )
         if wheels.failure:
@@ -480,6 +453,8 @@ class TestsFlextInfraUtilitiesToolingFixture:
                 str(environment),
                 "--override",
                 str(overrides),
+                "--link-mode",
+                config.Infra.codegen.toolchain.uv_link_mode,
                 *(str(wheel) for wheel in wheels.value),
             ),
             cwd=root,
@@ -511,6 +486,40 @@ class TestsFlextInfraUtilitiesToolingFixture:
                 str(root),
             ),
             cwd=root,
+        )
+
+    @classmethod
+    def provision_scan_workspace(
+        cls,
+        root: Path,
+        *,
+        session_runtime: p.Tests.SessionRuntime,
+    ) -> p.Result[bool]:
+        """Provision a fixture workspace with the provider its rule plan elects.
+
+        The rule plan reads the target repository's own physical runtime and
+        discovers providers only among the distributions installed there
+        (``test_rule_plan_target_environment``). A scannable fixture therefore
+        carries the tool's own distribution together with the workspace's
+        declared local dependency closure, never the invoking interpreter's
+        environment.
+
+        Returns:
+            The installation result or the original environment failure.
+
+        """
+        checkout = Path(__file__).resolve().parents[1]
+        dependency_projects = tuple(
+            dict.fromkeys((
+                checkout,
+                *cls.python_dependency_projects(checkout),
+                *cls.python_dependency_projects(root),
+            ))
+        )
+        return cls.create_python_environment(
+            root,
+            dependency_projects=dependency_projects,
+            session_runtime=session_runtime,
         )
 
     @staticmethod
@@ -569,37 +578,35 @@ class TestsFlextInfraUtilitiesToolingFixture:
             destination.symlink_to(source)
 
     @staticmethod
+    def reflink_copy_tree(source: Path, destination: Path) -> None:
+        """Copy a fixture tree sharing its extents where the filesystem can.
+
+        ``shutil.copytree`` writes every byte again; coreutils ``cp`` with
+        ``--reflink=auto`` clones extents on copy-on-write filesystems and
+        falls back to a byte copy elsewhere, so a fixture never duplicates the
+        environments and Git objects it copies.
+        """
+        tm.ok(
+            u.Cli.run_checked(
+                ("cp", "-a", "--reflink=auto", str(source), str(destination)),
+                cwd=source.parent,
+            )
+        )
+
+    @staticmethod
     def make_read_only(path: Path) -> None:
         """Make one fixture path read-only."""
         path.chmod(0o444)
 
     @staticmethod
-    def runtime_evaluated_roots() -> t.StrTuple:
-        """Return the configured runtime-evaluated roots, first-seen order."""
-        return tuple(
-            dict.fromkeys(
-                config.Infra.tooling.tools.ruff.lint.flake8_type_checking.runtime_evaluated_roots,
-            ),
-        )
-
-    @staticmethod
-    def runtime_root_import() -> str:
-        """Return an import binding the first configured root as ``RuntimeRoot``."""
-        module, _, name = (
-            TestsFlextInfraUtilitiesToolingFixture.runtime_evaluated_roots()[
-                0
-            ].rpartition(".")
-        )
-        return f"from {module} import {name} as RuntimeRoot\n"
-
-    @staticmethod
     def copy_tracked_mise_seeds(root: Path, *, source_root: Path | None = None) -> None:
-        """Copy declared Mise inputs from this checkout or a native upgrade seed.
+        """Copy and trust Mise inputs from this checkout or a native upgrade seed.
 
         A governed repository carries the declaration and the dependency lock
         together. Native dependency graphs referenced by the lock must travel
         with it so frozen setup never resolves replacements. Conform renders
-        declarations; only ``make upg`` resolves new versions.
+        declarations; only ``make upg`` resolves new versions. The fixture
+        reuses the shared Mise executable; it never copies it.
         """
         source_root = (
             Path(__file__).resolve().parents[1] if source_root is None else source_root
@@ -612,6 +619,13 @@ class TestsFlextInfraUtilitiesToolingFixture:
             destination = root / relative
             destination.parent.mkdir(parents=True, exist_ok=True)
             _ = shutil.copy2(source, destination)
+        reader = tm.ok(u.Infra.managed_mise_self(Path(__file__).resolve().parents[1]))
+        tm.ok(
+            u.Cli.run_checked(
+                (str(reader), "trust", str(root / c.Infra.MISE_TOML_FILENAME)),
+                cwd=root,
+            )
+        )
 
     @staticmethod
     def write_executable(path: Path, body: str) -> None:
@@ -651,7 +665,7 @@ class TestsFlextInfraUtilitiesToolingFixture:
         """Run Make without undeclared state inherited from outer pytest.
 
         The network bootstrap asks gh for a token when no GITHUB_TOKEN is set.
-        gh here reads no configuration (``os.devnull`` is not a directory) and
+        gh here reads an owned empty configuration directory and
         reaches no keyring (the session bus is disabled), so the host
         operator's stored credential never enters a test implicitly. Provisioning
         may explicitly supply the credential already elected by its root Make;
@@ -661,28 +675,29 @@ class TestsFlextInfraUtilitiesToolingFixture:
             The resulting ``p.Result[p.Cli.CommandOutput]``.
 
         """
-        return u.Cli.run_raw(
-            [c.Infra.MAKE, *args],
-            cwd=cwd,
-            options=m.Cli.ProcessOptions(
-                env={
-                    "GH_CONFIG_DIR": os.devnull,
-                    "DBUS_SESSION_BUS_ADDRESS": "disabled:",
-                    **(env or {}),
-                    **{
-                        key: value.get_secret_value()
-                        for key, value in (private_env or {}).items()
+        with TemporaryDirectory(prefix="flext-gh-") as gh_config:
+            return u.Cli.run_raw(
+                [c.Infra.MAKE, *args],
+                cwd=cwd,
+                options=m.Cli.ProcessOptions(
+                    env={
+                        "GH_CONFIG_DIR": gh_config,
+                        "DBUS_SESSION_BUS_ADDRESS": "disabled:",
+                        **(env or {}),
+                        **{
+                            key: value.get_secret_value()
+                            for key, value in (private_env or {}).items()
+                        },
                     },
-                },
-                remove_env_keys=tuple(
-                    key
-                    for key in c.Tests.MAKE_ISOLATION_ENV_KEYS
-                    if (env is None or key not in env)
-                    and (private_env is None or key not in private_env)
+                    remove_env_keys=tuple(
+                        key
+                        for key in c.Tests.MAKE_ISOLATION_ENV_KEYS
+                        if (env is None or key not in env)
+                        and (private_env is None or key not in private_env)
+                    ),
                 ),
-            ),
-            capture=capture,
-        )
+                capture=capture,
+            )
 
     @staticmethod
     def is_docker_available() -> bool:
@@ -710,11 +725,16 @@ class TestsFlextInfraUtilitiesToolingFixture:
         log = bin_dir / f"{name}.log"
         shim = bin_dir / name
         # A ``view`` of a release or pull request answers "absent" (exit 1),
-        # the state every first publication starts from.
+        # the state every first publication starts from; a ``list`` answers
+        # the open pull-request numbers a test writes to ``<name>.open``.
         shim.write_text(
             "#!/bin/sh\n"
             f'printf "%s\\n" "$*" >> "{log}"\n'
-            'case "$2" in view) exit 1 ;; esac\n',
+            f'open="{bin_dir / name}.open"\n'
+            'case "$2" in\n'
+            "view) exit 1 ;;\n"
+            'list) [ ! -f "$open" ] || cat "$open" ;;\n'
+            "esac\n",
             encoding="utf-8",
         )
         shim.chmod(0o755)

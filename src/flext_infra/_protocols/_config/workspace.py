@@ -7,7 +7,7 @@ if TYPE_CHECKING:
 
     from flext_cli import p
 
-    from flext_infra import t
+    from flext_infra import c, t
     from flext_infra._protocols._config import (
         FlextInfraProtocolsConfigBeads,
         FlextInfraProtocolsConfigMake,
@@ -257,17 +257,6 @@ class FlextInfraProtocolsConfigWorkspace:
             ...
 
         @property
-        def kind(self) -> FlextInfraConstantsConfig.ProjectKind | None:
-            """Structural member projected from the owning model.
-
-            Own governance profile and architecture boundary. The package base
-            bundle declares no project and so no kind; every project declares it in
-            its own layer, and the project-boundary read fails closed when it is
-            absent.
-            """
-            ...
-
-        @property
         def state(self) -> FlextInfraConstantsConfig.RepositoryState:
             """Own lifecycle participation policy."""
             ...
@@ -295,6 +284,15 @@ class FlextInfraProtocolsConfigWorkspace:
             ...
 
         @property
+        def deferred_instances(self) -> tuple[t.NonEmptyStr, ...]:
+            """Structural member projected from the owning model.
+
+            Own configuration roots whose validation is costly: each export is
+            published as a stand-in built on first attribute read.
+            """
+            ...
+
+        @property
         def examples_module(self) -> t.NonEmptyStr | None:
             """Own explicit examples module."""
             ...
@@ -302,6 +300,15 @@ class FlextInfraProtocolsConfigWorkspace:
         @property
         def extra_verbs(self) -> tuple[FlextInfraProtocolsConfigMake.MakeVerbSpec, ...]:
             """Own additional public Make commands."""
+            ...
+
+        @property
+        def domain_capabilities(self) -> tuple[t.NonEmptyStr, ...]:
+            """Structural member projected from the owning model.
+
+            Technology names this repository's domain owns as capabilities, exempt
+            from the library-named facade member ban.
+            """
             ...
 
         @property
@@ -316,6 +323,13 @@ class FlextInfraProtocolsConfigWorkspace:
             self,
         ) -> tuple[FlextInfraProtocolsConfigMake.MakeVerbGroupSpec, ...]:
             """Own ordered `make help` sections."""
+            ...
+
+        def governing_kind(self, detected: c.Infra.ProjectKind) -> c.Infra.ProjectKind:
+            """Structural member projected from the owning model.
+
+            Elect the governance kind: a project without a package is a consumer.
+            """
             ...
 
     @runtime_checkable

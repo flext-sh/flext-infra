@@ -1,0 +1,32 @@
+# A binding of `tm` that resolves to another object: an import of `tm` from a
+# module other than the flext-tests facade, or an aliased import that binds
+# `tm` to a foreign module. The tm-binding-admissible guard consumes it.
+id: tm-foreign-import
+language: Python
+rule:
+  any:
+    - all:
+        - kind: import_from_statement
+        - has:
+            field: module_name
+            not:
+              any:
+                - regex: "^(?:flext_tests|tests)$"
+                - kind: relative_import
+        - has:
+            kind: dotted_name
+            regex: "^tm$"
+            not:
+              any:
+                - inside:
+                    kind: import_from_statement
+                    field: module_name
+                - inside:
+                    kind: aliased_import
+                    field: name
+    - all:
+        - kind: import_statement
+        - any:
+            - pattern: "import tm"
+            - pattern: "import tm.$REST"
+            - pattern: "import $MODULE as tm"

@@ -53,8 +53,8 @@ that the group exists and rejects a different captured value before publishing
 any rewrite in the batch.
 Sed rules may declare `distributions: [flext-infra]` to select consumers by
 their validated `[project].name`. An omitted or empty selector applies to every
-consumer. The packaged catalogue scopes both Infra and Cosmos Docgen rules to
-their owning distributions, so external projects can compose their own rules
+consumer. The packaged catalogue scopes its Infra rules to their owning
+distribution, so external projects can compose their own rules
 without inheriting another project's file requirements. A selected Markdown
 include still fails if its source is absent; a missing project identity is an
 error rather than an implicit match.
@@ -183,7 +183,7 @@ no compatibility method is needed during a declaration cutover.
 ## Workspace Snapshot, Globs, and Transaction Acceptance
 
 Workspace model and acceptance (operator order 2026-10-25, tracker memory
-`operator-order-2026-10-25-rope-owns-model-refactors`; [ADR-028](../../../docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md) Decision 17):
+`operator-order-2026-10-25-rope-owns-model-refactors`; [ADR-028](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md) Decision 17):
 
 - `apply-renames` runs on the run's workspace snapshot
   (`u.Infra.workspace_snapshot`), which binds exactly one analysis engine project;

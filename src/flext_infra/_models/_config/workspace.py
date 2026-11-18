@@ -115,14 +115,7 @@ class FlextInfraModelsConfigWorkspace:
 
         candidate_dependencies: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.DependencyCommitSourceSpec,
-                    t.schema_for_model(
-                        lambda: (
-                            FlextInfraModelsConfigWorkspace.DependencyCommitSourceSpec
-                        )
-                    ),
-                ],
+                (FlextInfraModelsConfigWorkspace.DependencyCommitSourceSpec),
                 ...,
             ],
             m.Field(description="Candidate-only exact dependency Git sources"),
@@ -132,10 +125,8 @@ class FlextInfraModelsConfigWorkspace:
         @classmethod
         def _validate_candidate_dependencies(
             cls,
-            values: tuple[
-                FlextInfraModelsConfigWorkspace.DependencyCommitSourceSpec, ...
-            ],
-        ) -> tuple[FlextInfraModelsConfigWorkspace.DependencyCommitSourceSpec, ...]:
+            values: tuple[p.Infra.DependencyCommitSourceSpec, ...],
+        ) -> tuple[p.Infra.DependencyCommitSourceSpec, ...]:
             """Require one immutable candidate per distribution and repository.
 
             Returns:
@@ -172,13 +163,7 @@ class FlextInfraModelsConfigWorkspace:
             m.Field(description="Explicit metadata for a new project scaffold"),
         ] = None
         integration: Annotated[
-            Annotated[
-                p.Infra.WorkspaceIntegrationSpec,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsConfigContexts.WorkspaceIntegrationSpec
-                ),
-            ]
-            | None,
+            FlextInfraModelsConfigContexts.WorkspaceIntegrationSpec | None,
             m.Field(description="Explicit repository integration contract"),
         ] = None
         namespace_scan_dirs: Annotated[
@@ -186,7 +171,10 @@ class FlextInfraModelsConfigWorkspace:
             m.Field(description="Own namespace analysis roots"),
         ] = ()
         candidate_bootstrap_targets: Annotated[
-            tuple[FlextInfraModelsConfigWorkspace.CandidateBootstrapTargetSpec, ...],
+            tuple[
+                (FlextInfraModelsConfigWorkspace.CandidateBootstrapTargetSpec),
+                ...,
+            ],
             m.Field(description="Declared candidate worktrees and recovery surfaces"),
         ] = ()
         workspace_inventory_command: Annotated[
@@ -236,17 +224,6 @@ class FlextInfraModelsConfigWorkspace:
             FlextInfraConstantsConfig.CodegenKind,
             m.Field(description="Own canonical generation policy"),
         ] = FlextInfraConstantsConfig.CodegenKind.CONFORM
-        kind: Annotated[
-            FlextInfraConstantsConfig.ProjectKind | None,
-            m.Field(
-                description=(
-                    "Own governance profile and architecture boundary. The "
-                    "package base bundle declares no project and so no kind; "
-                    "every project declares it in its own layer, and the "
-                    "project-boundary read fails closed when it is absent"
-                ),
-            ),
-        ] = None
         state: Annotated[
             FlextInfraConstantsConfig.RepositoryState,
             m.Field(description="Own lifecycle participation policy"),
@@ -267,6 +244,15 @@ class FlextInfraModelsConfigWorkspace:
             tuple[t.NonEmptyStr, ...],
             m.Field(description="Own additional duplication-analysis trees"),
         ] = ()
+        deferred_instances: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                description=(
+                    "Own configuration roots whose validation is costly: each "
+                    "export is published as a stand-in built on first attribute read"
+                ),
+            ),
+        ] = ()
         examples_module: Annotated[
             t.NonEmptyStr | None,
             m.Field(
@@ -275,17 +261,98 @@ class FlextInfraModelsConfigWorkspace:
             ),
         ] = None
         extra_verbs: Annotated[
-            tuple[FlextInfraModelsConfigMake.MakeVerbSpec, ...],
+            tuple[
+                FlextInfraModelsConfigMake.MakeVerbSpec,
+                ...,
+            ],
             m.Field(description="Own additional public Make commands"),
+        ] = ()
+        domain_capabilities: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                description=(
+                    "Technology names this repository's domain owns as capabilities, "
+                    "exempt from the library-named facade member ban"
+                )
+            ),
         ] = ()
         script_dispatch: Annotated[
             FlextInfraModelsConfigContexts.ScriptDispatchSpec | None,
             m.Field(description="Own script command routing contract"),
         ] = None
         verb_groups: Annotated[
-            tuple[FlextInfraModelsConfigMake.MakeVerbGroupSpec, ...],
+            tuple[
+                FlextInfraModelsConfigMake.MakeVerbGroupSpec,
+                ...,
+            ],
             m.Field(description="Own ordered `make help` sections"),
         ] = ()
+
+        @m.field_validator("deferred_instances")
+        @classmethod
+        def _validate_deferred_instances(
+            cls, values: tuple[str, ...]
+        ) -> tuple[str, ...]:
+            """Require each deferred configuration root to be a unique identifier.
+
+            Returns:
+                The declared export names, in declared order.
+
+            Raises:
+                ValueError: If a name is not an identifier or repeats.
+
+            """
+            invalid = [value for value in values if not value.isidentifier()]
+            if invalid:
+                msg = f"deferred instances must be identifiers: {invalid}"
+                raise ValueError(msg)
+            if len(set(values)) != len(values):
+                msg = "deferred instances must be unique"
+                raise ValueError(msg)
+            return values
+
+        @m.model_validator(mode="after")
+        def _validate_consumer_declaration(self) -> Self:
+            """Keep a consumer's declaration free of everything a package ships.
+
+            A project that declares no ``package_name`` owns no import package: it
+            is a consumer, and ships no package, module, data or console script.
+
+            Returns:
+                The validated declaration.
+
+            Raises:
+                ValueError: A consumer ships code.
+
+            """
+            project = self.project
+            if project is None or project.package_name is not None:
+                return self
+            shipped = (
+                project.root_packages
+                or project.root_modules
+                or project.repository_namespace_packages
+                or project.packaged_data_paths
+                or project.console_scripts
+                or project.hatch_build_hook_path
+            )
+            if shipped:
+                msg = "a consumer repository ships no package, module or data"
+                raise ValueError(msg)
+            return self
+
+        def governing_kind(self, detected: c.Infra.ProjectKind) -> c.Infra.ProjectKind:
+            """Elect the governance kind: a project without a package is a consumer.
+
+            Returns:
+                ``consumer`` when the declared project omits its package, else the
+                natively detected kind.
+
+            """
+            project = self.project
+            if project is not None and project.package_name is None:
+                return c.Infra.ProjectKind.CONSUMER
+            return detected
 
     class CandidateBootstrapTargetSpec(FlextInfraModelsConfigContract.ConfigContract):
         """One declared worktree and canonical conform surface."""
@@ -348,13 +415,7 @@ class FlextInfraModelsConfigWorkspace:
         dependency_groups: Mapping[
             str,
             tuple[
-                str
-                | Annotated[
-                    p.Infra.DependencyGroupInclude,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsConfigWorkspace.DependencyGroupInclude
-                    ),
-                ],
+                str | FlextInfraModelsConfigWorkspace.DependencyGroupInclude,
                 ...,
             ],
         ] = m.Field(
@@ -386,13 +447,11 @@ class FlextInfraModelsConfigWorkspace:
             cls,
             groups: Mapping[
                 str,
-                tuple[
-                    str | FlextInfraModelsConfigWorkspace.DependencyGroupInclude, ...
-                ],
+                tuple[str | p.Infra.DependencyGroupInclude, ...],
             ],
         ) -> Mapping[
             str,
-            tuple[str | FlextInfraModelsConfigWorkspace.DependencyGroupInclude, ...],
+            tuple[str | p.Infra.DependencyGroupInclude, ...],
         ]:
             """Reject missing, ambiguous or cyclic local group inclusions.
 
@@ -461,13 +520,7 @@ class FlextInfraModelsConfigWorkspace:
         dependency_groups: Mapping[
             str,
             tuple[
-                str
-                | Annotated[
-                    p.Infra.DependencyGroupInclude,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsConfigWorkspace.DependencyGroupInclude
-                    ),
-                ],
+                str | FlextInfraModelsConfigWorkspace.DependencyGroupInclude,
                 ...,
             ],
         ] = m.Field(
@@ -497,9 +550,6 @@ class FlextInfraModelsConfigWorkspace:
             t.NonEmptyStr,
             m.Field(description="Member distribution it requires"),
         ]
-
-    type CandidateBootstrapTargets = tuple[CandidateBootstrapTargetSpec, ...]
-    """Shared declaration type for repeated candidate worktree target fields."""
 
     class WorkspaceBeadsServerSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Optional Dolt connection declared by a versioned workspace manifest."""
@@ -620,7 +670,10 @@ class FlextInfraModelsConfigWorkspace:
             m.Field(description="Optional project creation metadata"),
         ] = None
         members: Annotated[
-            tuple[FlextInfraModelsConfigContexts.RepositoryRef, ...],
+            tuple[
+                FlextInfraModelsConfigContexts.RepositoryRef,
+                ...,
+            ],
             m.Field(description="Declared member repository contracts"),
         ] = ()
         external_dependency_paths: Annotated[
@@ -632,7 +685,10 @@ class FlextInfraModelsConfigWorkspace:
             m.Field(description="Content-only Gitlink paths"),
         ] = ()
         exclusions: Annotated[
-            tuple[FlextInfraModelsConfigWorkspace.WorkspaceExclusionSpec, ...],
+            tuple[
+                FlextInfraModelsConfigWorkspace.WorkspaceExclusionSpec,
+                ...,
+            ],
             m.Field(description="Explicit workspace exclusions"),
         ] = ()
         integration: Annotated[
@@ -641,30 +697,21 @@ class FlextInfraModelsConfigWorkspace:
         ] = None
         candidate_bootstrap_targets: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.CandidateBootstrapTargetSpec,
-                    t.schema_for_model(
-                        lambda: (
-                            FlextInfraModelsConfigWorkspace.CandidateBootstrapTargetSpec
-                        )
-                    ),
-                ],
+                (FlextInfraModelsConfigWorkspace.CandidateBootstrapTargetSpec),
                 ...,
             ],
             m.Field(description="Declared candidate worktrees conformed by Infra"),
         ] = ()
         repository_policy_overlays: Annotated[
-            tuple[FlextInfraModelsConfigWorkspace.RepositoryPolicyOverlaySpec, ...],
+            tuple[
+                (FlextInfraModelsConfigWorkspace.RepositoryPolicyOverlaySpec),
+                ...,
+            ],
             m.Field(description="Repository-local policy overlays"),
         ] = ()
         external_consumers: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.ExternalConsumerSpec,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsConfigWorkspace.ExternalConsumerSpec
-                    ),
-                ],
+                FlextInfraModelsConfigWorkspace.ExternalConsumerSpec,
                 ...,
             ],
             m.Field(
@@ -766,14 +813,7 @@ class FlextInfraModelsConfigWorkspace:
 
         entries: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.HostWorkspaceInventoryEntry,
-                    t.schema_for_model(
-                        lambda: (
-                            FlextInfraModelsConfigWorkspace.HostWorkspaceInventoryEntry
-                        )
-                    ),
-                ],
+                (FlextInfraModelsConfigWorkspace.HostWorkspaceInventoryEntry),
                 ...,
             ],
             m.Field(description="Canonical discovered checkout identities"),
@@ -827,12 +867,7 @@ class FlextInfraModelsConfigWorkspace:
         ] = ()
         name: Annotated[t.NonEmptyStr, m.Field(description="Workspace name")]
         docs_audit: Annotated[
-            Annotated[
-                p.Infra.DocsAuditOverridesSpec,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsConfigContract.DocsAuditOverridesSpec
-                ),
-            ],
+            FlextInfraModelsConfigContract.DocsAuditOverridesSpec,
             m.Field(
                 description="Validated local documentation audit declarations",
             ),
@@ -840,13 +875,7 @@ class FlextInfraModelsConfigWorkspace:
             default_factory=FlextInfraModelsConfigContract.DocsAuditOverridesSpec
         )
         beads: Annotated[
-            Annotated[
-                p.Infra.BeadsProjectSpec,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsConfigBeads.BeadsProjectSpec
-                ),
-            ]
-            | None,
+            FlextInfraModelsConfigBeads.BeadsProjectSpec | None,
             m.Field(description="Repository-local Beads identity when enabled"),
         ] = None
         gascity_enabled: Annotated[
@@ -860,30 +889,15 @@ class FlextInfraModelsConfigWorkspace:
             ),
         ] = True
         repository: Annotated[
-            Annotated[
-                p.Infra.RepositoryRef,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsConfigContexts.RepositoryRef
-                ),
-            ],
+            FlextInfraModelsConfigContexts.RepositoryRef,
             m.Field(description="Local repository Git contract"),
         ]
         project: Annotated[
-            Annotated[
-                p.Infra.ProjectSpec,
-                t.schema_for_model(lambda: FlextInfraModelsConfigContexts.ProjectSpec),
-            ]
-            | None,
+            FlextInfraModelsConfigContexts.ProjectSpec | None,
             m.Field(description="Metadata required only when materializing a new tree"),
         ] = None
         flext_source: Annotated[
-            Annotated[
-                p.Infra.CodegenBootstrapSource,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsConfigWorkspace.CodegenBootstrapSource
-                ),
-            ]
-            | None,
+            FlextInfraModelsConfigWorkspace.CodegenBootstrapSource | None,
             m.Field(
                 description=(
                     "FLEXT dependency source required before the first pyproject "
@@ -911,29 +925,22 @@ class FlextInfraModelsConfigWorkspace:
             ),
         ] = None
         candidate_bootstrap_targets: Annotated[
-            FlextInfraModelsConfigWorkspace.CandidateBootstrapTargets,
+            tuple[
+                (FlextInfraModelsConfigWorkspace.CandidateBootstrapTargetSpec),
+                ...,
+            ],
             m.Field(description="Declared candidate worktrees for bootstrap"),
         ] = ()
         subprojects: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.RepositoryRef,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsConfigContexts.RepositoryRef
-                    ),
-                ],
+                FlextInfraModelsConfigContexts.RepositoryRef,
                 ...,
             ],
             m.Field(description="Direct governed repositories from local .gitmodules"),
         ] = ()
         pending_subprojects: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.GitSubmoduleDeclaration,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsConfigWorkspace.GitSubmoduleDeclaration
-                    ),
-                ],
+                FlextInfraModelsConfigWorkspace.GitSubmoduleDeclaration,
                 ...,
             ],
             m.Field(
@@ -945,7 +952,10 @@ class FlextInfraModelsConfigWorkspace:
             m.Field(description="Observed external or fork Git submodule paths"),
         ] = ()
         external_consumers: Annotated[
-            tuple[FlextInfraModelsConfigWorkspace.ExternalConsumerSpec, ...],
+            tuple[
+                FlextInfraModelsConfigWorkspace.ExternalConsumerSpec,
+                ...,
+            ],
             m.Field(
                 description=(
                     "Out-of-workspace repositories propagation adjusts as"

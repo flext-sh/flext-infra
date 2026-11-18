@@ -60,11 +60,11 @@ class TestsMakeBootstrapPublication:
                 relative_path=member.name,
             )
         tm.ok(u.Tests.create_python_environment(root))
-        uv = tm.ok(u.Infra.managed_mise_binary(c.Infra.UV, root))
+        uv = u.Tests.managed_uv()
         tm.ok(
             u.Cli.run_checked(
                 (
-                    str(uv),
+                    uv,
                     "pip",
                     "install",
                     "--no-deps",
@@ -229,7 +229,7 @@ class TestsMakeBootstrapPublication:
         duplicate = directory.with_name(
             directory.name.removesuffix(".dist-info") + "-duplicate.dist-info",
         )
-        shutil.copytree(directory, duplicate)
+        u.Tests.reflink_copy_tree(directory, duplicate)
 
         result = self._run(root)
 
@@ -294,11 +294,11 @@ class TestsMakeBootstrapPublication:
                 cwd=root,
             ),
         )
-        uv = tm.ok(u.Infra.managed_mise_binary(c.Infra.UV, root))
+        uv = u.Tests.managed_uv()
         tm.ok(
             u.Cli.run_checked(
                 (
-                    str(uv),
+                    uv,
                     "pip",
                     "install",
                     "--no-deps",

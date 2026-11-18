@@ -1,5 +1,14 @@
 id: rewire-test-assert-not-none
 snapshots:
+  assert value is not None:
+    fixed: |-
+      if value is None:
+          tm.reject()
+    labels:
+    - source: assert value is not None
+      style: primary
+      start: 0
+      end: 24
   "from tests import tm\nassert value is not None\n":
     fixed: |
       from tests import tm
@@ -10,16 +19,6 @@ snapshots:
       style: primary
       start: 21
       end: 45
-    - source: from tests import tm
-      style: secondary
-      start: 0
-      end: 20
-    - source: |
-        from tests import tm
-        assert value is not None
-      style: secondary
-      start: 0
-      end: 46
   "from tests import tm\nif not (value is not None):\n    raise AssertionError\n":
     fixed: |
       from tests import tm
@@ -32,14 +31,3 @@ snapshots:
       style: primary
       start: 21
       end: 73
-    - source: from tests import tm
-      style: secondary
-      start: 0
-      end: 20
-    - source: |
-        from tests import tm
-        if not (value is not None):
-            raise AssertionError
-      style: secondary
-      start: 0
-      end: 74

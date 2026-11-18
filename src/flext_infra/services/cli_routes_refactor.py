@@ -11,7 +11,8 @@ from typing import ClassVar
 
 from flext_cli import cli
 
-from flext_infra import c, infra, m, p, r, t, u
+from flext_infra import c, config, infra, m, p, r, t, u
+from flext_infra._utilities._rope import FlextInfraUtilitiesRopeMissingImports
 from flext_infra.codemod import (
     FlextInfraCodemodAstScan,
     FlextInfraCodemodSemanticApply,
@@ -126,11 +127,14 @@ class FlextInfraRefactorRoutes:
                 raise FileNotFoundError(source)
             if target.exists():
                 raise FileExistsError(target)
-            states = tuple(
-                u.Cli.atomic_read_binary_file_state(
-                    resource.real_path, required=True
-                ).unwrap()
+            paths = {
+                Path(resource.real_path).resolve()
                 for resource in workspace.rope_project.get_python_files()
+            }
+            paths.add(source)
+            states = tuple(
+                u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
+                for path in sorted(paths)
             )
             plans = u.Infra.plan_module_move(
                 workspace.rope_project,
@@ -191,7 +195,32 @@ class FlextInfraRefactorRoutes:
             The resulting ``p.Result[t.Cli.ResultValue]``.
 
         """
-        return infra.mod(request, FlextInfraCliModProgress())
+        selection = (
+            request.laws
+            or request.rule_ids
+            or ((request.rule_id,) if request.rule_id else ())
+        )
+        preflight = infra.mod_selection(request)
+        if preflight.failure:
+            return r[t.Cli.ResultValue].from_failure(preflight)
+        writes = not (request.check or request.dry_run_mode)
+        repeat = config.Infra.gate_admission.repeat
+        if writes:
+            u.Infra.gate_repeat_refuse(
+                c.Infra.GATE_ADMISSION_MODIFICATION,
+                request.repository_root,
+                repeat.mod_selection if selection else repeat.mod_full,
+                selection,
+            )
+        with u.Infra.gate_admitted(
+            c.Infra.GATE_ADMISSION_MODIFICATION,
+            request.repository_root,
+            config.Infra.gate_admission.modification,
+        ) as ticket:
+            result = infra.mod(request, FlextInfraCliModProgress())
+        if writes and result.success:
+            u.Infra.gate_repeat_record(ticket, selection)
+        return result
 
     @staticmethod
     def execute_mod_text(
@@ -255,6 +284,15 @@ class FlextInfraRefactorRoutes:
             handler=FlextInfraNamespaceEnforcer.execute_command,
         ),
         m.Cli.ResultCommandRoute(
+            name="missing-imports",
+            help_text=(
+                "Repair undefined names with Rope-resolved imports "
+                "(conservative, no AST/CST/re)"
+            ),
+            model_cls=m.Infra.RefactorNamespaceEnforceInput,
+            handler=FlextInfraUtilitiesRopeMissingImports.execute,
+        ),
+        m.Cli.ResultCommandRoute(
             name="census",
             help_text="Run the authenticated workspace object census",
             model_cls=m.Infra.CensusInput,
@@ -278,9 +316,9 @@ class FlextInfraRefactorRoutes:
         m.Cli.ResultCommandRoute(
             name="mod",
             help_text=(
-                "Check or fix one theme (--laws, --rule-ids, --rule or "
-                "--rename-plan) to a proven fixed point; an unselected run is "
-                "refused (ADR-028 Decision 18 item 2)"
+                "Converge the complete active catalog to a proven fixed point; "
+                "--laws, --rule-ids, --rule or --rename-plan narrow the focus "
+                "(ADR-028 Decision 18 item 2)"
             ),
             model_cls=m.Infra.ModCommand,
             handler=execute_mod,

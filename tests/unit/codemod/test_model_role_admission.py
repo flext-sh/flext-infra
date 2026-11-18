@@ -9,11 +9,32 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra.codemod import FlextInfraModGateEngine
-from tests import c, tm, u
+from tests import c, p, tm, u
 
 
 class TestsFlextInfraModelRoleAdmission:
     """Exercise the elected rule with real packages, models and project metadata."""
+
+    @staticmethod
+    def _facade_layer_selection(root: Path) -> tuple[str, ...]:
+        """Return the rendered partitions of the facade-layer family rule.
+
+        A partitioned catalog rule is selected by its rendered partitions
+        (``metadata.scope.partition``), never by the authored family id.
+
+        Returns:
+            The generated partition ids the scan must select.
+
+        """
+        with u.Infra.codemod_workspace_snapshot(root) as snapshot:
+            plan = tm.ok(u.Infra.codemod_rule_plan(snapshot))
+        partitions = tuple(
+            rule.id
+            for rule in plan.rules
+            if rule.partition_of == "ban-class-wrong-facade-layer"
+        )
+        tm.that(bool(partitions), eq=True)
+        return partitions
 
     @staticmethod
     @c.Tests.MARK.parametrize(
@@ -25,7 +46,7 @@ class TestsFlextInfraModelRoleAdmission:
             "flext-ldif",
             "flext-infra",
             "flext-tests",
-            "algar-oud-mig",
+            "acme-app",
         ],
     )
     @c.Tests.MARK.parametrize("surface", ["src", "namespace"])
@@ -33,6 +54,7 @@ class TestsFlextInfraModelRoleAdmission:
         tmp_path: Path,
         project_name: str,
         surface: str,
+        session_runtime: p.Tests.SessionRuntime,
     ) -> None:
         """Seven fixture profiles preserve payload diagnostics and writer behavior."""
         declaration = u.Tests.project_spec(f"role-{project_name}")
@@ -43,7 +65,13 @@ class TestsFlextInfraModelRoleAdmission:
         root, primary = u.Tests.create_lazy_init_workspace(
             tmp_path,
             project_name=declaration.constant_name,
-            package_name=declaration.package_name,
+            package_name=tm.not_none(declaration.package_name),
+        )
+        tm.ok(
+            u.Tests.provision_scan_workspace(
+                root,
+                session_runtime=session_runtime,
+            )
         )
         tm.ok(
             u.Cli.yaml_dump(
@@ -118,7 +146,9 @@ class TestsFlextInfraModelRoleAdmission:
             FlextInfraModGateEngine.scan(
                 root,
                 fix=False,
-                selection=("ban-class-wrong-facade-layer",),
+                selection=TestsFlextInfraModelRoleAdmission._facade_layer_selection(
+                    root
+                ),
                 source_files=(path,),
             )
         )
@@ -161,7 +191,9 @@ class TestsFlextInfraModelRoleAdmission:
             FlextInfraModGateEngine.scan(
                 root,
                 fix=False,
-                selection=("ban-class-wrong-facade-layer",),
+                selection=TestsFlextInfraModelRoleAdmission._facade_layer_selection(
+                    root
+                ),
                 source_files=(path,),
             )
         )

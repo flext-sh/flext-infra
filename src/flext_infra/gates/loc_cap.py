@@ -34,16 +34,22 @@ class FlextInfraGatesLocCap(FlextInfraGates):
     ) -> Sequence[str]:
         """Run scc over the project's Python directories, emitting per-file JSON.
 
+        The cap governs authored modules: the tracked generator-owned trees
+        (``codegen.generated_sources``) stay in the analyzer scans but never
+        count against the cap, so scc skips those directory names.
+
         Returns:
             The resulting ``Sequence[str]``.
 
         """
         _ = project_dir, ctx
+        generated = config.Infra.codegen.generated_sources
         return [
             c.Infra.SCC_BINARY,
             "--format",
             "json",
             "--by-file",
+            *(("--exclude-dir", ",".join(generated)) if generated else ()),
             *check_dirs,
         ]
 
@@ -60,7 +66,7 @@ class FlextInfraGatesLocCap(FlextInfraGates):
             The resulting ``tuple[bool, Sequence[p.Infra.Issue]]``.
 
         """
-        del project_dir, ctx
+        del ctx
         if not u.Cli.process_succeeded(result.outcome):
             return (
                 False,
@@ -78,6 +84,7 @@ class FlextInfraGatesLocCap(FlextInfraGates):
         issues = self._files_over_cap(
             result.stdout,
             config.Infra.codegen.loc_cap.max_lines,
+            project_dir,
         )
         return len(issues) == 0, issues
 
@@ -103,11 +110,14 @@ class FlextInfraGatesLocCap(FlextInfraGates):
         cls,
         scc_json: str,
         cap: int,
+        project_dir: Path,
     ) -> tuple[p.Infra.Issue, ...]:
         """Extract over-cap modules from an `scc --format json --by-file` payload.
 
-        Generated and authored modules share the same configured ceiling.
-        Parsing failures propagate.
+        The cap governs authored modules only (operator ruling 2026-11-14): a
+        module that opens with the declared generator header is a projection
+        whose size is its generator's obligation and never counts. Its path
+        resolves under the scanned project. Parsing and read failures propagate.
 
         Returns:
             The resulting ``tuple[p.Infra.Issue, ...],``.
@@ -120,6 +130,7 @@ class FlextInfraGatesLocCap(FlextInfraGates):
             if language.name == c.Infra.SCC_PYTHON_LANG
             for file in language.files
             if file.code > cap
+            and not u.Infra.generated_source(project_dir / file.location)
         )
 
 

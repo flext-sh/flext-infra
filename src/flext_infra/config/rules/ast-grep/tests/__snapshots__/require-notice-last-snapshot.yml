@@ -4,20 +4,20 @@ snapshots:
     labels:
     - source: |
         Summary line.
-        
+
         Copyright (c) 2026 FLEXT Team. All rights reserved.
         SPDX-License-Identifier: MIT
-        
+
         Body paragraph.
       style: primary
       start: 3
       end: 116
     - source: |
         """Summary line.
-        
+
         Copyright (c) 2026 FLEXT Team. All rights reserved.
         SPDX-License-Identifier: MIT
-        
+
         Body paragraph.
         """
       style: secondary
@@ -25,10 +25,10 @@ snapshots:
       end: 120
     - source: |-
         """Summary line.
-        
+
         Copyright (c) 2026 FLEXT Team. All rights reserved.
         SPDX-License-Identifier: MIT
-        
+
         Body paragraph.
         """
       style: secondary
@@ -36,10 +36,10 @@ snapshots:
       end: 119
     - source: |-
         """Summary line.
-        
+
         Copyright (c) 2026 FLEXT Team. All rights reserved.
         SPDX-License-Identifier: MIT
-        
+
         Body paragraph.
         """
       style: secondary
@@ -49,10 +49,10 @@ snapshots:
     labels:
     - source: |
         Summary line.
-        
+
         Copyright (c) 2026 FLEXT Team. All rights reserved.
         SPDX-License-Identifier: MIT
-        
+
         Body paragraph.
       style: primary
       start: 26
@@ -60,10 +60,10 @@ snapshots:
     - source: |
         #!/usr/bin/env python3
         """Summary line.
-        
+
         Copyright (c) 2026 FLEXT Team. All rights reserved.
         SPDX-License-Identifier: MIT
-        
+
         Body paragraph.
         """
       style: secondary
@@ -71,10 +71,10 @@ snapshots:
       end: 143
     - source: |-
         """Summary line.
-        
+
         Copyright (c) 2026 FLEXT Team. All rights reserved.
         SPDX-License-Identifier: MIT
-        
+
         Body paragraph.
         """
       style: secondary
@@ -82,10 +82,10 @@ snapshots:
       end: 142
     - source: |-
         """Summary line.
-        
+
         Copyright (c) 2026 FLEXT Team. All rights reserved.
         SPDX-License-Identifier: MIT
-        
+
         Body paragraph.
         """
       style: secondary

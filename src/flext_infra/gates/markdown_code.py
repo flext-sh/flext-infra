@@ -405,13 +405,13 @@ class FlextInfraGatesMarkdownCode(FlextInfraGates):
         if not ran:
             return self._clean_without_embedded_code(project_dir, ctx, started)
         return self._build_gate_execution(
-            m.Infra.GateExecutionParams(
-                project_dir=project_dir,
-                verdict=passed,
-                issues=tuple(issues),
-                raw_output="\n".join(issue.formatted for issue in issues),
-                started=started,
-            ),
+            m.Infra.GateExecutionParams.model_validate({
+                "project_dir": (project_dir),
+                "verdict": (passed),
+                "issues": (tuple(issues)),
+                "raw_output": ("\n".join(issue.formatted for issue in issues)),
+                "started": (started),
+            }),
             ctx,
         )
 
@@ -436,20 +436,20 @@ class FlextInfraGatesMarkdownCode(FlextInfraGates):
         if not ran:
             return self._clean_without_embedded_code(project_dir, ctx, started)
         return self._build_gate_execution(
-            m.Infra.GateExecutionParams(
-                project_dir=project_dir,
-                verdict=passed and not issues,
-                issues=tuple(issues),
-                raw_output="\n".join(issue.formatted for issue in issues),
-                outcome=(
+            m.Infra.GateExecutionParams.model_validate({
+                "project_dir": (project_dir),
+                "verdict": (passed and not issues),
+                "issues": (tuple(issues)),
+                "raw_output": ("\n".join(issue.formatted for issue in issues)),
+                "outcome": (
                     c.Infra.ToolOutcome.ERROR
                     if not passed
                     else c.Infra.ToolOutcome.FINDINGS
                     if issues
                     else c.Infra.ToolOutcome.CLEAN
                 ),
-                started=started,
-            ),
+                "started": (started),
+            }),
             ctx=ctx,
         )
 

@@ -212,9 +212,15 @@ class TestsFlextInfraGateHookDefaults:
             )
 
     class _ShortTimeout(_Probe):
-        """Cut a long sleep off with the replaced timeout."""
+        """Cut a long sleep off with the replaced timeout.
 
-        check_timeout: ClassVar[int] = 1
+        A plain timeout keeps a tenth of itself as the TERM, KILL and drain
+        reserve inside the deadline; five seconds leaves half a second for
+        that, which a contended host still meets, where one second left a
+        tenth of a second and the reaping itself overran the deadline.
+        """
+
+        check_timeout: ClassVar[int] = 5
 
         @override
         def _build_check_command(
@@ -223,7 +229,7 @@ class TestsFlextInfraGateHookDefaults:
             ctx: p.Infra.GateContext,
             check_dirs: Sequence[str],
         ) -> Sequence[str]:
-            """Sleep far past the replaced one-second deadline.
+            """Sleep far past the replaced five-second deadline.
 
             Returns:
                 The resulting ``Sequence[str]``.
@@ -236,7 +242,7 @@ class TestsFlextInfraGateHookDefaults:
                 # The marker is assembled at runtime: an interrupted command's
                 # traceback echoes its own source line, so a literal marker in
                 # the code would appear in the output without ever printing.
-                "import time; time.sleep(30); print('FIN' + 'ISHED')",
+                "import time; time.sleep(120); print('FIN' + 'ISHED')",
             )
 
     @staticmethod
@@ -364,6 +370,7 @@ class TestsFlextInfraGateHookDefaults:
             with u.Tests.raises(ValueError, match="native report rejected"):
                 self._ValidateOverride(project).check(project, context)
 
+    @c.Tests.MARK.slow
     def test_inherited_timeout_allows_a_short_command(self, tmp_path: Path) -> None:
         """A two-second probe finishes under the inherited deadline."""
         project, reports = self._project(tmp_path)
@@ -373,6 +380,7 @@ class TestsFlextInfraGateHookDefaults:
         )
         tm.that(execution.raw_output, has="FINISHED")
 
+    @c.Tests.MARK.slow
     def test_replaced_timeout_stops_a_long_command(self, tmp_path: Path) -> None:
         """A gate that replaces ``check_timeout`` is cut off at that deadline."""
         project, reports = self._project(tmp_path)
@@ -381,7 +389,7 @@ class TestsFlextInfraGateHookDefaults:
             self._context(project, reports),
         )
         tm.that(execution.raw_output, lacks="FINISHED")
-        tm.that(execution.result.duration, lt=10)
+        tm.that(execution.result.duration, lt=30)
 
     @c.Tests.MARK.parametrize(
         c.ContextScope.OPERATION, ["check", "skip", "fix", "failed-fix"]
@@ -454,8 +462,7 @@ class TestsFlextInfraGateHookDefaults:
 
     @staticmethod
     def test_production_gates_keep_their_declared_defaults() -> None:
-        """Pyright and Pyrefly keep the deadlines and removals they declared."""
-        tm.that(gates.FlextInfraGatesPyright.check_timeout, eq=c.Infra.TIMEOUT_LONG)
+        """Pyrefly keeps the environment removals it declared."""
         tm.that(
             tuple(gates.FlextInfraGatesPyrefly.check_remove_env_keys),
             eq=(

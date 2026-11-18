@@ -1,0 +1,51 @@
+{#- Resolve, mint and verify the declared App installation token. A
+    superproject checkout consumes the token, so superproject_checkout emits
+    these steps before it checks out; every other job emits them through
+    private_dependency_auth.j2 after its own checkout. Their ``run`` steps use
+    the job root, because ``defaults.run.working-directory`` names the
+    superproject directory, which exists only after the checkout. -#}
+{%- if private_dependency_auth %}
+
+      # The declared App authenticates only its selected private repositories.
+      # Native Git process configuration reaches dependency clones without
+      # credential files, global URL rewrites, or changes to SDK token aliases.
+      # The credential exists wherever the repository's secrets reach the run
+      # (push, dispatch and same-repository pull requests). Where they do not
+      # (a fork pull request), the private dependency cannot resolve: record
+      # NOT EXECUTED with its reason and fail, never continue unauthenticated.
+      - name: Resolve the private-dependency credential
+        id: private_dependency_credential
+        shell: bash
+        working-directory: .
+        env:
+          PRIVATE_DEPENDENCY_APP_ID: {% raw %}${{ secrets.{% endraw %}{{ private_dependency_auth.app_id_secret }}{% raw %} }}{% endraw %}
+        run: |
+          set -euo pipefail
+          if [ -z "${PRIVATE_DEPENDENCY_APP_ID}" ]; then
+            printf '%s\n' 'NOT EXECUTED: private-dependency authentication; secret {{ private_dependency_auth.app_id_secret }} is not available to this run' >> "${GITHUB_STEP_SUMMARY}"
+            echo "::error::NOT EXECUTED: secret {{ private_dependency_auth.app_id_secret }} is unavailable, so private dependencies {{ private_dependency_auth.repositories | join(",") }} cannot resolve"
+            exit 1
+          fi
+
+      - name: Mint the private-dependency installation token
+        id: private_dependency_token
+        uses: {{ github_actions["create-github-app-token"].repository }}@{{ github_actions["create-github-app-token"].version }}
+        with:
+          client-id: {% raw %}${{ secrets.{% endraw %}{{ private_dependency_auth.app_id_secret }}{% raw %} }}{% endraw %}
+          private-key: {% raw %}${{ secrets.{% endraw %}{{ private_dependency_auth.private_key_secret }}{% raw %} }}{% endraw %}
+          owner: {% raw %}${{ github.repository_owner }}{% endraw %}
+          repositories: {{ private_dependency_auth.repositories | join(",") }}
+          permission-contents: read
+
+      - name: Verify the private-dependency installation token
+        shell: bash
+        working-directory: .
+        env:
+          PRIVATE_DEPENDENCY_TOKEN: {% raw %}${{ steps.private_dependency_token.outputs.token }}{% endraw %}
+        run: |
+          set -euo pipefail
+          if [ -z "${PRIVATE_DEPENDENCY_TOKEN}" ]; then
+            echo "::error::the {{ private_dependency_auth.app_id_secret }} App produced no installation token - a private git dependency cannot be resolved"
+            exit 1
+          fi
+{%- endif -%}

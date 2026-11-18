@@ -3,11 +3,11 @@ snapshots:
   "from __future__ import annotations\n\nfrom flext_core import c, u\n\nregistry: p.Registry = Field(default_factory=FlextRegistry.create)\n":
     fixed: |
       from __future__ import annotations
-      
+
       from flext_core import FlextRegistry
-      
+
       from flext_core import c, u
-      
+
       registry: p.Registry = Field(default_factory=FlextRegistry.create)
     labels:
     - source: from __future__ import annotations
@@ -20,9 +20,9 @@ snapshots:
       end: 130
     - source: |
         from __future__ import annotations
-        
+
         from flext_core import c, u
-        
+
         registry: p.Registry = Field(default_factory=FlextRegistry.create)
       style: secondary
       start: 0
@@ -30,9 +30,9 @@ snapshots:
   "from __future__ import annotations\n\nregistry = FlextRegistry.create()\n":
     fixed: |
       from __future__ import annotations
-      
+
       from flext_core import FlextRegistry
-      
+
       registry = FlextRegistry.create()
     labels:
     - source: from __future__ import annotations
@@ -45,7 +45,7 @@ snapshots:
       end: 67
     - source: |
         from __future__ import annotations
-        
+
         registry = FlextRegistry.create()
       style: secondary
       start: 0

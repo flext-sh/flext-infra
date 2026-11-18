@@ -191,32 +191,6 @@ class FlextInfraUtilitiesCodemodNativePackage:
             )
         )
 
-    @staticmethod
-    def _codemod_installed_initializer(
-        snapshot: p.Infra.WorkspaceSnapshot,
-        package: str,
-    ) -> p.Infra.RopeSourceModule | None:
-        """Elect a native installed package initializer without executing it.
-
-        Returns:
-            The source initializer, or no package declaration for this candidate.
-
-        """
-        resource = snapshot.engine.find_module(package)
-        if resource is None or FlextInfraUtilitiesRopeRuntime.file_resource(resource):
-            return None
-        initializer = Path(resource.real_path) / c.Infra.INIT_PY
-        if not initializer.is_file():
-            return None
-        return FlextInfraUtilitiesRopeRuntime.require_source_module(
-            FlextInfraUtilitiesRopeCore.resolve_pymodule(
-                snapshot.engine,
-                FlextInfraUtilitiesRopeRuntime.file_resource_at(
-                    snapshot.engine, initializer
-                ),
-            )
-        )
-
     @classmethod
     def codemod_provider_aliases(
         cls,
@@ -232,7 +206,9 @@ class FlextInfraUtilitiesCodemodNativePackage:
             ValueError: If an elected native initializer has no source resource.
 
         """
-        module = cls._codemod_installed_initializer(snapshot, package)
+        module = FlextInfraUtilitiesRopeCore.package_initializer(
+            snapshot.engine, package
+        )
         if module is None:
             return frozenset()
         resource = module.get_resource()
@@ -273,7 +249,9 @@ class FlextInfraUtilitiesCodemodNativePackage:
         """
         if not cls.codemod_provider_aliases(snapshot, package):
             return None
-        declaring = cls._codemod_installed_initializer(snapshot, package)
+        declaring = FlextInfraUtilitiesRopeCore.package_initializer(
+            snapshot.engine, package
+        )
         if declaring is None:
             message = f"elected facade initializer disappeared: {package}"
             raise ValueError(message)
@@ -585,7 +563,7 @@ class FlextInfraUtilitiesCodemodNativePackage:
             }
             if scope is not None:
                 document["files"] = [cls._codemod_directory_glob(scope)]
-            ignores = [
+            ignores: list[t.JsonValue] = [
                 *(cls._codemod_directory_glob(directory) for directory in nested),
                 *cls._codemod_file_globs(carved),
             ]
@@ -964,7 +942,7 @@ class FlextInfraUtilitiesCodemodNativePackage:
                         f"`{letter}` family of `{package}`."
                     ),
                     "utils": dict(cls._codemod_name_utils()),
-                    "files": cls._codemod_file_globs(bound_files),
+                    "files": [*cls._codemod_file_globs(bound_files)],
                     "rule": cls._codemod_header_rule(bound),
                     "fix": f"$ANCHOR\nfrom {upstream} import $USED",
                 }
@@ -1431,13 +1409,20 @@ class FlextInfraUtilitiesCodemodNativePackage:
                 ),
                 "ignores": [f"**/{c.Infra.INIT_PY}"],
                 "utils": dict(utils),
-                # The package and letter tests sit in the rule, before the
+                # The letter test comes first, then the package and the
                 # module-wide ``local`` search: native constraints run only
-                # after a rule match, so that search would visit every
-                # attribute of every module.
+                # after a rule match and ``all`` stops at its first miss, so
+                # any other order searches scopes for every attribute.
                 "rule": {
                     "kind": "attribute",
                     "all": [
+                        {
+                            "has": {
+                                "field": "attribute",
+                                "pattern": "$NAME",
+                                "regex": "^[a-z]$",
+                            }
+                        },
                         {
                             "has": cls._codemod_module_object_receiver({
                                 "pattern": "$PACKAGE",
@@ -1451,13 +1436,6 @@ class FlextInfraUtilitiesCodemodNativePackage:
                                     },
                                 ],
                             })
-                        },
-                        {
-                            "has": {
-                                "field": "attribute",
-                                "pattern": "$NAME",
-                                "regex": "^[a-z]$",
-                            }
                         },
                         {"not": local},
                     ],
@@ -1478,16 +1456,21 @@ class FlextInfraUtilitiesCodemodNativePackage:
                 ),
                 "ignores": [f"**/{c.Infra.INIT_PY}"],
                 "utils": dict(utils),
-                "constraints": {"NAME": {"regex": "^[a-z]$"}},
                 "rule": {
                     "kind": "attribute",
                     "all": [
+                        {
+                            "has": {
+                                "field": "attribute",
+                                "pattern": "$NAME",
+                                "regex": "^[a-z]$",
+                            }
+                        },
                         {
                             "has": cls._codemod_module_object_receiver({
                                 "regex": f"^{re.escape(package)}$"
                             })
                         },
-                        {"has": {"field": "attribute", "pattern": "$NAME"}},
                         local,
                     ],
                 },
@@ -1522,27 +1505,28 @@ class FlextInfraUtilitiesCodemodNativePackage:
                 ),
                 "ignores": [f"**/{c.Infra.INIT_PY}"],
                 "utils": dict(utils),
-                "constraints": {
-                    "NAME": {
-                        "all": [
-                            {
-                                "matches": (
-                                    f"{c.Infra.CODEMOD_PACKAGE_EXPORTS_UTILITY}"
-                                    f"{separator}{package}"
-                                )
-                            },
-                            {"not": {"regex": "^[a-z]$"}},
-                            # Module metadata (``pkg.__version__``) is an
-                            # attribute of the module object itself.
-                            {"not": {"regex": "^__.+__$"}},
-                        ]
-                    }
-                },
                 "rule": {
                     "kind": "attribute",
                     "all": [
+                        {
+                            "has": {
+                                "field": "attribute",
+                                "pattern": "$NAME",
+                                "all": [
+                                    {
+                                        "matches": (
+                                            f"{c.Infra.CODEMOD_PACKAGE_EXPORTS_UTILITY}"
+                                            f"{separator}{package}"
+                                        )
+                                    },
+                                    {"not": {"regex": "^[a-z]$"}},
+                                    # Module metadata (``pkg.__version__``) is
+                                    # an attribute of the module object itself.
+                                    {"not": {"regex": "^__.+__$"}},
+                                ],
+                            }
+                        },
                         {"has": cls._codemod_module_object_receiver(exact)},
-                        {"has": {"field": "attribute", "pattern": "$NAME"}},
                         {"not": local},
                     ],
                 },
@@ -1671,7 +1655,10 @@ class FlextInfraUtilitiesCodemodNativePackage:
                 {
                     "kind": "identifier",
                     "pattern": "$ROOT",
-                    **cls._codemod_enclosing_scope(cls._codemod_name_alias(load)),
+                    **cls._codemod_enclosing_scope(
+                        cls._codemod_name_alias(load),
+                        own_scope=True,
+                    ),
                 },
             ],
         }
@@ -1741,7 +1728,7 @@ class FlextInfraUtilitiesCodemodNativePackage:
                     "Letter `$NAME` read through its local alias `$ROOT`: read "
                     "the letter by name."
                 ),
-                "ignores": ignores,
+                "ignores": [*ignores],
                 "utils": dict(utils),
                 "rule": {
                     "kind": "attribute",
@@ -1752,7 +1739,8 @@ class FlextInfraUtilitiesCodemodNativePackage:
                                 "kind": "identifier",
                                 "pattern": "$ROOT",
                                 **cls._codemod_enclosing_scope(
-                                    cls._codemod_name_alias(letter)
+                                    cls._codemod_name_alias(letter),
+                                    own_scope=True,
                                 ),
                             }
                         },
@@ -1766,7 +1754,7 @@ class FlextInfraUtilitiesCodemodNativePackage:
                 "id": unread,
                 "language": c.Infra.CODEMOD_PYTHON_LANGUAGE,
                 "message": "Local alias `$ROOT` of the letter `$NAME` is never read.",
-                "ignores": ignores,
+                "ignores": [*ignores],
                 "rule": {
                     "kind": "expression_statement",
                     "inside": {"kind": "function_definition", "stopBy": "end"},
@@ -1777,18 +1765,34 @@ class FlextInfraUtilitiesCodemodNativePackage:
         }
 
     @staticmethod
-    def _codemod_enclosing_scope(descendant: t.JsonDict) -> t.JsonDict:
-        """Inside a function or module holding ``descendant`` at any depth.
+    def _codemod_enclosing_scope(
+        descendant: t.JsonDict, *, own_scope: bool = False
+    ) -> t.JsonDict:
+        """Inside a function or module holding ``descendant``.
+
+        A read reaches any depth, as one in a nested function does. An
+        ``own_scope`` binding search stops at nested function and class
+        bodies, whose assignments bind their own scope; it then walks each
+        scope's own statements instead of the whole module per candidate.
 
         Returns:
             The native ``inside`` rule.
 
         """
+        stop_by: t.JsonValue = (
+            {
+                "any": [
+                    {"kind": kind} for kind in c.Infra.CODEMOD_OWN_SCOPE_BOUNDARY_KINDS
+                ]
+            }
+            if own_scope
+            else "end"
+        )
         return {
             "inside": {
                 "stopBy": "end",
                 "any": [{"kind": "module"}, {"kind": "function_definition"}],
-                "has": {"stopBy": "end", **descendant},
+                "has": {"stopBy": stop_by, **descendant},
             }
         }
 

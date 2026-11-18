@@ -14,8 +14,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra.codemod import FlextInfraModGateEngine
-from flext_infra.codemod.batch_replacements import FlextInfraModReplacements
+from flext_infra.codemod import FlextInfraModGateEngine, FlextInfraModReplacements
 from tests import c, p, tm, u
 
 

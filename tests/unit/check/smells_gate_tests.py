@@ -8,9 +8,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra.check.gate_registry import FlextInfraGateRegistry
-from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
-from flext_infra.gates.smells import FlextInfraGatesSmells
+from flext_infra.check import FlextInfraGateRegistry, FlextInfraWorkspaceChecker
+from flext_infra.gates import FlextInfraGatesSmells
 from tests import c, m, p, t, tm, u
 
 
@@ -312,7 +311,8 @@ class TestsFlextInfraSmellsGate:
             f"def wide({params}):\n    return p0\n",
             encoding=c.DEFAULT_ENCODING,
         )
-        (tmp_path / c.Infra.GITIGNORE).write_text(
+        # The project's own checkout owns its ignore policy.
+        (smells_project / c.Infra.GITIGNORE).write_text(
             "local_*.py\n",
             encoding=c.DEFAULT_ENCODING,
         )
@@ -342,6 +342,7 @@ class TestsFlextInfraSmellsGate:
         tm.ok(execution.result.passed)
         tm.that(execution.issues, length=0)
 
+    @c.Tests.MARK.slow
     @c.Tests.MARK.parametrize(
         "variation",
         ["current", "raised", "similar-only", "disabled"],
@@ -358,6 +359,14 @@ class TestsFlextInfraSmellsGate:
             self._comparison_config(tmp_path, variation),
             self._package(smells_project),
         )
+        # A workspace checks its members as registered submodules.
+        u.Tests.initialize_git_repo(tmp_path)
+        u.Tests.WorktreeFixture.attach_submodule(
+            tmp_path,
+            smells_project,
+            distribution=smells_project.name,
+            relative_path=smells_project.name,
+        )
         reports_dir = tmp_path / "reports"
         projects = tm.ok(
             FlextInfraWorkspaceChecker.model_validate({
@@ -369,13 +378,13 @@ class TestsFlextInfraSmellsGate:
             ),
         )
         execution = projects[0].gates[c.Infra.SMELLS]
-        native = u.Cli.json_as_mapping(tm.ok(u.Cli.json_parse(execution.raw_output)))
-        raw_receipt = tm.not_none(execution.raw_receipt)
-        report_path = raw_receipt.parent.parent / c.Infra.CHECK_REPORT_SARIF_FILENAME
+        native = u.Cli.json_as_mapping(tm.ok(u.Cli.json_loads(execution.raw_output)))
+        tm.not_none(execution.raw_receipt)
+        (report_path,) = reports_dir.glob(f"*/{c.Infra.CHECK_REPORT_SARIF_FILENAME}")
         report_text = report_path.read_text(
             encoding=c.DEFAULT_ENCODING,
         )
-        published = u.Cli.json_as_mapping(tm.ok(u.Cli.json_parse(report_text)))
+        published = u.Cli.json_as_mapping(tm.ok(u.Cli.json_loads(report_text)))
         native_results = tuple(
             result
             for run in u.Cli.json_deep_mapping_list(native, "runs")

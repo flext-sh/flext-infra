@@ -10,7 +10,7 @@ from collections.abc import MutableMapping
 from pathlib import Path
 
 from flext_infra import config
-from tests import c, m, p, tm, u
+from tests import c, m, p, t, tm, u
 
 
 @c.Tests.MARK.slow
@@ -23,39 +23,109 @@ class TestsFlextInfraScriptDispatchMakefile:
         *,
         extra_verbs: tuple[p.Infra.MakeVerbSpec, ...],
         script_dispatch: p.Infra.ScriptDispatchSpec | None,
+        commands: tuple[tuple[str, t.JsonMapping], ...] = (),
     ) -> str:
         # The engine is consumer-agnostic, so this fixture models a
         # neutral downstream root and takes its provider from the engine's own
         # configured provider catalog instead of naming a real consumer.
         provider = u.Tests.provider()
-        root_repository = m.Infra.RepositoryRef(
-            name="demo-root",
-            distribution="demo-root",
-            url=f"{provider.base_url}/demo-root.git",
-            path=Path(),
-            # Script dispatch is a generic capability: exercise it on standalone.
-            role=c.Infra.MakeProfile.STANDALONE,
-            provider=provider.name,
-            kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
-            codegen=c.Infra.CodegenKind.CONFORM,
-            package=False,
-            editable=False,
-            read_only=False,
-            extra_verbs=extra_verbs,
-            script_dispatch=script_dispatch,
-        )
+        root_repository = m.Infra.RepositoryRef.model_validate({
+            "name": ("demo-root"),
+            "distribution": ("demo-root"),
+            "url": (f"{provider.base_url}/demo-root.git"),
+            "path": (Path()),
+            "role": (c.Infra.MakeProfile.STANDALONE),
+            "provider": (provider.name),
+            "kind": (c.Infra.ProjectKind.INTERNAL_FLEXT),
+            "codegen": (c.Infra.CodegenKind.CONFORM),
+            "package": (False),
+            "editable": (False),
+            "read_only": (False),
+            "extra_verbs": (extra_verbs),
+            "script_dispatch": (script_dispatch),
+        })
         workspace = u.Tests.workspace_spec(
             root_repository,
             project=u.Tests.project_spec("demo-root"),
         )
         root = tmp_path / root_repository.name
         root.mkdir()
+        for relative, command in commands:
+            u.Tests.write_promoted_command(root / relative, command)
         u.Tests.initialize_git_repo(root, origin_url=root_repository.url)
         rendered: str = u.Tests.conform_makefile_text(
             root,
             workspace,
         )
         return rendered
+
+    @staticmethod
+    def _command(
+        verb: str,
+        what: str,
+        aliases: tuple[str, ...] = (),
+    ) -> t.JsonMapping:
+        """Return one promoted command header table.
+
+        Returns:
+            The ``[tool.flext.command]`` table of one read-only command.
+
+        """
+        return {
+            "verb": verb,
+            "what": what,
+            "domain": verb,
+            "summary": f"Run {verb} {what}",
+            "description": f"Run the {verb} {what} action.",
+            "example": f"make {verb} WHAT={what}",
+            "mutates": False,
+            "aliases": [*aliases],
+        }
+
+    def test_header_declared_verbs_and_aliases_get_public_targets(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Every verb and alias a command header declares is a public target.
+
+        No ``all.sh`` entrypoint and no ``extra_verbs`` entry declares them:
+        the promoted registry the dispatcher builds, over every declared
+        root, is the only source of the script verbs.
+        """
+        rendered = self._render_root_makefile(
+            tmp_path,
+            extra_verbs=(),
+            script_dispatch=m.Infra.ScriptDispatchSpec(
+                dispatcher="scripts/dispatch.py",
+                roots=("scripts", "apps/demo-app/scripts"),
+            ),
+            commands=(
+                ("scripts/finops/krr_sizing.py", self._command("finops", "krr-sizing")),
+                (
+                    "scripts/incidente/all.sh",
+                    self._command("incidente", "all", ("breakglass",)),
+                ),
+                (
+                    "apps/demo-app/scripts/charts/adopt.py",
+                    self._command("charts", "adopt"),
+                ),
+            ),
+        )
+        script_verbs = next(
+            line for line in rendered.splitlines() if line.startswith("SCRIPT_VERBS :=")
+        )
+        tm.that(
+            script_verbs.split()[2:],
+            eq=["breakglass", "charts", "finops", "incidente"],
+        )
+        tm.that(
+            rendered,
+            has=[
+                f"_builtin-{verb}: _builtin_require_environment\n"
+                f"\t$(call _dispatch,{verb})"
+                for verb in ("breakglass", "charts", "finops", "incidente")
+            ],
+        )
 
     def test_script_dispatch_repo_routes_extra_verbs_and_normalizes_what(
         self,
@@ -78,6 +148,7 @@ class TestsFlextInfraScriptDispatchMakefile:
                 dispatcher="scripts/dispatch.py",
                 roots=("scripts", "apps/demo-app/scripts"),
             ),
+            commands=(("scripts/incidente/all.sh", self._command("incidente", "all")),),
         )
         # Extra verbs are public targets the dispatcher can reach.
         tm.ok("incidente" in rendered)
@@ -87,7 +158,7 @@ class TestsFlextInfraScriptDispatchMakefile:
         tm.ok("_builtin-incidente:" in rendered)
         tm.ok("_builtin-charts:" in rendered)
         # It forwards to the declared dispatcher through uv, not a raw builtin.
-        tm.ok("scripts/dispatch.py" in rendered)
+        tm.ok("python -m scripts.dispatch " in rendered)
         # Script dispatch roots are recorded for operator visibility.
         tm.ok("apps/demo-app/scripts" in rendered)
 
@@ -159,7 +230,7 @@ class TestsFlextInfraScriptDispatchMakefile:
         )
         # No script routing leaks into non-opted-in repositories.
         tm.fail("tr '-' '_'" in rendered)
-        tm.fail("scripts/dispatch.py" in rendered)
+        tm.fail("scripts.dispatch" in rendered)
 
     def test_gen_replaces_codegen_as_the_single_conform_verb(
         self,
@@ -252,7 +323,7 @@ class TestsFlextInfraScriptDispatchMakefile:
         # The regeneration contract published on every projection speaks gen.
         tm.ok("# @flext-regenerate: make gen" in rendered)
         # The custom-surface policy names gen (not codegen) for hooks/handlers.
-        handler_policies: MutableMapping[str, m.Infra.CustomHandlerPolicy] = dict(
+        handler_policies: MutableMapping[str, p.Infra.CustomHandlerPolicy] = dict(
             config.Infra.codegen.make.custom_handler_policies,
         )
         for policy in handler_policies.values():
@@ -485,74 +556,23 @@ class TestsFlextInfraScriptDispatchMakefile:
             tmp_path,
             extra_verbs=(),
             script_dispatch=script_dispatch,
+            commands=()
+            if script_dispatch is None
+            else (("scripts/sync/all.sh", self._command("sync", "all")),),
         )
-        env_dirs = " ".join(config.Infra.tooling.tools.pyright.path_rules.env_dirs)
+        env_dirs = " ".join(config.Infra.tooling.tools.pyrefly.path_rules.env_dirs)
         tm.ok(f"for directory in {env_dirs}; do" in rendered)
-        tm.ok("MYPY_PATHS := $(RUFF_PATHS)" in rendered)
 
-    def test_every_pytest_verb_declares_the_project_scratch_root(
+    def test_pytest_verbs_leave_basetemp_to_pytest(
         self,
         tmp_path: Path,
     ) -> None:
-        """Every pytest-running verb declares the project scratch root.
-
-        The fleet's test law rejects a test scratch under /tmp: the caller of
-        pytest must declare a project scratch root through TMPDIR (cosmos-charts
-        CI run 37235165752 died in pytest_configure on an inherited /tmp). The
-        Makefile verb is that caller, so each pytest verb renders ONE shared
-        declaration next to its testmon database guard. The storage law places
-        that root under the user home keyed by the absolute checkout
-        (config make.pytest_scratch), never beside the checkout: inside a
-        workspace the checkout's parent is the superproject tree, where Git
-        refuses every fixture repository a test creates. The transient sandbox
-        resolves the standard temp triplet inside it and is deleted when the
-        recipe shell exits.
-        """
+        """Pytest owns its basetemp: no verb injects a basetemp or temp root."""
         rendered = self._render_root_makefile(
             tmp_path,
             extra_verbs=(),
             script_dispatch=None,
         )
-        scratch = config.Infra.codegen.make.pytest_scratch
         tm.that(
-            rendered,
-            has=(
-                f"$({scratch.user_home_environment_variable})/"
-                f"{scratch.home_relative_directory}/"
-                f"{scratch.state_directory_name}$(PROJECT_ROOT)/{scratch.namespace}"
-            ),
+            rendered, lacks=["--basetemp", "export TMPDIR TMP TEMP", "scratch_root"]
         )
-        verbs = (
-            "_builtin_test_all:",
-            "_builtin_test_full_all:",
-            "_builtin_test_file_all:",
-            "_builtin-profile-test:",
-        )
-        bodies = {
-            verb: rendered.split(verb, 1)[1].split("\n\n", 1)[0] for verb in verbs
-        }
-        sandbox = 'scratch="$$(mktemp -d "$$scratch_root/pytest.XXXXXX")"'
-        for body in bodies.values():
-            tm.that(
-                body,
-                has=[
-                    'scratch_root="$(FLEXT_PYTEST_SCRATCH_ROOT)"',
-                    sandbox,
-                    'mkdir -p "$$scratch/tmp"',
-                    "export TMPDIR TMP TEMP",
-                    "trap 'find \"$$scratch\" -depth -delete' EXIT",
-                ],
-            )
-            # The pytest entry runs after the declaration in the same shell.
-            tm.that(
-                body.index("export TMPDIR TMP TEMP") < body.index("_pytest_entry"),
-                eq=True,
-            )
-            # No verb owns a private variant of the shared fragment.
-            tm.that(body.count(sandbox), eq=1)
-        # The declaration is ONE rendered fragment across the four verbs.
-        tm.that(rendered.count(sandbox), eq=len(verbs))
-        # Never beside the checkout (inside a workspace that is another
-        # repository's tree), never under /tmp, never a durable in-tree scratch.
-        tm.that(rendered, lacks=["project_parent", ".test-tmp", "PROJECT_SCRATCH"])
-        tm.that(rendered, lacks='TMPDIR="$$test_tmp"')

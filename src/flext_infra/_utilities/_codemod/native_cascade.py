@@ -19,7 +19,7 @@ import concurrent.futures
 import difflib
 import shutil
 import tempfile
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from itertools import islice
 from pathlib import Path
 
@@ -135,17 +135,17 @@ class FlextInfraUtilitiesCodemodNativeCascade:
                 shutil.rmtree(final)
             return None
         rule_ids = frozenset(rule.id for rule in rules)
-        staging = Path(tempfile.mkdtemp(prefix=f".{stage.name}-", dir=reports))
-        FlextInfraUtilitiesCodemodRules.codemod_stage_scan_ruleset(
-            FlextInfraUtilitiesCodemodRules.project_plan(plan, root, rule_ids),
-            staging,
-        )
-        retired = reports / f".{stage.name}-retired"
-        if final.exists():
-            final.replace(retired)
-        staging.replace(final)
-        if retired.exists():
-            shutil.rmtree(retired)
+        with tempfile.TemporaryDirectory(
+            prefix=f".{stage.name}-", dir=reports
+        ) as directory:
+            staging = Path(directory) / stage.name
+            FlextInfraUtilitiesCodemodRules.codemod_stage_scan_ruleset(
+                FlextInfraUtilitiesCodemodRules.project_plan(plan, root, rule_ids),
+                staging,
+            )
+            if final.exists():
+                final.replace(Path(directory) / "retired")
+            staging.replace(final)
         staged_ids = tuple(sorted(rule_ids))
         return m.Infra.CodemodRuleset(
             provider=stage.name,
@@ -197,6 +197,7 @@ class FlextInfraUtilitiesCodemodNativeCascade:
         # one-run-per-rule bound is not a fixed-point ceiling. The repeated
         # state check still rejects a real oscillation.
         pass_ceiling = max(len(ruleset.rule_ids) + 1, c.Infra.NATIVE_CASCADE_MAX_PASSES)
+        changed: tuple[Path, ...] = ()
         for _run in range(pass_ceiling):
             executed = u.Cli.run_raw((str(binary), *command[1:]), cwd=preview).unwrap()
             if not u.Cli.process_succeeded(executed.outcome):
@@ -209,16 +210,49 @@ class FlextInfraUtilitiesCodemodNativeCascade:
             settled = cls._preview_contents(preview)
             if settled == current:
                 return
+            changed = tuple(
+                path for path in settled if settled[path] != current.get(path)
+            )
             state = frozenset(settled.items())
             if state in seen:
                 break
             seen.add(state)
             current = settled
+        rewriting = sorted(cls._matching_rule_ids(preview, binary, ruleset, changed))
         msg = (
             f"ast-grep native stage {ruleset.provider} does not settle: "
-            f"{len(ruleset.rule_ids)} rule(s) keep rewriting {preview}"
+            f"rules {rewriting} keep rewriting "
+            f"{[path.as_posix() for path in changed]}"
         )
         raise RuntimeError(msg)
+
+    @staticmethod
+    def _matching_rule_ids(
+        preview: Path,
+        binary: Path,
+        ruleset: p.Infra.CodemodRuleset,
+        paths: Sequence[Path],
+    ) -> frozenset[str]:
+        """Name the staged rules that still match the files of the last pass.
+
+        Returns:
+            The rule ids ast-grep reports on ``paths``, without rewriting.
+
+        """
+        if not paths:
+            return frozenset()
+        command = FlextInfraUtilitiesBase.ast_grep_scan_command(
+            ruleset.config,
+            rule_ids=ruleset.rule_ids,
+            targets=tuple(path.as_posix() for path in paths),
+            json_stream=True,
+        )
+        executed = u.Cli.run_raw((str(binary), *command[1:]), cwd=preview).unwrap()
+        return frozenset(
+            str(u.Cli.json_as_mapping(u.Cli.json_loads(line).unwrap())["ruleId"])
+            for line in (executed.stdout or "").splitlines()
+            if line.strip()
+        )
 
     @staticmethod
     def _run_ruff_stage(
@@ -310,10 +344,7 @@ class FlextInfraUtilitiesCodemodNativeCascade:
         ):
             return {}
         binary = cls.codemod_tool_binary(c.Infra.SG)
-        u.Cli.ensure_dir(settings.work_dir).unwrap()
-        with tempfile.TemporaryDirectory(
-            prefix="mod-native-cascade-", dir=settings.work_dir
-        ) as directory:
+        with tempfile.TemporaryDirectory(prefix="mod-native-cascade-") as directory:
             preview = Path(directory)
             for relative, content in originals.items():
                 u.Cli.ensure_dir((preview / relative).parent).unwrap()

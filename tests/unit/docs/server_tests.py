@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra.docs.server import FlextInfraDocServer
+from flext_infra.docs import FlextInfraDocServer
 from tests import c, m, tm, u
 
 if TYPE_CHECKING:

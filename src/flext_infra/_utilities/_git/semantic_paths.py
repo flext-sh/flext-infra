@@ -61,15 +61,18 @@ class FlextInfraUtilitiesGitSemanticPaths(FlextInfraUtilitiesGitStateFiles):
             (Path(request.relative_path),),
         )
         if not entries:
-            return m.Infra.GitIndexFileState(entry=None, content=None)
+            return m.Infra.GitIndexFileState.model_validate({
+                "entry": None,
+                "content": None,
+            })
         if len(entries) != 1:
             msg = f"index artifact has unresolved stages: {request.relative_path}"
             raise ValueError(msg)
         entry = entries[0]
-        return m.Infra.GitIndexFileState(
-            entry=entry,
-            content=cls._state_blob_payload(request.repo_root, entry.oid),
-        )
+        return m.Infra.GitIndexFileState.model_validate({
+            "entry": entry,
+            "content": cls._state_blob_payload(request.repo_root, entry.oid),
+        })
 
     @classmethod
     def git_retire_index_file(

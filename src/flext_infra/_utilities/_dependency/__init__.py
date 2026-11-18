@@ -24,4 +24,5 @@ install_lazy_exports(
     globals(),
     {"FlextInfraUtilitiesDependencyDeptry": ".deptry"},
     public_exports=__all__,
+    deferred_members=("FlextInfraUtilitiesDependencyDeptry",),
 )

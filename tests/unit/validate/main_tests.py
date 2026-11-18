@@ -11,8 +11,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra import FlextInfraCli
-from flext_infra.validate.inventory import FlextInfraInventoryService
-from flext_infra.validate.scanner import FlextInfraTextPatternScanner
+from flext_infra.validate import (
+    FlextInfraInventoryService,
+    FlextInfraTextPatternScanner,
+)
 from tests import c, tm
 
 if TYPE_CHECKING:

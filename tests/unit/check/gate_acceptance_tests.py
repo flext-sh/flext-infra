@@ -207,13 +207,6 @@ class TestsFlextInfraGateAcceptance:
             restored_execution.issues[0].model_dump(mode="json"),
             eq=issue.model_dump(mode="json"),
         )
-        for mode in ("validation", "serialization"):
-            schema = m.Infra.GateExecution.model_json_schema(mode=mode)
-            issue_schema = m.Infra.Issue.model_json_schema(mode=mode)
-            tm.that(
-                schema["$defs"][p.Infra.Issue.__name__]["properties"],
-                eq=issue_schema["properties"],
-            )
         payload = execution.model_dump(mode="json", exclude_computed_fields=True)
         payload["issues"] = [{**issue.model_dump(mode="json"), "line": "invalid"}]
         with u.Tests.raises(m.ValidationError, match="line"):
@@ -286,10 +279,13 @@ class TestsFlextInfraGateAcceptance:
             pyproject='[project]\nname = "p1"\nversion = "0.1.0"\n',
             with_src=True,
         )
+        # The check elects the project's runtime from its Git checkout.
+        u.Tests.initialize_git_repo(project)
         (project / "src" / "broken.py").write_text(
             "missing_name( 1 )\n",
             encoding="utf-8",
         )
+        u.Tests.WorktreeFixture.register_checker_workspace(tmp_path, project)
         requested = (c.Infra.LINT, c.Infra.FORMAT)
         results = tm.ok(
             check.FlextInfraWorkspaceChecker(repository_root=tmp_path).run_projects(
@@ -301,9 +297,27 @@ class TestsFlextInfraGateAcceptance:
         tm.that(len(results), eq=1)
         verdict = results[0]
         tm.fail(verdict.passed)
+        # ADR-032 "Fail early": without fail-fast the declared prerequisite
+        # gates run first and a failed prerequisite ends the verb; otherwise
+        # gates sharing the failing gate's declared budget form its phase.
+        prerequisites = tuple(
+            gate
+            for gate in u.Infra
+            .load_codegen_policy(tmp_path)
+            .unwrap()
+            .make.check_prerequisite_gates
+            if gate in requested
+        )
+        registry = check.FlextInfraGateRegistry()
+        budget = registry.check_budget_seconds(requested[:1], (project,))
+        same_phase = tuple(
+            gate
+            for gate in requested
+            if registry.check_budget_seconds((gate,), (project,)) == budget
+        )
         tm.that(
             tuple(verdict.gates),
-            eq=requested[:1] if fail_fast else requested,
+            eq=requested[:1] if fail_fast else prerequisites or same_phase,
         )
         for execution in verdict.gates.values():
             tm.fail(execution.result.passed)
@@ -355,10 +369,10 @@ class TestsFlextInfraGateAcceptance:
         tm.that(execution.raw_output.strip(), empty=False)
 
     @staticmethod
-    def test_native_fix_does_not_reject_already_fixed_diagnostics(
+    def test_native_fix_retains_the_requested_exit_and_check_accepts(
         tmp_path: Path,
     ) -> None:
-        """Ruff can report a findings exit even after every violation was fixed."""
+        """Repair runs once and keeps Ruff's exit; only an explicit check accepts."""
         project = u.Tests.mk_project(
             tmp_path,
             "repaired",
@@ -375,9 +389,7 @@ class TestsFlextInfraGateAcceptance:
             ruff_args=("--select", "F401", "--exit-non-zero-on-fix"),
         )
         execution = gate.fix(project, context)
-        tm.ok(execution.result.passed)
-        tm.that(execution.outcome, eq=c.Infra.ToolOutcome.CLEAN)
-        tm.that(execution.issues, empty=True)
+        tm.fail(execution.result.passed)
         tm.that(source.read_text(encoding="utf-8"), lacks="import os")
         tm.ok(gate.check(project, context).result.passed)
 

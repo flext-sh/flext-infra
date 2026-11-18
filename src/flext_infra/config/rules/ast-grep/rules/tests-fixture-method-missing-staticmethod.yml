@@ -1,47 +1,51 @@
-# A pytest fixture declared as a method of a test class without `self` and
-# without @staticmethod cannot be bound by pytest ("Could not determine
-# arguments ... invalid method signature"), so the whole class fails
-# collection. Measured 2026-11-04: flext-ldif 33, flext-observability 5,
-# flext-oracle-wms 5, flext-auth 1 (collection error on HEAD). The fix places
-# @staticmethod under the fixture decorator (pytest requires the fixture
-# decorator outermost).
+# ENFORCE-102: a method declared in a class without a `self`/`cls` first
+# parameter is a @staticmethod, in every tier and every module shape (test
+# classes, fixture holders under tests/fixtures, conftest-aliased holders,
+# source). Without it pytest cannot bind a fixture ("Could not determine
+# arguments ... invalid method signature") and a plain method call passes the
+# instance as its first argument.
+#
+# One rule for the law (ADR-028 Decision 18): it supersedes the former
+# class-method-without-self-needs-staticmethod duplicate. @staticmethod is
+# placed directly above `def`, under every other decorator, which pytest 9
+# requires for fixtures (`@pytest.fixture` outermost) and which keeps a
+# fixture usable both inherited and aliased by a conftest (measured
+# 2026-11-08, pytest 9.2: both forms resolve).
 id: tests-fixture-method-missing-staticmethod
 language: python
 severity: error
 metadata:
   enforce: [ENFORCE-102]
 files:
-  - "**/tests/**/*.py"
-ignores:
-  - "**/conftest.py"
-  - "**/tests/fixtures/**"
+  - "**/*.py"
 rule:
   kind: function_definition
   pattern: $DEF
-  inside:
-    kind: decorated_definition
-    all:
-      - has:
-          kind: decorator
-          regex: '^@(pytest|u\.Tests)\.fixture\b'
-      - not:
-          has:
-            kind: decorator
-            regex: '^@(staticmethod|classmethod)$'
-      - inside:
-          kind: block
-          inside:
-            kind: class_definition
+  any:
+    - inside:
+        kind: block
+        inside:
+          kind: class_definition
+    - inside:
+        kind: decorated_definition
+        all:
+          - not:
+              has:
+                kind: decorator
+                regex: '^@(staticmethod|classmethod)$'
+          - inside:
+              kind: block
+              inside:
+                kind: class_definition
   not:
     has:
       field: parameters
       has:
         nthChild: 1
-        kind: identifier
-        regex: '^(self|cls)$'
+        regex: '^(self|cls)\b'
 fix: |-
   @staticmethod
   $DEF
 message: >-
-  A fixture method without `self` must be a @staticmethod: pytest cannot
-  resolve its arguments otherwise.
+  A method without `self`/`cls` is a @staticmethod (placed directly above
+  `def`, under every other decorator).

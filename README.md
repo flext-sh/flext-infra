@@ -14,7 +14,7 @@
 
 <!-- AUTO-GENERATED — DO NOT EDIT MANUALLY -->
 
-**Version**: `0.12.0` | **Python**: see `pyproject.toml` `requires-python` | **Project
+**Version**: `0.12.1` | **Python**: see `pyproject.toml` `requires-python` | **Project
 class**: `infra`
 
 > **Alpha (0.12.0).** This package is alpha quality. Every package in the workspace must
@@ -58,7 +58,7 @@ required validation.
   classes listed under Module Map above.
 - Public extensions exposed by this project: `FlextInfra`, `FlextInfraCli`,
   `FlextInfraConfig`, `FlextInfraConstants`, `FlextInfraFlextInfraConfig`,
-  `FlextInfraFlextInfraConform` (+16 more).
+  `FlextInfraFlextInfraConform` (+15 more).
 - Library abstraction boundaries: see the project `AGENTS.md` and the referenced parent
   architecture rules.
 

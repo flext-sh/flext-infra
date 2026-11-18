@@ -58,4 +58,13 @@ install_lazy_exports(
         "FlextInfraUtilitiesRopeAnalysisWorkspace": ".rope_analysis_workspace",
     },
     public_exports=__all__,
+    deferred_members=(
+        "FlextInfraUtilitiesRopeAnalysisAstHelpers",
+        "FlextInfraUtilitiesRopeAnalysisBase",
+        "FlextInfraUtilitiesRopeAnalysisExports",
+        "FlextInfraUtilitiesRopeAnalysisImportState",
+        "FlextInfraUtilitiesRopeAnalysisIntrospection",
+        "FlextInfraUtilitiesRopeAnalysisSourceScan",
+        "FlextInfraUtilitiesRopeAnalysisWorkspace",
+    ),
 )

@@ -24,11 +24,11 @@ from libcst.metadata import (
     ScopeProvider,
 )
 
-from flext_infra import c, m, p, t
+from flext_infra import c, p, t
 from flext_infra._utilities import FlextInfraUtilitiesQualifiedNames
 from flext_infra._utilities._codemod import FlextInfraUtilitiesCodemodBindingChain
-from flext_infra._utilities._rope import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities._rope.runtime_modules import (
+from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntimeModules,
 )
 from flext_infra._utilities._rope.runtime_types import (
@@ -89,7 +89,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
             self.line_offsets = [0]
             for line in source.splitlines(keepends=True):
                 self.line_offsets.append(self.line_offsets[-1] + len(line))
-            self.quoted: MutableMapping[tuple[int, int], m.Infra.SourceRewrite] = {}
+            self.quoted: MutableMapping[tuple[int, int], p.Infra.SourceRewrite] = {}
             self.elected_source = source
             self.identities: list[
                 tuple[p.Infra.RopePyName, p.Infra.RopeSemanticModule, str]
@@ -169,8 +169,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
             root_binding = runtime.expression_name(scope, root)
             if not matches and not isinstance(root_binding, p.Infra.RopeAssignedName):
                 return None
-            chain = FlextInfraUtilitiesCodemodBindingChain
-            proof = chain.FlextInfraUtilitiesCodemodBindingChain
+            proof = FlextInfraUtilitiesCodemodBindingChain
             declarations = proof.single_reaching_declarations(
                 self.original,
                 scope,
@@ -391,7 +390,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
             if not matches:
                 return None
             match actual:
-                case m.Infra.RopeImportedName():
+                case p.Infra.RopeImportedName():
                     provider = (
                         FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
                             actual.imported_module.get_object(),

@@ -14,7 +14,7 @@ from collections.abc import Sequence
 from typing import TYPE_CHECKING, override
 
 from flext_infra import FlextInfraCli
-from flext_infra.maintenance.python_version import FlextInfraMaintenancePythonVersion
+from flext_infra.maintenance import FlextInfraMaintenancePythonVersion
 from tests import c, tm, u
 
 if TYPE_CHECKING:

@@ -31,7 +31,7 @@ from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeSource,
 )
-from flext_infra._utilities._rope._analysis.sourcescan import (
+from flext_infra._utilities._rope._analysis import (
     FlextInfraUtilitiesRopeAnalysisSourceScan,
 )
 
@@ -145,7 +145,7 @@ class FlextInfraUtilitiesCodegenNamespace:
 
     @staticmethod
     @cache
-    def facade_families() -> Mapping[str, m.Infra.FacadeFamily]:
+    def facade_families() -> Mapping[str, p.Infra.FacadeFamily]:
         """Derive the facade families from the core package's declarations.
 
         A family is a layer of the import-layer order that the core package

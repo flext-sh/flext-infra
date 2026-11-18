@@ -13,7 +13,6 @@ from pathlib import Path
 from typing import ClassVar, override
 
 from flext_infra import m, p, r
-from flext_infra._utilities import protocol_models
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeAnalysis,
     FlextInfraUtilitiesRopeModulePatch,
@@ -35,6 +34,7 @@ class FlextInfraUtilitiesSemanticModelFieldContracts(
         cls,
         workspace: p.Infra.RopeWorkspaceDsl,
         sources: Mapping[Path, str],
+        routes: Mapping[str, str],
     ) -> p.Result[tuple[p.Infra.SemanticMigrationEdit, ...]]:
         """Rewrite model fields and eager schemas to deferred protocol contracts.
 
@@ -42,7 +42,6 @@ class FlextInfraUtilitiesSemanticModelFieldContracts(
             The resulting semantic migration edits.
 
         """
-        routes = cls._model_protocol_routes(workspace)
         edits: list[p.Infra.SemanticMigrationEdit] = []
         for path, source in cls._editable_sources(sources):
             if path.suffix != ".py" or cls._is_projection(path):
@@ -102,31 +101,6 @@ class FlextInfraUtilitiesSemanticModelFieldContracts(
                 ),
             ),
         )
-
-    @classmethod
-    def _model_protocol_routes(
-        cls, workspace: p.Infra.RopeWorkspaceDsl
-    ) -> Mapping[str, str]:
-        """Obtain model to protocol route mappings from protocol model projection.
-
-        Returns:
-            Mapping from model class route to public protocol route.
-
-        """
-        routes: dict[str, str] = {}
-        protocol = protocol_models.FlextInfraUtilitiesModelsProtocol
-        pkg_names = protocol.protocol_model_package_names(
-            workspace.repository_root, workspace.rope_project
-        )
-        for package_name in pkg_names:
-            routes.update(
-                protocol.protocol_model_routes_from_source(
-                    workspace.repository_root,
-                    workspace.rope_project,
-                    package_name=package_name,
-                )
-            )
-        return routes
 
     @staticmethod
     def resolve_model_protocol(model_str: str, routes: Mapping[str, str]) -> str | None:
@@ -231,22 +205,21 @@ class _ModelFieldProtocolRewriter(ast.NodeTransformer):
     """Project every model type operand of one module to its protocol route.
 
     Model fields (direct model-class annotations and computed-field returns)
-    receive the deferred schema form ``Annotated[p.X, t.schema_for_model(lambda:
-    m.X)]`` at each model operand, nested generic arguments included. Every
-    other type position (signatures, local and module annotations, type
-    aliases, ``cast`` targets and parameterized factories) receives the plain
-    protocol route. Construction, validation and schema metadata keep the
-    actual model owner.
+    keep the model owner directly (``m.X``) at each model operand, nested
+    generic arguments included. Every other type position (signatures, local
+    and module annotations, type aliases, ``cast`` targets and parameterized
+    factories) receives the plain protocol route. Construction, validation
+    and schema metadata keep the actual model owner.
     """
 
     _ANNOTATED: ClassVar[frozenset[str]] = frozenset({"Annotated", "typing.Annotated"})
     _CLASS_VAR: ClassVar[frozenset[str]] = frozenset({"ClassVar", "typing.ClassVar"})
     _LITERAL: ClassVar[frozenset[str]] = frozenset({"Literal", "typing.Literal"})
-    _SCHEMA: ClassVar[frozenset[str]] = frozenset({
-        "t.schema_for_model",
-        "schema_for_model",
-    })
     _CAST: ClassVar[frozenset[str]] = frozenset({"cast", "typing.cast"})
+    _NON_MODEL_M: ClassVar[frozenset[str]] = frozenset({
+        "InstanceOf",
+        "SettingsConfigDict",
+    })
 
     def __init__(self, path: Path, routes: Mapping[str, str], tree: ast.Module) -> None:
         super().__init__()
@@ -259,6 +232,13 @@ class _ModelFieldProtocolRewriter(ast.NodeTransformer):
             for alias in node.names
             if alias.name == "m"
         )
+        self.model_aliases: dict[str, str] = {
+            alias.asname or alias.name: node.module or ""
+            for node in ast.walk(tree)
+            if isinstance(node, ast.ImportFrom)
+            for alias in node.names
+            if alias.name == "m"
+        }
         self.fields: set[int] = set()
         self.changed = False
         self.needs_annotated = False
@@ -271,21 +251,6 @@ class _ModelFieldProtocolRewriter(ast.NodeTransformer):
         if not isinstance(visited, ast.Call):
             return visited
         func_name = ast.unparse(visited.func)
-        if func_name in self._SCHEMA:
-            if visited.args and not isinstance(visited.args[0], ast.Lambda):
-                visited.args[0] = ast.Lambda(
-                    args=ast.arguments(
-                        posonlyargs=[],
-                        args=[],
-                        kwonlyargs=[],
-                        kw_defaults=[],
-                        defaults=[],
-                    ),
-                    body=visited.args[0],
-                )
-                self.changed = True
-                self.needs_t = True
-            return visited
         if func_name in self._CAST and visited.args:
             visited.args[0] = self._project(visited.args[0], field=False)
         visited.func = self._project_factory(visited.func)
@@ -409,7 +374,13 @@ class _ModelFieldProtocolRewriter(ast.NodeTransformer):
             return node if projected is parsed else ast.Constant(ast.unparse(projected))
         spec = self._model_spec(node)
         if spec is not None:
-            return self._reception(spec, node, field=field)
+            if field:
+                # Simplified: fields use the model directly, not protocol+schema.
+                self.changed = True
+                return node
+            self.changed = True
+            self.needs_p = True
+            return spec
         if isinstance(node, ast.Subscript):
             return self._project_subscript(node, field=field)
         return self._project_composite(node, field=field)
@@ -466,17 +437,31 @@ class _ModelFieldProtocolRewriter(ast.NodeTransformer):
         spec = self._model_spec(first)
         if spec is None:
             projected = self._project(first, field=field)
-            if projected is first:
+            if projected is first and not metadata:
                 return node
             elements = [projected, *metadata]
-        else:
-            self.needs_p = True
-            self.needs_annotated = True
-            elements = [spec, *metadata]
-            if field and not any(
-                "schema_for_model" in ast.unparse(item) for item in metadata
-            ):
-                elements.insert(1, self._schema(first))
+            self.changed = True
+            if metadata:
+                self.needs_annotated = True
+            return ast.Subscript(
+                value=node.value,
+                slice=ast.Tuple(elts=elements, ctx=ast.Load()),
+                ctx=ast.Load(),
+            )
+        if field:
+            # Simplified: keep the model operand, drop protocol+schema.
+            self.changed = True
+            if metadata:
+                self.needs_annotated = True
+                return ast.Subscript(
+                    value=node.value,
+                    slice=ast.Tuple(elts=[first, *metadata], ctx=ast.Load()),
+                    ctx=ast.Load(),
+                )
+            return first
+        self.needs_p = True
+        self.needs_annotated = True
+        elements = [spec, *metadata]
         self.changed = True
         return ast.Subscript(
             value=node.value,
@@ -495,17 +480,18 @@ class _ModelFieldProtocolRewriter(ast.NodeTransformer):
 
         """
         if isinstance(node, ast.Subscript):
-            if not isinstance(node.value, (ast.Name, ast.Attribute)):
-                return None
-            base = self._model_spec(node.value)
-            if base is None:
-                return None
-            return ast.Subscript(
-                value=base,
-                slice=self._project(node.slice, field=False),
-                ctx=ast.Load(),
-            )
-        if not isinstance(node, (ast.Name, ast.Attribute)):
+            if isinstance(node.value, (ast.Name, ast.Attribute)):
+                base = self._model_spec(node.value)
+                if base is not None:
+                    return ast.Subscript(
+                        value=base,
+                        slice=self._project(node.slice, field=False),
+                        ctx=ast.Load(),
+                    )
+            return None
+        if not isinstance(node, (ast.Name, ast.Attribute)) or (
+            isinstance(node, ast.Attribute) and node.attr in self._NON_MODEL_M
+        ):
             return None
         reference = ast.unparse(node)
         protocol = (
@@ -518,6 +504,10 @@ class _ModelFieldProtocolRewriter(ast.NodeTransformer):
         root = node
         while isinstance(root, ast.Attribute):
             root = root.value
+        if isinstance(root, ast.Name) and root.id in self.model_aliases:
+            alias_protocol = self._aliased_model_protocol(reference, root.id)
+            if alias_protocol is not None:
+                return alias_protocol
         if isinstance(node, ast.Attribute) and (
             isinstance(root, ast.Name) and root.id in self.model_roots
         ):
@@ -528,29 +518,29 @@ class _ModelFieldProtocolRewriter(ast.NodeTransformer):
             raise ValueError(msg)
         return None
 
-    def _schema(self, model: ast.expr) -> ast.expr:
-        self.needs_t = True
-        return ast.parse(
-            f"t.schema_for_model(lambda: {ast.unparse(model)})", mode="eval"
-        ).body
-
-    def _reception(self, spec: ast.expr, model: ast.expr, *, field: bool) -> ast.expr:
-        """Receive one model operand as its protocol, with schema for a field.
+    def _aliased_model_protocol(self, reference: str, local: str) -> ast.expr | None:
+        """Resolve through an `m` facade alias to the owning package route.
 
         Returns:
-            The plain protocol, or its deferred-schema ``Annotated`` field form.
+            The protocol route, or None when the alias names no model.
 
         """
-        self.changed = True
-        self.needs_p = True
-        if not field:
-            return spec
-        self.needs_annotated = True
-        return ast.Subscript(
-            value=ast.Name(id="Annotated", ctx=ast.Load()),
-            slice=ast.Tuple(elts=[spec, self._schema(model)], ctx=ast.Load()),
-            ctx=ast.Load(),
-        )
+        rest = reference[len(local) :]
+        candidates: list[str] = []
+        module = self.model_aliases.get(local, "")
+        if module:
+            candidates.append(f"{module}.m{rest}")
+        if local != "m":
+            candidates.append(f"m{rest}")
+        for candidate in candidates:
+            protocol = (
+                FlextInfraUtilitiesSemanticModelFieldContracts.resolve_model_protocol(
+                    candidate, self.routes
+                )
+            )
+            if protocol is not None:
+                return ast.parse(protocol, mode="eval").body
+        return None
 
 
 __all__: list[str] = ["FlextInfraUtilitiesSemanticModelFieldContracts"]

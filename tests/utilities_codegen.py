@@ -13,7 +13,7 @@ from contextlib import contextmanager
 from multiprocessing import get_context
 from pathlib import Path
 
-from flext_infra import codegen, config, workspace
+from flext_infra import codegen, config, u, workspace
 from tests import (
     TestsFlextInfraUtilitiesGit,
     TestsFlextInfraUtilitiesProjectFixture,
@@ -23,13 +23,12 @@ from tests import (
     p,
     r,
     tm,
-    u,
-    utilities_conform,
 )
+from tests.utilities_conform import TestsFlextInfraUtilitiesConform
 
 
 class TestsFlextInfraUtilitiesCodegen(
-    utilities_conform.TestsFlextInfraUtilitiesConform,
+    TestsFlextInfraUtilitiesConform,
 ):
     """Public conformance and scaffold fixture helpers."""
 
@@ -152,7 +151,9 @@ class TestsFlextInfraUtilitiesCodegen(
         metadata = tm.ok(u.Infra.read_project_metadata_result(root))
         project = declared.project
         package_name = (
-            metadata.package_name if project is None else project.package_name
+            metadata.package_name
+            if project is None
+            else tm.not_none(project.package_name)
         )
         class_stem = metadata.class_stem if project is None else project.class_stem
         namespace = (
@@ -174,18 +175,24 @@ class TestsFlextInfraUtilitiesCodegen(
             (root / destination).parent.mkdir(parents=True, exist_ok=True)
         # Scaffold entries create declaration family directories, and the
         # facade completeness law rejects owners without their public facade.
+        # A lawful facade module declares its short alias beside its class.
         package_dir = root / c.Infra.DEFAULT_SRC_DIR / package_name
         for family in u.Infra.facade_families().values():
             facade = package_dir / f"{family.module}.py"
             if (package_dir / family.directory).is_dir() and not facade.is_file():
+                owner = f"{class_stem}{family.suffix}"
                 facade.write_text(
-                    f"class {class_stem}{family.suffix}:\n    pass\n",
+                    f"class {owner}:\n    pass\n\n\n{family.letter} = {owner}\n\n"
+                    f'__all__: list[str] = ["{owner}", "{family.letter}"]\n',
                     encoding="utf-8",
                 )
         request = TestsFlextInfraUtilitiesCodegen.conform_request(root)
-        result = codegen.FlextInfraCodegenConform.Generate(
-            state=m.Infra.CodegenConformState(repository_root=root, request=request),
-        ).plan(request)
+        # Family composition plans against the run's authenticated snapshot,
+        # bound by the caller exactly as the public conform execution binds it.
+        with u.Infra.workspace_snapshot(root, (root,)) as snapshot:
+            result = TestsFlextInfraUtilitiesConform.conform_plan_result(
+                root, request, snapshot=snapshot
+            )
         return m.Infra.CodegenPlan.model_validate(tm.ok(result))
 
     @staticmethod
@@ -265,9 +272,6 @@ class TestsFlextInfraUtilitiesCodegen(
         TestsFlextInfraUtilitiesProjectFixture.write_project_beads_config(
             repository_root,
             project_name,
-        )
-        TestsFlextInfraUtilitiesProjectFixture.declare_governed_kind(
-            repository_root,
         )
         # Semantic publication authenticates every changed path against its Git
         # checkout.  The shared workspace fixture therefore owns a real,

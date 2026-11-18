@@ -200,7 +200,8 @@ class _ModelReferenceRewriter(ast.NodeTransformer):
             isinstance(node.value, ast.Attribute)
             and isinstance(node.value.value, ast.Name)
             and node.value.value.id == "m"
-            and node.value.attr == "Infra"
+            and node.value.attr
+            in {"Infra", self.owner.partition("Protocols")[0].removeprefix("Flext")}
         ):
             self.changed = True
             self.requires_facade = True
@@ -687,10 +688,20 @@ def _annotation_patches(
             if replacement is not None:
                 start, end = _span(annotation, offsets)
                 patches.append(_Patch(start, end, ast.unparse(replacement)))
-        for statement in protocol.body:
-            if isinstance(statement, ast.AnnAssign) and statement.value is not None:
-                start, end = _span(statement.value, offsets)
-                patches.append(_Patch(start, end, "..."))
+        # A Protocol member declares its type, never a value: an ``Ellipsis``
+        # placeholder is not assignable to the declared type, so the whole
+        # ``= value`` suffix is removed. A ``TypeAlias`` keeps its value.
+        patches.extend(
+            _Patch(
+                _span(statement.annotation, offsets)[1],
+                _span(statement.value, offsets)[1],
+                "",
+            )
+            for statement in protocol.body
+            if isinstance(statement, ast.AnnAssign)
+            and statement.value is not None
+            and not _is_type_alias_annotation(statement.annotation)
+        )
     return patches
 
 
@@ -718,12 +729,7 @@ def _cleanup_normalized_imports(source: str, filename: str) -> str:
 def normalize_protocol_source(
     source: str, *, package_name: str, filename: str = "<protocol>"
 ) -> str:
-    """Return source with Pydantic field syntax removed from ``Protocol`` bodies.
-
-    Raises:
-        ValueError: If Protocol class has no source location.
-
-    """
+    """Return source with Pydantic field syntax removed from ``Protocol`` bodies."""
     tree = ast.parse(source, filename=filename)
     offsets = _line_offsets(source)
     protocols = tuple(_protocol_classes(tree))
@@ -734,9 +740,6 @@ def normalize_protocol_source(
         protocol for protocol in protocols if not _has_runtime_checkable(protocol)
     ]
     for protocol in missing_decorators:
-        if protocol.lineno is None:
-            msg = "Protocol class has no source location"
-            raise ValueError(msg)
         line_start = offsets[protocol.lineno - 1]
         indentation = source.encode("utf-8")[
             line_start : line_start + protocol.col_offset
@@ -1573,14 +1576,6 @@ def merge_class_lineages[TIdentity: str | tuple[str, str]](
     return tuple(result)
 
 
-def _validate_protocol_tree(protocol_root: Path) -> None:
-    """Require every protocol source to parse before publishing its facade."""
-    for path in sorted(protocol_root.rglob("*.py")):
-        if path == protocol_root / "__init__.py":
-            continue
-        ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-
-
 def _protocol_holders(
     package_root: Path, *, sources: Mapping[Path, str]
 ) -> tuple[tuple[str, str], ...]:
@@ -2274,23 +2269,16 @@ def _lazy_export_mapping(node: ast.AST) -> ast.Dict | None:
 def _existing_protocol_exports(
     protocol_root: Path, *, sources: Mapping[Path, str]
 ) -> dict[str, str]:
-    """Read live mappings from the source-bootstrap-owned protocol barrel only.
+    """Read live mappings from the protocol barrel's native lazy exports.
 
     Returns:
         The resulting ``dict[str, str]``.
-
-    Raises:
-        ValueError: If protocol barrel is not source-bootstrap-owned.
 
     """
     initializer = protocol_root / "__init__.py"
     if initializer not in sources and not initializer.is_file():
         return {}
     source = _protocol_source(initializer, sources=sources)
-    marker = "# AUTO-GENERATED FILE - Source bootstrap protocol exports."
-    if not source.startswith(marker):
-        msg = f"protocol barrel is not source-bootstrap-owned: {initializer}"
-        raise ValueError(msg)
     tree = ast.parse(source, filename=str(initializer))
     contents = next(
         (
@@ -2357,7 +2345,6 @@ def plan_protocol_facades(
     holder_exports = _aggregate_protocol_holders(
         protocol_root, holders, sources=sources
     )
-    exports = ",\n    ".join(f'"{holder}"' for holder in exports_by_name)
     mapping_entries = "\n".join(
         itertools.starmap(_render_lazy_export_mapping_entry, exports_by_name.items())
     )
@@ -2387,20 +2374,17 @@ def plan_protocol_facades(
             if type_imports
             else ""
         )
-        + (
-            f"__all__: tuple[str, ...] = (\n    {exports},\n)\n\n"
-            if exports
-            else "__all__: tuple[str, ...] = ()\n\n"
-        )
         + "# fmt: off\n"
+        "_LAZY_IMPORTS = MappingProxyType(\n"
+        "    {\n"
+        f"{mapping_entries}"
+        "    }\n"
+        ")\n"
+        "__all__ = tuple(_LAZY_IMPORTS)\n\n"
         "install_lazy_exports(\n"
         "    __name__,\n"
         "    globals(),\n"
-        "    MappingProxyType(\n"
-        "        {\n"
-        f"{mapping_entries}"
-        "        }\n"
-        "    ),\n"
+        "    _LAZY_IMPORTS,\n"
         "    public_exports=__all__,\n"
         ")\n"
         "# fmt: on\n"
@@ -2490,14 +2474,6 @@ def _render_family_init(
             + "    )"
         )
     exported = sorted(owners, key=_family_export_key)
-    inner = ", ".join(f'"{name}"' for name in exported)
-    compact_all = f"({inner},)" if len(exported) == 1 else f"({inner})"
-    exports = (
-        compact_all
-        if len("__all__: tuple[str, ...] = ") + len(compact_all)
-        <= _MAX_IMPORT_LINE_LENGTH
-        else "(\n" + "".join(f'    "{name}",\n' for name in exported) + ")"
-    )
     entries: list[str] = []
     for name in exported:
         line = f'        "{name}": ".{owners[name]}",'
@@ -2515,13 +2491,14 @@ def _render_family_init(
         "from typing import TYPE_CHECKING\n\n"
         "from flext_core.lazy import install_lazy_exports\n\n"
         + (f"if TYPE_CHECKING:\n{chr(10).join(imports)}\n\n\n" if imports else "")
-        + f"__all__: tuple[str, ...] = {exports}\n\n"
+        + "_LAZY_IMPORTS = MappingProxyType({\n"
+        f"{mapping}\n"
+        "})\n"
+        "__all__ = tuple(_LAZY_IMPORTS)\n\n"
         "install_lazy_exports(\n"
         "    __name__,\n"
         "    globals(),\n"
-        "    MappingProxyType({\n"
-        f"{mapping}\n"
-        "    }),\n"
+        "    _LAZY_IMPORTS,\n"
         "    public_exports=__all__,\n"
         ")\n"
     )

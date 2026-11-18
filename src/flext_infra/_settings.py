@@ -13,6 +13,7 @@ import os as _os
 from typing import ClassVar
 
 from flext_core import FlextSettings, m
+from pydantic_settings import SettingsConfigDict as PydanticSettingsConfigDict
 
 from flext_infra._models import FlextInfraModelsSettings
 
@@ -20,7 +21,7 @@ from flext_infra._models import FlextInfraModelsSettings
 class FlextInfraSettings(FlextSettings):
     """Environment-backed infra settings; fields under ``settings.Infra.*``."""
 
-    model_config: ClassVar[m.SettingsConfigDict] = m.SettingsConfigDict(
+    model_config: ClassVar[PydanticSettingsConfigDict] = PydanticSettingsConfigDict(
         env_prefix="FLEXT_INFRA_",
         env_nested_delimiter="__",
         extra="ignore",

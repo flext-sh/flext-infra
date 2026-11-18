@@ -1,14 +1,18 @@
 # Universal rules include the flext-core foundation required by flext-infra.
 # Other project identities belong to their owning repository's overlay.
 rules:
-- id: core-retire-generic-typing-wrappers
-  operation: retire-generic-typing-wrappers
-  source_revision: 35f2da92c92aa99be5beef560380ea79f659d901
+- id: opaque-mutable-model-ports
+  operation: normalize-opaque-mutable-ports
   phase: contract-normalization
-  pattern: '${provider}'
-  goal: '${provider}'
-  arguments:
-    provider: name=flext_core._typings.FlextTypingBase
+  pattern: '${model}'
+  goal: '${model}'
+  arguments: {}
+- id: pydantic-native-protocol-model-envelope
+  operation: normalize-model-envelopes
+  phase: contract-normalization
+  pattern: '${model}(${arguments})'
+  goal: '${model}.model_validate({${arguments}})'
+  arguments: {}
 - id: core-rename-protocol-model-root
   phase: contract-normalization
   pattern: '${facade}.Model'
@@ -16,7 +20,7 @@ rules:
   arguments:
     facade:
     - name=flext_core.p
-    - name=flext_core.protocols.FlextCoreProtocols
+    - name=flext_core.protocols.FlextProtocols
 - id: core-rewire-protocol-root-holder
   phase: contract-normalization
   pattern: '${holder}.${member}'
@@ -56,7 +60,7 @@ rules:
   imports: &logging_imports
     u: from flext_core import u
   bindings: &logging_bindings
-    u.fetch_logger: u.fetch_logger
+    u.fetch_logger: flext_core.u.fetch_logger
   implementation_owner: &logging_implementation [ flext_core, u.fetch_logger ]
   # Numeric stdlib log(), handler management, exported and escaping logger
   # interfaces have no proven factory translation. Keep those native.
@@ -103,14 +107,16 @@ rules:
   pattern: '${emit}(${result}, verbose=${verbose})'
   goal: '${emit}(${result})'
   arguments:
-    emit: name=u.Cli.commands_emit_result_error
+    emit: name=flext_cli._utilities.commands.FlextCliUtilitiesCommands.commands_emit_result_error
   drops: [ verbose ]
 - id: namespace-final-constant
   phase: constant-consumers
   families: [ c ]
   scope_kinds: [ Class ]
-  pattern: '${name}: ${final}[${contract}] = ${value}'
-  goal: '${name}: ClassVar[${contract}] = ${value}'
+  # Rewrite only the annotation: re-emitting a captured value drops the
+  # parentheses that wrap a multi-line value and breaks its indentation.
+  pattern: '${final}[${contract}]'
+  goal: 'ClassVar[${contract}]'
   arguments:
     final: name=typing.Final
   imports:
@@ -133,15 +139,15 @@ rules:
     - distribution: flext-oracle-wms
       module: flext_oracle_wms.config_models
   pattern: '${adapter}(${contract})'
-  goal: 'u.type_adapter(t.TypeForm(${contract}))'
+  goal: 'u.type_adapter(TypeForm(${contract}))'
   arguments:
     adapter: name=pydantic.TypeAdapter
   imports:
     u: from flext_core import u
-    t.TypeForm: from typing_extensions import TypeForm
+    TypeForm: from typing_extensions import TypeForm
   bindings:
     u.type_adapter: pydantic.TypeAdapter
-    t.TypeForm: typing_extensions.TypeForm
+    TypeForm: typing_extensions.TypeForm
 - id: pydantic-required-field-metadata
   phase: contract-normalization
   scope: *pydantic_config_models_scope
@@ -244,10 +250,10 @@ rules:
   goal: '${name}: ${annotated}[${contract}, ${metadata}] = ${field}(default_factory=u.empty(contract_factory=lambda: TypeForm(${annotated}[${contract}, ${metadata}])))'
   imports: &empty_imports
     u: from flext_core import u
-    t.TypeForm: from typing_extensions import TypeForm
+    TypeForm: from typing_extensions import TypeForm
   bindings: &empty_bindings
     u.empty: flext_core._utilities.pydantic.FlextUtilitiesPydantic.empty
-    t.TypeForm: typing_extensions.TypeForm
+    TypeForm: typing_extensions.TypeForm
   arguments:
     annotated: name=typing.Annotated
     collection: &empty_collections

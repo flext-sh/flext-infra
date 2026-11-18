@@ -17,7 +17,9 @@ class TestsFlextInfraCodegenCiMatrixSupport:
     """Render one fresh internal_flext project for CI matrix contract classes."""
 
     @staticmethod
-    def render_project(root: Path) -> Path:
+    def render_project(
+        root: Path, *, codegen_inputs: t.JsonMapping | None = None
+    ) -> Path:
         """Render one fresh internal_flext project into root and return it.
 
         Returns:
@@ -37,19 +39,20 @@ class TestsFlextInfraCodegenCiMatrixSupport:
             )
             u.Tests.copy_tracked_mise_seeds(root)
             u.Tests.write_project_beads_config(root, repository.name)
-            declaration = m.Infra.RepositoryDeltaSpec(
-                project=u.Tests.project_spec(repository.name).model_copy(
+            declaration = m.Infra.RepositoryDeltaSpec.model_validate({
+                "project": u.Tests.project_spec(repository.name).model_copy(
                     update={"upstream": "flext_cli"}
                 ),
-                integration=integration,
-                kind=repository.kind,
-            )
+                "integration": integration,
+            })
+            # The case's own codegen inputs and the repository share one dump.
             tm.ok(
                 u.Cli.yaml_dump(
                     root / c.CONFIG_DIR_NAME / c.Infra.CODEGEN_CONFIG_FILENAME,
                     {
                         "Infra": {
                             "codegen": {
+                                **(codegen_inputs or {}),
                                 "repository": declaration.model_dump(
                                     mode="json", exclude_unset=True
                                 ),
@@ -60,7 +63,6 @@ class TestsFlextInfraCodegenCiMatrixSupport:
             )
             service = FlextInfraCodegenMakeBootstrap(
                 repository_root=root,
-                kind=repository.kind,
                 apply_changes=True,
             )
             tm.ok(service.execute(), eq=True)

@@ -282,17 +282,17 @@ class FlextInfraUtilitiesGitStateSnapshot(FlextInfraUtilitiesGitRepo):
                 {repo.commit(oid).hexsha for oid in request.retained_commits} - {head},
             ),
         )
-        return m.Infra.GitWorktreeStateSnapshot(
-            repo_root=root,
-            common_dir=Path(repo.common_dir).resolve(),
-            head=head,
-            branch=None if repo.head.is_detached else repo.active_branch.name,
-            retained_commits=retained,
-            paths=tuple(request.paths),
-            head_entries=cls._state_head_entries(root, request.paths),
-            index_entries=entries,
-            files=files,
-        )
+        return m.Infra.GitWorktreeStateSnapshot.model_validate({
+            "repo_root": (root),
+            "common_dir": (Path(repo.common_dir).resolve()),
+            "head": (head),
+            "branch": (None if repo.head.is_detached else repo.active_branch.name),
+            "retained_commits": (retained),
+            "paths": (tuple(request.paths)),
+            "head_entries": (cls._state_head_entries(root, request.paths)),
+            "index_entries": (entries),
+            "files": (files),
+        })
 
     @classmethod
     def git_snapshot_worktree_state(

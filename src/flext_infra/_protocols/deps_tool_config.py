@@ -63,6 +63,8 @@ class FlextInfraProtocolsDepsToolConfig:
             """Phase toggles read from config/tooling.yaml."""
             ...
 
+        scan_threads: t.PositiveInt
+
     @runtime_checkable
     class PytestWorkerCeiling(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
@@ -74,8 +76,10 @@ class FlextInfraProtocolsDepsToolConfig:
     class PytestConfig(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
+        ordinary_timeout_seconds: int
         slow_timeout_seconds: int
         slow_marker: t.NonEmptyStr
+        item_deadline_call_only: bool
         run_timeout_seconds: int
         termination_grace_seconds: int
         max_failures: int
@@ -120,6 +124,7 @@ class FlextInfraProtocolsDepsToolConfig:
         profile_process_directory: t.NonEmptyStr
         standard_markers: Sequence[str]
         external_gate_markers: tuple[str, ...]
+        harness_gate_markers: tuple[str, ...]
         ci_excluded_markers: tuple[str, ...]
         ci_excluded_fixtures: tuple[str, ...]
 
@@ -168,8 +173,14 @@ class FlextInfraProtocolsDepsToolConfig:
             """Embedding pass host (--semantic)."""
             ...
 
-        ignore_patterns: t.StrTuple
+        ignore_patterns: Sequence[str]
         ignore: Sequence[str]
+
+    @runtime_checkable
+    class BanditToolConfig(FlextCliProtocols.BaseModel, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        skips: Sequence[str]
 
     @runtime_checkable
     class MarkdownProjectedBlock(FlextCliProtocols.BaseModel, Protocol):
@@ -215,18 +226,6 @@ class FlextInfraProtocolsDepsToolConfig:
             ...
 
         @property
-        def mypy(self) -> FlextInfraProtocolsDepsToolConfigLinters.MypyConfig:
-            """Mypy settings."""
-            ...
-
-        @property
-        def pyright(
-            self,
-        ) -> FlextInfraProtocolsDepsToolConfigTypeCheckers.PyrightConfig:
-            """Pyright settings."""
-            ...
-
-        @property
         def pyrefly(
             self,
         ) -> FlextInfraProtocolsDepsToolConfigTypeCheckers.PyreflyConfig:
@@ -246,6 +245,11 @@ class FlextInfraProtocolsDepsToolConfig:
         @property
         def jscpd(self) -> FlextInfraProtocolsDepsToolConfig.JscpdToolConfig:
             """Jscpd clone-semantics passes."""
+            ...
+
+        @property
+        def bandit(self) -> FlextInfraProtocolsDepsToolConfig.BanditToolConfig:
+            """Bandit security gate skipped test ids."""
             ...
 
     @runtime_checkable
@@ -395,11 +399,7 @@ class FlextInfraProtocolsDepsToolConfig:
         project_kind: t.NonEmptyStr
         configuration: str
         tool_options: Mapping[str, t.JsonMapping]
-
-        @property
-        def sources(self) -> tuple[p.Cli.AtomicFileState, ...]:
-            """Original configuration layers bound to the render."""
-            ...
+        sources: tuple[p.Cli.AtomicFileState, ...]
 
 
 __all__: list[str] = [

@@ -1,3 +1,10 @@
+# The fixture project is `ai_hub` (fixture-utils/own-package.yml) and its
+# fixtures carry no file location, so every case reads as a module outside
+# the imported top-level package: the `flext_infra` and `flext_ldif` deep
+# imports below are foreign and move. The `top-package-` partition, which
+# keeps a deep import inside the importing module's own top-level package,
+# is proved on a real project tree by
+# tests/unit/codemod/test_deep_import_own_root.py.
 id: rewire-deep-import-to-package
 valid:
 # Already imported from the publishing package, from a compose module, or from

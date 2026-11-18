@@ -29,11 +29,11 @@ class TestsFlextInfraCodegenConformHatchHook:
         repository = u.Tests.repository_ref("hook-project").model_copy(
             update={"role": c.Infra.MakeProfile.STANDALONE},
         )
-        project_payload = u.Tests.project_spec("hook-project").model_dump()
-        project_payload["hatch_build_hook_path"] = hook_path
         return u.Tests.workspace_spec(
             repository,
-            project=m.Infra.ProjectSpec.model_validate(project_payload),
+            project=u.Tests.project_spec("hook-project").model_copy(
+                update={"hatch_build_hook_path": hook_path}
+            ),
         )
 
     @staticmethod
@@ -42,8 +42,8 @@ class TestsFlextInfraCodegenConformHatchHook:
         hook_path: str | Path | None,
     ) -> tuple[
         FlextInfraCodegenConform.Generate,
-        m.Infra.CodegenConformRequest,
-        m.Infra.CodegenFilePlan,
+        p.Infra.CodegenConformRequest,
+        p.Infra.CodegenFilePlan,
     ]:
         """Plan the canonical pyproject through the public conform owner.
 

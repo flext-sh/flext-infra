@@ -54,7 +54,7 @@ class FlextInfraUtilitiesDocsScopeSelection:
     def _selected_scope(
         repository_root: Path,
         name: str,
-        project_by_name: MutableMapping[str, m.Infra.ProjectInfo],
+        project_by_name: MutableMapping[str, p.Infra.ProjectInfo],
         output_dir: Path | str,
     ) -> p.Infra.DocScope | None:
         """Build one selected scope from discovery or a local path.
@@ -79,14 +79,14 @@ class FlextInfraUtilitiesDocsScopeSelection:
     @staticmethod
     def _project_by_name(
         discovered: Sequence[p.Infra.ProjectInfo],
-    ) -> MutableMapping[str, m.Infra.ProjectInfo]:
+    ) -> MutableMapping[str, p.Infra.ProjectInfo]:
         """Index discovered projects by canonical and directory names.
 
         Returns:
             The resulting ``MutableMapping[str, m.Infra.ProjectInfo]``.
 
         """
-        project_by_name: MutableMapping[str, m.Infra.ProjectInfo] = {}
+        project_by_name: MutableMapping[str, p.Infra.ProjectInfo] = {}
         for project in discovered:
             project_by_name.setdefault(project.name, project)
             project_by_name.setdefault(project.path.name, project)
@@ -191,14 +191,20 @@ class FlextInfraUtilitiesDocsScopeSelection:
         output_dir: Path | str,
         *,
         repository_root: Path,
+        projection: p.Infra.CodegenFilePlan | None = None,
     ) -> p.Infra.DocScope:
         """Build docs scope for a governed project root.
+
+        ``projection`` is the candidate pyproject a generation plans for the
+        root; it stands for the live file until that file is published.
 
         Returns:
             The resulting ``m.Infra.DocScope``.
 
         """
-        payload = FlextInfraUtilitiesDocsScope.project_payload(project_root)
+        payload = FlextInfraUtilitiesDocsScope.project_state(
+            project_root, metadata_projection=projection
+        ).payload
         docs_meta = FlextInfraUtilitiesPyprojectConform.docs_meta_from_payload(payload)
         project_name = FlextInfraUtilitiesPyprojectConform.project_name_from_payload(
             project_root, payload

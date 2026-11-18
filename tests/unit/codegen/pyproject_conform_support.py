@@ -70,6 +70,8 @@ class TestsFlextInfraPyprojectConformSupport:
         """
         return m.Infra.UvResolutionSpec(
             link_mode=toolchain.uv_link_mode,
+            cooldown_days=toolchain.dependency_cooldown_days,
+            cooldown_exceptions=tuple(sorted(toolchain.dependency_cooldown_exceptions)),
             constraint_dependencies=tuple(toolchain.uv_constraint_dependencies),
             environments=tuple(toolchain.uv_environments),
         )

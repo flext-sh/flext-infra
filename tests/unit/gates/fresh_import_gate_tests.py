@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra.gates.fresh_import import FlextInfraGatesFreshImport
+from flext_infra.gates import FlextInfraGatesFreshImport
 from tests import c, m, p, tm, u
 
 if TYPE_CHECKING:
@@ -97,14 +97,16 @@ class TestsFlextInfraFreshImportGate:
     ) -> None:
         """A ``package: false`` declaration deselects the gate, whatever the tree."""
         project = self._project(tmp_path)
-        manifest = m.Infra.WorkspaceManifestSpec(
-            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
-            name=project.name,
-            repository=u.Tests.repository_ref(project.name).model_copy(
-                update={"package": False},
+        manifest = m.Infra.WorkspaceManifestSpec.model_validate({
+            "version": (c.Infra.WORKSPACE_MANIFEST_VERSION),
+            "name": (project.name),
+            "repository": (
+                u.Tests.repository_ref(project.name).model_copy(
+                    update={"package": False},
+                )
             ),
-            project=u.Tests.project_spec(project.name),
-        )
+            "project": (u.Tests.project_spec(project.name)),
+        })
         tm.ok(
             u.Cli.yaml_dump(
                 u.Infra.workspace_manifest_path(project),

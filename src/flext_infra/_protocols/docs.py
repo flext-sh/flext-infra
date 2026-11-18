@@ -24,14 +24,9 @@ SPDX-License-Identifier: MIT
 """
 
 
-if TYPE_CHECKING:
-    from mkdocs.config.defaults import MkDocsConfig
-
-
 # NOTE (multi-agent, flext-wkii.17.23 / agent: uv_overlay_owner): protocols mirror
 # source models structurally; no concrete m type crosses a public interface.
-@runtime_checkable
-class FlextInfraProtocolsDocs(Protocol):
+class FlextInfraProtocolsDocs:
     """Documentation model protocols exposed through ``p.Infra``."""
 
     @runtime_checkable
@@ -146,41 +141,6 @@ class FlextInfraProtocolsDocs(Protocol):
         def source_paths(self) -> t.StrTuple:
             """Mkdocstrings source roots."""
             ...
-
-    @runtime_checkable
-    class MkDocsConfigLoader(Protocol):
-        """Native configuration callable required by strict builds."""
-
-        def __call__(
-            self, *, config_file: str, site_dir: str, strict: bool
-        ) -> MkDocsConfig: ...
-
-    @runtime_checkable
-    class MkDocsServer(Protocol):
-        """Native server callable required by documentation composition."""
-
-        def __call__(
-            self,
-            *,
-            config_file: str,
-            livereload: bool,
-            dev_addr: str,
-            strict: bool,
-        ) -> None: ...
-
-    @runtime_checkable
-    class MkDocsConfigModule(Protocol):
-        """Read-only native module configuration operation."""
-
-        @property
-        def load_config(self) -> FlextInfraProtocolsDocs.MkDocsConfigLoader: ...
-
-    @runtime_checkable
-    class MkDocsServeModule(Protocol):
-        """Read-only native module server operation."""
-
-        @property
-        def serve(self) -> FlextInfraProtocolsDocs.MkDocsServer: ...
 
     @runtime_checkable
     class DocsTocToken(FlextCliProtocols.BaseModel, Protocol):
@@ -542,7 +502,7 @@ class FlextInfraProtocolsDocs(Protocol):
             ...
 
         @property
-        def class_counts(self) -> Sequence[FlextInfraProtocolsDocs.DocsClassCount]:
+        def class_counts(self) -> Sequence[FlextInfraProtocolsDocs.DocsClassCount,]:
             """Projects per documentation class."""
             ...
 
@@ -551,7 +511,7 @@ class FlextInfraProtocolsDocs(Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def entries(self) -> Sequence[FlextInfraProtocolsDocs.DocsProjectIndexEntry]:
+        def entries(self) -> Sequence[FlextInfraProtocolsDocs.DocsProjectIndexEntry,]:
             """Per-project module page counts."""
             ...
 
@@ -562,7 +522,7 @@ class FlextInfraProtocolsDocs(Protocol):
         @property
         def entries(
             self,
-        ) -> Sequence[FlextInfraProtocolsDocsGeneration.DocsCatalogEntry]:
+        ) -> Sequence[FlextInfraProtocolsDocsGeneration.DocsCatalogEntry,]:
             """Catalog rows that survive the exclusions."""
             ...
 
@@ -648,7 +608,7 @@ class FlextInfraProtocolsDocs(Protocol):
 
         @property
         def severity(self) -> str:
-            """Issue severity."""
+            """Audit issue severity."""
             ...
 
         @property

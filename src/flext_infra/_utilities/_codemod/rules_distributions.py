@@ -106,9 +106,9 @@ class FlextInfraUtilitiesCodemodRulesDistributions:
             )
         )
 
-    @staticmethod
-    @lru_cache(maxsize=8)
+    @classmethod
     def codemod_target_environment(
+        cls,
         root: Path,
     ) -> p.Result[p.Infra.PythonEnvironmentObservation]:
         """Observe the TARGET repository's own provisioned Python environment.
@@ -118,7 +118,8 @@ class FlextInfraUtilitiesCodemodRulesDistributions:
         interpreter: a consumer's runtime distributions live only in the
         consumer's environment. The target interpreter reports its own
         ``sys.path`` (editable ``.pth`` entries included) and import-package
-        owners, once per root.
+        owners, once per environment: attached members share the workspace
+        environment, so the interpreter is probed once for all of them.
 
         Returns:
             The target observation, or the first failure: an unprovisioned
@@ -126,25 +127,38 @@ class FlextInfraUtilitiesCodemodRulesDistributions:
             reported prefix.
 
         """
+        return cls._observed_environment(
+            FlextInfraUtilitiesProjectDiscovery.runtime_environment_dir(root).resolve()
+        )
+
+    @staticmethod
+    @lru_cache(maxsize=8)
+    def _observed_environment(
+        environment: Path,
+    ) -> p.Result[p.Infra.PythonEnvironmentObservation]:
+        """Probe one provisioned environment's interpreter once per run.
+
+        Returns:
+            The observation, or the first failure.
+
+        """
         outcome = r[p.Infra.PythonEnvironmentObservation]
-        discovery = FlextInfraUtilitiesProjectDiscovery
-        environment = discovery.runtime_environment_dir(root)
-        python = discovery.environment_python(environment)
+        python = FlextInfraUtilitiesProjectDiscovery.environment_python(environment)
         if not (environment / c.Infra.ENVIRONMENT_METADATA).is_file():
             return outcome.fail(
                 f"target repository environment is not provisioned: "
-                f"{environment}; run make setup in {root}",
+                f"{environment}; run make setup in {environment.parent}",
             )
         probe = u.Cli.run(
             (str(python), "-I", "-c", c.Infra.BINDING_PACKAGE_SCRIPT),
-            cwd=root,
+            cwd=environment.parent,
         )
         if probe.failure:
             return outcome.from_failure(probe)
         facts = m.Infra.PythonEnvironmentObservation.model_validate_json(
             probe.value.stdout,
         )
-        if facts.prefix.resolve() != environment.resolve():
+        if facts.prefix.resolve() != environment:
             return outcome.fail(
                 f"target interpreter reports a foreign environment: "
                 f"expected={environment}, actual={facts.prefix}",

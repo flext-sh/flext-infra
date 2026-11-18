@@ -258,7 +258,7 @@ class FlextInfraProtocolsConfigContexts:
             ...
 
         @property
-        def mypy_timeout_exit_code(self) -> int:
+        def timeout_exit_code(self) -> int:
             """Wall-time limiter timeout exit code."""
             ...
 
@@ -270,15 +270,6 @@ class FlextInfraProtocolsConfigContexts:
         @property
         def timeout_kill_after_seconds(self) -> int:
             """Forced-termination grace period."""
-            ...
-
-        @property
-        def check_timeout_seconds(self) -> int:
-            """Structural member projected from the owning model.
-
-            Make check wall-time bound derived from the largest declared budget of
-            the gates it runs.
-            """
             ...
 
     @runtime_checkable
@@ -296,7 +287,7 @@ class FlextInfraProtocolsConfigContexts:
             ...
 
         @property
-        def mypy_timeout_exit_code(self) -> int:
+        def timeout_exit_code(self) -> int:
             """Wall-time limiter timeout exit code."""
             ...
 
@@ -501,8 +492,13 @@ class FlextInfraProtocolsConfigContexts:
             ...
 
         @property
-        def package_name(self) -> t.NonEmptyStr:
-            """Python import package name."""
+        def package(self) -> bool:
+            """Repository publishes a Python package."""
+            ...
+
+        @property
+        def package_name(self) -> t.NonEmptyStr | None:
+            """Python import package name; absent without a package."""
             ...
 
         @property
@@ -619,13 +615,18 @@ class FlextInfraProtocolsConfigContexts:
             ...
 
         @property
-        def config_base_class(self) -> str:
+        def config_base_class(self) -> str | None:
             """Config base class composed by the generated ``_config.py``."""
             ...
 
         @property
-        def config_base_module(self) -> str:
+        def config_base_module(self) -> str | None:
             """Import module exposing ``config_base_class``."""
+            ...
+
+        @property
+        def settings_base_class(self) -> str | None:
+            """Settings base class composed by the generated ``_settings.py``."""
             ...
 
         @property

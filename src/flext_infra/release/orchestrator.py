@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated, override
+from typing import Annotated, cast, override
 
 from flext_infra import c, m, p, r, t, u
 from flext_infra.codegen._conform import FlextInfraCodegenConformExecute
@@ -126,8 +126,7 @@ class FlextInfraReleaseOrchestrator(
                 base=integration.value,
                 subject=c.Infra.RELEASE_COMMIT_SUBJECT.format(version=plan.value.next),
                 body_file=self._release_dir(root, plan.value.tag)
-                / c.Infra.RELEASE_NOTES_FILENAME,
-                ownership=self.ownership,
+                / c.Infra.RELEASE_PULL_REQUEST_BODY_FILENAME,
             ),
             lambda: self._stamp_release(ctx, plan.value),
         )
@@ -140,7 +139,7 @@ class FlextInfraReleaseOrchestrator(
         ctx: p.Infra.ReleasePhaseDispatchConfig,
         plan: p.Infra.ReleasePlan,
     ) -> p.Result[bool]:
-        """Write the version SSOT, settle its projections, then the release notes.
+        """Write the version SSOT, settle its projections, then the notes and body.
 
         Ordering version -> generation -> notes makes each step a pure
         function of the SSOT already on disk: generation settles pyproject.toml's
@@ -162,14 +161,15 @@ class FlextInfraReleaseOrchestrator(
                 root=root,
                 scope=c.Infra.CodegenConformScope.ALL,
             ),
-            execution_context=self,
+            execution_context=cast(p.Infra.CodegenExecutionContext, self),
         )
         if settled.failure:
             return r[bool].from_failure(settled)
         projects = u.Infra.resolve_projects(root, ctx.project_names)
         if projects.failure:
             return r[bool].from_failure(projects)
-        notes = self._release_dir(root, plan.tag) / c.Infra.RELEASE_NOTES_FILENAME
+        release_dir = self._release_dir(root, plan.tag)
+        notes = release_dir / c.Infra.RELEASE_NOTES_FILENAME
         generated = u.Infra.generate_notes(
             plan.next,
             plan.tag,
@@ -179,6 +179,15 @@ class FlextInfraReleaseOrchestrator(
         )
         if generated.failure:
             return generated
+        summarized = u.Infra.generate_pull_request_body(
+            plan.next,
+            plan.tag,
+            projects.value,
+            len(plan.merges),
+            release_dir / c.Infra.RELEASE_PULL_REQUEST_BODY_FILENAME,
+        )
+        if summarized.failure:
+            return summarized
         return u.Infra.update_changelog(root, plan.next, plan.tag, notes)
 
     @classmethod

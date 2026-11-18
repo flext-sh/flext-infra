@@ -4,7 +4,7 @@
 # rule owns the OWN-package variant inside test tiers, which couples the test
 # to the module's internal layout just as completely:
 #
-#   from algar_pkg.services._clean_search import AlgarOudMigCleanSearchMixin
+#   from acme_pkg.services._clean_search import AcmeAppCleanSearchMixin
 #
 # The `_segment` anywhere in the imported module path is the private marker
 # (the layout law: every additional class lives in its own module, private
@@ -28,6 +28,21 @@ ignores:
   # layering, not a test coupling to a production module's shape.
   - "**/tests/_utilities/**"
   - "**/tests/_*/**"
+  # Scenario fixtures build synthetic packages whose own facade assembly is the
+  # input under test, not a test reading the project's internal layout.
+  - "**/tests/fixtures/**"
+  # The examples tier's generated facades compose their own `_` families; the
+  # owning facade importing its parts is the sanctioned composition.
+  - "**/examples/_*/**"
+  - "**/examples/__init__.py"
+  - "**/examples/base.py"
+  - "**/examples/constants.py"
+  - "**/examples/models.py"
+  - "**/examples/protocols.py"
+  - "**/examples/settings.py"
+  - "**/examples/shared.py"
+  - "**/examples/typings.py"
+  - "**/examples/utilities.py"
 rule:
   kind: import_from_statement
   has:

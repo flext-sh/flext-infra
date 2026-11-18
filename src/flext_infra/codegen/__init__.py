@@ -27,7 +27,6 @@ if TYPE_CHECKING:
     from flext_infra.codegen.mise_toolchain_repair import (
         FlextInfraCodegenMiseToolchainRepair,
     )
-    from flext_infra.codegen.preconditions import FlextInfraCodegenPreconditions
     from flext_infra.codegen.py_typed import FlextInfraCodegenPyTyped
     from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
     from flext_infra.codegen.staged_package import FlextInfraStagedPackage
@@ -45,7 +44,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraCodegenMakeBootstrap",
     "FlextInfraCodegenMiseToolchainProof",
     "FlextInfraCodegenMiseToolchainRepair",
-    "FlextInfraCodegenPreconditions",
     "FlextInfraCodegenPyTyped",
     "FlextInfraCodegenScaffolder",
     "FlextInfraCodegenVersionFile",
@@ -67,7 +65,6 @@ install_lazy_exports(
         "FlextInfraCodegenMakeBootstrap": ".make_bootstrap",
         "FlextInfraCodegenMiseToolchainProof": ".mise_toolchain_proof",
         "FlextInfraCodegenMiseToolchainRepair": ".mise_toolchain_repair",
-        "FlextInfraCodegenPreconditions": ".preconditions",
         "FlextInfraCodegenPyTyped": ".py_typed",
         "FlextInfraCodegenScaffolder": ".scaffolder",
         "FlextInfraCodegenVersionFile": ".version_file",

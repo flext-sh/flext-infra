@@ -68,8 +68,11 @@ class FlextInfraUtilitiesGitWorktreeRoots(FlextInfraUtilitiesGitRepo):
             The resulting ``p.Result[Path]``.
 
         """
+        opened = cls._open_repo(repository_path)
+        if opened.failure:
+            return r[Path].from_failure(opened)
+        repo = opened.value
         try:
-            repo = cls._repo(repository_path)
             superproject = repo.git.rev_parse(
                 "--show-superproject-working-tree",
             ).strip()

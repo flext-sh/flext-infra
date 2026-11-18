@@ -10,7 +10,7 @@ import sys
 from typing import TYPE_CHECKING
 
 from flext_infra.codemod import FlextInfraModGateEngine
-from tests import c, tm, u
+from tests import c, p, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -21,14 +21,17 @@ class TestsFlextInfraSingleClassExportRuntime:
     """Exercise the real catalog, publication and Python import boundaries."""
 
     @staticmethod
-    @c.Tests.MARK.parametrize("surface", tuple(c.Infra.NON_PUBLIC_LAZY_ROOTS))
+    @c.Tests.MARK.parametrize("surface", sorted(c.Infra.NON_PUBLIC_LAZY_ROOTS))
     def test_internal_source_is_published_through_its_lazy_package(
         tmp_path: Path,
         surface: str,
+        session_runtime: p.Tests.SessionRuntime,
     ) -> None:
         """The governed internal tiers use the same source export election."""
         root, _package = u.Tests.create_lazy_init_workspace(tmp_path)
         u.Tests.write_workspace_manifest(root, root.name)
+        # The rule plan reads the scanned checkout's own runtime.
+        tm.ok(u.Tests.provision_scan_workspace(root, session_runtime=session_runtime))
         package = root / surface
         package.mkdir()
         (package / c.Infra.INIT_PY).write_text("", encoding=c.DEFAULT_ENCODING)
@@ -95,6 +98,7 @@ class TestsFlextInfraSingleClassExportRuntime:
         tmp_path: Path,
         project_name: str,
         scope_kind: str,
+        session_runtime: p.Tests.SessionRuntime,
     ) -> None:
         """Project-derived exports remain lazy and exclude unrelated classes."""
         package_name = project_name.replace("-", "_")
@@ -124,6 +128,13 @@ class TestsFlextInfraSingleClassExportRuntime:
                 (root.relative_to(workspace).as_posix(),),
             )
         scan_root = workspace if workspace is not None else root
+        # Each scanned checkout's rule plan reads that checkout's own runtime.
+        for checkout in dict.fromkeys((scan_root, root)):
+            tm.ok(
+                u.Tests.provision_scan_workspace(
+                    checkout, session_runtime=session_runtime
+                )
+            )
         family = u.Infra.facade_families()["u"]
         class_name = f"{u.derive_class_stem(project_name)}{family.suffix}Publication"
         source = package / family.directory / "binding_inventory.py"

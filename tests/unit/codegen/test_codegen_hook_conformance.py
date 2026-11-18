@@ -135,12 +135,13 @@ class TestsFlextInfraCodegenHookConformance:
         tm.that(rendered, lacks=".local")
 
     @staticmethod
+    @c.Tests.MARK.slow
     @c.Tests.MARK.parametrize("inherited", ["ci", "local"])
-    def test_pre_push_check_unsets_inherited_ci_before_the_real_make_runtime(
+    def test_pre_push_refuses_when_the_make_runtime_is_unprovisioned(
         tmp_path: Path,
         inherited: str,
     ) -> None:
-        """Execute the generated hook entry without replacing any runtime owner."""
+        """Inherited CI cannot turn the native check's failure into a pass."""
         root, _ = u.Tests.render_make_environment(
             tmp_path,
             c.Infra.MakeProfile.STANDALONE,
@@ -149,7 +150,6 @@ class TestsFlextInfraCodegenHookConformance:
         policy = config.Infra.codegen.make
         make = m.Infra.MakeSpec.model_validate({
             **policy.model_dump(exclude_computed_fields=True),
-            "pre_commit": False,
             "pre_push": True,
         })
         rendered = tm.ok(
@@ -168,12 +168,7 @@ class TestsFlextInfraCodegenHookConformance:
         repositories = u.Cli.json_as_sequence(document["repos"])
         repository = u.Cli.json_as_mapping(repositories[0])
         hooks = u.Cli.json_as_sequence(repository["hooks"])
-        check = next(
-            step
-            for step in make.workflow
-            if step.verb == c.Infra.VERB_CHECK
-            and step.phase == c.Infra.CheckPhase.COMPLETE
-        )
+        check = next(step for step in make.workflow if "pre_push" in step.contexts)
         hook = next(
             mapping
             for row in hooks
@@ -200,21 +195,7 @@ class TestsFlextInfraCodegenHookConformance:
         )
 
         tm.that(process.outcome.raw_return_code, ne=0)
-        tm.that(
-            process.stdout,
-            has=(
-                "INFO: default context runs check gates: "
-                f"{' '.join(policy.check_gates_default)}\n"
-            ),
-        )
-        tm.that(
-            process.stderr,
-            has=(
-                "No module named flext_infra"
-                if policy.check_gates_default
-                else "no active check gates remain in the selected context"
-            ),
-        )
+        tm.that(process.stderr, has="No module named flext_infra")
 
     def test_check_and_apply_never_overwrite_foreign_hook_shims(
         self,
@@ -235,42 +216,9 @@ class TestsFlextInfraCodegenHookConformance:
             tm.that((hooks_dir / stage).read_text(encoding="utf-8"), eq=foreign)
 
     @staticmethod
-    def test_commit_hook_check_selects_only_the_commit_stage_gates() -> None:
-        """The commit row passes its declared token; that token runs commit gates.
-
-        The token reaches the same runtime selector the check verb uses, so the
-        commit hook never runs a CI-stage or push-stage gate.
-        """
-        make = config.Infra.codegen.make.model_copy(
-            update={"pre_commit": True, "pre_push": True},
-        )
-        rendered = tm.ok(
-            u.Cli.template_render(
-                _HOOK_TEMPLATE,
-                m.Infra.MakeWorkflowRenderSpec(
-                    scenario_data_roots=config.Infra.codegen.exclusions.scenario_data_roots,
-                    dist="flext-demo",
-                    make=make,
-                ),
-            ),
-        )
-        commit_rows = [
-            line
-            for line in rendered.splitlines()
-            if "make check" in line and f"{make.ci.variable}=" in line
-        ]
-        tm.ok(
-            any(
-                f"{make.ci.variable}={make.ci.pre_commit_value} make check" in line
-                for line in commit_rows
-            ),
-        )
-        tm.fail(
-            any(
-                f"{make.ci.variable}={make.ci.value} make check" in line
-                for line in commit_rows
-            ),
-        )
+    def test_commit_context_selects_only_the_commit_stage_gates() -> None:
+        """The declared commit token selects only commit-stage validators."""
+        make = config.Infra.codegen.make
         with u.Tests.env_vars_context(
             env_vars={make.ci.variable: make.ci.pre_commit_value},
         ):
@@ -285,6 +233,65 @@ class TestsFlextInfraCodegenHookConformance:
                 for gate in selected
             ),
         )
+
+    @staticmethod
+    def test_commit_hook_checks_markdown_through_the_canonical_gates(
+        tmp_path: Path,
+    ) -> None:
+        """A staged Markdown file runs the commit-stage markdown gates.
+
+        The gates read declared foreign projected blocks the way make check
+        and make fmt do, so the commit hook never reports a finding the check
+        verb masks and never runs a second, raw linter path.
+        """
+        make = config.Infra.codegen.make.model_copy(update={"pre_commit": True})
+        hook_config = tmp_path / c.Infra.PRE_COMMIT_CONFIG_FILENAME
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                hook_config,
+                tm.ok(
+                    u.Cli.template_render(
+                        _HOOK_TEMPLATE,
+                        m.Infra.MakeWorkflowRenderSpec(
+                            scenario_data_roots=config.Infra.codegen.exclusions.scenario_data_roots,
+                            dist="flext-demo",
+                            make=make,
+                        ),
+                    ),
+                ),
+            ),
+        )
+        repositories = u.Cli.json_as_sequence(
+            u.Cli.yaml_load_mapping(hook_config)["repos"],
+        )
+        hooks = u.Cli.json_as_sequence(
+            u.Cli.json_as_mapping(repositories[0])["hooks"],
+        )
+        check = next(
+            step
+            for step in make.workflow
+            if step.verb == c.Infra.VERB_CHECK and "pre_commit" in step.contexts
+        )
+        entry = u.Cli.json_pick_str(
+            next(
+                mapping
+                for row in hooks
+                if (mapping := u.Cli.json_as_mapping(row))["id"]
+                == f"flext-pre-commit-{check.identity}"
+            ),
+            "entry",
+        )
+        markdown_gates = (c.Infra.MARKDOWN, c.Infra.MARKDOWN_FORMAT)
+        tm.ok(all(gate in make.pre_commit_check_gates for gate in markdown_gates))
+        tm.that(
+            entry,
+            has=(
+                f"{make.ci.variable}={make.ci.pre_commit_value} "
+                '"$FLEXT" check run --repository-root . '
+                + " ".join(f"--gates {gate}" for gate in markdown_gates)
+            ),
+        )
+        tm.that(entry, lacks="rumdl")
 
     @staticmethod
     def test_hook_stages_follow_configuration() -> None:

@@ -3,9 +3,9 @@ snapshots:
   "from __future__ import annotations\n\nruntime = FlextContainer.build_service_runtime(service)\n":
     fixed: |
       from __future__ import annotations
-      
+
       from flext_core import FlextContainer
-      
+
       runtime = FlextContainer.build_service_runtime(service)
     labels:
     - source: from __future__ import annotations
@@ -18,7 +18,7 @@ snapshots:
       end: 82
     - source: |
         from __future__ import annotations
-        
+
         runtime = FlextContainer.build_service_runtime(service)
       style: secondary
       start: 0

@@ -1,70 +1,37 @@
 id: rewire-test-assert-truth
 snapshots:
-  "from flext_tests import tm\ndef check():\n    assert verdict() or unexpected()\n":
+  assert path.is_file():
+    fixed: tm.that(path.is_file(), truth=True)
+    labels:
+    - source: assert path.is_file()
+      style: primary
+      start: 0
+      end: 21
+  "from flext_tests import tm\ndef check():\n    assert verdict()\n":
     fixed: |
       from flext_tests import tm
       def check():
-          if verdict() or unexpected():
-              pass
-          else:
-              tm.reject()
+          tm.that(verdict(), truth=True)
     labels:
-    - source: assert verdict() or unexpected()
+    - source: assert verdict()
       style: primary
       start: 44
-      end: 76
-    - source: from flext_tests import tm
-      style: secondary
-      start: 0
-      end: 26
-    - source: |
-        from flext_tests import tm
-        def check():
-            assert verdict() or unexpected()
-      style: secondary
-      start: 0
-      end: 77
+      end: 60
   "from tests import tm\nassert 0 < count < limit\n":
     fixed: |
       from tests import tm
-      if 0 < count < limit:
-          pass
-      else:
-          tm.reject()
+      tm.that(0 < count < limit, truth=True)
     labels:
     - source: assert 0 < count < limit
       style: primary
       start: 21
       end: 45
-    - source: from tests import tm
-      style: secondary
-      start: 0
-      end: 20
-    - source: |
-        from tests import tm
-        assert 0 < count < limit
-      style: secondary
-      start: 0
-      end: 46
   "from tests import tm\nassert path.is_file()\n":
     fixed: |
       from tests import tm
-      if path.is_file():
-          pass
-      else:
-          tm.reject()
+      tm.that(path.is_file(), truth=True)
     labels:
     - source: assert path.is_file()
       style: primary
       start: 21
       end: 42
-    - source: from tests import tm
-      style: secondary
-      start: 0
-      end: 20
-    - source: |
-        from tests import tm
-        assert path.is_file()
-      style: secondary
-      start: 0
-      end: 43

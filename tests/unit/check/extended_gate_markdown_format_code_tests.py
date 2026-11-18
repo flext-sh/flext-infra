@@ -10,9 +10,11 @@ from typing import TYPE_CHECKING
 
 from flext_infra import config
 from flext_infra.check import FlextInfraWorkspaceChecker
-from flext_infra.gates.markdown_code import FlextInfraGatesMarkdownCode
-from flext_infra.gates.markdown_code_sources import FlextInfraMarkdownCodeSources
-from flext_infra.gates.markdown_format import FlextInfraGatesMarkdownFormat
+from flext_infra.gates import (
+    FlextInfraGatesMarkdownCode,
+    FlextInfraGatesMarkdownFormat,
+    FlextInfraMarkdownCodeSources,
+)
 from tests import c, m, tm, u
 
 if TYPE_CHECKING:
@@ -22,6 +24,9 @@ if TYPE_CHECKING:
 class TestsFlextInfraMarkdownFormatAndCodeGates:
     """Declarative public-contract tests for the markdown formatting gates."""
 
+    # MD019 (one space after the heading marker) takes no option, so these
+    # fixtures never freeze a style the markdown rule SSOT owns (MD004 list
+    # markers are config: `tooling.tools.markdown.rules`).
     FORMATTED_MARKDOWN = "# Test\n"
     UNFORMATTED_MARKDOWN = "#    Test\n"
     FORMATTED = "# Test\n\n```python\nx = 1\n```\n"
@@ -41,8 +46,6 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
         config.Infra.tooling.tools.markdown,
         config.Infra.codegen.markdown_exclude_globs,
     )
-    UNFORMATTED_LIST = "# Test\n\n*   item one\n*   item two\n"
-    FORMATTED_LIST = "# Test\n\n* item one\n* item two\n"
     MKDOCS_MARKDOWN = (
         "# API\n\nSee [example.PublicApi][] for details.\n\n"
         "::: example.PublicApi\n"
@@ -75,7 +78,7 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
         project_dir = self._project(
             tmp_path,
             "markdown-format-project",
-            self.UNFORMATTED_LIST,
+            self.UNFORMATTED_MARKDOWN,
         )
 
         with tm.scope(env={"FORCE_COLOR": force_color}):
@@ -99,7 +102,7 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
         project_dir = self._project(
             tmp_path,
             "markdown-format-clean",
-            self.FORMATTED_LIST,
+            self.FORMATTED_MARKDOWN,
         )
 
         _ = u.Tests.check_gate_asserting(
@@ -127,7 +130,7 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
         project_dir = self._project(
             tmp_path,
             "markdown-format-fix",
-            self.UNFORMATTED_LIST,
+            self.UNFORMATTED_MARKDOWN,
         )
         readme = project_dir / "README.md"
         u.Tests.initialize_git_repo(project_dir)
@@ -140,7 +143,7 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
         result = FlextInfraGatesMarkdownFormat(tmp_path).fix(project_dir, context)
 
         tm.ok(result.result.passed)
-        tm.that(readme.read_text(encoding="utf-8"), eq=self.FORMATTED_LIST)
+        tm.that(readme.read_text(encoding="utf-8"), eq=self.FORMATTED_MARKDOWN)
         _ = u.Tests.check_gate_asserting(
             FlextInfraGatesMarkdownFormat,
             tmp_path,
@@ -155,7 +158,9 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
     ) -> None:
         """A missing generated rule projection is a generation gap, never a pass."""
         project_dir = u.Tests.mk_project(tmp_path, "markdown-format-no-rules")
-        (project_dir / "README.md").write_text(self.FORMATTED_LIST, encoding="utf-8")
+        (project_dir / "README.md").write_text(
+            self.FORMATTED_MARKDOWN, encoding="utf-8"
+        )
 
         result = u.Tests.run_gate_check(
             FlextInfraGatesMarkdownFormat,
@@ -180,6 +185,7 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
             issues_len=0,
         )
 
+    @c.Tests.MARK.slow
     def test_mkdocs_flavor_survives_cross_repository_union(
         self, tmp_path: Path
     ) -> None:
@@ -210,6 +216,7 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
             docs = project / "docs"
             docs.mkdir()
             (docs / "api.md").write_text(self.MKDOCS_MARKDOWN, encoding="utf-8")
+        u.Tests.WorktreeFixture.register_checker_workspace(tmp_path, *projects)
         combined = FlextInfraWorkspaceChecker(repository_root=tmp_path).run_projects(
             [project.name for project in projects],
             [c.Infra.MARKDOWN, c.Infra.MARKDOWN_FORMAT],
@@ -263,6 +270,8 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
         """A ``notest`` fence is not embedded code to check (#1223 selection)."""
         project_dir = u.Tests.mk_project(tmp_path, "markdown-code-notest")
         (project_dir / "README.md").write_text(self.NOTEST_PSEUDO, encoding="utf-8")
+        # Gates select a checkout by its tracked files.
+        u.Tests.initialize_git_repo(project_dir)
         gate = FlextInfraGatesMarkdownCode(tmp_path)
 
         tm.ok(gate.selected_for(project_dir, u.Tests.gate_context(project_dir)))
@@ -428,6 +437,7 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
             '    """Function.\n\n    >>> second = 2\n\n    """\n',
             encoding="utf-8",
         )
+        u.Tests.initialize_git_repo(project_dir)
         sources = tuple(
             FlextInfraMarkdownCodeSources.docstring_sources(project_dir, None)
         )
@@ -450,6 +460,7 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
         """Prose-only documentation is an examined input without embedded code."""
         project_dir = u.Tests.mk_project(tmp_path, "markdown-code-empty")
         (project_dir / "README.md").write_text("# Prose only\n", encoding="utf-8")
+        u.Tests.initialize_git_repo(project_dir)
         gate = FlextInfraGatesMarkdownCode(tmp_path)
 
         tm.ok(gate.selected_for(project_dir, u.Tests.gate_context(project_dir)))
@@ -461,6 +472,7 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
         """A parseable fenced Python block selects the embedded-code gate."""
         project_dir = u.Tests.mk_project(tmp_path, "markdown-code-present")
         (project_dir / "README.md").write_text(self.FORMATTED, encoding="utf-8")
+        u.Tests.initialize_git_repo(project_dir)
 
         tm.ok(
             FlextInfraGatesMarkdownCode(tmp_path).selected_for(

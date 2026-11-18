@@ -69,9 +69,14 @@ class FlextInfraModelsConfigRepository:
             m.Field(description="Project-relative Hatch custom build hook module"),
         ] = None
         package_name: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Import package name"),
-        ]
+            t.NonEmptyStr | None,
+            m.Field(
+                description=(
+                    "Import package name; a consumer repository declares none "
+                    "because it owns no package"
+                ),
+            ),
+        ] = None
         class_stem: Annotated[
             t.NonEmptyStr,
             m.Field(description="Canonical public facade class stem"),
@@ -117,8 +122,13 @@ class FlextInfraModelsConfigRepository:
 
         upstream: Annotated[
             t.NonEmptyStr,
-            m.Field(description="Upstream FLEXT facade module"),
-        ]
+            m.Field(
+                description=(
+                    "Upstream facade module; a consumer repository composes its "
+                    "test facades from this consumed distribution's public facades"
+                ),
+            ),
+        ] = "flext_cli"
         namespace_scan_dirs: Annotated[
             Sequence[str],
             m.Field(
@@ -207,12 +217,7 @@ class FlextInfraModelsConfigRepository:
         ] = True
         console_scripts: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.ConsoleScriptSpec,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsConfigRepository.ConsoleScriptSpec
-                    ),
-                ],
+                FlextInfraModelsConfigRepository.ConsoleScriptSpec,
                 ...,
             ],
             m.Field(
@@ -266,7 +271,7 @@ class FlextInfraModelsConfigRepository:
 
         @m.field_validator("package_name", "upstream")
         @classmethod
-        def _validate_python_module(cls, value: str) -> str:
+        def _validate_python_module(cls, value: str | None) -> str | None:
             """Validate qualified import names without choosing another package.
 
             Returns:
@@ -276,7 +281,7 @@ class FlextInfraModelsConfigRepository:
                 ValueError: An import component is empty or not a Python name.
 
             """
-            if any(
+            if value is not None and any(
                 not part.isidentifier() or iskeyword(part) for part in value.split(".")
             ):
                 msg = f"project declaration requires a Python module name: {value!r}"
@@ -361,9 +366,8 @@ class FlextInfraModelsConfigRepository:
             c.Infra.ProjectKind,
             m.Field(
                 description=(
-                    "Governance kind; only internal_flext repositories are "
-                    "rewritten by generation. Required: a generator that cannot "
-                    "read the kind fails closed and never assumes internal_flext."
+                    "Governance kind detected from native dependency and "
+                    "workspace-composition facts"
                 ),
             ),
         ]
@@ -430,10 +434,7 @@ class FlextInfraModelsConfigRepository:
         ] = None
         extra_verbs: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.MakeVerbSpec,
-                    t.schema_for_model(lambda: FlextInfraModelsConfigMake.MakeVerbSpec),
-                ],
+                FlextInfraModelsConfigMake.MakeVerbSpec,
                 ...,
             ],
             m.Field(
@@ -444,13 +445,7 @@ class FlextInfraModelsConfigRepository:
             ),
         ] = ()
         script_dispatch: Annotated[
-            Annotated[
-                p.Infra.ScriptDispatchSpec,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsConfigRepository.ScriptDispatchSpec
-                ),
-            ]
-            | None,
+            FlextInfraModelsConfigRepository.ScriptDispatchSpec | None,
             m.Field(
                 description=(
                     "Opt-in script command-framework routing for non-builtin "
@@ -460,12 +455,7 @@ class FlextInfraModelsConfigRepository:
         ] = None
         verb_groups: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.MakeVerbGroupSpec,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsConfigMake.MakeVerbGroupSpec
-                    ),
-                ],
+                FlextInfraModelsConfigMake.MakeVerbGroupSpec,
                 ...,
             ],
             m.Field(
@@ -509,12 +499,7 @@ class FlextInfraModelsConfigRepository:
         model_config: ClassVar[t.ConfigDict] = m.ConfigDict(use_enum_values=False)
 
         repository: Annotated[
-            Annotated[
-                p.Infra.RepositoryRef,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsConfigRepository.RepositoryRef
-                ),
-            ],
+            FlextInfraModelsConfigRepository.RepositoryRef,
             m.Field(description="Declared immutable repository identity"),
         ]
         root: Annotated[
@@ -528,13 +513,7 @@ class FlextInfraModelsConfigRepository:
             ),
         ]
         vscode_spec: Annotated[
-            Annotated[
-                p.Infra.CodegenVscodeSpec,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsConfigTemplates.CodegenVscodeSpec
-                ),
-            ]
-            | None,
+            FlextInfraModelsConfigTemplates.CodegenVscodeSpec | None,
             m.Field(description="Repository-rooted resolved editor declarations"),
         ] = None
         vscode_sources: Annotated[
@@ -548,23 +527,11 @@ class FlextInfraModelsConfigRepository:
             m.Field(description="Make profile inferred from live Git topology"),
         ]
         beads: Annotated[
-            Annotated[
-                p.Infra.BeadsProjectSpec,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsConfigBeads.BeadsProjectSpec
-                ),
-            ]
-            | None,
+            FlextInfraModelsConfigBeads.BeadsProjectSpec | None,
             m.Field(description="Repository-local Beads identity when enabled"),
         ] = None
         project: Annotated[
-            Annotated[
-                p.Infra.ProjectSpec,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsConfigRepository.ProjectSpec
-                ),
-            ]
-            | None,
+            FlextInfraModelsConfigRepository.ProjectSpec | None,
             m.Field(
                 description=(
                     "Declared project metadata of the manifest, when the "

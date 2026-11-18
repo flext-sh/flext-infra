@@ -82,7 +82,8 @@ class TestsFlextInfraPytestFailClosedConfig:
             ),
         )
         phase = FlextInfraToolTablesPhase(tooling, codegen=config.Infra.codegen)
-        pyproject = tmp_path / "flext-sample" / c.PYPROJECT_FILENAME
+        project = u.Tests.mk_project(tmp_path, "flext-sample", with_src=True)
+        pyproject = project / c.PYPROJECT_FILENAME
 
         first_changes = phase.apply_payload(payload, path=pyproject)
         second_changes = phase.apply_payload(payload, path=pyproject)
@@ -101,7 +102,7 @@ class TestsFlextInfraPytestFailClosedConfig:
                     tooling,
                     "pytest.ini_options",
                     "filterwarnings",
-                    t.TypeForm(Sequence[str]),
+                    TypeForm(Sequence[str]),
                 )
             ),
         )
@@ -112,7 +113,7 @@ class TestsFlextInfraPytestFailClosedConfig:
                     tooling,
                     "pytest.ini_options",
                     "testpaths",
-                    t.TypeForm(Sequence[str]),
+                    TypeForm(Sequence[str]),
                 )
             ),
         )
@@ -124,11 +125,15 @@ class TestsFlextInfraPytestFailClosedConfig:
         )
         tm.that(
             set(u.Tests.strings(ini["addopts"])),
-            eq=set(
-                u.Infra.native_tool_setting(
+            eq={
+                *u.Infra.native_tool_setting(
                     tooling, "pytest.ini_options", "addopts", TypeForm(Sequence[str])
-                )
-            ),
+                ),
+                *(
+                    f"--ignore={root}"
+                    for root in config.Infra.codegen.exclusions.scenario_data_roots
+                ),
+            },
         )
         tm.that(
             set(u.Tests.strings(ini["markers"])),

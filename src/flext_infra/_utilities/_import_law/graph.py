@@ -24,10 +24,8 @@ from flext_infra._utilities._import_law import FlextInfraUtilitiesImportLawPolic
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeImports,
-    FlextInfraUtilitiesRopeSourceBasesAliases,
-)
-from flext_infra._utilities._rope.runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
+    FlextInfraUtilitiesRopeSourceBasesAliases,
 )
 
 
@@ -134,14 +132,16 @@ class FlextInfraUtilitiesImportLawGraph(FlextInfraUtilitiesImportLawPolicy):
         elects its complete native Python source scope before constructing
         resources; provider receipts do not enlarge that scope. An immutable
         snapshot keeps its captured inventory, including proposed virtual modules.
+        A root conftest.py that pytest loads as a plugin, not as an importable
+        module, is outside the graph.
 
         Returns:
             The resulting ``tuple[Mapping[str, frozenset[str]], Mapping[Path,
                 str]]``.
 
         Raises:
-            e.OperationError: If rope could not name one module; its context
-                names that module.
+            e.OperationError: If rope could not name one importable module; its
+                context names that module.
 
         """
         raw: MutableMapping[str, set[str]] = {}
@@ -158,46 +158,38 @@ class FlextInfraUtilitiesImportLawGraph(FlextInfraUtilitiesImportLawPolicy):
                 f"import graph modules={len(modules)} file={resource.path}",
                 due,
             )
-            pymodule = FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource)
             path = Path(resource.real_path).resolve()
             root = Path(project.root.real_path)
+            pymodule = (
+                None
+                if path.is_relative_to(root)
+                else FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource)
+            )
             name = (
-                pymodule.get_name()
-                if not path.is_relative_to(root)
-                else FlextInfraUtilitiesProjectDiscovery.module_name_for_file(
+                FlextInfraUtilitiesProjectDiscovery.module_name_for_file(
                     path, project_root=root, source_project=project
                 )
+                if pymodule is None
+                else pymodule.get_name()
             )
             if not name:
+                if (
+                    path.name == "conftest.py"
+                    and not (path.parent / "__init__.py").is_file()
+                ):
+                    # pytest loads a root conftest.py as a plugin, not as an
+                    # importable module; it has no place in the import graph.
+                    continue
                 msg = f"rope could not name module {resource.path}"
                 raise e.OperationError(
                     msg, context={c.Infra.MOD_FAILURE_MODULE_KEY: str(path)}
                 )
             modules[path] = name
-            package = name if path.name == c.Infra.INIT_PY else name.rpartition(".")[0]
-            raw[name] = set(
-                FlextInfraUtilitiesRopeImports.imported_module_paths(
-                    FlextInfraUtilitiesRopeCore.resolve_module_imports(
-                        project,
-                        resource,
-                    ),
-                    current_package=package,
-                ),
-            )
-            # Requesting a lazy export loads its elected provider module. Merely
-            # installing the map does not load every provider in the package.
-            provider_aliases = (
-                FlextInfraUtilitiesRopeSourceBasesAliases.lazy_module_aliases(
-                    name,
-                    path,
-                    resource.read(),
-                    project=project,
-                    pymodule=pymodule,
-                )
-            )
+            facts = cls._module_import_facts(project, resource, name)
+            raw[name] = set(facts.imports)
             aliases.update({
                 f"{name}.{export}": provider
-                for export, provider in provider_aliases.items()
+                for export, provider in facts.aliases.items()
             })
         known = frozenset(raw)
         cls.codemod_progress(f"import graph finish modules={len(modules)}")
@@ -216,6 +208,41 @@ class FlextInfraUtilitiesImportLawGraph(FlextInfraUtilitiesImportLawPolicy):
             for name, targets in raw.items()
         }
         return graph, modules
+
+    @staticmethod
+    def _module_import_facts(
+        project: p.Infra.RopeProject,
+        resource: t.Infra.RopeFile,
+        name: str,
+    ) -> p.Infra.ImportGraphModuleFacts:
+        """Parse one module's runtime imports and lazy export providers.
+
+        Returns:
+            The module's import facts.
+
+        """
+        path = Path(resource.real_path).resolve()
+        source = resource.read()
+        package = name if path.name == c.Infra.INIT_PY else name.rpartition(".")[0]
+        pymodule = FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource)
+        # Requesting a lazy export loads its elected provider module. Merely
+        # installing the map does not load every provider in the package.
+        return m.Infra.ImportGraphModuleFacts(
+            name=name,
+            imports=tuple(
+                sorted(
+                    FlextInfraUtilitiesRopeImports.imported_module_paths(
+                        FlextInfraUtilitiesRopeCore.resolve_module_imports(
+                            project, resource
+                        ),
+                        current_package=package,
+                    )
+                )
+            ),
+            aliases=FlextInfraUtilitiesRopeSourceBasesAliases.lazy_module_aliases(
+                name, path, source, project=project, pymodule=pymodule
+            ),
+        )
 
     @classmethod
     def import_cycle_statements(

@@ -10,11 +10,25 @@ from collections.abc import Mapping, MutableMapping
 
 from flext_infra import config
 from flext_infra.codegen import FlextInfraCodegenConform
-from tests import c, m, p, tm
+from tests import c, m, p, t, tm
 
 
 class TestsFlextInfraCustomHandlerPolicyIsProfileAware:
     """Tests for ``FlextInfraCustomHandlerPolicyIsProfileAware``."""
+
+    @staticmethod
+    def test_unmodified_policies_preserve_the_owned_model_identity() -> None:
+        """Unmodified profiles reuse the stored model without copying it."""
+        payload = config.Infra.codegen.make.model_dump(round_trip=True)
+        no_overrides: t.JsonDict = {}
+        payload["custom_handler_profile_overrides"] = no_overrides
+        make = m.Infra.MakeSpec.model_validate(payload)
+        policies: Mapping[str, m.Infra.CustomHandlerPolicy] = (
+            make.custom_handler_policies
+        )
+        tm.that(policies, empty=False)
+        for policy in policies.values():
+            tm.that(policy is make.custom_handler_policy, eq=True)
 
     @staticmethod
     def test_every_declared_profile_has_a_custom_handler_policy() -> None:
@@ -25,7 +39,7 @@ class TestsFlextInfraCustomHandlerPolicyIsProfileAware:
         declared = frozenset(
             c.Infra.MakeProfile(profile.name) for profile in codegen_profiles
         )
-        handler_policies: Mapping[str, m.Infra.CustomHandlerPolicy] = (
+        handler_policies: Mapping[str, p.Infra.CustomHandlerPolicy] = (
             config.Infra.codegen.make.custom_handler_policies
         )
         covered = frozenset(
@@ -94,7 +108,7 @@ class TestsFlextInfraCustomHandlerPolicyIsProfileAware:
         to the strict base policy -- exactly the failure that made conform
         reject the repository root's own custom surface.
         """
-        policies: MutableMapping[str, m.Infra.CustomHandlerPolicy] = dict(
+        policies: MutableMapping[str, p.Infra.CustomHandlerPolicy] = dict(
             config.Infra.codegen.make.custom_handler_policies,
         )
         profile: c.Infra.MakeProfile = c.Infra.MakeProfile.WORKSPACE

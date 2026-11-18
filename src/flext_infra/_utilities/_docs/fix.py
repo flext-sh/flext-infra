@@ -143,7 +143,7 @@ class FlextInfraUtilitiesDocsFix:
         md_file: Path,
         *,
         content: str,
-    ) -> tuple[str, m.Infra.DocsPhaseItemModel]:
+    ) -> tuple[str, p.Infra.DocsPhaseItemModel]:
         """Plan link, fence and TOC repairs without reading or writing the file.
 
         Returns:

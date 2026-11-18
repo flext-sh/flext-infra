@@ -36,4 +36,9 @@ install_lazy_exports(
         "FlextInfraProtocolsGitWorktreeState": ".worktree_state",
     },
     public_exports=__all__,
+    deferred_members=(
+        "FlextInfraProtocolsGitIdentity",
+        "FlextInfraProtocolsGitWorktreeFacts",
+        "FlextInfraProtocolsGitWorktreeState",
+    ),
 )

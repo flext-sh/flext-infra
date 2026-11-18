@@ -13,7 +13,7 @@ import tokenize
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
-from flext_infra import c, m, p, r, u
+from flext_infra import c, m, p, r, t, u
 from flext_infra.codegen import FlextInfraStagedPackage
 
 
@@ -83,11 +83,11 @@ class FlextInfraCodemodRenameSources:
         return FlextInfraStagedPackage.plan_sources(
             candidate.candidate.workspace,
             updates,
-            options=m.Infra.StageSourceOptions(
-                workspaces=candidate.candidate.workspaces,
-                modes=modes,
-                inputs=tuple(known.values()),
-            ),
+            options=m.Infra.StageSourceOptions.model_validate({
+                "workspaces": (candidate.candidate.workspaces),
+                "modes": (modes),
+                "inputs": (tuple(known.values())),
+            }),
         ).map(
             lambda stage: m.Infra.SemanticSourcePlan(
                 candidate=stage, consumer_roots=candidate.consumer_roots
@@ -195,7 +195,7 @@ class FlextInfraCodemodRenameSources:
         *,
         needles: frozenset[str] | None = None,
         python_sources: bool = True,
-    ) -> tuple[Mapping[Path, m.Cli.AtomicFileState], int]:
+    ) -> tuple[Mapping[Path, p.Cli.AtomicFileState], int]:
         """Index scanned files minus ignored, generated, and driver paths.
 
         ``needles`` bounds the authenticated reads of an identifier campaign to
@@ -210,7 +210,7 @@ class FlextInfraCodemodRenameSources:
             the number of electable files scanned.
 
         """
-        files: MutableMapping[Path, m.Cli.AtomicFileState] = {}
+        files: MutableMapping[Path, p.Cli.AtomicFileState] = {}
         scanned = 0
         raw_needles = tuple(
             needle.encode(c.DEFAULT_ENCODING) for needle in needles or ()
@@ -417,6 +417,73 @@ class FlextInfraCodemodRenameSources:
                     ),
                 )
         return tuple(edits)
+
+    @staticmethod
+    def protocol_rewire_intents(
+        root: Path,
+        source_plan: p.Infra.SemanticSourcePlan,
+        census: p.Infra.ProtocolPlacementCensus,
+    ) -> p.Result[tuple[p.Infra.SemanticRewireIntent, ...]]:
+        """Adapt the protocol census to the shared native relocation identities.
+
+        Returns:
+            Portable intents or the census's original unresolved findings.
+
+        """
+        outcome = r[tuple[p.Infra.SemanticRewireIntent, ...]]
+        if census.findings:
+            return outcome.fail("\n".join(census.findings))
+        supplier = root.resolve().relative_to(source_plan.candidate.workspace)
+        intents = tuple(
+            m.Infra.SemanticRewireIntent(
+                supplier_root=supplier,
+                source_path=placement.source_path,
+                destination_path=placement.destination_path,
+                kind="class",
+                source_module=placement.source_module,
+                source_scope=placement.source_class,
+                destination_module=placement.destination_module,
+                destination_scope=placement.destination_class,
+                public_routes=tuple(
+                    (
+                        f"{placement.source_module.partition('._protocols')[0]}.protocols",
+                        route,
+                    )
+                    for route in placement.public_routes
+                ),
+            )
+            for placement in census.contracts
+            if (placement.source_module, placement.source_class)
+            != (placement.destination_module, placement.destination_class)
+        )
+        return outcome.ok(intents)
+
+    @staticmethod
+    def apply_plan(
+        sources: MutableMapping[Path, str],
+        edits: Sequence[p.Infra.SemanticMigrationEdit],
+        changed: set[Path],
+        *,
+        retirements: t.Infra.RopeMutablePaths | None = None,
+    ) -> None:
+        """Compose validated edit plans in memory without partial effects.
+
+        Raises:
+            ValueError: If semantic plans disagree for.
+
+        """
+        for edit in edits:
+            if edit.retire_file:
+                if retirements is None or edit.updated_source:
+                    msg = f"semantic retirement has no effect carrier: {edit.file_path}"
+                    raise ValueError(msg)
+                retirements.add(edit.file_path)
+            current = sources.get(edit.file_path)
+            if current != edit.original_source:
+                msg = f"semantic plans disagree for {edit.file_path}"
+                raise ValueError(msg)
+            sources[edit.file_path] = edit.updated_source
+            changed.add(edit.file_path)
 
 
 __all__: list[str] = ["FlextInfraCodemodRenameSources"]

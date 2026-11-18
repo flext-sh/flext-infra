@@ -22,7 +22,7 @@ from collections.abc import Mapping, MutableMapping, MutableSet, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, p, r, t, u
+from flext_infra import c, m, p, r, u
 from flext_infra.check import FlextInfraWorkspaceChecker
 from flext_infra.refactor import FlextInfraRefactorCensus
 from flext_infra.transformers._semantic import FlextInfraTransformersSemanticPublication
@@ -169,7 +169,7 @@ class FlextInfraCodemodDuplicateApply(
                 layers=layers,
                 working=working,
             )
-            if isinstance(planned, m.Infra.DuplicateCurePlan):
+            if not isinstance(planned, p.Infra.DuplicateGroupCure):
                 plans.append(planned)
                 continue
             for edit in planned.edits:
@@ -199,13 +199,13 @@ class FlextInfraCodemodDuplicateApply(
         return r[
             tuple[p.Infra.DuplicateCureOutcome, tuple[p.Infra.DuplicateDeletion, ...]]
         ].ok((
-            m.Infra.DuplicateCureOutcome(
-                edits=tuple(edits),
-                plans=tuple(plans),
-                files_changed=len(edits),
-                copies_removed=len(deletions),
-                bindings_rewired=bindings,
-            ),
+            m.Infra.DuplicateCureOutcome.model_validate({
+                "edits": (tuple(edits)),
+                "plans": (tuple(plans)),
+                "files_changed": (len(edits)),
+                "copies_removed": (len(deletions)),
+                "bindings_rewired": (bindings),
+            }),
             tuple(deletions),
         ))
 
@@ -219,7 +219,7 @@ class FlextInfraCodemodDuplicateApply(
         *,
         layers: Mapping[Path, int],
         working: MutableMapping[Path, str],
-    ) -> m.Infra.DuplicateCurePlan | m.Infra.DuplicateGroupCure:
+    ) -> p.Infra.DuplicateCurePlan | p.Infra.DuplicateGroupCure:
         """Plan one group either as a trivial cure or as a manual plan.
 
         Returns:
@@ -255,11 +255,11 @@ class FlextInfraCodemodDuplicateApply(
             if isinstance(copy_edits, str):
                 return cls._group_plan(group, definitions, copy_edits)
             edits.extend(copy_edits)
-        return m.Infra.DuplicateGroupCure(
-            owner=cure.owner,
-            copies=tuple(copy for copy in cure.copies if copy is not cure.owner),
-            edits=tuple(edits),
-        )
+        return m.Infra.DuplicateGroupCure.model_validate({
+            "owner": (cure.owner),
+            "copies": (tuple(copy for copy in cure.copies if copy is not cure.owner)),
+            "edits": (tuple(edits)),
+        })
 
     @classmethod
     def _trivial_blocker(
@@ -358,19 +358,19 @@ class FlextInfraCodemodDuplicateApply(
             source = workspace.source(path)
             statement = cls._definition_statement(workspace.rope_project, source, item)
             definitions.append(
-                m.Infra.DuplicateDefinition(
-                    item=item,
-                    path=path,
-                    source=source,
-                    statement=statement,
-                    body=(
+                m.Infra.DuplicateDefinition.model_validate({
+                    "item": (item),
+                    "path": (path),
+                    "source": (source),
+                    "statement": (statement),
+                    "body": (
                         cls._statement_body(statement, source)
                         if statement is not None
                         else ""
                     ),
-                    consumers=item.references_count,
-                    layer=cls._layer_of(path, layers),
-                ),
+                    "consumers": (item.references_count),
+                    "layer": (cls._layer_of(path, layers)),
+                }),
             )
         return sorted(
             definitions,
@@ -601,11 +601,11 @@ class FlextInfraCodemodDuplicateApply(
                 if path not in consumer_files:
                     consumer_files.append(path)
             cure_copies.append(
-                m.Infra.DuplicateCopyCure(
-                    definition=definition,
-                    consumer_files=tuple(sorted(consumer_files)),
-                    in_module_uses=in_module_uses,
-                ),
+                m.Infra.DuplicateCopyCure.model_validate({
+                    "definition": (definition),
+                    "consumer_files": (tuple(sorted(consumer_files))),
+                    "in_module_uses": (in_module_uses),
+                }),
             )
         owner = min(
             cure_copies,
@@ -620,11 +620,11 @@ class FlextInfraCodemodDuplicateApply(
                 copy.definition.item.line,
             ),
         )
-        return m.Infra.DuplicateGroupCure(
-            owner=owner,
-            copies=tuple(cure_copies),
-            edits=(),
-        )
+        return m.Infra.DuplicateGroupCure.model_validate({
+            "owner": (owner),
+            "copies": (tuple(cure_copies)),
+            "edits": (()),
+        })
 
     @classmethod
     def _located_occurrences(
@@ -1072,7 +1072,7 @@ class FlextInfraCodemodDuplicateApply(
         group: p.Infra.DuplicateGroup,
         definitions: Sequence[p.Infra.DuplicateDefinition],
         reason: str,
-    ) -> m.Infra.DuplicateCurePlan:
+    ) -> p.Infra.DuplicateCurePlan:
         """Build the manual assisted-cure plan of one non-trivial group.
 
         Returns:
@@ -1141,7 +1141,7 @@ class FlextInfraCodemodDuplicateApply(
         )
         if not report_path.is_file():
             return ()
-        parsed = u.Cli.json_parse(report_path.read_text(encoding=c.DEFAULT_ENCODING))
+        parsed = u.Cli.json_loads(report_path.read_text(encoding=c.DEFAULT_ENCODING))
         if parsed.failure:
             msg = f"jscpd report is not parseable: {report_path}: {parsed.error}"
             raise ValueError(msg)
@@ -1231,7 +1231,7 @@ class FlextInfraCodemodDuplicateApply(
 
         """
 
-        def key(side: tuple[t.JsonMapping, str, str]) -> tuple[int, str]:
+        def key(side: tuple[p.Infra.JscpdFile, str, str]) -> tuple[int, str]:
             """Layer then path.
 
             Returns:

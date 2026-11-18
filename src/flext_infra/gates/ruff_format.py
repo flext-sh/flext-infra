@@ -100,8 +100,13 @@ class FlextInfraGatesRuffFormat(FlextInfraGatesRuffGate):
                             message="Would be reformatted",
                         ),
                     )
-        if result.stderr.strip():
-            issues.append(self._native_error_issue(project_dir, result.stderr))
+        stderr = "\n".join(
+            line
+            for line in result.stderr.splitlines()
+            if "No Python files found" not in line
+        ).strip()
+        if stderr:
+            issues.append(self._native_error_issue(project_dir, stderr))
         return u.Cli.process_succeeded(result.outcome) and not issues, issues
 
     @staticmethod

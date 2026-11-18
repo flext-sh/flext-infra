@@ -49,7 +49,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
 
     @staticmethod
     def dependency_group_wire(
-        entries: Sequence[str | m.Infra.DependencyGroupInclude],
+        entries: Sequence[str | p.Infra.DependencyGroupInclude],
     ) -> list[t.JsonValue]:
         """Serialize native entries without turning inclusion tables into strings.
 
@@ -74,7 +74,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
         live: str | None,
         *,
         group: str = str(c.Infra.DEV),
-    ) -> p.Result[tuple[str | m.Infra.DependencyGroupInclude, ...]]:
+    ) -> p.Result[tuple[str | p.Infra.DependencyGroupInclude, ...]]:
         """Remove only entries carrying this generator's explicit provenance.
 
         Returns:
@@ -140,7 +140,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
     @staticmethod
     def dependency_group_entries(
         value: t.JsonPayload,
-    ) -> tuple[str | m.Infra.DependencyGroupInclude, ...]:
+    ) -> tuple[str | p.Infra.DependencyGroupInclude, ...]:
         """Parse the shared native entry grammar without expanding inclusions.
 
         Returns:
@@ -154,7 +154,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
         cls,
         container: t.Cli.TomlTable,
         name: str,
-    ) -> tuple[str | m.Infra.DependencyGroupInclude, ...]:
+    ) -> tuple[str | p.Infra.DependencyGroupInclude, ...]:
         """Read an absent or native array without permissive string extraction.
 
         Returns:
@@ -172,11 +172,36 @@ class FlextInfraUtilitiesPyprojectRequirements:
         )
 
     @classmethod
+    def unique_group_entries(
+        cls,
+        entries: Sequence[str | p.Infra.DependencyGroupInclude],
+    ) -> tuple[str | p.Infra.DependencyGroupInclude, ...]:
+        """Keep the first occurrence of each requirement or included group.
+
+        Returns:
+            The canonical unique dependency-group entries in authored order.
+
+        """
+        seen: set[Requirement | str] = set()
+        unique: list[str | p.Infra.DependencyGroupInclude] = []
+        for entry in entries:
+            key: Requirement | str = (
+                Requirement(entry)
+                if isinstance(entry, str)
+                else canonicalize_name(entry.include_group)
+            )
+            if key in seen:
+                continue
+            seen.add(key)
+            unique.append(entry)
+        return tuple(unique)
+
+    @classmethod
     def merge_dependency_group_entries(
         cls,
-        generated: Sequence[str | m.Infra.DependencyGroupInclude],
-        custom: Sequence[str | m.Infra.DependencyGroupInclude],
-    ) -> tuple[str | m.Infra.DependencyGroupInclude, ...]:
+        generated: Sequence[str | p.Infra.DependencyGroupInclude],
+        custom: Sequence[str | p.Infra.DependencyGroupInclude],
+    ) -> tuple[str | p.Infra.DependencyGroupInclude, ...]:
         """Lead missing complete requirements and preserve authored entries.
 
         Packaging owns requirement identity, including version constraints.
@@ -191,9 +216,9 @@ class FlextInfraUtilitiesPyprojectRequirements:
                 tuple(entry for entry in custom if isinstance(entry, str)),
             ),
         )
-        authored = tuple(
+        authored = cls.unique_group_entries([
             entry for entry in custom if not isinstance(entry, str) or entry in active
-        )
+        ])
         requirements = {
             Requirement(entry) for entry in authored if isinstance(entry, str)
         }
@@ -202,7 +227,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
             for entry in authored
             if not isinstance(entry, str)
         }
-        additions: list[str | m.Infra.DependencyGroupInclude] = []
+        additions: list[str | p.Infra.DependencyGroupInclude] = []
         for entry in generated:
             if isinstance(entry, str):
                 parsed = Requirement(entry)
@@ -267,6 +292,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
         document: t.Cli.TomlDocument,
         *,
         provenance: p.Infra.RequirementsProvenance,
+        workspace: bool = False,
     ) -> p.Result[bool]:
         """Render internal requirements from their declared Git provenance.
 
@@ -279,6 +305,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
             project,
             c.Infra.DEPENDENCIES,
             provenance=provenance,
+            workspace=workspace,
         )
         if normalized.failure:
             return normalized
@@ -291,10 +318,13 @@ class FlextInfraUtilitiesPyprojectRequirements:
                     optional,
                     group_name,
                     provenance=provenance,
+                    workspace=workspace,
                 )
                 if group_result.failure:
                     return group_result
-        return cls._normalize_dependency_groups(document, provenance=provenance)
+        return cls._normalize_dependency_groups(
+            document, provenance=provenance, workspace=workspace
+        )
 
     @classmethod
     def _normalize_dependency_groups(
@@ -302,6 +332,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
         document: t.Cli.TomlDocument,
         *,
         provenance: p.Infra.RequirementsProvenance,
+        workspace: bool = False,
     ) -> p.Result[bool]:
         """Normalize PEP 508 strings in place around native inclusion entries.
 
@@ -319,19 +350,21 @@ class FlextInfraUtilitiesPyprojectRequirements:
         if parsed.failure:
             return r[bool].from_failure(parsed)
         for group_name, entries in parsed.value.dependency_groups.items():
-            values: list[str | m.Infra.DependencyGroupInclude] = []
+            values: list[str | p.Infra.DependencyGroupInclude] = []
             for entry in entries:
                 if not isinstance(entry, str):
                     values.append(entry)
                     continue
-                normalized = cls._canonical_requirement(entry, provenance=provenance)
+                normalized = cls._canonical_requirement(
+                    entry, provenance=provenance, workspace=workspace
+                )
                 if normalized.failure:
                     return r[bool].from_failure(normalized)
                 values.append(normalized.value)
             u.Cli.toml_sync_value(
                 section,
                 group_name,
-                cls.dependency_group_wire(values),
+                cls.dependency_group_wire(cls.unique_group_entries(values)),
             )
         return r[bool].ok(value=True)
 
@@ -342,6 +375,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
         key: str,
         *,
         provenance: p.Infra.RequirementsProvenance,
+        workspace: bool = False,
     ) -> p.Result[bool]:
         """Normalize one dependency array and fail on model-less entries.
 
@@ -366,7 +400,9 @@ class FlextInfraUtilitiesPyprojectRequirements:
         items = validated_items.value
         normalized_items: MutableSequence[str] = []
         for item in items:
-            normalized = cls._canonical_requirement(item, provenance=provenance)
+            normalized = cls._canonical_requirement(
+                item, provenance=provenance, workspace=workspace
+            )
             if normalized.failure:
                 return r[bool].from_failure(normalized)
             normalized_items.append(normalized.value)
@@ -400,6 +436,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
         *,
         provenance: p.Infra.RequirementsProvenance,
         generated: bool = False,
+        workspace: bool = False,
     ) -> p.Result[str]:
         """Render one internal requirement from its own declared Git source.
 
@@ -421,11 +458,12 @@ class FlextInfraUtilitiesPyprojectRequirements:
         )
         if dependency_name is None:
             return r[str].ok(requirement.strip())
-        if (
-            not generated
+        if dependency_name not in provenance.candidate_sources and (
+            workspace
+            or not generated
             or dependency_name in provenance.native_sources
             or cls._declares_direct_source(requirement)
-        ) and dependency_name not in provenance.candidate_sources:
+        ):
             return r[str].ok(requirement.strip())
         if "@" not in requirement.partition(";")[0] and (
             FlextInfraUtilitiesDependencies
@@ -663,14 +701,14 @@ class FlextInfraUtilitiesPyprojectRequirements:
         dev_name: str,
         *,
         provenance: p.Infra.RequirementsProvenance,
-    ) -> p.Result[list[str | m.Infra.DependencyGroupInclude]]:
+    ) -> p.Result[list[str | p.Infra.DependencyGroupInclude]]:
         """Normalize the live development group's entries in declared order.
 
         Returns:
             The resulting ``p.Result[list[str | m.Infra.DependencyGroupInclude]]``.
 
         """
-        live_dev: list[str | m.Infra.DependencyGroupInclude] = []
+        live_dev: list[str | p.Infra.DependencyGroupInclude] = []
         for entry in cls.read_dependency_group(groups, dev_name):
             if not isinstance(entry, str):
                 live_dev.append(entry)

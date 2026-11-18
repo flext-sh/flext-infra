@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
+from flext_infra.deps import FlextInfraConfigFixer
 from tests import c, tm, u
 
 if TYPE_CHECKING:

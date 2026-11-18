@@ -19,13 +19,16 @@ import tomllib
 from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import ClassVar, is_protocol, override
+from typing import ClassVar, cast, is_protocol, override
 
 from flext_cli import u
+from rope.base import exceptions as rope_exceptions
 
 from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
+    FlextInfraUtilitiesDiscovery,
+    FlextInfraUtilitiesFacadeComponents,
     FlextInfraUtilitiesLazyInitRender,
     FlextInfraUtilitiesLintRecipes,
     FlextInfraUtilitiesProjectDiscovery,
@@ -258,6 +261,31 @@ class FlextInfraUtilitiesModelsProtocol:
         )
 
     @classmethod
+    def protocol_model_declarations_from_source(
+        cls,
+        repository_root: Path,
+        source_project: p.Infra.RopeProject,
+        *,
+        package_name: str | None = None,
+    ) -> tuple[tuple[str, str, Path], ...]:
+        """Read native model, protocol and destination witnesses from one projector.
+
+        Returns:
+            Source identities and their protocol declaration destinations.
+
+        """
+        projection = cls._ModelProtocolProjection(
+            repository_root.expanduser().resolve(),
+            source_project,
+            package_name=package_name,
+        )
+        layout = projection.source_layout()
+        if layout is None:
+            return ()
+        inventory = projection.source_model_inventory()
+        return () if inventory is None else projection.source_model_declarations()
+
+    @classmethod
     def bootstrap_protocol_model_sources(
         cls, repository_root: Path, *, ports: p.Infra.CodegenConformPorts
     ) -> p.Result[bool]:
@@ -280,8 +308,9 @@ class FlextInfraUtilitiesModelsProtocol:
             # Only the source-bootstrap owner (flext-infra's own protocol family)
             # projects ahead of the surfaces: its engine imports those holders.
             # A consumer's projection is planned by the lazy-init surface, in the
-            # same ordered candidate as its regenerated initializers.
-            if primary is not None and not cls._is_bootstrap_owned_protocol_package(
+            # same ordered candidate as its regenerated initializers. A repository
+            # without a primary package (a consumer) owns no source bootstrap.
+            if primary is None or not cls._is_bootstrap_owned_protocol_package(
                 primary[0]
             ):
                 return r[bool].ok(value=False)
@@ -293,7 +322,7 @@ class FlextInfraUtilitiesModelsProtocol:
                         (layout[2], True)
                         for layout in projection.namespacesource_layouts()
                     ),
-                    *(() if primary is None else ((primary[2], False),)),
+                    (primary[2], False),
                 ),
             )
             if prepared.failure:
@@ -432,7 +461,9 @@ class FlextInfraUtilitiesModelsProtocol:
             lambda candidate, paths: cls._bootstrap_admit_candidate(
                 (root, ports), merged, candidate, paths
             ),
-            options=m.Infra.StageSourceOptions(inputs=tuple(inputs.values())),
+            options=m.Infra.StageSourceOptions.model_validate({
+                "inputs": (tuple(inputs.values()))
+            }),
         ).flat_map(lambda outcome: outcome)
         if preview.failure:
             return r[bool].from_failure(preview)
@@ -786,6 +817,8 @@ class FlextInfraUtilitiesModelsProtocol:
                 Path, list[tuple[ast.ClassDef, tuple[str, ...], ast.Module]]
             ] = {}
             self.source_field_cache: dict[str, tuple[_SourceFieldProjection, ...]] = {}
+            # Invocation-local: a native resource's real path resolves once.
+            self.resolved_paths: dict[str, Path] = {}
             self.source_model_protocol_routes: dict[str, str] = {}
             self.source_protocol_retirements: dict[
                 Path, tuple[tuple[str, str], ...]
@@ -811,6 +844,13 @@ class FlextInfraUtilitiesModelsProtocol:
             self.source_method_cache: dict[
                 str, tuple[ast.FunctionDef | ast.AsyncFunctionDef, ...]
             ] = {}
+            # Invocation-local identity memos: one annotation compare resolves
+            # the same declared route and native expression repeatedly.
+            self.source_qualified_names: dict[tuple[str, str], p.Infra.RopePyName] = {}
+            self.source_denotations: dict[tuple[int, str, str, str], bool] = {}
+            # Keep each compared scope alive so its id cannot be reused by a
+            # different scope while a memo entry is still addressable.
+            self.source_denotation_scopes: list[p.Infra.RopeScope] = []
 
         @property
         def workspace(self) -> p.Infra.RopeWorkspaceDsl:
@@ -995,6 +1035,63 @@ class FlextInfraUtilitiesModelsProtocol:
                 declaration,
             )
 
+        def source_model_declarations(self) -> tuple[tuple[str, str, Path], ...]:
+            """Pair native models with existing contracts or planned projections.
+
+            Returns:
+                Model identity, protocol identity and its existing or planned source.
+
+            Raises:
+                ValueError: An admitted declaration has no native binding or source.
+
+            """
+            declarations: list[tuple[str, str, Path]] = []
+            facade = self._source_class(
+                self.qualified_name(
+                    self.project,
+                    "p",
+                    module_name=f"{self.source_package_name}.protocols",
+                )
+            )
+            for destination, classes in self.source_model_protocol_classes.items():
+                for _node, path, tree in classes:
+                    module_name = self.source_module_names[id(tree)]
+                    model = ".".join((module_name, *path))
+                    source = self.qualified_name(
+                        self.project, ".".join(path), module_name=module_name
+                    )
+                    target_binding = self.resolve_symbol(
+                        facade.get_scope(),
+                        self.source_model_protocol_routes[model].removeprefix("p."),
+                    )
+                    if target_binding is None:
+                        protocol = ".".join((
+                            FlextInfraUtilitiesProjectDiscovery.module_name_for_file(
+                                destination,
+                                project_root=self.repository_root,
+                                source_project=self.project,
+                            ),
+                            self._source_destination_holder(destination),
+                            self.source_model_protocols[model],
+                        ))
+                        protocol_source = destination
+                    else:
+                        target = self._source_class(target_binding)
+                        resource = target.get_module().get_resource()
+                        if resource is None:
+                            message = f"protocol declaration has no source: {model}"
+                            raise ValueError(message)
+                        protocol = ".".join(self._source_class_identity(target))
+                        protocol_source = Path(resource.real_path)
+                    declarations.append((
+                        ".".join(
+                            self._source_class_identity(self._source_class(source))
+                        ),
+                        protocol,
+                        protocol_source,
+                    ))
+            return tuple(declarations)
+
         def source_model_inventory(
             self,
         ) -> (
@@ -1015,6 +1112,9 @@ class FlextInfraUtilitiesModelsProtocol:
                 The package directory, its name and the grouped declarations, or
                 None when source declares no model layout.
 
+            Raises:
+                ValueError: A discovered model module has no native binding.
+
             """
             self.source_field_cache.clear()
             layout = self.source_layout()
@@ -1026,8 +1126,6 @@ class FlextInfraUtilitiesModelsProtocol:
             self.class_stem = class_stem
             self.source_package_name = package_name
             models_root = package_dir / "_models"
-            if not self.project.source_query(models_root, "isdir"):
-                return None
             grouped: dict[
                 Path, list[tuple[ast.ClassDef, tuple[str, ...], ast.Module]]
             ] = {}
@@ -1039,14 +1137,17 @@ class FlextInfraUtilitiesModelsProtocol:
                         or source_path.name == c.Infra.INIT_PY
                     ):
                         continue
-                    tree = ast.parse(
-                        self.project.source_text(source_path), filename=str(source_path)
-                    )
                     model_module = ".".join((
                         package_name,
                         "_models",
                         *source_path.relative_to(models_root).with_suffix("").parts,
                     ))
+                    if self.project.find_module(model_module) is None:
+                        message = f"native model module absent: {model_module}"
+                        raise ValueError(message)
+                    tree = ast.parse(
+                        self.project.source_text(source_path), filename=str(source_path)
+                    )
                     self.source_module_names[id(tree)] = model_module
                     classes = self._source_model_classes(tree, model_module)
                     if not classes:
@@ -1076,9 +1177,6 @@ class FlextInfraUtilitiesModelsProtocol:
             if inventory is None:
                 return result_type.ok({})
             package_dir, package_name, grouped = inventory
-            conformance = self._source_model_conformance_source(
-                package_dir, package_name, grouped
-            )
             grouped = self._source_owned_model_protocols(grouped)
             rendered: dict[Path, str] = {}
             for destination, classes in sorted(grouped.items()):
@@ -1133,9 +1231,6 @@ class FlextInfraUtilitiesModelsProtocol:
                     self.repository_root / relative,
                     relative.with_suffix("").name,
                 )
-            if conformance is not None:
-                path, source = conformance
-                rendered[path.relative_to(self.repository_root)] = source
             return result_type.ok(rendered)
 
         def _source_apply_protocol_rewrites(
@@ -1220,147 +1315,6 @@ class FlextInfraUtilitiesModelsProtocol:
                     normalized,
                     tuple(rewrite.text for rewrite in planned_rewrites),
                 )
-
-        def _source_model_conformance_source(
-            self,
-            package_dir: Path,
-            package_name: str,
-            grouped: Mapping[
-                Path, list[tuple[ast.ClassDef, tuple[str, ...], ast.Module]]
-            ],
-        ) -> tuple[Path, str] | None:
-            """Render the mandatory candidate checker's constructor-to-port pairs.
-
-            Returns:
-                The candidate's structural evidence source, or no public model pairs.
-
-            """
-            public = {
-                source: route
-                for route, source in self.source_model_facade_model_routes.items()
-            }
-            checks: list[tuple[str, str, tuple[str, ...], tuple[str, ...]]] = []
-            imports: list[str] = []
-            # Inside the protocol family the own letters are the facades under
-            # assembly (ENFORCE-051): the witness names the published facade
-            # classes of its package root instead of its own ``m``/``p``.
-            model_facade = self._source_facade_class_name(
-                package_dir / "models.py", "m"
-            )
-            protocol_facade = self._source_facade_class_name(
-                package_dir / "protocols.py", "p"
-            )
-            alias_ctx = self._source_model_alias_names_by_tree(grouped)
-            for classes in grouped.values():
-                imports.extend(self.source_annotation_imports(classes, package_name))
-                for node, path, tree in classes:
-                    # A type alias is not a model to witness: its protocol
-                    # mirror is the target class contract, not a conversion.
-                    if path and path[-1] in alias_ctx[0].get(id(tree), set()):
-                        continue
-                    identity = ".".join((self.source_module_names[id(tree)], *path))
-                    model, port = (
-                        public.get(identity),
-                        self.source_model_protocol_routes.get(identity),
-                    )
-                    # A private model is no public facade member: its witness
-                    # would read a private name across the facade boundary.
-                    if (
-                        model is None
-                        or port is None
-                        or any(part.startswith("_") for part in path)
-                        or bool(node.type_params)
-                    ):
-                        continue
-                    if model.rsplit(".", 1)[-1] in (alias_ctx[1] | alias_ctx[2]):
-                        continue
-                    parameters = self._source_witness_parameters(
-                        (tree, node, path), classes, (model_facade, public)
-                    )
-                    arguments = tuple(
-                        ("*" if isinstance(parameter, ast.TypeVarTuple) else "")
-                        + parameter.name
-                        for parameter in node.type_params
-                        if isinstance(
-                            parameter, ast.TypeVar | ast.TypeVarTuple | ast.ParamSpec
-                        )
-                    )
-                    checks.append((
-                        f"{model_facade}{model.removeprefix('m')}",
-                        f"{protocol_facade}{port.removeprefix('p')}",
-                        parameters,
-                        arguments,
-                    ))
-            imports = [
-                ast.unparse(
-                    ast.ImportFrom(module=node.module, names=names, level=node.level)
-                )
-                if isinstance(node, ast.ImportFrom)
-                else ast.unparse(ast.Import(names=names))
-                for statement in imports
-                for node in ast.walk(ast.parse(statement))
-                if isinstance(node, ast.Import | ast.ImportFrom)
-                for names in (
-                    [
-                        alias
-                        for alias in node.names
-                        if (alias.asname or alias.name) not in {"m", "p"}
-                    ],
-                )
-                if names
-            ]
-            path = (
-                package_dir / "_protocols" / c.Infra.MODEL_PROTOCOL_CONFORMANCE_FILENAME
-            )
-            context = m.Infra.ModelProtocolConformanceRenderContext(
-                header=c.Infra.AUTOGEN_HEADER,
-                documentation_language=self.documentation_language,
-                copyright_notice=FlextInfraUtilitiesLintRecipes.copyright_notice(
-                    package_dir, module=path, source_project=self.project
-                ),
-                package_name=package_name,
-                imports=tuple(dict.fromkeys(imports)),
-                facades=(model_facade, protocol_facade),
-                checks=tuple(sorted(checks)),
-            )
-            template = (
-                FlextInfraUtilitiesGitignore.codegen_templates_root(
-                    config.Infra.codegen
-                )
-                / c.Infra.TEMPLATE_MODEL_PROTOCOL_CONFORMANCE
-            )
-            source = u.Cli.template_render(template, context).unwrap()
-            return path, FlextInfraUtilitiesProtectedEditLinting.normalize_python_text(
-                path, source
-            ).unwrap()
-
-        def _source_witness_parameters(
-            self,
-            declaration: tuple[ast.Module, ast.ClassDef, tuple[str, ...]],
-            classes: list[tuple[ast.ClassDef, tuple[str, ...], ast.Module]],
-            facades: tuple[str, Mapping[str, str]],
-        ) -> tuple[str, ...]:
-            """Render a witnessed model's type parameters with public bounds.
-
-            Returns:
-                Each type parameter source with its bound and default rewritten.
-
-            """
-            parameters: list[str] = []
-            for original in declaration[1].type_params:
-                parameter = copy.deepcopy(original)
-                for name in ("bound", "default_value"):
-                    value = getattr(parameter, name, None)
-                    if isinstance(value, ast.expr):
-                        setattr(
-                            parameter,
-                            name,
-                            self._source_witness_bound(
-                                value, declaration, classes, facades
-                            ),
-                        )
-                parameters.append(ast.unparse(parameter))
-            return tuple(parameters)
 
         def _source_domain_facade_protocols(
             self,
@@ -1610,6 +1564,7 @@ class FlextInfraUtilitiesModelsProtocol:
                 .parts,
             ))
             source_module = self.project.get_module(module_name)
+            source_module = cast(p.Infra.RopePyModule, source_module)
             source = self.project.source_text(model_sibling)
             tree = ast.parse(source, filename=str(model_sibling))
             owners: list[tuple[ast.ClassDef, p.Infra.RopeSourceClass]] = []
@@ -1847,13 +1802,15 @@ class FlextInfraUtilitiesModelsProtocol:
                     f"{model_base_class}"
                 )
                 raise TypeError(msg)
-            if self._source_is_marker_class(model_base_class.get_ast()):
+            if self._source_is_marker_class(
+                cast(ast.AST | None, model_base_class.get_ast())
+            ):
                 return None
             package_dir, package_name = package
             models_root = package_dir / "_models"
             protocols_root = package_dir / "_protocols"
             base_module = model_base_class.get_module()
-            resource = base_module.get_resource() if base_module is not None else None
+            resource = base_module.get_resource()
             if resource is None:
                 msg = (
                     f"model domain base has no source module: "
@@ -2046,9 +2003,14 @@ class FlextInfraUtilitiesModelsProtocol:
             holder = holders[0]
             occupied = [ast.unparse(base) for base in holder.bases]
             composed = (
-                list(bases)
+                list(dict.fromkeys(bases))
                 if bases is not None
-                else [*imports, *(name for name in occupied if name not in imports)]
+                else list(
+                    dict.fromkeys([
+                        *imports,
+                        *(name for name in occupied if name not in imports),
+                    ])
+                )
             )
             if occupied != composed:
                 source = cls._source_splice_holder_bases(
@@ -2085,9 +2047,6 @@ class FlextInfraUtilitiesModelsProtocol:
             name_end = offset + len("class ") + len(holder.name)
             if holder.type_params:
                 parameter = holder.type_params[-1]
-                if parameter.end_lineno is None or parameter.end_col_offset is None:
-                    msg = f"protocol type parameters have no source extent: {owner}"
-                    raise ValueError(msg)
                 parameter_end = (
                     sum(map(len, lines[: parameter.end_lineno - 1]))
                     + parameter.end_col_offset
@@ -2140,7 +2099,7 @@ class FlextInfraUtilitiesModelsProtocol:
                 namespace, rendered, package_dir
             )
             bases = self._source_aggregate_bases(
-                candidates, modules, rendered, (facade, namespace)
+                candidates, modules, rendered, (facade, namespace), destination
             )
             source = self._source_compose_protocol_holder(
                 source,
@@ -2216,7 +2175,7 @@ class FlextInfraUtilitiesModelsProtocol:
             """Nest tier protocols in the namespace the facade inherits.
 
             An internal tier nests its holders in the namespace it inherits
-            (``m.AlgarOudMig``); its protocols mirror that nesting instead of
+            (``m.AcmeApp``); its protocols mirror that nesting instead of
             composing the holders on the facade.
 
             Returns:
@@ -2265,6 +2224,9 @@ class FlextInfraUtilitiesModelsProtocol:
         ) -> tuple[list[str], dict[str, str], dict[str, str]]:
             """Collect the namespace's declared and newly projected holder bases.
 
+            A rendered path is authoritative for its content: its on-disk copy is
+            the previous projection and contributes no candidate binding.
+
             Returns:
                 The candidate base names, their import lines and declaring modules.
 
@@ -2287,6 +2249,25 @@ class FlextInfraUtilitiesModelsProtocol:
                 module_name = self.module_name_for(relative)
                 imports[owner] = f"from {module_name} import {owner}"
                 modules[owner] = module_name
+            protocol_dir = package_dir / "_protocols"
+            if protocol_dir.is_dir():
+                for path in sorted(protocol_dir.glob("*.py")):
+                    relative = path.relative_to(self.repository_root)
+                    if path.name.startswith("_") or relative in rendered:
+                        continue
+                    module_name = self.module_name_for(relative)
+                    for node in ast.parse(
+                        self.project.source_text(path), filename=str(path)
+                    ).body:
+                        if (
+                            isinstance(node, ast.ClassDef)
+                            and node.name in candidates
+                            and node.name not in modules
+                        ):
+                            imports[node.name] = (
+                                f"from {module_name} import {node.name}"
+                            )
+                            modules[node.name] = module_name
             return candidates, imports, modules
 
         def _source_aggregate_bases(
@@ -2295,6 +2276,7 @@ class FlextInfraUtilitiesModelsProtocol:
             modules: Mapping[str, str],
             rendered: Mapping[Path, str],
             classes: tuple[ast.ClassDef, ast.ClassDef],
+            destination: Path,
         ) -> list[str]:
             """Drop candidates already inherited through another candidate.
 
@@ -2302,10 +2284,12 @@ class FlextInfraUtilitiesModelsProtocol:
                 The candidate bases no other candidate's native ancestry carries.
 
             Raises:
-                ValueError: If a protocol aggregate base has no native binding.
+                ValueError: If a base this run renders resolves to no source
+                    class.
 
             """
             facade, namespace = classes
+            candidates = tuple(dict.fromkeys(candidates))
             holders: dict[str, p.Infra.RopeSourceClass] = {}
             declared = FlextInfraUtilitiesWorkspaceSnapshot.workspace_declared_sources(
                 self.repository_root,
@@ -2332,10 +2316,21 @@ class FlextInfraUtilitiesModelsProtocol:
                         if name in modules
                         else self.resolve_symbol(native_namespace.get_scope(), name)
                     )
-                    if binding is None:
-                        msg = f"protocol aggregate base has no native binding: {name}"
-                        raise ValueError(msg)
-                    holders[name] = self._source_class(binding)
+                    if binding is None or not self.py_class(
+                        holder := binding.get_object()
+                    ):
+                        if name in modules:
+                            msg = (
+                                f"{destination.relative_to(self.repository_root)}:"
+                                f"{namespace.name} base {name} resolves to no "
+                                "source class; its declaring module does not "
+                                "publish it"
+                            )
+                            raise ValueError(msg)
+                        # A base of the previous projection whose declaring
+                        # module is not in this run retired at its source.
+                        continue
+                    holders[name] = holder
                 identity = FlextInfraUtilitiesRopeRuntime.native_object_identity
                 inherited = {
                     identity(ancestor)
@@ -2345,7 +2340,7 @@ class FlextInfraUtilitiesModelsProtocol:
                 return [
                     name
                     for name in candidates
-                    if identity(holders[name]) not in inherited
+                    if name in holders and identity(holders[name]) not in inherited
                 ]
 
         def _source_model_facade_nested_namespace(
@@ -2566,46 +2561,6 @@ class FlextInfraUtilitiesModelsProtocol:
                         names.add(node.name)
             return frozenset(names)
 
-        def _source_model_alias_names_by_tree(
-            self,
-            grouped: Mapping[
-                Path, list[tuple[ast.ClassDef, tuple[str, ...], ast.Module]]
-            ],
-        ) -> tuple[dict[int, set[str]], set[str], set[str]]:
-            """Index projected model aliases by their source tree.
-
-            Returns:
-                Alias names keyed by the id of the tree that declares them.
-
-            """
-            alias_names_by_tree: dict[int, set[str]] = {}
-            for (
-                _destination,
-                statement,
-                alias_tree,
-                _model,
-            ) in self.source_model_aliases.values():
-                if isinstance(statement.name, ast.Name):
-                    alias_names_by_tree.setdefault(id(alias_tree), set()).add(
-                        statement.name.id
-                    )
-            model_alias_names = {
-                target.id
-                for classes in grouped.values()
-                for _node, _path, tree in classes
-                for family in tree.body
-                if isinstance(family, ast.ClassDef)
-                for statement in family.body
-                if isinstance(statement, ast.Assign)
-                for target in statement.targets
-                if isinstance(target, ast.Name)
-            }
-            return (
-                alias_names_by_tree,
-                {name for names in alias_names_by_tree.values() for name in names},
-                model_alias_names,
-            )
-
         @staticmethod
         def _source_model_alias(statement: ast.stmt) -> ast.TypeAlias | None:
             """Normalize a model alias declaration to a PEP 695 alias node.
@@ -2764,7 +2719,7 @@ class FlextInfraUtilitiesModelsProtocol:
             owner, namespaced = resolved
             if namespaced:
                 accumulators[3].append(owner)
-            expected = self._source_expected_members(model, classes)
+            expected: set[str] | None = None
             for (
                 source_path,
                 holder_name,
@@ -2773,9 +2728,15 @@ class FlextInfraUtilitiesModelsProtocol:
             ) in self._source_displaced_candidates(
                 owner, member_name, destination, (protocols_root, protocol_base)
             ):
+                # A stale generated holder retires with no member check; every
+                # other candidate needs the model's projected members. Deriving
+                # them only on that branch keeps the retirement pass off the
+                # field/method projection for the common already-generated tree.
+                if not stale and expected is None:
+                    expected = self._source_expected_members(model, classes)
                 self._source_require_retirable(
                     protocol,
-                    expected,
+                    expected if expected is not None else set[str](),
                     protocols_root,
                     (source_path, holder_name, member_name, public_model),
                     stale=stale,
@@ -2847,18 +2808,22 @@ class FlextInfraUtilitiesModelsProtocol:
 
             """
             protocols_root, protocol_base = scope
+            resolved_destination = destination.resolve()
             for holder in owner.get_mro():
                 if not self.py_class(holder):
                     continue
                 module = holder.get_module()
-                resource = module.get_resource() if module is not None else None
+                resource = module.get_resource()
                 if resource is None:
                     continue
-                source_path = Path(resource.real_path).resolve()
+                source_path = self.resolved_paths.get(resource.real_path)
+                if source_path is None:
+                    source_path = Path(resource.real_path).resolve()
+                    self.resolved_paths[resource.real_path] = source_path
                 holder_node = holder.get_ast()
                 if (
                     not source_path.is_relative_to(protocols_root)
-                    or source_path == destination.resolve()
+                    or source_path == resolved_destination
                     or not isinstance(holder_node, ast.ClassDef)
                 ):
                     continue
@@ -2927,7 +2892,7 @@ class FlextInfraUtilitiesModelsProtocol:
                 self.project, protocol, protocols_root
             )
             extra = (
-                {}
+                cast(Mapping[str, tuple[t.Infra.AstStatement, Path]], {})
                 if stale
                 else {name: actual[name] for name in sorted(set(actual) - expected)}
             )
@@ -2967,7 +2932,10 @@ class FlextInfraUtilitiesModelsProtocol:
             for base in model.bases:
                 if not isinstance(base, ast.Subscript):
                     continue
-                binding = self.resolve_symbol(owner.get_scope(), base.value)
+                scope = owner.get_scope()
+                if scope is None or isinstance(scope, str):
+                    continue
+                binding = self.resolve_symbol(scope, base.value)
                 if binding is not None:
                     value = binding.get_object()
                     if self.py_class(value) and root in value.get_mro():
@@ -3060,7 +3028,7 @@ class FlextInfraUtilitiesModelsProtocol:
                 declaration = ancestor.get_ast()
                 if not isinstance(declaration, ast.ClassDef):
                     module = ancestor.get_module()
-                    if module is not None and module.get_name().startswith("pydantic."):
+                    if module.get_name().startswith("pydantic."):
                         continue
                     msg = "model MRO contains a class without source config"
                     raise ValueError(msg)
@@ -3155,6 +3123,57 @@ class FlextInfraUtilitiesModelsProtocol:
                 if len(targets) == 1
             }
 
+        @staticmethod
+        def _source_facade_attributes(
+            owner: p.Infra.RopeSourceClass,
+        ) -> list[tuple[str, p.Infra.RopePyName, p.Infra.RopePyObject | None]]:
+            """Pair each owner attribute with the object it publishes.
+
+            Python reads the value of a class-body ``Name = Name`` from the module
+            scope, so such a publication resolves through that module binding,
+            never through the class attribute the statement assigns. A generated
+            publication whose binding no longer resolves is retired by the facade
+            projection of the same run and publishes nothing.
+
+            Returns:
+                Each attribute name, binding and published object (``None`` for a
+                retiring generated publication).
+
+            Raises:
+                ValueError: If an authored publication resolves to nothing.
+
+            """
+            module = FlextInfraUtilitiesRopeRuntimeTypes.require_source_module(
+                owner.get_module()
+            )
+            publications = FlextInfraUtilitiesFacadeComponents.facade_self_publications(
+                module, owner.get_scope()
+            )
+            attributes: list[
+                tuple[str, p.Infra.RopePyName, p.Infra.RopePyObject | None]
+            ] = []
+            for name, binding in owner.get_attributes().items():
+                region, target = publications.get(name, (None, binding))
+                if region is None or (
+                    target is not None and target.get_definition_location()[0]
+                ):
+                    attributes.append((
+                        name,
+                        binding,
+                        None if target is None else target.get_object(),
+                    ))
+                    continue
+                if not module.source_code.startswith(c.Infra.AUTOGEN_HEADER):
+                    resource = module.get_resource()
+                    msg = (
+                        f"{resource.path if resource is not None else name}:"
+                        f"{module.lines.get_line_number(region[0])}: facade"
+                        f" publication {name} = {name} resolves to no module binding"
+                    )
+                    raise ValueError(msg)
+                attributes.append((name, binding, None))
+            return attributes
+
         def _source_collect_facade_owners(
             self,
             owner: p.Infra.RopeSourceClass,
@@ -3178,8 +3197,7 @@ class FlextInfraUtilitiesModelsProtocol:
             identity = FlextInfraUtilitiesRopeRuntime.native_object_identity(owner)
             if identity in seen:
                 return
-            for name, binding in owner.get_attributes().items():
-                value = binding.get_object()
+            for name, binding, value in self._source_facade_attributes(owner):
                 if not self.py_class(value):
                     continue
                 declaring_module, declaration = self._source_class_identity(value)
@@ -3266,17 +3284,15 @@ class FlextInfraUtilitiesModelsProtocol:
             Returns:
                 True when the protocol facade publishes the route's port.
 
-            Raises:
-                ValueError: If the port is not a runtime-checkable Protocol.
-
             """
             port_binding = self.resolve_symbol(protocol_facade.get_scope(), public_path)
             if port_binding is None:
                 return False
             port = port_binding.get_object()
             if not self.py_class(port) or protocol_base not in port.get_mro():
-                msg = f"upstream port is not a Protocol: {public_path}"
-                raise ValueError(msg)
+                # An authored model in the protocol family is not an upstream
+                # port; the model projection replaces it during publication.
+                return False
             if not any(
                 self._denotes(
                     decorator,
@@ -3286,8 +3302,9 @@ class FlextInfraUtilitiesModelsProtocol:
                 )
                 for decorator in port.get_ast().decorator_list
             ):
-                msg = f"upstream port is not runtime_checkable: {public_path}"
-                raise ValueError(msg)
+                # A Protocol port is valid; the projection adds the
+                # runtime_checkable decorator during publication.
+                return True
             return True
 
         def _source_unique_protocol_routes(
@@ -3330,7 +3347,11 @@ class FlextInfraUtilitiesModelsProtocol:
             """Return only nested namespace declarations owned by a models facade."""
             module = value.get_module()
             resource = module.get_resource() if module is not None else None
-            if resource is None or Path(resource.real_path).name != "models.py":
+            if (
+                resource is None
+                or not isinstance(resource, p.Infra.RopeFile)
+                or Path(resource.real_path).name != "models.py"
+            ):
                 return ()
             facade = FlextInfraUtilitiesRopeAnalysis.published_facade_owner(
                 self.project, resource
@@ -3475,6 +3496,7 @@ class FlextInfraUtilitiesModelsProtocol:
         def _primarysource_layout(self) -> tuple[Path, str, str] | None:
             """Discover the package solely from the overlaid pyproject source.
 
+            A package without model declarations owns no model layout.
             Non-canonical or competing public model and protocol facade names
             fail the discovery with ``ValueError``.
 
@@ -3496,6 +3518,8 @@ class FlextInfraUtilitiesModelsProtocol:
             if not self.project.source_query(package_dir, "isdir"):
                 package_dir = self.repository_root / package
             if not self.project.source_query(package_dir, "isdir"):
+                return None
+            if not self.project.source_query(package_dir / "_models", "isdir"):
                 return None
             return (
                 package_dir,
@@ -3614,11 +3638,27 @@ class FlextInfraUtilitiesModelsProtocol:
                 for node in body:
                     if not isinstance(node, ast.ClassDef):
                         continue
+                    if any(
+                        isinstance(base, ast.Name)
+                        and base.id in {"NamedTuple", "namedtuple"}
+                        for base in node.bases
+                    ) or any(
+                        isinstance(decorator, ast.Name)
+                        and decorator.id in {"dataclass", "sdataclass"}
+                        for decorator in node.decorator_list
+                    ):
+                        # Structural value tuples and dataclasses are not
+                        # Pydantic model sources; they belong to t/p/u.
+                        continue
                     path = (*parents, node.name)
                     owner = module
                     for part in path[:-1]:
                         owner = owner.get_attribute(part).get_object()
-                    source = self._source_class(owner.get_attribute(path[-1]))
+                    try:
+                        source = self._source_class(owner.get_attribute(path[-1]))
+                    except TypeError as exc:
+                        message = f"{exc} at {module_name}.{'.'.join(path)}"
+                        raise TypeError(message) from exc
                     if source.get_ast().lineno != node.lineno:
                         message = (
                             f"model declaration identity changed: "
@@ -3626,7 +3666,9 @@ class FlextInfraUtilitiesModelsProtocol:
                         )
                         raise ValueError(message)
                     ancestors = source.get_mro()
-                    if model_base in ancestors:
+                    if model_base in ancestors or self._source_mro_base_matches(
+                        source, node, model_base
+                    ):
                         classes.append((node, path))
                     elif any(
                         FlextInfraUtilitiesRopeRuntimeTypes.unresolved_witness(base)
@@ -3644,6 +3686,71 @@ class FlextInfraUtilitiesModelsProtocol:
 
             collect(tree.body, ())
             return classes
+
+        def _source_mro_base_matches(
+            self,
+            source: p.Infra.RopeSourceClass,
+            node: ast.ClassDef,
+            model_base: p.AttributeProbe,
+        ) -> bool:
+            """Resolve facade ``TYPE_CHECKING`` shadowed bases via inherited MRO.
+
+            Returns:
+                Whether any AST base resolves via inherited MRO to ``model_base``.
+
+            """
+            lexical = source.get_scope().parent
+            if lexical is None:
+                return False
+            for base_expr in node.bases:
+                expr = (
+                    base_expr.value
+                    if isinstance(base_expr, ast.Subscript)
+                    else base_expr
+                )
+                if not isinstance(expr, ast.Attribute):
+                    continue
+                holder_name = ast.unparse(expr.value)
+                if not holder_name:
+                    continue
+                binding = self.resolve_symbol(lexical, holder_name)
+                if binding is None:
+                    continue
+                holder = self._source_base_holder(binding)
+                if not self.py_class(holder):
+                    continue
+                resolved = self.mro_class(holder, expr.attr)
+                if resolved is not None and model_base in resolved.get_mro():
+                    return True
+            return False
+
+        def _source_base_holder(
+            self,
+            binding: p.Infra.RopePyName,
+        ) -> p.Infra.RopePyObject:
+            """Resolve a base holder through its import's generated publication.
+
+            Returns:
+                The holder object the binding names, directly or through the
+                imported package's declared lazy export route.
+
+            """
+            if isinstance(binding, p.Infra.RopeImportedName):
+                module_name = binding.imported_module.module_name
+                if module_name:
+                    try:
+                        published = self.qualified_name(
+                            self.project,
+                            binding.imported_name,
+                            module_name=module_name,
+                        )
+                    except rope_exceptions.AttributeNotFoundError:
+                        published = None
+                    if published is not None:
+                        holder = published.get_object()
+                        if self.py_class(holder):
+                            return holder
+            return binding.get_object()
 
         def _source_generated_holder(self, destination: Path) -> str:
             """Name the holder class the generator owns for one protocol module.
@@ -3769,6 +3876,10 @@ class FlextInfraUtilitiesModelsProtocol:
             tree = next(
                 source for candidate, _path, source in classes if candidate is node
             )
+            module_name, qualified = self._source_class_identity(model)
+            frozen = self._source_effective_model_frozen(
+                self.qualified_name(self.project, qualified, module_name=module_name)
+            )
             # A subscripted model base keeps its type arguments on the protocol
             # base, projected like any field annotation (model -> protocol).
             subscripts = {
@@ -3781,12 +3892,21 @@ class FlextInfraUtilitiesModelsProtocol:
                 if not self.py_class(ancestor):
                     continue
                 suffix = self._source_base_type_arguments(
-                    subscripts.get(ancestor.get_name()), tree, node, classes
+                    subscripts.get(ancestor.get_name()),
+                    tree,
+                    node,
+                    (classes, destination),
                 )
                 module_name, qualified = self._source_class_identity(ancestor)
                 route = f"{module_name}.{qualified}"
                 target = self.source_model_protocol_destinations.get(route)
                 if target is None:
+                    continue
+                if frozen and not self._source_effective_model_frozen(
+                    self.qualified_name(
+                        self.project, qualified, module_name=module_name
+                    )
+                ):
                     continue
                 fields, methods = self._source_mirror_base_members(route, target)
                 name = self.source_model_protocols[route]
@@ -3804,9 +3924,13 @@ class FlextInfraUtilitiesModelsProtocol:
             arguments: ast.expr | None,
             tree: ast.Module,
             node: ast.ClassDef,
-            classes: list[tuple[ast.ClassDef, tuple[str, ...], ast.Module]],
+            scope: tuple[list[tuple[ast.ClassDef, tuple[str, ...], ast.Module]], Path],
         ) -> str:
             """Project a subscripted model base's type arguments onto its protocol.
+
+            A base evaluates in the holder's class body, before the holder name
+            is bound: a sibling contract of the same holder is spelled bare,
+            like a local mirror base.
 
             Returns:
                 The bracketed projected arguments, or an empty suffix.
@@ -3814,11 +3938,23 @@ class FlextInfraUtilitiesModelsProtocol:
             """
             if arguments is None:
                 return ""
+            classes, destination = scope
+            holder = self._source_destination_holder(destination)
+
+            class Sibling(ast.NodeTransformer):
+                @override
+                def visit_Attribute(self, node: ast.Attribute) -> ast.AST:
+                    if isinstance(node.value, ast.Name) and node.value.id == holder:
+                        return ast.copy_location(ast.Name(id=node.attr), node)
+                    return self.generic_visit(node)
+
             return "[{}]".format(
                 ", ".join(
                     ast.unparse(
-                        self._source_structural_annotation(
-                            argument, tree, node, classes
+                        Sibling().visit(
+                            self._source_structural_annotation(
+                                argument, tree, node, classes
+                            )
                         )
                     )
                     for argument in (
@@ -3944,6 +4080,45 @@ class FlextInfraUtilitiesModelsProtocol:
                 pending.remove(ready)
             return ordered
 
+        def _source_own_fields(
+            self,
+            node: ast.ClassDef,
+            classes: list[tuple[ast.ClassDef, tuple[str, ...], ast.Module]],
+            local_bases: tuple[
+                tuple[str, dict[str, str], str | None, frozenset[str]], ...
+            ],
+        ) -> list[_SourceFieldProjection]:
+            """Select the fields a contract declares instead of inheriting them.
+
+            Returns:
+                The projected fields its mirrored bases do not already own.
+
+            """
+            inherited = {
+                field: annotation
+                for _base, fields, _import, _methods in local_bases
+                for field, annotation in fields.items()
+            }
+            return [
+                projection
+                for projection in self.source_fields(node, classes)
+                if not (
+                    isinstance(projection.declaration.target, ast.Name)
+                    and (
+                        inherited.get(projection.declaration.target.id)
+                        == ast.unparse(projection.declaration.annotation)
+                        # A root model's root type flows through its
+                        # subscripted root base (``RootModel[X]``);
+                        # redeclaring it overrides the base's member with an
+                        # incompatible kind.
+                        or (
+                            projection.declaration.target.id == "root"
+                            and "root" in inherited
+                        )
+                    )
+                )
+            ]
+
         def _source_contract_declarations(
             self,
             node: ast.ClassDef,
@@ -3963,11 +4138,6 @@ class FlextInfraUtilitiesModelsProtocol:
             # A member named ``property`` shadows the builtin in the class
             # body: it is declared last, after every ``@property`` use.
             shadowing: list[str] = []
-            inherited = {
-                field: annotation
-                for _base, fields, _import, _methods in local_bases
-                for field, annotation in fields.items()
-            }
             # A callable a mirrored base already declares with the same
             # signature is inherited, exactly like its fields.
             inherited_methods = {
@@ -3975,21 +4145,8 @@ class FlextInfraUtilitiesModelsProtocol:
                 for _base, _fields, _import, methods in local_bases
                 for signature in methods
             }
-            for projection in self.source_fields(node, classes):
+            for projection in self._source_own_fields(node, classes, local_bases):
                 field = projection.declaration
-                if isinstance(field.target, ast.Name) and inherited.get(
-                    field.target.id
-                ) == ast.unparse(field.annotation):
-                    continue
-                # A root model's root type flows through its subscripted
-                # root base (``RootModel[X]``); redeclaring it overrides
-                # the base's member with an incompatible kind.
-                if (
-                    isinstance(field.target, ast.Name)
-                    and field.target.id == "root"
-                    and "root" in inherited
-                ):
-                    continue
                 if isinstance(field.target, ast.Name):
                     target = (
                         shadowing if field.target.id == "property" else declarations
@@ -4118,20 +4275,8 @@ class FlextInfraUtilitiesModelsProtocol:
                 sibling_import_lines=(),
                 owner=owner,
                 contracts=tuple(contracts),
-                aliases=tuple(
-                    "type "
-                    + statement.name.id
-                    + " = "
-                    + ast.unparse(
-                        self._source_structural_annotation(
-                            statement.value, alias_tree, model, classes
-                        )
-                    )
-                    for alias_destination, statement, alias_tree, model in (
-                        self.source_model_aliases.values()
-                    )
-                    if alias_destination == destination
-                    and isinstance(statement.name, ast.Name)
+                aliases=self._source_rendered_aliases(
+                    destination, owner, classes, frozenset(names)
                 ),
             )
             template = (
@@ -4141,6 +4286,55 @@ class FlextInfraUtilitiesModelsProtocol:
                 / c.Infra.TEMPLATE_MODEL_PROTOCOL
             )
             return u.Cli.template_render(template, context).unwrap()
+
+        def _source_rendered_aliases(
+            self,
+            destination: Path,
+            owner: str,
+            classes: list[tuple[ast.ClassDef, tuple[str, ...], ast.Module]],
+            contracts: frozenset[str],
+        ) -> tuple[str, ...]:
+            """Render the model aliases a mirror module declares beside its contracts.
+
+            A model republished under its own name (``X = X``) projects to the
+            contract the holder already declares (``Holder.X``): that contract
+            is the alias, so no ``type`` statement redefines it. Any other alias
+            named like a declared contract would rebind it and fails.
+
+            Returns:
+                The ``type`` statements, in source order.
+
+            Raises:
+                ValueError: If an alias rebinds a declared contract name.
+
+            """
+            aliases: list[str] = []
+            for (
+                alias_destination,
+                statement,
+                alias_tree,
+                model,
+            ) in self.source_model_aliases.values():
+                if alias_destination != destination or not isinstance(
+                    statement.name, ast.Name
+                ):
+                    continue
+                name = statement.name.id
+                value = ast.unparse(
+                    self._source_structural_annotation(
+                        statement.value, alias_tree, model, classes
+                    )
+                )
+                if name in contracts:
+                    if value == f"{owner}.{name}":
+                        continue
+                    message = (
+                        f"model alias rebinds the projected contract {owner}.{name} "
+                        f"with {value}: {destination}"
+                    )
+                    raise ValueError(message)
+                aliases.append(f"type {name} = {value}")
+            return tuple(aliases)
 
         @staticmethod
         def _source_promote_base_reads(
@@ -4223,13 +4417,14 @@ class FlextInfraUtilitiesModelsProtocol:
                 Import statements needed by the source-derived field annotations.
 
             """
-            annotations = self._source_annotation_nodes(classes)
+            annotations = self._source_annotation_nodes(classes, destination)
             roots = {
                 symbol.id
                 for annotation in annotations
                 for symbol in ast.walk(annotation)
                 if isinstance(symbol, ast.Name)
             }
+            self._source_require_bindable_roots(classes, roots)
             runtime_imports: list[str] = []
             in_family = (
                 destination is not None
@@ -4284,10 +4479,80 @@ class FlextInfraUtilitiesModelsProtocol:
                 )
             return list(dict.fromkeys(runtime_imports))
 
+        def _source_require_bindable_roots(
+            self,
+            classes: list[tuple[ast.ClassDef, tuple[str, ...], ast.Module]],
+            roots: set[str],
+        ) -> None:
+            """Refuse a projected name the Protocol module can never bind.
+
+            A projected annotation keeps a source name only when an import
+            provides it. A name the model module declares itself (a plain
+            class, a dataclass, a module or owner-level alias) is neither a
+            projected model nor an import, so copying it would leave the
+            Protocol module with an undefined name.
+
+            Raises:
+                ValueError: If a projected annotation reads such a declaration.
+
+            """
+            unbound: dict[str, str] = {}
+            for tree in {id(tree): tree for _node, _path, tree in classes}.values():
+                statements = [
+                    *tree.body,
+                    *(
+                        statement
+                        for owner in tree.body
+                        if isinstance(owner, ast.ClassDef)
+                        for statement in owner.body
+                        if not isinstance(statement, ast.ClassDef)
+                    ),
+                ]
+                for statement in statements:
+                    match statement:
+                        case ast.ClassDef(name=name) | ast.FunctionDef(name=name):
+                            names = {name}
+                        case ast.TypeAlias(name=ast.Name(id=name)):
+                            names = {name}
+                        case ast.AnnAssign(target=ast.Name(id=name)):
+                            names = {name}
+                        case ast.Assign(targets=targets):
+                            names = {
+                                target.id
+                                for target in targets
+                                if isinstance(target, ast.Name)
+                            }
+                        case _:
+                            names = set()
+                    for name in names & roots:
+                        unbound.setdefault(name, self.source_module_names[id(tree)])
+            unbound = {
+                name: module
+                for name, module in unbound.items()
+                if name not in self.source_family_classes
+                and name not in FlextInfraUtilitiesCodegenNamespace.facade_families()
+            }
+            if unbound:
+                message = (
+                    "projected Protocol annotation reads a source declaration "
+                    "that is neither a model nor an import: "
+                    + ", ".join(
+                        f"{module}.{name}" for name, module in sorted(unbound.items())
+                    )
+                    + "; declare it as a model, publish it from its family "
+                    "package, or type the field through a t alias"
+                )
+                raise ValueError(message)
+
         def _source_annotation_nodes(
-            self, classes: list[tuple[ast.ClassDef, tuple[str, ...], ast.Module]]
+            self,
+            classes: list[tuple[ast.ClassDef, tuple[str, ...], ast.Module]],
+            destination: Path | None,
         ) -> list[ast.AST]:
             """Collect every annotation-bearing node the projected models declare.
+
+            A field a mirrored base already declares is inherited by the
+            contract, never written by it, so its annotation binds nothing here.
 
             Returns:
                 Field annotations, type parameters, method signature annotations
@@ -4297,8 +4562,27 @@ class FlextInfraUtilitiesModelsProtocol:
             annotations: list[ast.AST] = [
                 projection.declaration.annotation
                 for node, _path, _tree in classes
-                for projection in self.source_fields(node, classes)
+                for projection in (
+                    self.source_fields(node, classes)
+                    if destination is None
+                    else self._source_own_fields(
+                        node,
+                        classes,
+                        self._source_local_mirror_bases(node, destination, classes),
+                    )
+                )
             ]
+            # A mirrored base keeps the model's subscript arguments
+            # (``RootModel[Mapping[str, X]]``), and those evaluate at class
+            # creation even when the inherited root field no longer writes the
+            # annotation that used to bind them. Their names need the same
+            # provider binding as any other annotation root.
+            annotations.extend(
+                base.slice
+                for node, _path, _tree in classes
+                for base in node.bases
+                if isinstance(base, ast.Subscript)
+            )
             annotations.extend(
                 parameter
                 for node, _path, _tree in classes
@@ -4434,7 +4718,6 @@ class FlextInfraUtilitiesModelsProtocol:
                     alias
                     for alias in statement.names
                     if (alias.asname or alias.name.partition(".")[0]) in roots
-                    and alias.name.partition(".")[0] != "pydantic"
                 ]
                 for target, group in (
                     (
@@ -4458,10 +4741,10 @@ class FlextInfraUtilitiesModelsProtocol:
                 ):
                     if group:
                         target.append(ast.unparse(ast.Import(names=group)))
-            elif isinstance(statement, ast.ImportFrom) and statement.module not in {
-                "__future__",
-                "pydantic",
-            }:
+            elif (
+                isinstance(statement, ast.ImportFrom)
+                and statement.module != "__future__"
+            ):
                 # A source model may import the holder its mirror declares;
                 # the mirror reads that name from its own module scope.
                 names = [
@@ -4550,6 +4833,9 @@ class FlextInfraUtilitiesModelsProtocol:
                 declaration, ancestor_tree = self._source_register_ancestor(
                     ancestor, declarations
                 )
+                arguments = self._source_ancestor_arguments(
+                    model, ancestor, declarations
+                )
                 for projection in self._source_declared_fields(
                     declaration,
                     ancestor_tree,
@@ -4560,6 +4846,9 @@ class FlextInfraUtilitiesModelsProtocol:
                     if not isinstance(projection.declaration.target, ast.Name):
                         message = "model field target is not an authenticated name"
                         raise TypeError(message)
+                    projection.declaration.annotation = self._source_bind_annotation(
+                        projection.declaration.annotation, arguments
+                    )
                     fields[projection.declaration.target.id] = projection
             root = self._source_root_field(
                 route, (tree, node), declarations, frozen=frozen
@@ -4568,6 +4857,109 @@ class FlextInfraUtilitiesModelsProtocol:
                 fields["root"] = root
             self.source_field_cache[route] = tuple(fields.values())
             return list(self.source_field_cache[route])
+
+        def _source_ancestor_arguments(
+            self,
+            model: p.Infra.RopeSourceClass,
+            ancestor: p.Infra.RopeSourceClass,
+            classes: list[tuple[ast.ClassDef, tuple[str, ...], ast.Module]],
+        ) -> tuple[tuple[str, ast.expr], ...]:
+            """Bind an ancestor's parameters through authenticated native bases.
+
+            Returns:
+                Source parameter names paired with descendant-scope annotations.
+
+            Raises:
+                TypeError: If a class base has no enclosing source scope.
+
+            """
+            if model is ancestor:
+                return ()
+            target, _ = self._source_register_ancestor(ancestor, classes)
+            if not target.type_params:
+                return ()
+            definition, tree = self._source_register_ancestor(model, classes)
+            scope = model.get_scope().parent
+            if scope is None:
+                message = "generic class base has no enclosing source scope"
+                raise TypeError(message)
+            for base in definition.bases:
+                expression = base.value if isinstance(base, ast.Subscript) else base
+                binding = self.resolve_symbol(scope, expression)
+                if binding is None:
+                    continue
+                parent = binding.get_object()
+                if not self.py_class(parent) or ancestor not in parent.get_mro():
+                    continue
+                declaration, _ = self._source_register_ancestor(parent, classes)
+                actual = (
+                    tuple(base.slice.elts)
+                    if isinstance(base, ast.Subscript)
+                    and isinstance(base.slice, ast.Tuple)
+                    else (base.slice,)
+                    if isinstance(base, ast.Subscript)
+                    else ()
+                )
+                arguments = tuple(
+                    (
+                        parameter.name,
+                        self._source_structural_annotation(
+                            value,
+                            tree,
+                            definition,
+                            classes,
+                            lexical=scope,
+                        ),
+                    )
+                    for parameter, value in zip(
+                        declaration.type_params, actual, strict=False
+                    )
+                    if isinstance(
+                        parameter, ast.TypeVar | ast.ParamSpec | ast.TypeVarTuple
+                    )
+                )
+                if parent is ancestor:
+                    return arguments
+                return tuple(
+                    (name, self._source_bind_annotation(value, arguments))
+                    for name, value in self._source_ancestor_arguments(
+                        parent, ancestor, classes
+                    )
+                )
+            return ()
+
+        @staticmethod
+        def _source_bind_annotation(
+            annotation: ast.expr,
+            arguments: tuple[tuple[str, ast.expr], ...],
+        ) -> ast.expr:
+            """Apply source-derived generic arguments to one structural annotation.
+
+            Returns:
+                A fresh expression retaining non-parameter names and literals.
+
+            Raises:
+                TypeError: If annotation binding produces no expression.
+
+            """
+
+            class Bind(ast.NodeTransformer):
+                @override
+                def visit_Name(self, node: ast.Name) -> ast.AST:
+                    return next(
+                        (
+                            copy.deepcopy(value)
+                            for name, value in arguments
+                            if name == node.id
+                        ),
+                        node,
+                    )
+
+            rewritten = Bind().visit(copy.deepcopy(annotation))
+            if not isinstance(rewritten, ast.expr):
+                message = "generic annotation binding is not an expression"
+                raise TypeError(message)
+            return rewritten
 
         def _source_register_ancestor(
             self,
@@ -4594,11 +4986,15 @@ class FlextInfraUtilitiesModelsProtocol:
             ancestor_module, qualified = self._source_class_identity(ancestor)
             self.source_module_names[id(ancestor_tree)] = ancestor_module
             self.source_field_trees[id(ancestor_tree)] = ancestor_tree
-            declarations.append((
-                declaration,
-                tuple(qualified.split(".")),
-                ancestor_tree,
-            ))
+            if not any(
+                candidate is declaration and source is ancestor_tree
+                for candidate, _path, source in declarations
+            ):
+                declarations.append((
+                    declaration,
+                    tuple(qualified.split(".")),
+                    ancestor_tree,
+                ))
             return declaration, ancestor_tree
 
         def _source_root_field(
@@ -4675,6 +5071,11 @@ class FlextInfraUtilitiesModelsProtocol:
             native = self.qualified_name(
                 self.project, "BaseModel", module_name="pydantic"
             ).get_object()
+            if "model_copy" not in model.get_attributes() and any(
+                FlextInfraUtilitiesRopeRuntimeTypes.unresolved_witness(base)
+                for base in model.get_mro()
+            ):
+                return False
             method = model.get_attribute("model_copy").get_object()
             if method is native.get_attribute("model_copy").get_object():
                 return False
@@ -4708,7 +5109,17 @@ class FlextInfraUtilitiesModelsProtocol:
             ).get_object()
             # The protocol mirrors the concrete base: a model of the core model
             # base composes the core model contract (dump and copy).
-            port = self._source_class(facade.get_attribute(p.BaseModel.__name__))
+            resolved_port = self.mro_class(facade, p.BaseModel.__name__)
+            if resolved_port is not None:
+                port = resolved_port
+            else:
+                port_binding = facade.get_attribute(p.BaseModel.__name__)
+                assigned_port = self._source_assigned_class(port_binding, frozenset())
+                port = (
+                    assigned_port
+                    if assigned_port is not None
+                    else self._source_class(port_binding)
+                )
             protocol = self.qualified_name(
                 self.project, "Protocol", module_name="typing"
             ).get_object()
@@ -4855,9 +5266,43 @@ class FlextInfraUtilitiesModelsProtocol:
                         method, definition, tree, declarations, ancestor.get_scope()
                     )
                     if projected is not None:
+                        self._source_bind_callable(
+                            projected,
+                            self._source_ancestor_arguments(
+                                model, ancestor, declarations
+                            ),
+                        )
                         methods[method.name] = projected
             self.source_method_cache[route] = tuple(methods.values())
             return self.source_method_cache[route]
+
+        def _source_bind_callable(
+            self,
+            method: ast.FunctionDef | ast.AsyncFunctionDef,
+            arguments: tuple[tuple[str, ast.expr], ...],
+        ) -> None:
+            """Specialize inherited signatures while keeping method-local generics."""
+            local = {
+                parameter.name
+                for parameter in method.type_params
+                if isinstance(parameter, ast.TypeVar | ast.ParamSpec | ast.TypeVarTuple)
+            }
+            bindings = tuple(
+                (name, value) for name, value in arguments if name not in local
+            )
+            for argument in (
+                *method.args.posonlyargs,
+                *method.args.args,
+                *method.args.kwonlyargs,
+                method.args.vararg,
+                method.args.kwarg,
+            ):
+                if argument is not None and argument.annotation is not None:
+                    argument.annotation = self._source_bind_annotation(
+                        argument.annotation, bindings
+                    )
+            if method.returns is not None:
+                method.returns = self._source_bind_annotation(method.returns, bindings)
 
         def _source_method_owner(
             self, ancestor: p.Infra.RopeSourceClass
@@ -4941,11 +5386,11 @@ class FlextInfraUtilitiesModelsProtocol:
             for decorator in method.decorator_list:
                 if self._denotes(decorator, scope, "functools", "cached_property"):
                     # The member keeps the source's own ``cached_property``
-                    # spelling: Pyright types a model's cached member as the
+                    # spelling: the model's cached member is typed as the
                     # ``cached_property[T]`` descriptor, which neither a plain
                     # ``property`` nor an attribute annotation accepts, while
-                    # Pyright, Pyrefly and Mypy all accept the same descriptor
-                    # declared on the Protocol. The source import that binds
+                    # Pyrefly accepts the same descriptor declared on the
+                    # Protocol. The source import that binds
                     # it is retained with the projected annotation providers.
                     decorators.append(copy.deepcopy(decorator))
                     continue
@@ -5270,10 +5715,11 @@ class FlextInfraUtilitiesModelsProtocol:
                 )
             return fields
 
-        def _source_witness_bound(
+        def _source_structural_annotation(
             self,
-            value: ast.expr,
-            owner: tuple[ast.Module, ast.ClassDef, tuple[str, ...]],
+            annotation: ast.expr,
+            tree: ast.Module,
+            model: ast.ClassDef,
             classes: list[tuple[ast.ClassDef, tuple[str, ...], ast.Module]],
             models: tuple[str, Mapping[str, str]],
         ) -> ast.expr:
@@ -5380,6 +5826,14 @@ class FlextInfraUtilitiesModelsProtocol:
                     self.substitutions = 0
 
                 @override
+                def visit_Constant(self, node: ast.Constant) -> ast.AST:
+                    # A quoted forward reference names a type like its
+                    # unquoted form; Literal payloads never reach here.
+                    if not isinstance(node.value, str):
+                        return node
+                    return self.visit(ast.parse(node.value, mode="eval").body)
+
+                @override
                 def visit_Name(self, node: ast.Name) -> ast.AST:
                     projected = self_owner._source_projected_name(node, member)
                     self.substitutions += projected is not node
@@ -5395,8 +5849,10 @@ class FlextInfraUtilitiesModelsProtocol:
 
                 @override
                 def visit_Subscript(self, node: ast.Subscript) -> ast.AST:
-                    container = self_owner._source_read_only_container(
-                        node.value, scope
+                    container = (
+                        self_owner._source_read_only_container(node.value, scope)
+                        if scope is not None
+                        else None
                     )
                     before = self.substitutions
                     projected = self_owner._source_projected_subscript(
@@ -5494,7 +5950,7 @@ class FlextInfraUtilitiesModelsProtocol:
             self,
             visitor: ast.NodeTransformer,
             node: ast.Subscript,
-            context: tuple[p.Infra.RopeScope, frozenset[str]],
+            context: tuple[p.Infra.RopeScope | None, frozenset[str]],
         ) -> ast.AST:
             """Unwrap metadata and instance wrappers around a projected value.
 
@@ -5508,7 +5964,7 @@ class FlextInfraUtilitiesModelsProtocol:
             """
             scope, bindings = context
             name = ast.unparse(node.value)
-            if self._source_instance_wrapper(node, scope):
+            if scope is not None and self._source_instance_wrapper(node, scope):
                 return visitor.visit(node.slice)
             if name in bindings:
                 value = visitor.visit(self._source_annotated_value(node))
@@ -5672,12 +6128,21 @@ class FlextInfraUtilitiesModelsProtocol:
                 if node is model and source is tree
             ]
             if len(paths) != 1:
-                msg = "annotation has no unique native model scope"
+                msg = (
+                    "annotation has no unique native model scope: "
+                    f"annotation={expression!r} module={module_name!r} "
+                    f"model={model.name!r} paths={paths!r}"
+                )
                 raise ValueError(msg)
             owner = self.project.get_module(module_name)
             for part in paths[0]:
                 owner = self._source_class(owner.get_attribute(part))
-            binding = self.resolve_symbol(scope or owner.get_scope(), expression)
+            owner_scope = owner.get_scope()
+            if owner_scope is None:
+                return None
+            binding = self.resolve_symbol(
+                scope if scope is not None else owner_scope, expression
+            )
             if binding is None:
                 return None
             alias = self.annotation_alias_definition(binding)
@@ -5745,6 +6210,15 @@ class FlextInfraUtilitiesModelsProtocol:
                 def visit_Subscript(self, node: ast.Subscript) -> ast.AST:
                     if projector._denotes(node.value, lexical, "typing", "Literal"):
                         return node
+                    # An expanded alias is projected like a field annotation:
+                    # ``Annotated`` is its value type, its metadata stays with
+                    # the model (``m.Field``) and is never read by the mirror.
+                    if (
+                        projector._denotes(node.value, lexical, "typing", "Annotated")
+                        and isinstance(node.slice, ast.Tuple)
+                        and node.slice.elts
+                    ):
+                        return self.visit(node.slice.elts[0])
                     return self.generic_visit(node)
 
             return ast.unparse(Expand().visit(declaration.value))
@@ -5770,7 +6244,12 @@ class FlextInfraUtilitiesModelsProtocol:
                 self.project, "BaseModel", module_name="pydantic"
             ).get_object()
             ancestry = value.get_mro()
-            if model_base not in ancestry:
+            resolved_mro_base = (
+                model_base not in ancestry
+                and isinstance(value_ast := value.get_ast(), ast.ClassDef)
+                and self._source_mro_base_matches(value, value_ast, model_base)
+            )
+            if model_base not in ancestry and not resolved_mro_base:
                 return None
             # A third-party model is an external boundary type with no FLEXT
             # projection; its concrete annotation stays as declared. Upstream
@@ -5783,7 +6262,7 @@ class FlextInfraUtilitiesModelsProtocol:
                 0
             ] not in self.source_model_facade_import_roots | {self.source_package_name}:
                 return None
-            if any(
+            if not resolved_mro_base and any(
                 FlextInfraUtilitiesRopeRuntimeTypes.unresolved_witness(base)
                 for base in ancestry
             ):
@@ -6301,7 +6780,7 @@ class FlextInfraUtilitiesModelsProtocol:
             )
 
         def _source_family_references(
-            self, expression: ast.expr, scope: p.Infra.RopeScope
+            self, expression: ast.expr, scope: p.Infra.RopeScope | None
         ) -> ast.expr:
             """Spell every own-letter reference through its declaring family class.
 
@@ -6335,7 +6814,7 @@ class FlextInfraUtilitiesModelsProtocol:
             self,
             visitor: ast.NodeTransformer,
             node: ast.Attribute,
-            scope: p.Infra.RopeScope,
+            scope: p.Infra.RopeScope | None,
         ) -> ast.AST:
             """Respell one own ``p`` attribute chain through its family class.
 
@@ -6372,7 +6851,7 @@ class FlextInfraUtilitiesModelsProtocol:
             )
 
         def _source_letter_foreign_bound(
-            self, scope: p.Infra.RopeScope, letter: str
+            self, scope: p.Infra.RopeScope | None, letter: str
         ) -> bool:
             """Whether the source binds ``letter`` from an upstream package.
 
@@ -6384,6 +6863,8 @@ class FlextInfraUtilitiesModelsProtocol:
                 True when the letter's binding declares outside the package.
 
             """
+            if scope is None:
+                return False
             bound = self.resolve_symbol(scope, letter)
             if bound is None:
                 return False
@@ -6412,7 +6893,10 @@ class FlextInfraUtilitiesModelsProtocol:
             )
             for size in range(len(attributes), 0, -1):
                 prefix = ".".join((letter, *attributes[:size]))
-                member = self.resolve_symbol(facade.get_scope(), prefix)
+                facade_scope = facade.get_scope()
+                if facade_scope is None:
+                    continue
+                member = self.resolve_symbol(facade_scope, prefix)
                 declared = (
                     self._source_binding_declaration(member)
                     if member is not None
@@ -6427,9 +6911,9 @@ class FlextInfraUtilitiesModelsProtocol:
                     # (``u.Field``) is no own family member: it keeps its
                     # spelling and the letter election binds the upstream.
                     return node
-                if declared[1] is None:
-                    continue
                 module, path = declared
+                if path is None:
+                    continue
                 family = module.rpartition(".")[0]
                 if not family.rpartition(".")[2].startswith("_"):
                     if letter != "p":
@@ -6476,111 +6960,6 @@ class FlextInfraUtilitiesModelsProtocol:
             )
             return ast.copy_location(
                 ast.parse(f"{holder}.{member_path}", mode="eval").body, node
-            )
-
-        def _source_collect_import_routes(
-            self, statement: ast.stmt, expression: tuple[str, str], routes: set[str]
-        ) -> bool:
-            """Add the first-party model routes one import binds for an expression.
-
-            ``expression`` holds the referenced root name and its member suffix.
-
-            Returns:
-                Whether the import binds the root to a foreign owner.
-
-            """
-            root, suffix = expression
-            foreign_binding = False
-            if isinstance(statement, ast.ImportFrom) and statement.level == 0:
-                for alias in statement.names:
-                    if (alias.asname or alias.name) != root:
-                        continue
-                    if statement.module is None or not statement.module.startswith(
-                        f"{self.source_package_name}._models."
-                    ):
-                        exported = self.source_model_package_exports.get((
-                            statement.module or "",
-                            alias.name,
-                        ))
-                        if exported is None:
-                            foreign_binding = True
-                            continue
-                        routes.add(f"{exported}.{suffix}")
-                    else:
-                        routes.add(f"{statement.module}.{alias.name}.{suffix}")
-            if isinstance(statement, ast.Import):
-                for alias in statement.names:
-                    local = alias.asname or alias.name.partition(".")[0]
-                    if local != root:
-                        continue
-                    if not alias.name.startswith(
-                        f"{self.source_package_name}._models."
-                    ):
-                        foreign_binding = True
-                        continue
-                    routes.add(f"{alias.name}.{suffix}")
-            return foreign_binding
-
-        def _source_imported_model_route(
-            self, expression: str, tree: ast.Module, model: ast.ClassDef
-        ) -> str | None:
-            """Resolve one first-party model import without name-only selection.
-
-            Returns:
-                The exact first-party model route, or ``None`` for other imports.
-
-            Raises:
-                ValueError: The imported owner is shadowed or ambiguous.
-
-            """
-            root, _, suffix = expression.partition(".")
-            routes: set[str] = set()
-            foreign_binding = False
-            for statement in tree.body:
-                if self._source_collect_import_routes(
-                    statement, (root, suffix), routes
-                ):
-                    foreign_binding = True
-            shadowed = any(
-                root in self._source_bound_names(statement)
-                for statement in (*tree.body, *model.body)
-                if not isinstance(statement, ast.Import | ast.ImportFrom)
-            )
-            if shadowed or foreign_binding or len(routes) > 1:
-                if root != "m" and (shadowed or len(routes) > 1):
-                    message = f"model import owner is shadowed or ambiguous: {root}"
-                    raise ValueError(message)
-                if routes and foreign_binding:
-                    message = f"model import has competing owners: {root}"
-                    raise ValueError(message)
-            return next(iter(routes), None)
-
-        def _source_model_facade_binding(
-            self, tree: ast.Module, model: ast.ClassDef
-        ) -> bool:
-            """Authenticate one import of this package's public model facade.
-
-            Returns:
-                Whether ``m`` is bound only to the package's model facade.
-
-            """
-            owners = [
-                statement.module
-                for statement in tree.body
-                if isinstance(statement, ast.ImportFrom)
-                for alias in statement.names
-                if alias.name == "m" and (alias.asname or alias.name) == "m"
-            ]
-            shadowed = any(
-                "m" in self._source_bound_names(statement)
-                for statement in (*tree.body, *model.body)
-                if not isinstance(statement, ast.Import | ast.ImportFrom)
-            )
-            return (
-                len(owners) == 1
-                and owners[0] is not None
-                and owners[0].partition(".")[0] in self.source_model_facade_import_roots
-                and not shadowed
             )
 
         @classmethod
@@ -6761,9 +7140,6 @@ class FlextInfraUtilitiesModelsProtocol:
             Returns:
                 The authored source with only absent contracts inserted.
 
-            Raises:
-                ValueError: The canonical holder is absent or a contract conflicts.
-
             """
             source, generated_source = sources
             destination, package_name = target
@@ -6776,7 +7152,7 @@ class FlextInfraUtilitiesModelsProtocol:
             }
             additions: list[str] = []
             annotation_updates: list[tuple[int, int, str]] = []
-            offsets = self._source_line_offsets(source)
+            authored_runtime = False
             for node, _path, _module in classes:
                 present = authored.get(node.name)
                 expected = {
@@ -6787,30 +7163,36 @@ class FlextInfraUtilitiesModelsProtocol:
                     if isinstance(projection.declaration.target, ast.Name)
                 }
                 if present is not None:
-                    update = self._source_authored_contract_update(
+                    update, runtime = self._source_present_contract_update(
                         (node, present),
-                        classes,
+                        generated_source,
                         expected,
-                        ((tree, holder, destination), owner),
-                        (generated_source, offsets),
+                        (
+                            classes,
+                            tree,
+                            holder,
+                            destination,
+                            owner,
+                            self._source_line_offsets(source),
+                        ),
                     )
                     if update is not None:
                         annotation_updates.append(update)
+                    authored_runtime = authored_runtime or runtime
                     continue
-                replacement = self._source_emitted_contract(generated_source, node.name)
-                if replacement is None:
-                    msg = "projected contract has no source extent"
-                    raise ValueError(msg)
-                additions.extend((
-                    "    @runtime_checkable",
-                    "    " + replacement,
-                    "",
-                ))
+                self._source_append_missing_contract(
+                    generated_source, node.name, additions
+                )
             for start, end, replacement in sorted(annotation_updates, reverse=True):
                 source = source[:start] + replacement + source[end:]
             runtime_imports = self._source_generated_runtime_imports(
                 generated_source, package_name
             )
+            if authored_runtime:
+                runtime_imports = (
+                    *runtime_imports,
+                    "from typing import runtime_checkable",
+                )
             if additions:
                 source = self._source_append_authored_additions(
                     source, owner, additions, destination
@@ -6822,6 +7204,101 @@ class FlextInfraUtilitiesModelsProtocol:
                 destination,
                 runtime_imports=runtime_imports,
             )
+
+        def _source_append_missing_contract(
+            self, generated_source: str, name: str, additions: list[str]
+        ) -> None:
+            """Append one generated contract absent from the authored module.
+
+            Raises:
+                ValueError: If the generated contract has no source extent.
+
+            """
+            replacement = self._source_emitted_contract(generated_source, name)
+            if replacement is None:
+                msg = "projected contract has no source extent"
+                raise ValueError(msg)
+            additions.extend(("    @runtime_checkable", "    " + replacement, ""))
+
+        def _source_present_contract_update(
+            self,
+            pair: tuple[ast.ClassDef, ast.ClassDef],
+            generated_source: str,
+            expected: dict[str, str],
+            context: tuple[
+                list[tuple[ast.ClassDef, tuple[str, ...], ast.Module]],
+                ast.Module,
+                ast.ClassDef,
+                Path,
+                str,
+                list[int],
+            ],
+        ) -> tuple[tuple[int, int, str] | None, bool]:
+            """Project the update for one contract that already exists.
+
+            Returns:
+                The source replacement and whether runtime imports are required.
+
+            Raises:
+                ValueError: If the generated contract has no source extent.
+
+            """
+            node, present = pair
+            classes, tree, holder, destination, owner, offsets = context
+            if not any("Protocol" in ast.unparse(base) for base in present.bases):
+                replacement = self._source_emitted_contract(generated_source, node.name)
+                if replacement is None:
+                    msg = "projected contract has no source extent"
+                    raise ValueError(msg)
+                first_line = (
+                    present.decorator_list[0].lineno
+                    if present.decorator_list
+                    else present.lineno
+                )
+                if present.end_lineno is None:
+                    msg = "projected contract has no end line"
+                    raise ValueError(msg)
+                return (
+                    (
+                        offsets[first_line - 1],
+                        offsets[present.end_lineno],
+                        "    @runtime_checkable\n" + replacement,
+                    ),
+                    False,
+                )
+            # The authored contract is reconciled with its model whether or not
+            # it is already runtime-checkable: a missing decorator never skips
+            # the signature comparison or the duplicate-accessor replacement.
+            update = self._source_authored_contract_update(
+                (node, present),
+                classes,
+                expected,
+                ((tree, holder, destination), owner),
+                (generated_source, offsets),
+            )
+            if any(
+                "runtime_checkable" in ast.unparse(decorator)
+                for decorator in present.decorator_list
+            ):
+                return update, False
+            if update is None:
+                return (
+                    (
+                        offsets[present.lineno - 1],
+                        offsets[present.lineno - 1],
+                        "    @runtime_checkable\n",
+                    ),
+                    True,
+                )
+            # The replacement starts at the class keyword; the decorator and
+            # the class keep the authored indentation from the line start.
+            indent = " " * present.col_offset
+            _start, end, replacement = update
+            return (
+                offsets[present.lineno - 1],
+                end,
+                f"{indent}@runtime_checkable\n{indent}{replacement}",
+            ), True
 
         @staticmethod
         def _source_authored_holder(
@@ -6880,6 +7357,48 @@ class FlextInfraUtilitiesModelsProtocol:
             )
             return ast.get_source_segment(generated_source, emitted)
 
+        def _source_widened_signature(
+            self,
+            annotation: ast.expr,
+            tree: ast.Module,
+            holder: ast.ClassDef,
+            destination: Path,
+        ) -> str:
+            """Compare an authored annotation widened exactly as the projection widens.
+
+            Every container the single owner ``_source_read_only_container``
+            maps is exposed through its read-only ABC by the same
+            ``_source_read_only_rewrite`` the projection uses, so an authored
+            concrete container matches only the widening the projection
+            performs, never the reverse.
+
+            Returns:
+                The identity-normalized signature of the widened annotation.
+
+            """
+            scope = self.project.get_module(
+                self.module_name_for(destination.relative_to(self.repository_root))
+            ).get_scope()
+            owner = self
+
+            class Widen(ast.NodeTransformer):
+                @override
+                def visit_Subscript(self, node: ast.Subscript) -> ast.AST:
+                    container = (
+                        owner._source_read_only_container(node.value, scope)
+                        if scope is not None
+                        else None
+                    )
+                    self.generic_visit(node)
+                    if container is None:
+                        return node
+                    return owner._source_read_only_rewrite(container, node)
+
+            # Only subscripts are rewritten, and only into subscripts, so the
+            # visited annotation remains an expression.
+            widened = cast(ast.expr, Widen().visit(copy.deepcopy(annotation)))
+            return self._source_protocol_signature(widened, tree, holder, destination)
+
         def _source_authored_contract_update(
             self,
             contract: tuple[ast.ClassDef, ast.ClassDef],
@@ -6917,6 +7436,24 @@ class FlextInfraUtilitiesModelsProtocol:
                 ast.get_docstring(present)
                 in c.Infra.DocumentationText.MODEL_PROTOCOL_CONTRACT.value
             )
+            conflicts = [
+                (field.target.id, actual[field.target.id], expected[field.target.id])
+                for field in present.body
+                if isinstance(field, ast.AnnAssign)
+                and isinstance(field.target, ast.Name)
+                and field.target.id in expected
+                and actual[field.target.id] != expected[field.target.id]
+                and self._source_widened_signature(
+                    field.annotation, tree, holder, destination
+                )
+                != expected[field.target.id]
+            ]
+            if conflicts and not projected:
+                message = (
+                    "incompatible authored protocol contract "
+                    f"{owner}.{node.name}: {destination}; {conflicts}"
+                )
+                raise ValueError(message)
             covered = self._source_authored_contract_covered(
                 (node, present), classes, expected, actual
             )
@@ -6934,17 +7471,6 @@ class FlextInfraUtilitiesModelsProtocol:
                     offsets[present.end_lineno - 1] + present.end_col_offset,
                     replacement,
                 )
-            conflicts = [
-                (name, annotation, expected[name])
-                for name, annotation in actual.items()
-                if name in expected and annotation != expected[name]
-            ]
-            if conflicts:
-                message = (
-                    "incompatible authored protocol contract "
-                    f"{owner}.{node.name}: {destination}; {conflicts}"
-                )
-                raise ValueError(message)
             return None
 
         def _source_authored_contract_covered(
@@ -7167,6 +7693,12 @@ class FlextInfraUtilitiesModelsProtocol:
                 Source with every required provider bound exactly once.
 
             """
+            source = FlextInfraUtilitiesTransformerHeader.ensure_future_annotations(
+                source
+            )
+            source = normalize_protocol_source(
+                source, package_name=package_name, filename=str(destination)
+            )
             source = self._source_bind_runtime_imports(source, runtime_imports)
             tree = ast.parse(source)
             # Inside the own family an own-namespace route this projection
@@ -7479,8 +8011,14 @@ class FlextInfraUtilitiesModelsProtocol:
                                 ast.unparse(alias),
                                 runtime_required=(
                                     isinstance(imported, ast.ImportFrom)
-                                    and imported.module == "typing"
-                                    and alias.name in {"Protocol", "runtime_checkable"}
+                                    and (
+                                        imported.module == "pydantic"
+                                        or (
+                                            imported.module == "typing"
+                                            and alias.name
+                                            in {"Protocol", "runtime_checkable"}
+                                        )
+                                    )
                                 ),
                             )
                         except ValueError as error:
@@ -7515,6 +8053,8 @@ class FlextInfraUtilitiesModelsProtocol:
                 destination.relative_to(self.repository_root)
             )
             scope = self.project.get_module(module_name).get_scope()
+            if scope is None:
+                return ast.unparse(annotation)
             facade = self.project.get_module(
                 f"{self.source_package_name}.protocols"
             ).get_attribute("p")
@@ -7546,7 +8086,7 @@ class FlextInfraUtilitiesModelsProtocol:
                             msg = "Annotated field has no value type"
                             raise ValueError(msg)
                         return self.visit(node.slice.elts[0])
-                    return self.generic_visit(node)
+                    return cast(ast.expr, self.generic_visit(node))
 
             normalized = Normalize().visit(copy.deepcopy(annotation))
             return ast.unparse(ast.fix_missing_locations(normalized))
@@ -7891,7 +8431,10 @@ class FlextInfraUtilitiesModelsProtocol:
             protocol_base = self.qualified_name(
                 self.project, "Protocol", module_name="typing"
             ).get_object()
-            for contract in context.contracts:
+            for contract in cast(
+                Sequence[m.Infra.ModelProtocolRenderContext.ModelProtocolContract],
+                context.contracts,
+            ):
                 present = holder.get_attributes().get(contract.name)
                 if present is None:
                     missing.append(contract)
@@ -8159,8 +8702,13 @@ class FlextInfraUtilitiesModelsProtocol:
                 if resource is None:
                     message = f"indexed model source is unavailable: {entry.file_path}"
                     raise ValueError(message)
-                module = self.require_semantic_module(
-                    FlextInfraUtilitiesRopeCore.resolve_pymodule(self.project, resource)
+                module = cast(
+                    p.Infra.RopeSourceModule,
+                    self.require_semantic_module(
+                        FlextInfraUtilitiesRopeCore.resolve_pymodule(
+                            self.project, resource
+                        )
+                    ),
                 )
                 registered = self._inventory_module_models(module, model_base)
                 if registered.failure:
@@ -9007,12 +9555,24 @@ class FlextInfraUtilitiesModelsProtocol:
         ) -> bool:
             if scope is None:
                 return False
-            return self.same_name(
-                self.qualified_name(self.project, name, module_name=module),
-                FlextInfraUtilitiesRopeRuntime.expression_name(
-                    scope, ast.unparse(node)
-                ),
+            expression = ast.unparse(node)
+            key = (id(scope), expression, module, name)
+            cached = self.source_denotations.get(key)
+            if cached is not None:
+                return cached
+            if not any(item is scope for item in self.source_denotation_scopes):
+                self.source_denotation_scopes.append(scope)
+            identity_key = (module, name)
+            identity = self.source_qualified_names.get(identity_key)
+            if identity is None:
+                identity = self.qualified_name(self.project, name, module_name=module)
+                self.source_qualified_names[identity_key] = identity
+            denoted = self.same_name(
+                identity,
+                FlextInfraUtilitiesRopeRuntime.expression_name(scope, expression),
             )
+            self.source_denotations[key] = denoted
+            return denoted
 
         def _member(
             self, binding: p.Infra.RopePyName, route: str
@@ -9021,6 +9581,65 @@ class FlextInfraUtilitiesModelsProtocol:
             if not self.py_class(value):
                 return None
             return self.resolve_symbol(value.get_scope(), route)
+
+        @staticmethod
+        def _source_assignment_values(tree: ast.Module) -> dict[int, ast.expr]:
+            """Index every assigned expression by its target identity.
+
+            Returns:
+                The target identities mapped to their assigned expressions.
+
+            """
+            values: dict[int, ast.expr] = {}
+            for statement in ast.walk(tree):
+                if isinstance(statement, ast.Assign):
+                    for target in statement.targets:
+                        values[id(target)] = statement.value
+                elif (
+                    isinstance(statement, ast.AnnAssign) and statement.value is not None
+                ):
+                    values[id(statement.target)] = statement.value
+            return values
+
+        def _source_assigned_class(
+            self,
+            binding: p.Infra.RopePyName,
+            seen: frozenset[int],
+        ) -> p.Infra.RopeSourceClass | None:
+            """Follow an assigned alias to the class it republishes.
+
+            Returns:
+                The assigned source class, or None when no alias resolves.
+
+            """
+            if not (
+                FlextInfraUtilitiesRopeRuntimeTypes.assigned_name(binding)
+                and id(binding) not in seen
+            ):
+                return None
+            module, _line = FlextInfraUtilitiesRopeRuntime.definition_location(binding)
+            if module is None or module.get_resource() is None:
+                return None
+            values = self._source_assignment_values(module.get_ast())
+            scope = module.get_scope()
+            for assignment in binding.assignments:
+                node = assignment.ast_node
+                value = None if node is None else values.get(id(node))
+                if value is None:
+                    continue
+                alias = FlextInfraUtilitiesRopeRuntime.expression_name(
+                    scope, ast.unparse(value)
+                )
+                if alias is None:
+                    continue
+                resolved = (
+                    self._source_assigned_class(alias, seen | {id(binding)})
+                    if FlextInfraUtilitiesRopeRuntimeTypes.assigned_name(alias)
+                    else self._source_class(alias)
+                )
+                if resolved is not None:
+                    return resolved
+            return None
 
         def _source_class(self, binding: p.Infra.RopePyName) -> p.Infra.RopeSourceClass:
             """Require the source capability already proved by model admission.
@@ -9034,9 +9653,78 @@ class FlextInfraUtilitiesModelsProtocol:
             """
             value = binding.get_object()
             if not self.py_class(value):
-                message = "model has no authenticated native source class"
+                message = f"model has no authenticated native source class: {binding}"
                 raise TypeError(message)
             return value
+
+    @classmethod
+    def model_protocol_routes(
+        cls,
+        repository_root: Path,
+        source_project: p.Infra.RopeProject,
+    ) -> Mapping[str, str]:
+        """Map every model route of the workspace to its projected protocol.
+
+        Returns:
+            Model identity routes of every projected package, with their
+            public protocol routes.
+
+        """
+        routes: dict[str, str] = {}
+        for package_name in cls.protocol_model_package_names(
+            repository_root, source_project
+        ):
+            routes.update(
+                cls.protocol_model_routes_from_source(
+                    repository_root,
+                    source_project,
+                    package_name=package_name,
+                )
+            )
+        return routes
+
+    @classmethod
+    def model_protocol_declarations(
+        cls, repository_root: Path, source_project: p.Infra.RopeProject
+    ) -> tuple[tuple[str, str, Path], ...]:
+        """Compose native declaration witnesses for selected model suppliers.
+
+        Returns:
+            One canonical declaration record per model, ordered by source identity.
+
+        Raises:
+            ValueError: A model has competing protocol declaration witnesses.
+
+        """
+        project = source_project
+        roots = {repository_root}
+        for model in cls.model_protocol_routes(repository_root, project):
+            if model.startswith("m."):
+                continue
+            value = FlextInfraUtilitiesRopeRuntime.qualified_name(
+                project, model
+            ).get_object()
+            if not FlextInfraUtilitiesRopeRuntime.py_class(value):
+                continue
+            resource = value.get_module().get_resource()
+            if resource is not None:
+                root = FlextInfraUtilitiesDiscovery.project_root(
+                    Path(resource.real_path),
+                    source_project=project,
+                )
+                if root is not None:
+                    roots.add(root)
+        declarations: dict[str, tuple[str, str, Path]] = {}
+        for root in sorted(roots):
+            for package in cls.protocol_model_package_names(root, project):
+                for record in cls.protocol_model_declarations_from_source(
+                    root, project, package_name=package
+                ):
+                    previous = declarations.setdefault(record[0], record)
+                    if previous != record:
+                        message = f"competing native protocol declarations: {record[0]}"
+                        raise ValueError(message)
+        return tuple(declarations[key] for key in sorted(declarations))
 
 
 __all__: list[str] = ["FlextInfraUtilitiesModelsProtocol"]

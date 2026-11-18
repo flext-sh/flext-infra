@@ -44,21 +44,11 @@ class FlextInfraModelsCheck:
         """Required Bandit JSON arrays, including a clean pair of empty arrays."""
 
         results: Annotated[
-            Sequence[
-                Annotated[
-                    p.Infra.BanditFinding,
-                    t.schema_for_model(lambda: FlextInfraModelsCheck.BanditFinding),
-                ]
-            ],
+            Sequence[FlextInfraModelsCheck.BanditFinding],
             m.Field(description="Native security findings"),
         ]
         errors: Annotated[
-            Sequence[
-                Annotated[
-                    p.Infra.BanditScanError,
-                    t.schema_for_model(lambda: FlextInfraModelsCheck.BanditScanError),
-                ]
-            ],
+            Sequence[FlextInfraModelsCheck.BanditScanError],
             m.Field(description="Source files that were not audited"),
         ]
 
@@ -111,11 +101,6 @@ class FlextInfraModelsCheck:
         ruff_args: str | None = m.Field(
             None, alias="ruff-args", description="Extra arguments forwarded to Ruff"
         )
-        pyright_args: str | None = m.Field(
-            None,
-            alias="pyright-args",
-            description="Extra arguments forwarded to Pyright",
-        )
         file: Annotated[
             str | None,
             m.Field(
@@ -155,73 +140,8 @@ class FlextInfraModelsCheck:
             m.Field(description="Requested gates elected for this project's inputs"),
         ] = ()
         source_identity: Annotated[
-            Annotated[
-                p.Infra.GitIdentityReport,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsGitIdentity.GitIdentityReport
-                ),
-            ]
-            | None,
+            FlextInfraModelsGitIdentity.GitIdentityReport | None,
             m.Field(description="Original exact repository identity before gates"),
-        ] = None
-
-    class MypyResourceLimit(m.ContractModel):
-        """Validated memory and wall-time limits for every Mypy process."""
-
-        memory_limit_mb: Annotated[
-            int,
-            m.Field(
-                gt=0,
-                le=c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT,
-                description="Positive Mypy memory limit in MiB (Linux AS; Darwin RSS)",
-            ),
-        ] = c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT
-        timeout_seconds: Annotated[
-            int,
-            m.Field(
-                gt=0,
-                description=(
-                    "Positive Mypy wall-time limit in seconds, resolved from"
-                    " tools.mypy.timeout_seconds in tooling.yaml or the env"
-                    " override"
-                ),
-            ),
-        ]
-
-        @m.computed_field
-        @property
-        def memory_limit_bytes(self) -> int:
-            """Validated memory limit converted to bytes for the platform owner.
-
-            Returns:
-                The resulting ``int``.
-
-            """
-            return self.memory_limit_mb * c.Infra.BYTES_PER_MIB
-
-    class MypyInvocation(m.ContractModel):
-        """Checker inputs; callers cannot select an executable or Python program."""
-
-        targets: Annotated[
-            tuple[Path, ...],
-            m.Field(min_length=1, description="Files or directories to check"),
-        ]
-        workspace: Annotated[
-            Path | None,
-            m.Field(description="Workspace owning the checker environment"),
-        ] = None
-        config_file: Annotated[
-            Path | None,
-            m.Field(description="Owned Mypy configuration"),
-        ] = None
-        report_json: Annotated[
-            bool,
-            m.Field(description="Emit native JSON diagnostics"),
-        ] = False
-        verbose: Annotated[bool, m.Field(description="Emit Mypy progress")] = False
-        profile_output: Annotated[
-            Path | None,
-            m.Field(description="Optional cProfile output destination"),
         ] = None
 
     class FixPyreflyConfigCommand(FlextInfraModelsMixins.WriteMixin, m.ContractModel):
@@ -317,12 +237,18 @@ class FlextInfraModelsCheck:
         severity: Annotated[str, m.Field(description="Issue severity level")] = (
             c.Infra.ERROR
         )
-        locations: tuple[SarifLocation, ...] = m.Field(
+        locations: tuple[
+            FlextInfraModelsCheck.SarifLocation,
+            ...,
+        ] = m.Field(
             default=(),
             description="Native primary source spans when supplied by the scanner",
             validate_default=True,
         )
-        related_locations: tuple[SarifLocation, ...] = m.Field(
+        related_locations: tuple[
+            FlextInfraModelsCheck.SarifLocation,
+            ...,
+        ] = m.Field(
             default=(),
             description="All native comparison locations, including other projects",
             validate_default=True,
@@ -381,7 +307,7 @@ class FlextInfraModelsCheck:
         """Exact native output paired with its atomically published runtime path."""
 
         raw_output: Annotated[str, t.StringConstraints(strip_whitespace=False)] = (
-            m.Field(description="Unmodified native output")
+            m.Field(description="Unmodified native output", exclude=True)
         )
         path: Path = m.Field(description="Durably published native output receipt")
 
@@ -394,7 +320,10 @@ class FlextInfraModelsCheck:
             default=None,
             description="Declared native tool outcome; absent derives it from findings",
         )
-        issues: tuple[Issue, ...] = m.Field(
+        issues: tuple[
+            FlextInfraModelsCheck.Issue,
+            ...,
+        ] = m.Field(
             description="Complete native diagnostics",
         )
         raw_output: Annotated[str, t.StringConstraints(strip_whitespace=False)] = (
@@ -405,13 +334,13 @@ class FlextInfraModelsCheck:
     class GateExecution(m.ArbitraryTypesModel):
         """Execution result for a single quality gate."""
 
-        result: Annotated[
-            p.Infra.GateResult,
-            t.schema_for_model(lambda: FlextInfraModelsCheck.GateResult),
-        ] = m.Field(
+        result: FlextInfraModelsCheck.GateResult = m.Field(
             description="Gate result model",
         )
-        issues: tuple[Issue, ...] = m.Field(
+        issues: tuple[
+            FlextInfraModelsCheck.Issue,
+            ...,
+        ] = m.Field(
             default_factory=tuple,
             description=(
                 "Complete native gate diagnostics, including informative findings"
@@ -424,6 +353,7 @@ class FlextInfraModelsCheck:
                     "In-memory native output; persisted once at raw_receipt rather "
                     "than duplicated inside serialized execution summaries"
                 ),
+                exclude=True,
                 validate_default=True,
             )
         )
@@ -436,19 +366,13 @@ class FlextInfraModelsCheck:
             description="Native process/report verdict, independent of findings policy",
         )
         process: Annotated[
-            Annotated[
-                p.Cli.ProcessOutcome, t.schema_for_model(lambda: m.Cli.ProcessOutcome)
-            ]
-            | None,
+            m.Cli.ProcessOutcome | None,
             m.Field(description="Original native process, when this gate invoked one"),
         ] = None
         components: Annotated[
             MutableMapping[
                 str,
-                Annotated[
-                    p.Infra.GateExecution,
-                    t.schema_for_model(lambda: FlextInfraModelsCheck.GateExecution),
-                ],
+                FlextInfraModelsCheck.GateExecution,
             ],
             m.Field(description="Executions owned by a composite gate"),
         ] = m.Field(default_factory=dict)
@@ -502,12 +426,9 @@ class FlextInfraModelsCheck:
 
         gates: MutableMapping[
             str,
-            Annotated[
-                p.Infra.GateExecution,
-                t.schema_for_model(lambda: FlextInfraModelsCheck.GateExecution),
-            ],
+            FlextInfraModelsCheck.GateExecution,
         ] = m.Field(
-            default_factory=dict[str, "FlextInfraModelsCheck.GateExecution"],
+            default_factory=dict,
             description="Gate name to execution mapping",
         )
 
@@ -542,10 +463,7 @@ class FlextInfraModelsCheck:
 
         results: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.ProjectResult,
-                    t.schema_for_model(lambda: FlextInfraModelsCheck.ProjectResult),
-                ],
+                FlextInfraModelsCheck.ProjectResult,
                 ...,
             ],
             m.Field(description="Individual project execution results."),
@@ -605,19 +523,13 @@ class FlextInfraModelsCheck:
             description="Result message",
         )
         locations: tuple[
-            Annotated[
-                p.Infra.SarifLocation,
-                t.schema_for_model(lambda: FlextInfraModelsCheck.SarifLocation),
-            ],
+            FlextInfraModelsCheck.SarifLocation,
             ...,
         ] = m.Field(
             description="Result locations",
         )
         related_locations: tuple[
-            Annotated[
-                p.Infra.SarifLocation,
-                t.schema_for_model(lambda: FlextInfraModelsCheck.SarifLocation),
-            ],
+            FlextInfraModelsCheck.SarifLocation,
             ...,
         ] = m.Field(
             (),
@@ -666,10 +578,7 @@ class FlextInfraModelsCheck:
             validate_default=True,
         )
         rules: tuple[
-            Annotated[
-                p.Infra.SarifRule,
-                t.schema_for_model(lambda: FlextInfraModelsCheck.SarifRule),
-            ],
+            FlextInfraModelsCheck.SarifRule,
             ...,
         ] = m.Field(
             default_factory=tuple,
@@ -677,10 +586,7 @@ class FlextInfraModelsCheck:
             description="Rule descriptors",
         )
         results: tuple[
-            Annotated[
-                p.Infra.SarifResult,
-                t.schema_for_model(lambda: FlextInfraModelsCheck.SarifResult),
-            ],
+            FlextInfraModelsCheck.SarifResult,
             ...,
         ] = m.Field(
             default_factory=tuple,
@@ -743,22 +649,14 @@ class FlextInfraModelsCheck:
         ] = ()
         targets: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.CheckProjectTarget,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsCheck.CheckProjectTarget
-                    ),
-                ],
+                FlextInfraModelsCheck.CheckProjectTarget,
                 ...,
             ],
             m.Field(description="Canonical project roots selected for this invocation"),
         ]
         results: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.ProjectResult,
-                    t.schema_for_model(lambda: FlextInfraModelsCheck.ProjectResult),
-                ],
+                FlextInfraModelsCheck.ProjectResult,
                 ...,
             ],
             m.Field(description="Only executions reached by this invocation"),
@@ -769,12 +667,7 @@ class FlextInfraModelsCheck:
         ]
         global_targets: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.CheckProjectTarget,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsCheck.CheckProjectTarget
-                    ),
-                ],
+                FlextInfraModelsCheck.CheckProjectTarget,
                 ...,
             ]
             | None,
@@ -826,29 +719,16 @@ class FlextInfraModelsCheck:
             validate_default=True,
         )
         runs: tuple[
-            Annotated[
-                p.Infra.SarifRun,
-                t.schema_for_model(lambda: FlextInfraModelsCheck.SarifRun),
-            ],
+            FlextInfraModelsCheck.SarifRun,
             ...,
         ] = m.Field(
             default_factory=tuple,
             description="SARIF runs",
         )
-        properties: (
-            Annotated[
-                p.Infra.CheckReportSummary,
-                t.schema_for_model(lambda: FlextInfraModelsCheck.CheckReportSummary),
-            ]
-            | None
-        ) = m.Field(
+        properties: FlextInfraModelsCheck.CheckReportSummary | None = m.Field(
             None,
             description="Typed invocation targets and executions; absent is unknown",
         )
 
 
 __all__: list[str] = ["FlextInfraModelsCheck"]
-
-
-SarifLocation = FlextInfraModelsCheck.SarifLocation
-Issue = FlextInfraModelsCheck.Issue

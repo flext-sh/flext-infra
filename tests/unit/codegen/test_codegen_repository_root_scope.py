@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import check, config
+from flext_infra import config
 from flext_infra.codegen import FlextInfraCodegenConform
 from tests import c, m, p, tm, u
 
@@ -29,7 +29,7 @@ class TestsFlextInfraCodegenRepositoryRootScope:
         project_name: str,
         authored_root: str,
     ) -> None:
-        """The generated Pyright projection retains authored scopes at fixed point."""
+        """The generated Pyrefly projection retains authored scopes at fixed point."""
         u.Tests.copy_tracked_mise_seeds(tmp_path)
         root = u.Tests.mk_project(
             tmp_path,
@@ -38,14 +38,14 @@ class TestsFlextInfraCodegenRepositoryRootScope:
         )
         project = u.Tests.project_spec(project_name)
         roots = (
-            config.Infra.tooling.tools.pyright.path_rules.source_dir,
+            config.Infra.tooling.tools.pyrefly.path_rules.source_dir,
             "docs",
             "scripts",
             "examples",
             authored_root,
         )
         for relative in roots:
-            directory = root / relative / project.package_name
+            directory = root / relative / tm.not_none(project.package_name)
             directory.mkdir(parents=True, exist_ok=True)
             (directory / "__init__.py").write_text("", encoding="utf-8")
         repository = u.Tests.repository_ref(project_name).model_copy(
@@ -70,16 +70,9 @@ class TestsFlextInfraCodegenRepositoryRootScope:
             item for item in first_plan.files if item.path.name == c.PYPROJECT_FILENAME
         )
         rendered = u.Tests.codegen_file_text(first)
-        pyright = u.Tests.toml_table_at(rendered, "tool", "pyright")
-        includes = frozenset(u.Tests.toml_strings(pyright["include"]))
-        tm.ok(frozenset(roots).issubset(includes))
-        tm.that(
-            frozenset(
-                str(u.Tests.toml_mapping(env)["root"])
-                for env in u.Tests.toml_list(pyright["executionEnvironments"])
-            ),
-            eq=includes,
-        )
+        pyrefly = u.Tests.toml_table_at(rendered, "tool", "pyrefly")
+        includes = frozenset(u.Tests.toml_strings(pyrefly[c.Infra.PROJECT_INCLUDES]))
+        tm.ok(frozenset(f"{root}/**/*.py*" for root in roots).issubset(includes))
         published = root / c.PYPROJECT_FILENAME
         published.write_bytes(tm.not_none(first.desired_content))
         published.chmod(tm.not_none(first.desired_mode))
@@ -320,11 +313,11 @@ class TestsFlextInfraCodegenRepositoryRootScope:
             tm.that(output, has=local_body)
             tm.that(output, lacks="--verb")
 
-    def test_repository_root_check_projects_profiled_total_timeout(
+    def test_repository_root_check_owns_its_route_deadline(
         self,
         tmp_path: Path,
     ) -> None:
-        """Project the typed check deadline, profiling, and child-stop grace once."""
+        """The route owns its deadline; no outer timeout truncates a complete run."""
         repository_root = self._render_root_makefile(tmp_path)
         execution = tm.ok(
             u.Cli.run_raw(
@@ -335,17 +328,17 @@ class TestsFlextInfraCodegenRepositoryRootScope:
         )
         tm.ok(u.Cli.process_succeeded(execution.outcome))
         make = config.Infra.codegen.make
-        gate_budget = check.FlextInfraGateRegistry(
-            project_gates=make.project_check_gates,
-        ).check_budget_seconds(make.check_gates_default, (repository_root,))
-        expected = (
-            "FLEXT_INFRA_PROFILE=1 "
-            f'FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/{make.check_profile_path}" '
-            f"{c.Infra.TIMEOUT_COMMAND} --signal=TERM "
-            f"--kill-after={c.Infra.TIMEOUT_KILL_AFTER_SECONDS}s "
-            f"{gate_budget + c.Infra.TIMEOUT_KILL_AFTER_SECONDS}s"
+        output = execution.stdout + execution.stderr
+        tm.that(
+            output,
+            has=(
+                "FLEXT_INFRA_PROFILE_OUTPUT="
+                f'"$(PROJECT_ROOT)/{make.check_profile_path}" '
+                f"{c.Infra.CLI_GROUP_WORKSPACE} {c.Infra.VERB_CHECK} "
+                '--repository-root "$(PROJECT_ROOT)"'
+            ),
         )
-        tm.that(execution.stdout + execution.stderr, has=expected)
+        tm.that(output, lacks=f"{c.Infra.TIMEOUT_COMMAND} --signal=TERM")
 
     def test_repository_root_declares_member_propagation(self, tmp_path: Path) -> None:
         """The workspace profile declares propagate through the workspace CLI."""

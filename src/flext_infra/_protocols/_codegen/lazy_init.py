@@ -8,14 +8,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Hashable, Mapping, MutableMapping, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
 from flext_cli import FlextCliProtocols
 
 from flext_infra._protocols import FlextInfraProtocolsMixins
-from flext_infra._typings import FlextInfraTypesBase, FlextInfraTypesRopeNative
+from flext_infra._typings import FlextInfraTypesBase
 
 if TYPE_CHECKING:
     from flext_infra import c, t
@@ -69,8 +69,40 @@ class FlextInfraProtocolsCodegenLazyInit:
             ...
 
         @property
+        def class_members(self) -> Mapping[str, Sequence[str]]:
+            """Names each defined class body binds, in order."""
+            ...
+
+        @property
+        def class_standin_defects(self) -> Mapping[str, Sequence[str]]:
+            """Structural member projected from the owning model.
+
+            Constructs of each defined class body a stand-in cannot represent
+            (ADR-018 stand-in composition law, rule 5).
+            """
+            ...
+
+        @property
         def values(self) -> Mapping[str, str]:
             """Source text of each assigned top-level value."""
+            ...
+
+        @property
+        def runtime_imports(self) -> frozenset[str]:
+            """Structural member projected from the owning model.
+
+            Absolute top-level packages imported at module scope outside type-
+            checking guards.
+            """
+            ...
+
+        @property
+        def runtime_names(self) -> frozenset[str]:
+            """Structural member projected from the owning model.
+
+            Local names bound by from-imports at module scope outside type-checking
+            guards.
+            """
             ...
 
     @runtime_checkable
@@ -80,68 +112,27 @@ class FlextInfraProtocolsCodegenLazyInit:
         path: Path
         name: str
         is_init: bool
-
-        @property
-        def members(self) -> dict[str, FlextInfraTypesBase.PythonMemberKind]:
-            """Bound names so far, in order."""
-            ...
-
-        @property
-        def imports(self) -> dict[str, str]:
-            """Import targets so far."""
-            ...
-
-        @property
-        def classes(self) -> dict[str, Sequence[str]]:
-            """Class bases so far."""
-            ...
-
-        @property
-        def class_exports(self) -> dict[str, Sequence[str] | None]:
-            """Class-level exports so far."""
-            ...
-
-        @property
-        def values(self) -> dict[str, str]:
-            """Assigned value text so far."""
-            ...
-
-        @property
-        def exports(self) -> list[str | None] | None:
-            """``__all__`` entries so far."""
-            ...
+        members: dict[str, FlextInfraTypesBase.PythonMemberKind]
+        imports: dict[str, str]
+        classes: dict[str, Sequence[str]]
+        class_exports: dict[str, Sequence[str] | None]
+        class_members: dict[str, Sequence[str]]
+        class_standin_defects: dict[str, Sequence[str]]
+        values: dict[str, str]
+        exports: list[str | None] | None
 
     @runtime_checkable
     class PythonModelRun(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def source_project(self) -> FlextInfraProtocolsWorkspaceSnapshot.RopeProject:
-            """Source view every module is read through."""
-            ...
-
+        source_project: FlextInfraProtocolsWorkspaceSnapshot.RopeProject
         module_files: Mapping[str, Path]
-
-        @property
-        def modules(
-            self,
-        ) -> Mapping[
-            FlextInfraTypesRopeNative.RopeNativeParsedModule,
-            FlextInfraProtocolsCodegenLazyInit.PythonModuleFacts,
-        ]:
-            """Facts of each parsed module, keyed by the run's parse."""
-            ...
-
-        @property
-        def project_notices(
-            self,
-        ) -> dict[Path, tuple[FlextInfraTypesBase.DocumentationLanguage, str]]:
-            """Structural member projected from the owning model.
-
-            Documentation language and copyright notice per owning project root,
-            read once per run.
-            """
-            ...
+        modules: MutableMapping[
+            Hashable, FlextInfraProtocolsCodegenLazyInit.PythonModuleFacts
+        ]
+        project_notices: dict[
+            Path, tuple[FlextInfraTypesBase.DocumentationLanguage, str]
+        ]
 
     @runtime_checkable
     class LazyInitPackageContext(FlextCliProtocols.BaseModel, Protocol):
@@ -231,6 +222,24 @@ class FlextInfraProtocolsCodegenLazyInit:
 
             Importable direct child packages recorded as metadata; their symbols are
             not reexported by an ancestor.
+            """
+            ...
+
+        @property
+        def deferred_exports(self) -> Sequence[str]:
+            """Structural member projected from the owning model.
+
+            Facade-composed class exports published as stand-ins; their members and
+            bases are resolved at run time from the code.
+            """
+            ...
+
+        @property
+        def deferred_instances(self) -> Sequence[str]:
+            """Structural member projected from the owning model.
+
+            Declared configuration-root exports published as stand-ins that build
+            the root on first attribute read.
             """
             ...
 
@@ -369,6 +378,8 @@ class FlextInfraProtocolsCodegenLazyInit:
             """The run's parse-once static Python model."""
             ...
 
+        providers: Mapping[str, Path]
+
         @property
         def plans(
             self,
@@ -383,34 +394,11 @@ class FlextInfraProtocolsCodegenLazyInit:
             """Package contexts by directory."""
             ...
 
-        @property
-        def parents(self) -> dict[Path, Sequence[str]]:
-            """Facade parents by package directory."""
-            ...
-
-        @property
-        def declared(self) -> dict[str, frozenset[str]]:
-            """Declared facade letters by package."""
-            ...
-
-        @property
-        def declarations(self) -> dict[tuple[str, str], tuple[str, bool]]:
-            """Structural member projected from the owning model.
-
-            Declaring module and letter status per published (package, name) whose
-            route crosses only decided plans.
-            """
-            ...
-
-        @property
-        def packages(self) -> dict[Path, str]:
-            """Declared public package by project."""
-            ...
-
-        @property
-        def collisions(self) -> list[str]:
-            """Ambiguous export ownership findings."""
-            ...
+        parents: dict[Path, Sequence[str]]
+        declared: dict[str, frozenset[str]]
+        declarations: dict[tuple[str, str], tuple[str, bool]]
+        packages: dict[Path, str]
+        collisions: list[str]
 
     @runtime_checkable
     class RopeProjectLayout(FlextCliProtocols.BaseModel, Protocol):
@@ -508,6 +496,24 @@ class FlextInfraProtocolsCodegenLazyInit:
         @property
         def lazy_export_mapping(self) -> t.NonEmptyStr:
             """Literal elected export-to-target installer argument."""
+            ...
+
+        @property
+        def deferred_exports_argument(self) -> str:
+            """Structural member projected from the owning model.
+
+            Line-prefixed ``deferred_members`` installer argument naming the stand-
+            in exports; empty when the package defers none.
+            """
+            ...
+
+        @property
+        def deferred_instances_call(self) -> str:
+            """Structural member projected from the owning model.
+
+            ``defer_lazy_instances`` call bound after the installer; empty when the
+            package defers no configuration root.
+            """
             ...
 
     @runtime_checkable

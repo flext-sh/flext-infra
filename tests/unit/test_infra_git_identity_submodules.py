@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import shutil
 from pathlib import Path
 
 from tests import c, m, tm, u
@@ -128,16 +127,15 @@ class TestsFlextInfraGitIdentitySubmodules:
         tm.that(identity.upstream_remote, eq=upstream)
 
     @staticmethod
-    def test_unborn_repository_returns_typed_failure(tmp_path: Path) -> None:
-        """Discovery can reject an initialized repository with no committed HEAD."""
+    def test_unborn_repository_reports_missing_commit(tmp_path: Path) -> None:
+        """An initialized repository has identity before its first commit."""
         unborn = tmp_path / "unborn"
         unborn.mkdir()
         tm.ok(u.Cli.run_checked(["git", "-C", str(unborn), "init", "--quiet"]))
 
         identity = u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=unborn))
 
-        tm.ok(identity.failure)
-        tm.that(identity.error or "", has="Git repository has no committed HEAD")
+        tm.that(tm.ok(identity).head_oid, none=True)
 
     def test_submodule_checkout_is_not_a_superproject(self, tmp_path: Path) -> None:
         """The nested checkout is a submodule, and owns none of its own."""
@@ -202,7 +200,7 @@ class TestsFlextInfraGitIdentitySubmodules:
     ) -> None:
         """Nested checkout with a real .git directory still reports is_submodule.
 
-        Why (flext-infra-c3h): operator trees like cosmos-charts under cosmos-main
+        Why (flext-infra-c3h): operator trees like a nested chart repository
         keep a full .git directory (not a gitfile) while the superproject index
         holds a gitlink. Git still reports --show-superproject-working-tree;
         ``git_identity.is_submodule`` must follow that signal.
@@ -210,7 +208,7 @@ class TestsFlextInfraGitIdentitySubmodules:
         child = self._repo(tmp_path / "child")
         parent = self._repo(tmp_path / "parent")
         member = parent / "apps" / "member"
-        shutil.copytree(child, member)
+        u.Tests.reflink_copy_tree(child, member)
         (parent / ".gitmodules").write_text(
             f"[submodule 'member']\n\tpath = apps/member\n\turl = {child.as_uri()}\n",
             encoding="utf-8",
@@ -315,20 +313,18 @@ class TestsGitTopology(TestsFlextInfraGitIdentitySubmodules):
         )
 
     @staticmethod
-    def test_evidence_root_preserves_unborn_and_corrupt_ref_failures(
+    def test_evidence_root_accepts_unborn_and_rejects_corrupt_refs(
         tmp_path: Path,
     ) -> None:
-        """Missing branches and corrupt refs retain distinct causal failures."""
+        """Unborn repositories permit evidence storage; corrupt refs fail."""
         root = tmp_path / "unborn"
         root.mkdir()
         u.Tests.git_run(root, "init", "--initial-branch=initial")
         unborn = u.Infra.refactor_report_evidence_root(root)
-        tm.fail(unborn)
-        tm.that(unborn.error_code, eq=c.Infra.GIT_UNBORN_HEAD_ERROR_CODE)
+        tm.ok(unborn)
         (root / c.GIT_DIR_NAME / "refs" / "heads" / "initial").write_text(
             "invalid object identifier\n", encoding="utf-8"
         )
         corrupt = u.Infra.refactor_report_evidence_root(root)
         tm.fail(corrupt)
-        tm.fail(corrupt.error_code == c.Infra.GIT_UNBORN_HEAD_ERROR_CODE)
         tm.not_none(corrupt.exception)

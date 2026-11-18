@@ -33,7 +33,7 @@ from flext_infra._utilities._codemod import (
 )
 from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
 from flext_infra._utilities._rope import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities._rope._analysis.sourcescan import (
+from flext_infra._utilities._rope._analysis import (
     FlextInfraUtilitiesRopeAnalysisSourceScan,
 )
 from flext_infra._utilities._rope.source_bases_runtime import (
@@ -450,7 +450,7 @@ class FlextInfraUtilitiesCodemodImportLawRules:
             m.Infra.SourceClassReference(
                 target=name, attributes=("s",), qualified_base=f"{name}.s"
             )
-            for name, (path, text) in modules.items()
+            for name, (path, _text) in modules.items()
             if FlextInfraUtilitiesImportLaw.module_import_layer(name) == base_layer
             and "s" in cls._module_level_bindings(trees[path])
         )
@@ -463,7 +463,7 @@ class FlextInfraUtilitiesCodemodImportLawRules:
                     qualified_base=f"{name}.{node.name}",
                 ),
             )
-            for name, (path, text) in modules.items()
+            for name, (path, _text) in modules.items()
             if path in candidates
             for node in trees[path].body
             if isinstance(node, ast.ClassDef)

@@ -138,7 +138,8 @@ class TestsFlextInfraDocsMainEntry:
         """Run build through its public command route."""
         build_workspace = u.Tests.create_docs_workspace(tmp_path / "build-root")
         (build_workspace / "mkdocs.yml").write_text(
-            "site_name: FLEXT docs\ndocs_dir: docs\nexclude_docs: |\n  README.md\n",
+            "site_name: FLEXT docs\ndocs_dir: docs\ntheme:\n  name: material\n"
+            "exclude_docs: |\n  README.md\n",
             encoding="utf-8",
         )
         tm.that(

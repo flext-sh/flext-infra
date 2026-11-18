@@ -58,12 +58,14 @@ class FlextInfraUtilitiesDocsScopeBuild(
         output_dir: Path | str,
         *,
         include_root: bool = True,
+        root_projection: p.Infra.CodegenFilePlan | None = None,
     ) -> p.Result[Sequence[p.Infra.DocScope]]:
         """Build DocScope objects for repository root and selected projects.
 
         ``include_root`` governs only whether the workspace root itself is
         rendered as a docs OUTPUT scope; root guides/pyproject remain readable
-        SOURCES for member projects regardless.
+        SOURCES for member projects regardless. ``root_projection`` is the
+        root pyproject a generation plans; it stands for the unpublished file.
 
         Returns:
             The resulting ``p.Result[Sequence[p.Infra.DocScope]]``.
@@ -75,6 +77,7 @@ class FlextInfraUtilitiesDocsScopeBuild(
                 projects,
                 output_dir,
                 include_root=include_root,
+                root_projection=root_projection,
             )
         except c.EXC_OS_TYPE_VALUE as exc:
             return r[Sequence[p.Infra.DocScope]].fail_op("scope resolution", exc)
@@ -87,6 +90,7 @@ class FlextInfraUtilitiesDocsScopeBuild(
         output_dir: Path | str,
         *,
         include_root: bool,
+        root_projection: p.Infra.CodegenFilePlan | None,
     ) -> Sequence[p.Infra.DocScope]:
         """Build docs scopes without exception wrapping.
 
@@ -95,7 +99,9 @@ class FlextInfraUtilitiesDocsScopeBuild(
 
         """
         resolved_root = repository_root.resolve()
-        project_state = FlextInfraUtilitiesDocsScope.project_state(resolved_root)
+        project_state = FlextInfraUtilitiesDocsScope.project_state(
+            resolved_root, metadata_projection=root_projection
+        )
         is_enabled = FlextInfraUtilitiesDocsScope.scope_enabled(
             project_state.docs_meta,
         )
@@ -114,7 +120,7 @@ class FlextInfraUtilitiesDocsScopeBuild(
             resolved_root,
         )
         if (
-            (resolved_root / c.PYPROJECT_FILENAME).is_file()
+            bool(project_state.payload)
             and not has_declared_members
             and not has_child_projects
             and not has_workspace_topology
@@ -124,20 +130,24 @@ class FlextInfraUtilitiesDocsScopeBuild(
                 resolved_root,
                 projects,
             )
-            if selected_names:
-                return FlextInfraUtilitiesDocsScopeBuild._selected_project_scopes(
-                    resolved_root,
-                    discovered,
-                    selected_names,
-                    output_dir,
-                )
-            return (
-                FlextInfraUtilitiesDocsScopeBuild._governed_scope(
-                    resolved_root,
-                    output_dir,
-                    repository_root=resolved_root,
-                ),
+            root_scope = FlextInfraUtilitiesDocsScopeBuild._governed_scope(
+                resolved_root,
+                output_dir,
+                repository_root=resolved_root,
+                projection=root_projection,
             )
+            # A standalone project selects itself by its own name; discovery
+            # lists only children, so that name is the root scope.
+            others = tuple(name for name in selected_names if name != root_scope.name)
+            selected = FlextInfraUtilitiesDocsScopeBuild._selected_project_scopes(
+                resolved_root,
+                discovered,
+                others,
+                output_dir,
+            )
+            if selected_names and len(others) == len(selected_names):
+                return selected
+            return (root_scope, *selected)
         return FlextInfraUtilitiesDocsScopeBuild._workspace_scopes(
             resolved_root,
             projects,

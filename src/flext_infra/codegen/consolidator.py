@@ -11,7 +11,6 @@ from pathlib import Path
 from typing import ClassVar, override
 
 from flext_infra import c, m, p, r, s, t, u
-from flext_infra.workspace import FlextInfraRopeWorkspace
 
 
 class FlextInfraCodegenConsolidator(s[str]):
@@ -37,11 +36,15 @@ class FlextInfraCodegenConsolidator(s[str]):
         )
         found = applied = failed = 0
         file_results: MutableSequence[Mapping[str, object]] = []
-        with FlextInfraRopeWorkspace.open_workspace(self.repository_root) as rope:
-            projects_result = self._selected_projects(rope)
-            if projects_result.failure:
-                return r[str].fail(projects_result.error or "project discovery failed")
-            for project in projects_result.unwrap():
+        projects_result = self._selected_projects()
+        if projects_result.failure:
+            return r[str].from_failure(projects_result)
+        projects = projects_result.value
+        with u.Infra.open_project(
+            self.repository_root,
+            project_roots=tuple(project.path for project in projects) or None,
+        ) as rope_project:
+            for project in projects:
                 project_layout = u.Infra.layout(project.path)
                 if project_layout is None or not project_layout.init_path.is_file():
                     continue
@@ -52,13 +55,13 @@ class FlextInfraCodegenConsolidator(s[str]):
                 for python_file in (
                     path
                     for path in u.Infra.iter_directory_python_files(
-                        project_layout.package_dir,
-                        repository_root=self.repository_root,
+                        project.path,
+                        repository_root=project.path,
                     )
                     if "_constants" not in path.parts
                 ):
                     outcome = self._consolidate_python_file(
-                        rope.rope_project,
+                        rope_project,
                         python_file,
                         value_map.value,
                         project_layout,
@@ -137,7 +140,6 @@ class FlextInfraCodegenConsolidator(s[str]):
 
     def _selected_projects(
         self,
-        rope_workspace: p.Infra.RopeWorkspaceDsl,
     ) -> p.Result[Sequence[p.Infra.ProjectInfo]]:
         """Select the consolidation targets under the workspace root.
 
@@ -145,7 +147,6 @@ class FlextInfraCodegenConsolidator(s[str]):
             The discovered consolidation target projects.
 
         """
-        _ = rope_workspace
         discovered = u.Infra.projects(self.repository_root)
         if discovered.failure:
             return r[Sequence[p.Infra.ProjectInfo]].fail(
@@ -218,11 +219,11 @@ class FlextInfraCodegenConsolidator(s[str]):
         matches = self._match_assignments(assignments, source.splitlines(), value_map)
         if not matches:
             return None
-        return m.Infra.ConsolidatorScannedFile(
-            resource=resource,
-            source=source,
-            matches=matches,
-        )
+        return m.Infra.ConsolidatorScannedFile.model_validate({
+            "resource": (resource),
+            "source": (source),
+            "matches": (matches),
+        })
 
     @staticmethod
     def _match_assignments(
@@ -304,27 +305,22 @@ class FlextInfraCodegenConsolidator(s[str]):
         if not edits:
             return (True, [], [])
 
+        def apply() -> None:
+            u.Infra.rewrite_source_at_offsets(rope_project, resource, edits)
+            u.Infra.add_import(rope_project, resource, pkg_name, ["c"])
+            source = resource.read()
+            prepared = u.Infra.normalize_source(
+                workspace, py_file, source, before_source=original_source
+            ).unwrap()
+            if prepared != source:
+                resource.write(prepared)
+
         ok, report = u.Infra.protected_file_edit(
             py_file,
             request=m.Infra.ProtectedFileEditRequest(
                 workspace=workspace,
                 before_source=original_source,
-                edit_fn=lambda: (
-                    u.Infra.rewrite_source_at_offsets(
-                        rope_project,
-                        resource,
-                        edits,
-                        apply=True,
-                    ),
-                    u.Infra.add_import(
-                        rope_project,
-                        resource,
-                        pkg_name,
-                        ["c"],
-                        apply=True,
-                    ),
-                    None,
-                )[-1],
+                edit_fn=apply,
                 gates=cls._ALL_LINT_GATES,
             ),
         )

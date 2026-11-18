@@ -29,7 +29,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
     """
 
     _NO_COVERAGE: ClassVar[tuple[str, ...]] = ("--no-cov",)
-    _ITEM_LIMITS: ClassVar[tuple[str, ...]] = (
+    _COLLECTION_TIMEOUT_OPTION: ClassVar[tuple[str, ...]] = (
         f"--timeout={c.Infra.PYTEST_CASE_TIMEOUT_DISABLED_SECONDS}",
     )
 
@@ -114,17 +114,20 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         Offline scopes never run them. Under the Make CI token the incremental
         global scope deselects them too: CI provides neither Docker nor remote
         services, so those cases are reported as not executed instead of being
-        skipped at setup. FULL keeps every marker; it runs only locally.
+        skipped at setup. Local incremental and FULL runs execute the complete
+        applicable population: both deselect the harness gates, whose suites
+        run only under the harness that provides their inputs.
 
         Returns:
             The external gate markers deselected by this run.
 
         """
+        pytest = config.Infra.tooling.tools.pytest
         if not execution_mode.is_global or (
             self.ci_context and execution_mode.is_incremental
         ):
-            return config.Infra.tooling.tools.pytest.external_gate_markers
-        return ()
+            return pytest.external_gate_markers
+        return pytest.harness_gate_markers
 
     def testmon_environment(self, execution_mode: c.Infra.PytestExecutionMode) -> str:
         """Name the testmon environment of one marker scope on this toolchain.
@@ -229,17 +232,18 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             The resulting ``tuple[str, ...],``.
 
         """
-        pytest = config.Infra.tooling.tools.pytest
         expression = self._marker_expression(execution_mode)
         tool_config = (
             u.Infra.load_tooling_inputs(self.repository_root).unwrap().document
         )
+        pytest = tool_config.tools.pytest
         fixture_scope = u.Infra.native_tool_setting(
             tool_config, "pytest.ini_options", "asyncio_default_fixture_loop_scope", str
         )
         return (
             "-p",
             pytest.enforcement_plugin,
+            f"--timeout={pytest.ordinary_timeout_seconds}",
             *(
                 c.Infra.TEST_SELECTION_DISABLE_PLUGIN_ARGS
                 if execution_mode == c.Infra.PytestExecutionMode.FULL
@@ -251,6 +255,11 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             f"{c.Infra.ASYNCIO_DEFAULT_FIXTURE_LOOP_SCOPE}={fixture_scope}",
             "-o",
             f"{c.Infra.FLEXT_SLOW_TIMEOUT_SECONDS}={pytest.slow_timeout_seconds}",
+            *(
+                ("-o", "timeout_func_only=true")
+                if pytest.item_deadline_call_only
+                else ()
+            ),
             *(("-m", expression) if expression else ()),
         )
 
@@ -305,12 +314,11 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
                 # exactly that case (never combined with ``--testmon-noselect``).
                 *(("--testmon-noselect",) if complete else ("--testmon-forceselect",)),
                 "--testmon-env",
-                f"'{self.testmon_environment(execution_mode)}'",
+                self.testmon_environment(execution_mode),
             )
         )
         pytest_arguments = (
             *self._node_targets(),
-            *self._scratch_arguments(report_log),
             *testmon,
             "--collect-only",
             f"{c.Infra.PYTEST_COLLECTION_MANIFEST_OPTION}={manifest_path}",
@@ -319,7 +327,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             *self._plugin_policy_args(execution_mode=execution_mode),
             "--benchmark-disable",
             "--strict-markers",
-            *self._ITEM_LIMITS,
+            *self._COLLECTION_TIMEOUT_OPTION,
             "-o",
             "filterwarnings=",
             "-p",
@@ -425,7 +433,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
                             else ("--testmon-forceselect",)
                         ),
                         "--testmon-env",
-                        f"'{self.testmon_environment(execution_mode)}'",
+                        self.testmon_environment(execution_mode),
                     )
                     if execution_mode.is_incremental
                     else ()
@@ -480,7 +488,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         *,
         execution_mode: c.Infra.PytestExecutionMode,
     ) -> t.StrTuple:
-        """Return the aggregate graceful stop instant, without a unit item cap.
+        """Return the aggregate graceful suite stop deadline.
 
         Returns:
             The bounded suite's time-limit arguments.
@@ -490,24 +498,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             serial=workers == c.ParserBooleanToken.ZERO,
             execution_mode=execution_mode,
         )
-        return (
-            *self._ITEM_LIMITS,
-            f"{c.Infra.PYTEST_SUITE_STOP_OPTION}={suite_stop!r}",
-        )
-
-    def _scratch_arguments(self, owner: Path) -> t.StrTuple:
-        """Elect a pytest-owned child of this operation's scratch directory.
-
-        Returns:
-            Native arguments isolated by their evidence owner, when provided.
-
-        """
-        if self.scratch_root is None:
-            return ()
-        return (
-            c.Infra.PYTEST_BASETEMP_ARGUMENT,
-            str(self.scratch_root / owner.stem),
-        )
+        return (f"{c.Infra.PYTEST_SUITE_STOP_OPTION}={suite_stop!r}",)
 
     def _suite_argv(
         self,
@@ -527,6 +518,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
 
         """
         pytest = config.Infra.tooling.tools.pytest
+        tooling = u.Infra.load_tooling_inputs(self.repository_root).unwrap()
         return (
             sys.executable,
             *(
@@ -539,7 +531,6 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
                 else ("-m", "pytest")
             ),
             *targets,
-            *self._scratch_arguments(report_dir),
             *pytest.progress_args,
             *pytest.report_args,
             *limits,
@@ -555,7 +546,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             # pre-dispatched chunk, so the declared max-failures stop only took
             # effect after every worker drained its assigned items at fleet
             # scale. A one-item dispatch step makes that stop immediate.
-            *pytest.parallel_arguments,
+            *tooling.document.tools.pytest.parallel_arguments,
             "--benchmark-disable",
         )
 

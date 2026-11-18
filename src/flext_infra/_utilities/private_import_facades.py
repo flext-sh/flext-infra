@@ -200,7 +200,7 @@ class FlextInfraUtilitiesPrivateImportFacades:
         *,
         project: p.Infra.RopeProject,
     ) -> tuple[MutableMapping[str, set[str]], MutableMapping[str, set[str]]]:
-        """Index declared public exports and module/class binding identities.
+        """Index authoritative source declarations without requiring materialization.
 
         Returns:
             The resulting ``tuple[MutableMapping[str, set[str]], MutableMapping[str,
@@ -214,10 +214,8 @@ class FlextInfraUtilitiesPrivateImportFacades:
             tree = FlextInfraUtilitiesRopeAnalysis.Tree.parse_module_source(
                 source, filename=module
             )
-            source_module = (
-                FlextInfraUtilitiesRopeRuntime.require_declared_source_module(
-                    project, module
-                )
+            source_module = FlextInfraUtilitiesRopeRuntime.build_string_module(
+                project, source
             )
             public_names = FlextInfraUtilitiesRopeAnalysis.public_export_names_source(
                 source_module,

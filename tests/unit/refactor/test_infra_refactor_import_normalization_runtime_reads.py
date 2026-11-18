@@ -66,6 +66,48 @@ class TestsFlextInfraRefactorImportNormalizationRuntimeReads(
         )
 
     @classmethod
+    def test_annotation_only_fragment_routes_its_dependent_facade(
+        cls, tmp_path: Path
+    ) -> None:
+        """Own-family annotations use their declaring owner without a back-import."""
+        project, package = cls._project(tmp_path)
+        family = u.Infra.facade_families()["p"]
+        cls._lazy_init(package, {"p": f".{family.module}"})
+        directory = package / family.directory
+        cls._lazy_init(directory, {"DemoDeclaration": ".base"})
+        (package / f"{family.module}.py").write_text(
+            f"from demo_pkg.{family.directory} import DemoDeclaration\n"
+            "class DemoProtocols(DemoDeclaration): pass\n"
+            "p = DemoProtocols\n__all__ = ['p']\n",
+            encoding="utf-8",
+        )
+        source = (
+            "from __future__ import annotations\n"
+            "from typing import Protocol\n"
+            "from demo_pkg import p\n"
+            "class DemoDeclaration:\n"
+            "    class Reader(Protocol):\n"
+            "        def read(self, value: p.Reader) -> p.Reader: ...\n"
+            "__all__ = ['DemoDeclaration']\n"
+        )
+        module = directory / "base.py"
+        module.write_text(source, encoding="utf-8")
+        normalized = tm.ok(
+            u.Infra.normalize_import_source(
+                project_root=project, file_path=module, source=source
+            )
+        )
+        tm.that(normalized, lacks="from demo_pkg import p")
+        tm.that(normalized, has="DemoDeclaration.Reader")
+        module.write_text(normalized, encoding="utf-8")
+        tm.ok(
+            u.Infra.normalize_import_source(
+                project_root=project, file_path=module, source=normalized
+            ),
+            eq=normalized,
+        )
+
+    @classmethod
     def test_type_parameter_bound_is_lazy(cls, tmp_path: Path) -> None:
         """PEP 695 bounds are evaluated lazily, so they read nothing at runtime."""
         project, module, source = cls._family_module(

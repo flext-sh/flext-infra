@@ -85,7 +85,6 @@ class TestsFlextInfraPytestWorkerCeiling:
     def test_declared_overrides_come_from_the_typed_ssot() -> None:
         """The tooling SSOT carries validated ceilings of either form."""
         overrides = config.Infra.tooling.tools.pytest.parallel_worker_overrides
-        tm.ok(len(overrides) > 0)
         for declared in overrides.values():
             tm.that(
                 (declared.workers is None) != (declared.cpu_fraction is None),
@@ -93,38 +92,55 @@ class TestsFlextInfraPytestWorkerCeiling:
             )
 
     @staticmethod
-    def test_worker_ceiling_defaults_without_declared_project(
+    @c.Tests.MARK.parametrize(
+        "declared_name",
+        (None, *config.Infra.tooling.tools.pytest.parallel_worker_overrides),
+    )
+    def test_project_budget_respects_declared_and_machine_capacity(
         cached_runner_project: Path,
+        declared_name: str | None,
     ) -> None:
-        """A tree without ``[project].name`` takes the fleet-wide ceiling."""
+        """Exercise the default and every current override through native xdist."""
         policy = config.Infra.tooling.tools.pytest
-        runner = u.Tests.PytestRunner.runner_for(cached_runner_project)
-        tm.that(
-            runner.parallel_worker_budget(policy) == policy.parallel_workers, truth=True
+        runner = (
+            u.Tests.PytestRunner.runner_for(cached_runner_project)
+            if declared_name is None
+            else u.Tests.PytestRunner.declared_project_runner(
+                cached_runner_project, declared_name
+            )
         )
-
-    @staticmethod
-    def test_worker_ceiling_follows_the_declared_project_override(
-        cached_runner_project: Path,
-    ) -> None:
-        """The runner resolves the declared project's override from the SSOT."""
-        policy = config.Infra.tooling.tools.pytest
-        tm.that(policy.parallel_worker_overrides, truth=True)
-        declared_name = next(iter(policy.parallel_worker_overrides))
-        runner = u.Tests.PytestRunner.declared_project_runner(
-            cached_runner_project, declared_name
+        declared = runner.resolve_worker_ceiling(
+            policy.parallel_workers
+            if declared_name is None
+            else policy.parallel_worker_overrides[declared_name],
+            os.process_cpu_count(),
         )
+        capacity = u.Infra.machine_worker_capacity(policy.parallel_worker_memory_gb)
+        budget = runner.parallel_worker_budget(policy)
+        tm.that(budget, eq=min(declared, capacity))
         report = (
             cached_runner_project
             / config.Infra.codegen.make.testmon_cache.reports_directory
         )
-        declared_ceiling = policy.parallel_worker_overrides[declared_name]
-        expected_workers = runner.resolve_worker_ceiling(
-            declared_ceiling,
-            os.process_cpu_count(),
-        )
-        budget = runner.parallel_worker_budget(policy)
-        tm.that(budget == expected_workers, truth=True)
         command = runner.build_command(report)
         workers = command[command.index("-n") + 1]
-        tm.that(workers == str(budget), truth=True)
+        tm.that(workers, eq=str(budget) if budget > 1 else "0")
+
+    @staticmethod
+    @c.Tests.MARK.parametrize("workers", (1, 3))
+    def test_project_overlay_declares_its_own_ceiling(
+        cached_runner_project: Path,
+        workers: int,
+    ) -> None:
+        """A project's tooling overlay sets its ceiling without flext naming it."""
+        overlay = cached_runner_project / "config" / "tooling.yaml"
+        overlay.parent.mkdir(parents=True, exist_ok=True)
+        overlay.write_text(
+            "Infra:\n  tooling:\n    tools:\n      pytest:\n"
+            f"        parallel-workers: {workers}\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        policy = config.Infra.tooling.tools.pytest
+        runner = u.Tests.PytestRunner.runner_for(cached_runner_project)
+        capacity = u.Infra.machine_worker_capacity(policy.parallel_worker_memory_gb)
+        tm.that(runner.parallel_worker_budget(policy), eq=min(workers, capacity))

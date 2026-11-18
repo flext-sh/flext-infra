@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Annotated, assert_never
 
 from flext_infra import c, m, p, s, u
+from flext_infra.promoted import FlextInfraPromoted
 
 
 class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
@@ -44,28 +45,32 @@ class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
     @staticmethod
     def _discover_script_verbs(
         repository_root: Path,
+        script_dispatch: p.Infra.ScriptDispatchSpec,
     ) -> tuple[p.Infra.MakeVerbSpec, ...]:
-        """Discover script verbs from scripts/<verb>/all.sh in the repository root.
+        """Discover every verb and alias the declared command headers name.
 
-        The filesystem is the SSOT: a verb is emitted only when its all.sh
-        entrypoint exists. No manual list is required.
+        The promoted registry the dispatcher builds over the declared
+        ``script_dispatch`` roots is the only source: a verb declared only in
+        headers, or owned by another declared root, still gets its target.
 
         Returns:
-            The resulting ``tuple[p.Infra.MakeVerbSpec, ...],``.
+            One verb spec per registered verb and alias, in name order.
 
         """
-        scripts_dir = repository_root / c.Infra.DIR_SCRIPTS
-        if not scripts_dir.is_dir():
-            return ()
-        discovered = [
-            m.Infra.MakeVerbSpec(
-                name=entry.name,
-                description=f"Script command: {entry.name}",
-            )
-            for entry in sorted(scripts_dir.iterdir())
-            if entry.is_dir() and (entry / "all.sh").is_file()
-        ]
-        return tuple(discovered)
+        registry = FlextInfraPromoted.discover(
+            script_roots=tuple(
+                repository_root / root for root in script_dispatch.roots
+            ),
+        )
+        names = {
+            name
+            for verb in registry.verbs()
+            for name in (verb, *registry.aliases_for(verb))
+        }
+        return tuple(
+            m.Infra.MakeVerbSpec(name=name, description=f"Script command: {name}")
+            for name in sorted(names)
+        )
 
     def _declared_environment_imports(
         self,
@@ -148,7 +153,7 @@ class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
             ValueError: If config extra_verbs declares canonical verb.
 
         """
-        merged: MutableMapping[str, m.Infra.MakeVerbSpec] = {}
+        merged: MutableMapping[str, p.Infra.MakeVerbSpec] = {}
         for verb in discovered:
             if verb.name in canonical_names:
                 continue
@@ -258,6 +263,7 @@ class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
                 )
             case (
                 c.Infra.CodegenConformSurface.ENVRC
+                | c.Infra.CodegenConformSurface.GITIGNORE
                 | c.Infra.CodegenConformSurface.MISE_CONFIG
                 | c.Infra.CodegenConformSurface.MARKDOWN
             ):
@@ -266,6 +272,7 @@ class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
                     destinations=frozenset({
                         {
                             c.Infra.CodegenConformSurface.ENVRC: c.Infra.ENVRC_FILENAME,
+                            c.Infra.CodegenConformSurface.GITIGNORE: c.Infra.GITIGNORE,
                             c.Infra.CodegenConformSurface.MISE_CONFIG: (
                                 c.Infra.MISE_TOML_FILENAME
                             ),
@@ -288,6 +295,9 @@ class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
     ) -> frozenset[str]:
         """Select the existing owners of editor, analyzer and ignore projections.
 
+        The qlty smells configuration is an analyzer projection like the
+        pyproject tool tables, so this surface refreshes it too.
+
         Returns:
             The governed paths published by the editor surface.
 
@@ -295,6 +305,9 @@ class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
         return frozenset({
             c.PYPROJECT_FILENAME,
             c.Infra.GITIGNORE,
+            (
+                Path(c.Infra.QLTY_CONFIG_DIRNAME) / c.Infra.QLTY_CONFIG_FILENAME
+            ).as_posix(),
             *(
                 item.path.as_posix()
                 for item in codegen.managed_file_specs

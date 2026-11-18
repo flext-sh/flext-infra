@@ -175,7 +175,7 @@ class FlextInfraUtilitiesGitStatePublication(
 
         The live published checkpoint authenticates the captured index and raw
         working scope. The branch points to that retained commit, not HEAD or a
-        caller-selected start. This is preservation, not managed lane admission.
+        caller-selected start. This is preservation only.
 
         Returns:
             Successful CAS creation or an unchanged-source refusal.

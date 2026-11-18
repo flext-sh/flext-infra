@@ -107,8 +107,6 @@ class FlextInfraPyprojectModernizerRun(FlextInfraPyprojectModernizerTooling):
         validated = self._validated_root(root_pyproject, include_root=include_root)
         if validated.failure:
             return 2
-        if self.rewrite_constraints:
-            return self._rewrite_constraints(validated.value, dry_run=dry_run)
         found = u.Infra.find_all_pyproject_files(
             self.root,
             skip_dirs=frozenset(config.Infra.codegen.pyproject_scan_excluded_dirs),
@@ -165,11 +163,6 @@ class FlextInfraPyprojectModernizerRun(FlextInfraPyprojectModernizerTooling):
         if not prefix.endswith("/"):
             return result_type.fail(
                 "Git source URL prefix must end with '/' to preserve owner boundaries",
-            )
-        if self.rewrite_constraints:
-            return result_type.fail(
-                "Git reference migration and runtime constraint rewriting are "
-                "separate operations",
             )
         return result_type.ok(
             (
@@ -352,159 +345,6 @@ class FlextInfraPyprojectModernizerRun(FlextInfraPyprojectModernizerTooling):
                     else str(resolved)
                 ] = changes
         return outcome.ok((dict(violations), tuple(states), tuple(invalid_paths)))
-
-    def _rewrite_constraints(
-        self,
-        root_state: p.Infra.PyprojectDocumentState,
-        *,
-        dry_run: bool,
-    ) -> int:
-        """Write resolved floors to the target's own requirement declarations.
-
-        Returns:
-            The resulting ``int``.
-
-        Raises:
-            ValueError: If the project table is absent or the dependency owner
-                changed between the read and the write.
-
-        """
-        try:
-            root_project_name = u.Infra.project_name_from_payload(
-                root_state.pyproject_path,
-                root_state.payload,
-            )
-        except c.EXC_TYPE_VALIDATION as exc:
-            u.Cli.error(str(exc))
-            return 2
-        if dry_run:
-            return 0
-        versions = u.Infra.resolved_dependency_versions()
-        internal_names = (
-            *u.Infra.workspace_project_paths(self.root),
-            root_project_name,
-        )
-        project = u.Cli.toml_mapping_child(root_state.payload, c.Infra.PROJECT)
-        if project is None:
-            msg = f"project declaration is absent: {root_state.pyproject_path}"
-            raise ValueError(msg)
-        sections = (
-            ("project", {c.Infra.DEPENDENCIES: project.get(c.Infra.DEPENDENCIES, [])}),
-            (
-                "project.optional-dependencies",
-                u.Cli.toml_mapping_child(project, c.Infra.OPTIONAL_DEPENDENCIES) or {},
-            ),
-            (
-                c.Infra.DEPENDENCY_GROUPS,
-                u.Cli.toml_mapping_child(root_state.payload, c.Infra.DEPENDENCY_GROUPS)
-                or {},
-            ),
-        )
-        changes = self._rewritten_constraint_sections(
-            sections,
-            versions=versions,
-            internal_names=internal_names,
-        )
-        if not changes:
-            return 0
-        before = u.Cli.atomic_read_binary_file_state(
-            root_state.pyproject_path,
-            required=True,
-        ).unwrap()
-        return self._published_constraint_floors(root_state, tuple(changes), before)
-
-    @classmethod
-    def _rewritten_constraint_sections(
-        cls,
-        sections: Sequence[tuple[str, Mapping[str, t.JsonValue]]],
-        *,
-        versions: Mapping[str, str],
-        internal_names: Sequence[str],
-    ) -> list[str]:
-        """Rewrite every declared requirement to its resolved runtime floor.
-
-        Args:
-            sections: Ordered requirement sections with their requirement
-                groups.
-            versions: Resolved dependency versions of the provisioned runtime.
-            internal_names: Workspace member names exempted from floor pins.
-
-        Returns:
-            The change notes of every rewritten requirement.
-
-        Raises:
-            TypeError: If a declared requirement group entry is not a string.
-
-        """
-        changes: list[str] = []
-        for section, groups in sections:
-            for name, entries in groups.items():
-                if not isinstance(entries, list):
-                    msg = f"{section}.{name} must be a requirement array"
-                    raise TypeError(msg)
-                for index, requirement in enumerate(entries):
-                    mapping = isinstance(requirement, Mapping)
-                    if mapping and section == c.Infra.DEPENDENCY_GROUPS:
-                        continue
-                    if mapping or not isinstance(requirement, str):
-                        msg = f"{section}.{name} requires requirement strings"
-                        raise TypeError(msg)
-                    rewritten = u.Infra.rewrite_requirement_constraint(
-                        requirement,
-                        resolved_versions=versions,
-                        internal_names=internal_names,
-                    )
-                    if rewritten is not None:
-                        entries[index] = rewritten
-                        changes.append(
-                            f"{section}.{name}: {requirement} -> {rewritten}"
-                        )
-        return changes
-
-    def _published_constraint_floors(
-        self,
-        root_state: p.Infra.PyprojectDocumentState,
-        changes: Sequence[str],
-        before: p.Cli.AtomicFileState,
-    ) -> int:
-        """Publish the rewritten requirement floors atomically.
-
-        Args:
-            root_state: Validated root document state owning the floors.
-            changes: Change notes of every rewritten requirement.
-            before: Authenticated pre-publication state of the document.
-
-        Returns:
-            The resulting process exit code.
-
-        Raises:
-            ValueError: If the dependency owner changed between the read and
-                the write.
-
-        """
-        if before.content != root_state.original_rendered.encode(c.DEFAULT_ENCODING):
-            msg = f"dependency owner changed during read: {root_state.pyproject_path}"
-            raise ValueError(msg)
-        rendered = self._render_document_state(
-            root_state,
-            tuple(changes),
-            skip_comments=True,
-            format_source=False,
-            preserve_layout=True,
-        )
-        if rendered.failure:
-            rendered.unwrap()
-        u.Cli.atomic_write_binary_file_guarded(
-            before,
-            root_state.rendered.encode(c.DEFAULT_ENCODING),
-            permission_mode=before.mode,
-        ).unwrap()
-        u.Cli.info(
-            "deps: target requirement floors updated from the provisioned runtime"
-        )
-        for change in changes:
-            u.Cli.info(f"  - {change}")
-        return 0
 
     @staticmethod
     def _run_build_check(

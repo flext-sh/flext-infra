@@ -62,6 +62,8 @@ class FlextInfraConstantsRelease:
     "The release commit as Git carries it: GitHub appends ` (#N)` when merging."
     RELEASE_PLAN_FILENAME: ClassVar[str] = "plan.json"
     RELEASE_NOTES_FILENAME: ClassVar[str] = "RELEASE_NOTES.md"
+    RELEASE_PULL_REQUEST_BODY_FILENAME: ClassVar[str] = "PULL_REQUEST.md"
+    "Summary body of the release pull request; the full notes ship in the commit."
     RELEASE_NOTES_LINE_LENGTH: ClassVar[int] = 88
     "Markdown line ceiling the notes satisfy (MD013 line_length)."
     RELEASE_NOTES_CONTINUATION_INDENT: ClassVar[str] = "  "
@@ -74,6 +76,14 @@ class FlextInfraConstantsRelease:
     PYPI_UPLOAD_URL: ClassVar[str] = "https://upload.pypi.org/legacy/"
     "Canonical verified-artifact upload endpoint."
     GH: ClassVar[str] = "gh"
+    GH_PULL_REQUEST_BODY_MAX_CHARS: ClassVar[int] = 65536
+    "GitHub's pull-request body ceiling; a longer body fails ``Body is too long``."
+    GH_RELEASE_BODY_MAX_CHARS: ClassVar[int] = 125000
+    """GitHub's release body ceiling, from its API error.
+
+    The release create call answers ``body is too long (maximum is 125000
+    characters)``; GitHub's REST reference states no number.
+    """
     RELEASE_LICENSE_NAMES: ClassVar[frozenset[str]] = frozenset({
         "copying",
         "copying.md",

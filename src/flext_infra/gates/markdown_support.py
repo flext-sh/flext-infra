@@ -380,7 +380,7 @@ class FlextInfraMarkdownGateBase(FlextInfraGates):
         project_dir: Path,
         ctx: p.Infra.GateContext,
         target: str,
-    ) -> tuple[p.Cli.AtomicFileState, str, m.Cli.CommandOutput, str]:
+    ) -> tuple[p.Cli.AtomicFileState, str, p.Cli.CommandOutput, str]:
         """Run the stdin pass over one file's lint view and splice its blocks.
 
         The file is observed once through the atomic reader, so its state is
@@ -572,20 +572,24 @@ class FlextInfraMarkdownGateBase(FlextInfraGates):
             if candidate in outcomes
         )
         merged = self._build_gate_execution(
-            m.Infra.GateExecutionParams(
-                project_dir=project_dir,
-                verdict=all(execution.result.passed for execution in executions),
-                outcome=outcome,
-                issues=tuple(
-                    issue for execution in executions for issue in execution.issues
+            m.Infra.GateExecutionParams.model_validate({
+                "project_dir": (project_dir),
+                "verdict": (all(execution.result.passed for execution in executions)),
+                "outcome": (outcome),
+                "issues": (
+                    tuple(
+                        issue for execution in executions for issue in execution.issues
+                    )
                 ),
-                raw_output="\n".join(
-                    execution.raw_output
-                    for execution in executions
-                    if execution.raw_output
+                "raw_output": (
+                    "\n".join(
+                        execution.raw_output
+                        for execution in executions
+                        if execution.raw_output
+                    )
                 ),
-                started=started,
-            ),
+                "started": (started),
+            }),
             ctx,
         )
         return merged.model_copy(

@@ -81,7 +81,7 @@ class FlextInfraGatesDuplication(FlextInfraDuplicationReport, FlextInfraGates):
                 if part
             ),
         )
-        assessment: m.Infra.DuplicationAssessment | None = None
+        assessment: p.Infra.DuplicationAssessment | None = None
         if report is not None and overrides.success:
             assessment_failures, assessment = self._publish_assessment(
                 (report, overrides.value),
@@ -113,14 +113,14 @@ class FlextInfraGatesDuplication(FlextInfraDuplicationReport, FlextInfraGates):
             )
         )
         return self._gate_execution_from(
-            m.Infra.GateExecutionParams(
-                project_dir=project_dir,
-                verdict=not issues,
-                outcome=outcome,
-                issues=tuple(issues),
-                raw_output=evidence.raw_output,
-                started=started,
-            ),
+            m.Infra.GateExecutionParams.model_validate({
+                "project_dir": (project_dir),
+                "verdict": (not issues),
+                "outcome": (outcome),
+                "issues": (tuple(issues)),
+                "raw_output": (evidence.raw_output),
+                "started": (started),
+            }),
             evidence,
         ).model_copy(
             update={
@@ -144,7 +144,7 @@ class FlextInfraGatesDuplication(FlextInfraDuplicationReport, FlextInfraGates):
             The parsed report, its issues, and whether the tool itself failed.
 
         """
-        report: m.Infra.JscpdReport | None = None
+        report: p.Infra.JscpdReport | None = None
         try:
             if scan.stdout.strip():
                 report = FlextInfraDuplicationEvidence.parse(scan.stdout)
@@ -166,11 +166,11 @@ class FlextInfraGatesDuplication(FlextInfraDuplicationReport, FlextInfraGates):
 
     def _publish_assessment(
         self,
-        assessed: tuple[p.Infra.JscpdReport, m.Infra.ProjectDuplicationOverrides],
+        assessed: tuple[p.Infra.JscpdReport, p.Infra.ProjectDuplicationOverrides],
         project_dir: Path,
         evidence: p.Infra.GateOutputReceipt,
         execution: str,
-    ) -> tuple[tuple[p.Infra.Issue, ...], m.Infra.DuplicationAssessment | None]:
+    ) -> tuple[tuple[p.Infra.Issue, ...], p.Infra.DuplicationAssessment | None]:
         """Publish the duplication assessment beside its receipt.
 
         Returns:
@@ -241,31 +241,53 @@ class FlextInfraGatesDuplication(FlextInfraDuplicationReport, FlextInfraGates):
             spans = tuple(self._typed_side_span_key(side) for side in sides)
             if spans[0] == spans[1]:
                 continue
-            if not any(Path(side.name).is_relative_to(project_dir) for side in sides):
+            if not any(
+                Path(self._side_file_name(side)).is_relative_to(project_dir)
+                for side in sides
+            ):
+                continue
+            if any(
+                self._is_generated_source(Path(self._side_file_name(side)))
+                for side in sides
+            ):
                 continue
             pair = "|".join(sorted(spans))
             if pair in seen_pairs:
                 continue
             seen_pairs.add(pair)
             aligned.append(index)
-        return tuple(
-            issues[issue_index]
-            for issue_index, duplicate_index in enumerate(aligned)
+        clone_count = len(aligned)
+        blocking_issues = tuple(
+            issues[position]
+            for position, duplicate_index in enumerate(aligned)
             if duplicate_index in blocking
         )
+        return (*blocking_issues, *issues[clone_count:])
 
     @staticmethod
-    def _typed_side_span_key(side: p.Infra.JscpdFile) -> str:
+    def _side_file_name(side: p.Infra.JscpdFile) -> str:
+        """Return one typed clone side's on-disk file name.
+
+        Returns:
+            The name without jscpd's markdown-embedded ``:language`` suffix.
+
+        """
+        raw = side.name
+        file_name, separator, _language = raw.rpartition(":")
+        return file_name if separator and file_name and "." in file_name else raw
+
+    @classmethod
+    def _typed_side_span_key(cls, side: p.Infra.JscpdFile) -> str:
         """Return one typed clone side's raw-issue span identity.
 
         Returns:
             The resulting ``<file>:<start>:<end>`` key.
 
         """
-        raw = side.name
-        file_name, separator, _language = raw.rpartition(":")
-        name = file_name if separator and file_name and "." in file_name else raw
-        return f"{name}:{side.start_location.line}:{side.end_location.line}"
+        return (
+            f"{cls._side_file_name(side)}:"
+            f"{side.start_location.line}:{side.end_location.line}"
+        )
 
     def _scan_project(
         self,
@@ -354,6 +376,10 @@ class FlextInfraGatesDuplication(FlextInfraDuplicationReport, FlextInfraGates):
             # hardcoded would silently drop the SARIF artifact.
             "--reporters",
             ",".join(c.Infra.JSCPD_REPORTERS),
+            # The include set is the declared language formats; jscpd's
+            # default scans every language it knows (Dockerfiles included).
+            "--format",
+            ",".join(c.Infra.JSCPD_FORMAT_EXTENSIONS),
             "--output",
             str(report_dir),
             *scope.value,
@@ -598,9 +624,7 @@ class FlextInfraGatesDuplication(FlextInfraDuplicationReport, FlextInfraGates):
         # it is typed NOT EXECUTED, and a locally unreachable host is typed
         # the same way. It is never silently dropped and never faked.
         semantic = passes.semantic
-        if semantic is not None and (
-            self.semantic_not_executed() or self.semantic_host_unreachable() is not None
-        ):
+        if self.semantic_not_executed() or self.semantic_host_unreachable() is not None:
             semantic = None
         jscpd_config = m.Infra.JscpdConfig(
             absolute=True,
@@ -659,8 +683,6 @@ class FlextInfraGatesDuplication(FlextInfraDuplicationReport, FlextInfraGates):
 
         """
         semantic = config.Infra.tooling.tools.jscpd.semantic
-        if semantic is None:
-            return None
         parsed = urlsplit(semantic.url)
         if not parsed.hostname:
             return f"invalid embeddings host URL: {semantic.url}"

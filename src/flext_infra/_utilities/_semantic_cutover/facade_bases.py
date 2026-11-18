@@ -41,13 +41,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesWorkspaceSnapshot,
 )
-from flext_infra._utilities._rope import (
-    FlextInfraUtilitiesRopeAnalysis,
-    FlextInfraUtilitiesRopeCore,
-)
-from flext_infra._utilities._rope.runtime_modules import (
-    FlextInfraUtilitiesRopeRuntimeModules,
-)
+from flext_infra._utilities._rope import FlextInfraUtilitiesRopeRuntimeModules
 from flext_infra._utilities._rope.runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
 )
@@ -457,8 +451,6 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         cls,
         modules: Mapping[str, tuple[str, bool]],
         utility_directory: str,
-        *,
-        source_project: p.Infra.RopeProject,
     ) -> tuple[
         Mapping[tuple[str, str], Sequence[tuple[str, str]]],
         frozenset[tuple[str, str, str, str]],
@@ -476,11 +468,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             if utility_directory not in parts:
                 continue
             tree = ast.parse(source)
-            exports = FlextInfraUtilitiesRopeAnalysis.public_export_names_source(
-                FlextInfraUtilitiesRopeRuntimeTypes.require_declared_source_module(
-                    source_project, module
-                )
-            )
+            exports = cls._public_export_names_from_tree(tree)
             for declaration in tree.body:
                 if (
                     not isinstance(declaration, ast.ClassDef)
@@ -520,6 +508,34 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
                                 member.name,
                             ))
         return owners, frozenset(contextual)
+
+    @staticmethod
+    def _public_export_names_from_tree(tree: ast.Module) -> Sequence[str]:
+        """Return the explicit public ABI declared in one source tree.
+
+        Returns:
+            The names declared by the module's ``__all__``.
+
+        """
+        for statement in tree.body:
+            if isinstance(statement, ast.Assign):
+                targets = statement.targets
+                value = statement.value
+            elif isinstance(statement, ast.AnnAssign):
+                targets = (statement.target,)
+                value = statement.value
+            else:
+                continue
+            if not any(
+                isinstance(target, ast.Name) and target.id == c.Infra.DUNDER_ALL
+                for target in targets
+            ):
+                continue
+            declared = ast.literal_eval(value) if value is not None else ()
+            if isinstance(declared, (list, tuple)):
+                return tuple(str(item) for item in declared)
+            return ()
+        return ()
 
     @classmethod
     def _typing_behavior_lineage(
@@ -740,13 +756,12 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
                 Path(source_project.root.real_path),
                 planned_sources={**production, **owner_sources},
                 source_project=source_project,
-            ) as (bound_project, _captured):
+            ) as (_bound_project, _captured):
                 ownership = cls.behavior_utility_owners(
                     modules,
                     FlextInfraUtilitiesCodegenNamespace.facade_family_declared_by(
                         c.Infra.UTILITIES_PY
                     ).directory,
-                    source_project=bound_project,
                 )
 
             def rewrite(
@@ -1349,6 +1364,8 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             Original-to-final source edits covering declarations and consumers.
 
         """
+        if not findings:
+            return r[tuple[p.Infra.SemanticMigrationEdit, ...]].ok(())
         import_findings = tuple(
             finding
             for finding in findings
@@ -1395,19 +1412,40 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
 
         """
         selected = frozenset((root / finding.file).resolve() for finding in findings)
-        items = tuple(
-            item for item in cls._editable_sources(sources) if item[0] in selected
+        return cls.facade_import_base_edits(
+            root,
+            sources,
+            tuple(
+                path for path, _ in cls._editable_sources(sources) if path in selected
+            ),
         )
+
+    @classmethod
+    def facade_import_base_edits(
+        cls,
+        root: Path,
+        sources: Mapping[Path, str],
+        selected: Sequence[Path],
+        *,
+        source_project: p.Infra.RopeProject | None = None,
+    ) -> p.Result[tuple[p.Infra.SemanticMigrationEdit, ...]]:
+        """Project selected facade headers from their declared parent classes.
+
+        Returns:
+            Source edits preserving the declared bases and exported letters.
+
+        """
         shapes = {
             path: found
-            for path, source in items
+            for path in selected
             if (
-                found := cls._facade_shapes(path, ast.parse(source, filename=str(path)))
+                found := cls._facade_shapes(
+                    path, ast.parse(sources[path], filename=str(path))
+                )
             )
         }
         if not shapes:
             return r[tuple[p.Infra.SemanticMigrationEdit, ...]].ok(())
-        modules = FlextInfraUtilitiesPrivateImportFacades.source_modules(sources)
 
         def rewrite(path: Path, source: str) -> t.Infra.TransformResult:
             # A facade may compose several parents by their letters (``class
@@ -1425,9 +1463,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
                     and node.value.id == shape[3]
                     for node in tree.body
                 )
-                owner = cls._facade_declared_owner(
-                    modules, shape[0], shape[1], project=project
-                )
+                owner = cls._facade_declared_owner(shape[0], shape[1], project=project)
                 bound = cls._facade_bound_imports(tree, shape[0])
                 if owner in cls._facade_module_bindings(tree) - bound:
                     msg = f"{owner} is already bound locally in {path}"
@@ -1450,9 +1486,11 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
                 raise ValueError(msg)
             return rewritten, tuple(changes)
 
-        with FlextInfraUtilitiesRopeCore.open_import_project(root) as project:
+        with FlextInfraUtilitiesWorkspaceSnapshot.facade_source_project(
+            root, planned_sources=sources, source_project=source_project
+        ) as (project, _sources):
             return cls._semantic_edits(
-                tuple(item for item in items if item[0] in shapes),
+                tuple((path, sources[path]) for path in shapes),
                 rewrite,
             )
 

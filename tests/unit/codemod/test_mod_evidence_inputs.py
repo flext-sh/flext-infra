@@ -6,9 +6,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
-from flext_infra import FlextInfraCli, infra
+from flext_infra import FlextInfraCli, config, infra
 from flext_infra.codemod import FlextInfraModGateEngine
 from tests import c, m, p, t, tm, u
 
@@ -216,14 +217,14 @@ class TestsFlextInfraModEvidenceInputs:
                     ),
                 )
             )
-        plan = m.Infra.CodemodRulePlan(
-            provider_order=tuple(ruleset.provider for ruleset in rulesets),
-            rules=tuple(rules),
-            rulesets=tuple(rulesets),
-            project_rule_ids={
+        plan = m.Infra.CodemodRulePlan.model_validate({
+            "provider_order": (tuple(ruleset.provider for ruleset in rulesets)),
+            "rules": (tuple(rules)),
+            "rulesets": (tuple(rulesets)),
+            "project_rule_ids": ({
                 mod_workspace.resolve(): tuple(rule.id for rule in rules)
-            },
-        )
+            }),
+        })
         source = mod_workspace / "consumer.py"
         source.write_text("a = 'left'\nb = 'right'\nc = 'local'\n", encoding="utf-8")
         report = tm.ok(
@@ -247,12 +248,12 @@ class TestsFlextInfraModEvidenceInputs:
             for rule in rules
         )
         for index, conflicting in enumerate((
-            m.Infra.CodemodRulePlan(
-                provider_order=plan.provider_order,
-                rules=duplicate_rules,
-                rulesets=plan.rulesets,
-                project_rule_ids=plan.project_rule_ids,
-            ),
+            m.Infra.CodemodRulePlan.model_validate({
+                "provider_order": (plan.provider_order),
+                "rules": (duplicate_rules),
+                "rulesets": (plan.rulesets),
+                "project_rule_ids": (plan.project_rule_ids),
+            }),
             plan.model_copy(update={"rules": duplicate_rules}),
         )):
             destination = tmp_path / f"conflicting-native-{index}"
@@ -488,7 +489,7 @@ class TestsFlextInfraModEvidenceInputs:
     def _scanned_shared_occurrences(
         mod_workspace: Path,
         occurrences: int,
-    ) -> tuple[p.Infra.ModScanReport, m.Infra.CodemodBindingSnapshot, Path]:
+    ) -> tuple[p.Infra.ModScanReport, p.Infra.CodemodBindingSnapshot, Path]:
         """Scan the shared-occurrence workspace with its authenticated input.
 
         Args:
@@ -515,7 +516,11 @@ class TestsFlextInfraModEvidenceInputs:
         )
         tm.that(report.findings, eq=occurrences)
         snapshot = m.Infra.CodemodBindingSnapshot(
-            states=(tm.not_none(report.entries[0].source_state),)
+            states=(
+                m.Cli.AtomicFileState.model_validate(
+                    tm.not_none(report.entries[0].source_state)
+                ),
+            )
         )
         return report, snapshot, source
 
@@ -595,8 +600,10 @@ class TestsFlextInfraModEvidenceInputs:
         with u.Tests.raises(m.ValidationError):
             m.Infra.CodemodBindingSnapshot(
                 states=(
-                    snapshot.states[0],
-                    snapshot.states[0].model_copy(update={"content": b"changed"}),
+                    m.Cli.AtomicFileState.model_validate(snapshot.states[0]),
+                    m.Cli.AtomicFileState.model_validate(
+                        snapshot.states[0].model_copy(update={"content": b"changed"})
+                    ),
                 )
             )
 
@@ -629,3 +636,145 @@ class TestsFlextInfraModEvidenceInputs:
         tm.that(restored.entries, eq=())
         tm.that(restored.totals_by_repository, eq={mod_workspace.name: 0})
         tm.that(restored.totals_by_rule, eq={"ban-pass-through-wrapper": 0})
+
+    @staticmethod
+    def test_evidence_with_findings_round_trips_json(mod_workspace: Path) -> None:
+        """Published evidence with native records is valid JSON on re-entry."""
+        source = mod_workspace / "consumer.py"
+        source.write_text(
+            "def wrapper(value):\n    return value\n",
+            encoding="utf-8",
+        )
+        report = tm.ok(
+            FlextInfraModGateEngine.scan(
+                mod_workspace, fix=False, selection=("ban-pass-through-wrapper",)
+            )
+        )
+        tm.that(report.findings > 0, truth=True)
+        receipt = tm.ok(
+            u.Infra.publish_mod_scan_evidence(
+                mod_workspace,
+                report,
+                publication=m.Infra.ModScanPublication(
+                    command=c.Infra.ModScanCommand.SCAN,
+                    scope=(str(source),),
+                    repositories=(mod_workspace.name,),
+                    rule_ids=("ban-pass-through-wrapper",),
+                ),
+            )
+        )
+        tm.ok(receipt.path.is_file())
+
+    @staticmethod
+    def test_publication_removes_only_stale_unreferenced_artifacts(
+        mod_workspace: Path,
+    ) -> None:
+        """Evidence keeps its own bytes and recent ones; older unreferenced go."""
+        source = mod_workspace / "consumer.py"
+        source.write_text("value = 1\n", encoding="utf-8")
+        report = tm.ok(
+            FlextInfraModGateEngine.scan(
+                mod_workspace, fix=False, selection=("ban-pass-through-wrapper",)
+            )
+        )
+        store = mod_workspace / c.Infra.MOD_SCAN_REPORT_RELATIVE_PATH.parent / "native"
+        store.mkdir(parents=True, exist_ok=True)
+        stale, recent = store / "stale-unreferenced", store / "recent-unreferenced"
+        stale.write_bytes(b"stale")
+        recent.write_bytes(b"recent")
+        past = (
+            stale.stat().st_mtime
+            - config.Infra.mod_evidence.native_artifact_retention_seconds
+            - 1
+        )
+        os.utime(stale, (past, past))
+        receipt = tm.ok(
+            u.Infra.publish_mod_scan_evidence(
+                mod_workspace,
+                report,
+                publication=m.Infra.ModScanPublication(
+                    command=c.Infra.ModScanCommand.SCAN,
+                    scope=(str(source),),
+                    repositories=(mod_workspace.name,),
+                    rule_ids=("ban-pass-through-wrapper",),
+                ),
+            )
+        )
+        restored = m.Infra.ModScanEvidence.model_validate_json(
+            receipt.path.read_bytes()
+        )
+        tm.fail(stale.exists())
+        tm.ok(recent.exists())
+        tm.ok(all(artifact.path.exists() for artifact in restored.native_artifacts))
+
+    @staticmethod
+    def test_published_evidence_revalidates_from_its_own_json() -> None:
+        """Persisted evidence declares concrete models and round-trips as JSON."""
+        digest = "0" * 64
+        evidence = m.Infra.ModScanEvidence.model_validate({
+            "schema_version": c.Infra.MOD_SCAN_REPORT_SCHEMA_VERSION,
+            "inputs": {
+                "states": (
+                    {
+                        "path": "/workspace/source.py",
+                        "parent_device": 1,
+                        "parent_inode": 2,
+                        "mode": 0o600,
+                        "device": 1,
+                        "inode": 3,
+                        "link_count": 1,
+                        "content": b"value = 1\n",
+                    },
+                ),
+            },
+            "native_artifacts": (
+                {
+                    "path": "/workspace/native/records.jsonl",
+                    "parent_device": 1,
+                    "parent_inode": 2,
+                    "mode": 0o600,
+                    "device": 1,
+                    "inode": 4,
+                    "link_count": 1,
+                    "size": 32,
+                    "sha256": digest,
+                    "version_key": [0],
+                },
+            ),
+            "command": c.Infra.ModScanCommand.SCAN,
+            "root": Path("/workspace"),
+            "scope": ("source.py",),
+            "entries": (
+                {
+                    "rule_file": "/workspace/rules/example.yml",
+                    "rule_id": "example-rule",
+                    "repository": "workspace",
+                    "file": Path("source.py"),
+                    "range": {"byteOffset": {"start": 0, "end": 9}},
+                    "text": "value = 1",
+                    "severity": "error",
+                    "classification": c.Infra.ModScanFindingClass.ACTIONABLE,
+                    "actionable": True,
+                    "native_record": m.Infra.ModNativeRecord(
+                        offset=0, length=9, sha256=digest
+                    ),
+                    "source_path": Path("/workspace/source.py"),
+                    "native_artifact": 0,
+                },
+            ),
+            "totals_by_class": {
+                classification: 1
+                if classification is c.Infra.ModScanFindingClass.ACTIONABLE
+                else 0
+                for classification in c.Infra.MOD_SCAN_CLASS_COUNT_FIELDS
+            },
+            "totals_by_repository": {"workspace": 1},
+            "totals_by_rule": {"example-rule": 1},
+        })
+        published = evidence.model_dump_json(
+            exclude=set(getattr(type(evidence), "model_computed_fields", ()))
+        )
+        restored = m.Infra.ModScanEvidence.model_validate_json(published)
+        tm.that(restored, eq=evidence)
+        tm.that(restored.native_artifacts[0].sha256, eq=digest)
+        tm.that(restored.inputs.states[0].path, eq=Path("/workspace/source.py"))

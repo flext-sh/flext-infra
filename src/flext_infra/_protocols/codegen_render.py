@@ -31,52 +31,6 @@ class FlextInfraProtocolsCodegenRender:
     """Own the structural contracts declared by its model source."""
 
     @runtime_checkable
-    class ModelProtocolConformanceRenderContext(FlextCliProtocols.BaseModel, Protocol):
-        """Structural data contract projected from the owning model."""
-
-        @property
-        def header(self) -> str:
-            """Generated source ownership marker."""
-            ...
-
-        @property
-        def copyright_notice(self) -> str:
-            """The owning project's legal notice."""
-            ...
-
-        @property
-        def package_name(self) -> t.NonEmptyStr:
-            """Authenticated public package."""
-            ...
-
-        @property
-        def imports(self) -> tuple[str, ...]:
-            """Native generic-bound imports."""
-            ...
-
-        @property
-        def facades(self) -> tuple[str, str]:
-            """Published model and protocol facade classes of the package."""
-            ...
-
-        @property
-        def checks(
-            self,
-        ) -> tuple[tuple[str, str, tuple[str, ...], tuple[str, ...]], ...]:
-            """Native constructor, structural port, parameters and arguments."""
-            ...
-
-        @property
-        def documentation_language(self) -> t.Infra.DocumentationLanguage:
-            """Project-local generated documentation language."""
-            ...
-
-        @property
-        def module_description(self) -> str:
-            """The instance-to-protocol evidence description."""
-            ...
-
-    @runtime_checkable
     class ModelProtocolRenderContext(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
@@ -426,6 +380,11 @@ class FlextInfraProtocolsCodegenRender:
         """Structural data contract projected from the owning model."""
 
         @property
+        def make(self) -> FlextInfraProtocolsConfigMake.MakeSpec:
+            """Canonical workflow command contract."""
+            ...
+
+        @property
         def preservation_ref_namespaces(self) -> tuple[t.NonEmptyStr, ...]:
             """Remote ref prefixes exempt from the pre-push matrix."""
             ...
@@ -485,6 +444,11 @@ class FlextInfraProtocolsCodegenRender:
             ...
 
         @property
+        def bootstrap_bin_dir(self) -> t.NonEmptyStr:
+            """Repository-local directory of the Mise shims."""
+            ...
+
+        @property
         def environment_directory(self) -> t.NonEmptyStr:
             """Runtime-root-local development environment."""
             ...
@@ -532,6 +496,24 @@ class FlextInfraProtocolsCodegenRender:
         @property
         def link_mode(self) -> str:
             """Uv installation link mode."""
+            ...
+
+        @property
+        def cooldown_days(self) -> int:
+            """Structural member projected from the owning model.
+
+            Fleet supply-chain cooldown rendered as the relative exclude-newer span
+            every uv resolution honours.
+            """
+            ...
+
+        @property
+        def cooldown_exceptions(self) -> tuple[str, ...]:
+            """Structural member projected from the owning model.
+
+            Declared CVE or critical-fix packages exempt from the cooldown; empty
+            removes exclude-newer-package.
+            """
             ...
 
         @property
@@ -592,7 +574,7 @@ class FlextInfraProtocolsCodegenRender:
         header_comments: tuple[str, ...]
         class_indent: str
         indentation: str
-        body_source: tuple[str | tuple[str, str], ...] | None
+        body_source: str | None
         publications: Mapping[str, str]
         exports: tuple[str, ...] | None
         managed_header: str | None

@@ -102,6 +102,7 @@ class TestsFlextInfraCodegenMakeVerbContract:
         [
             ("upg", "OPTIONS=Y"),
             ("upg", "OPTIONS=yes"),
+            ("lock", "OPTIONS=Y"),
             ("check", "HELP=1"),
             ("profile-mod", "OPTIONS=Y"),
             ("profile-mod-report", "OPTIONS=Y"),

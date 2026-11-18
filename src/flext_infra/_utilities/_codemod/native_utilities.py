@@ -28,10 +28,12 @@ from types import MappingProxyType
 
 from flext_cli import u
 from packaging.utils import canonicalize_name
+from typing_extensions import TypeForm
 
-from flext_infra import c, config, m, p, r, t
+from flext_infra import c, config, m, p, r, settings, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
+    FlextInfraUtilitiesDependencyRequirements,
     FlextInfraUtilitiesImportLaw,
     FlextInfraUtilitiesWorkspaceSnapshot,
 )
@@ -197,6 +199,31 @@ class FlextInfraUtilitiesCodemodNative:
         }
 
     @classmethod
+    def codemod_runtime_distributions(cls, root: Path) -> Mapping[str, t.StrTuple]:
+        """Map import packages to the distributions of the project's own runtime.
+
+        Installed metadata is a fact of the TARGET repository's runtime, the
+        same observation its runtime closure reads; the invoking interpreter
+        is never read. A project declaring no runtime requirement installs no
+        distribution of its own, so nothing is observed.
+
+        Returns:
+            The import packages and the distributions providing each.
+
+        """
+        del cls
+        if not (root / c.PYPROJECT_FILENAME).is_file():
+            return MappingProxyType({})
+        if not FlextInfraUtilitiesCodemodRules.project_requirements(root).unwrap()[1]:
+            return MappingProxyType({})
+        return (
+            FlextInfraUtilitiesCodemodRules
+            .codemod_target_environment(root.resolve())
+            .unwrap()
+            .package_distributions
+        )
+
+    @classmethod
     def codemod_runtime_modules(cls, root: Path) -> frozenset[str]:
         """Top-level import names provided by the project's runtime closure.
 
@@ -287,6 +314,17 @@ class FlextInfraUtilitiesCodemodNative:
         key = (root, cls._generated_key(snapshot, root, spec, rule_ids))
         rendered = snapshot.codemod_renderings.get(key)
         if rendered is None:
+            cache_path = cls._rendering_cache_path(key[1])
+            if cache_path.is_file():
+                try:
+                    rendered = m.Infra.CodemodNativeGenerated.model_validate_json(
+                        cache_path.read_text(encoding=c.DEFAULT_ENCODING)
+                    )
+                except ValueError:
+                    rendered = None
+            if rendered is not None:
+                snapshot.codemod_renderings[key] = rendered
+                return rendered
             catalog = (
                 ()
                 if rule_ids is None
@@ -324,8 +362,27 @@ class FlextInfraUtilitiesCodemodNative:
             rendered = m.Infra.CodemodNativeGenerated(
                 utilities=utilities, rules=rules, scopes=scopes
             )
+            cls._store_rendering(cache_path, rendered)
             snapshot.codemod_renderings[key] = rendered
         return rendered
+
+    @staticmethod
+    def _rendering_cache_path(digest: str) -> Path:
+        """Return the persistent rendering cache path of one input digest.
+
+        Returns:
+            The cache file holding the rendered generated provider.
+
+        """
+        return settings.work_dir / "codemod-renderings" / f"{digest}.json"
+
+    @staticmethod
+    def _store_rendering(path: Path, rendered: m.Infra.CodemodNativeGenerated) -> None:
+        """Publish one rendering to its cache without exposing a partial file."""
+        path.parent.mkdir(parents=True, exist_ok=True)
+        temporary = path.with_suffix(".tmp")
+        temporary.write_text(rendered.model_dump_json(), encoding=c.DEFAULT_ENCODING)
+        temporary.replace(path)
 
     @staticmethod
     def _selected_catalog_documents(
@@ -452,6 +509,10 @@ class FlextInfraUtilitiesCodemodNative:
         snapshots = FlextInfraUtilitiesWorkspaceSnapshot
         digest = hashlib.sha256(spec.model_dump_json().encode(c.DEFAULT_ENCODING))
         digest.update(b"\0")
+        digest.update(config.Infra.tooling.model_dump_json().encode(c.DEFAULT_ENCODING))
+        digest.update(b"\0")
+        digest.update((root / c.PYPROJECT_FILENAME).read_bytes())
+        digest.update(b"\0")
         selected_ids: t.JsonValue = (
             None if rule_ids is None else list[t.JsonValue](sorted(rule_ids))
         )
@@ -461,19 +522,43 @@ class FlextInfraUtilitiesCodemodNative:
             .unwrap()
             .encode(c.DEFAULT_ENCODING)
         )
-        manifest = root / c.PYPROJECT_FILENAME
-        for path in (
-            *((manifest,) if manifest.is_file() else ()),
-            *snapshots.workspace_python_files(snapshot, root),
-        ):
-            digest.update(str(path).encode(c.DEFAULT_ENCODING))
-            digest.update(b"\0")
-            digest.update(
-                snapshots.workspace_source(snapshot, path).digest.encode(
-                    c.DEFAULT_ENCODING
+        workspace = (
+            root.parent if (root.parent / c.Infra.GITMODULES).is_file() else root
+        )
+        requirements = FlextInfraUtilitiesCodemodRules.project_requirements(
+            root
+        ).unwrap()[1]
+        identities = (
+            FlextInfraUtilitiesDependencyRequirements.requirement_identity(requirement)
+            for requirement in requirements
+        )
+        members = (
+            root,
+            *(
+                workspace / identity
+                for identity in identities
+                if identity.startswith("flext-") and (workspace / identity).is_dir()
+            ),
+        )
+        # A rendering holds root-relative paths and names generated rules after
+        # the member directory, never its location: the key names each source
+        # from the member's parent, so identical content under the same member
+        # name shares one rendering across checkouts, and every byte still
+        # authenticates it.
+        for member_root in members:
+            for path in snapshots.workspace_python_files(snapshot, member_root):
+                digest.update(
+                    path.relative_to(root.parent).as_posix().encode(c.DEFAULT_ENCODING)
                 )
-            )
-            digest.update(b"\0")
+                digest.update(b"\0")
+                digest.update(path.read_bytes())
+                digest.update(b"\0")
+        for module in (
+            Path(__file__),
+            Path(__file__).with_name("project_facts.py"),
+            Path(__file__).with_name("rules.py"),
+        ):
+            digest.update(module.read_bytes())
         return digest.hexdigest()
 
     @classmethod
@@ -512,7 +597,7 @@ class FlextInfraUtilitiesCodemodNative:
 
         """
         scopes: dict[str, t.StrTuple] = {}
-        adapter = u.type_adapter(t.TypeForm(Mapping[str, t.StrTuple]))
+        adapter = u.type_adapter(TypeForm(Mapping[str, t.StrTuple]))
         for name in producers:
             producer = getattr(cls, name, None)
             if not callable(producer):
@@ -562,7 +647,9 @@ class FlextInfraUtilitiesCodemodNative:
 
         The caller injects its single repository snapshot. The public workspace
         composition invokes each repository separately, so generated identities
-        and scopes never merge with a sibling's project plan.
+        and scopes never merge with a sibling's project plan. A repository is
+        identified by its ``pyproject.toml`` ``[project]`` table; a root without
+        one fails before any rendering reads it.
 
         Returns:
             The resulting ``p.Result[p.Infra.CodemodRulePlan]``.
@@ -583,6 +670,9 @@ class FlextInfraUtilitiesCodemodNative:
                 return r[p.Infra.CodemodRulePlan].fail(
                     "duplicate codemod rule IDs in selection",
                 )
+        project = FlextInfraUtilitiesCodemodRules.project_requirements(root)
+        if project.failure:
+            return r[p.Infra.CodemodRulePlan].from_failure(project)
         provider = cls.codemod_generated_provider(
             snapshot, root, spec, rule_ids=rule_ids
         )
@@ -833,7 +923,7 @@ class FlextInfraUtilitiesCodemodNative:
         if not callable(renderer):
             msg = f"ast-grep rule renderer is not declared: {entry.name}"
             raise TypeError(msg)
-        adapter = u.type_adapter(t.TypeForm(Mapping[str, t.JsonMapping]))
+        adapter = u.type_adapter(TypeForm(Mapping[str, t.JsonMapping]))
         if entry.facts is None:
             return adapter.validate_python(renderer(snapshot, project), strict=True)
         if entry.facts not in facts:
@@ -870,7 +960,7 @@ class FlextInfraUtilitiesCodemodNative:
             msg = f"ast-grep shape producer is not declared: {entry.shapes_from}"
             raise TypeError(msg)
         return frozenset(
-            u.type_adapter(t.TypeForm(Sequence[str])).validate_python(
+            u.type_adapter(TypeForm(Sequence[str])).validate_python(
                 producer(), strict=True
             )
         )
@@ -895,16 +985,24 @@ class FlextInfraUtilitiesCodemodNative:
 
         """
         selected = None if rule_ids is None else frozenset(rule_ids)
+        separator = c.Infra.CODEMOD_GENERATED_ID_SEPARATOR
+        header_prefix = f"{c.Infra.CODEMOD_IMPORT_HEADER_SHAPE}{separator}"
         return cls._rendered_rules(
             snapshot,
             project,
             tuple(
                 entry
                 for entry in spec.renderers
-                if selected is None or cls._renderer_selects_rule_ids(entry, selected)
+                if selected is None
+                or cls._renderer_selects_rule_ids(entry, selected)
+                or c.Infra.CODEMOD_IMPORT_HEADER_SHAPE in cls._renderer_shapes(entry)
             ),
             facts,
-            lambda rule_id, _claimed: selected is None or rule_id in selected,
+            lambda rule_id, _claimed: (
+                selected is None
+                or rule_id in selected
+                or rule_id.startswith(header_prefix)
+            ),
         )
 
     @classmethod
@@ -1046,7 +1144,7 @@ class FlextInfraUtilitiesCodemodNative:
 
         """
         documents: dict[str, t.JsonMapping] = {}
-        adapter = u.type_adapter(t.TypeForm(Mapping[str, t.JsonMapping]))
+        adapter = u.type_adapter(TypeForm(Mapping[str, t.JsonMapping]))
         pending = None if required is None else set(required)
         for name in producers:
             if pending is not None and pending.issubset(documents):

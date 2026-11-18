@@ -10,7 +10,6 @@ from typing import Annotated
 
 from flext_cli import m, t
 
-from flext_infra import p
 from flext_infra._models._config import (
     FlextInfraModelsConfigContract,
     FlextInfraModelsConfigSonarcloud,
@@ -50,14 +49,7 @@ class FlextInfraModelsConfigRender(FlextInfraModelsConfigSonarcloud):
         ]
         issue_exclusions: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.SonarcloudIssueExclusionSpec,
-                    t.schema_for_model(
-                        lambda: (
-                            FlextInfraModelsConfigSonarcloud.SonarcloudIssueExclusionSpec
-                        )
-                    ),
-                ],
+                (FlextInfraModelsConfigSonarcloud.SonarcloudIssueExclusionSpec),
                 ...,
             ],
             m.Field(

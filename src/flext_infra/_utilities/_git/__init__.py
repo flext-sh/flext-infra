@@ -19,9 +19,6 @@ if TYPE_CHECKING:
         FlextInfraUtilitiesGitAttestationEvidence,
     )
     from flext_infra._utilities._git.ignore import FlextInfraUtilitiesGitignore
-    from flext_infra._utilities._git.lane_hygiene import (
-        FlextInfraUtilitiesGitLaneHygiene,
-    )
     from flext_infra._utilities._git.mutation_scope import (
         FlextInfraUtilitiesGitMutationScope,
     )
@@ -109,7 +106,6 @@ if TYPE_CHECKING:
 __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesGitAttestation",
     "FlextInfraUtilitiesGitAttestationEvidence",
-    "FlextInfraUtilitiesGitLaneHygiene",
     "FlextInfraUtilitiesGitMutationScope",
     "FlextInfraUtilitiesGitPhysicalScope",
     "FlextInfraUtilitiesGitRemote",
@@ -151,7 +147,6 @@ install_lazy_exports(
     {
         "FlextInfraUtilitiesGitAttestation": ".attestation",
         "FlextInfraUtilitiesGitAttestationEvidence": ".attestation_evidence",
-        "FlextInfraUtilitiesGitLaneHygiene": ".lane_hygiene",
         "FlextInfraUtilitiesGitMutationScope": ".mutation_scope",
         "FlextInfraUtilitiesGitPhysicalScope": ".physical_scope",
         "FlextInfraUtilitiesGitRemote": ".remote",
@@ -187,4 +182,38 @@ install_lazy_exports(
         "FlextInfraUtilitiesGitignore": ".ignore",
     },
     public_exports=__all__,
+    deferred_members=(
+        "FlextInfraUtilitiesGitAttestation",
+        "FlextInfraUtilitiesGitAttestationEvidence",
+        "FlextInfraUtilitiesGitMutationScope",
+        "FlextInfraUtilitiesGitRepo",
+        "FlextInfraUtilitiesGitRequirementSource",
+        "FlextInfraUtilitiesGitScope",
+        "FlextInfraUtilitiesGitSemanticIdentity",
+        "FlextInfraUtilitiesGitSemanticIndex",
+        "FlextInfraUtilitiesGitSemanticLane",
+        "FlextInfraUtilitiesGitSemanticPaths",
+        "FlextInfraUtilitiesGitSemanticPublish",
+        "FlextInfraUtilitiesGitSemanticRefs",
+        "FlextInfraUtilitiesGitSemanticSubmodule",
+        "FlextInfraUtilitiesGitSemanticWorktree",
+        "FlextInfraUtilitiesGitStateCapture",
+        "FlextInfraUtilitiesGitStateCheckpoint",
+        "FlextInfraUtilitiesGitStateFiles",
+        "FlextInfraUtilitiesGitStatePublication",
+        "FlextInfraUtilitiesGitStateSnapshot",
+        "FlextInfraUtilitiesGitStateTransition",
+        "FlextInfraUtilitiesGitStateTrees",
+        "FlextInfraUtilitiesGitWorktree",
+        "FlextInfraUtilitiesGitWorktreeCheckpoint",
+        "FlextInfraUtilitiesGitWorktreeDiscovery",
+        "FlextInfraUtilitiesGitWorktreeFacts",
+        "FlextInfraUtilitiesGitWorktreeMaterialization",
+        "FlextInfraUtilitiesGitWorktreeMeasure",
+        "FlextInfraUtilitiesGitWorktreePatch",
+        "FlextInfraUtilitiesGitWorktreeRemoval",
+        "FlextInfraUtilitiesGitWorktreeRoots",
+        "FlextInfraUtilitiesGitWorktreeStatus",
+        "FlextInfraUtilitiesGitignore",
+    ),
 )

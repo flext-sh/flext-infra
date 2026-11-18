@@ -15,6 +15,27 @@ valid:
     @pytest.fixture
     def settings() -> int:
         return 1
+  - |
+    class T:
+        @property
+        def value(self: Self) -> int:
+            return 1
+  - |
+    class T:
+        @classmethod
+        def build(cls) -> T:
+            return cls()
+  - |
+    class T:
+        @staticmethod
+        def keep(value: int = 1) -> int:
+            return value
+  - |
+    class T:
+        def run(self) -> int:
+            def inner() -> int:
+                return 1
+            return inner()
 invalid:
   - |
     class TestsSample:
@@ -26,3 +47,12 @@ invalid:
         @u.Tests.fixture
         def settings(tmp_path: Path) -> Path:
             return tmp_path
+  - |
+    class Holder:
+        @pytest.fixture
+        def streams(logging_streams: int) -> int:
+            return logging_streams
+  - |
+    class T:
+        def helper(value: int) -> int:
+            return value

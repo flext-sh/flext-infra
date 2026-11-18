@@ -6,15 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Hashable, Mapping, Sequence
 from pathlib import Path
 from typing import Annotated
 
 from flext_cli import m
 
 from flext_infra import p, t
-from flext_infra._models import FlextInfraModelsRefactorGrep
-from flext_infra._models._codegen import FlextInfraModelsCodegenLazyInit
 
 
 class FlextInfraModelsWorkspaceSnapshot:
@@ -25,9 +23,7 @@ class FlextInfraModelsWorkspaceSnapshot:
 
         path: Annotated[Path, m.Field(description="Resolved file path")]
         state: Annotated[
-            Annotated[
-                p.Cli.AtomicFileState, t.schema_for_model(lambda: m.Cli.AtomicFileState)
-            ],
+            m.Cli.AtomicFileState,
             m.Field(description="Authenticated state the run reads and publishes"),
         ]
         digest: Annotated[
@@ -67,6 +63,18 @@ class FlextInfraModelsWorkspaceSnapshot:
             frozenset[str], m.Field(description="Runtime bootstrap dependencies")
         ]
 
+    class ImportGraphModuleFacts(m.ContractModel):
+        """Runtime import facts of one module."""
+
+        name: Annotated[str, m.Field(description="Dotted module name")]
+        imports: Annotated[
+            tuple[str, ...], m.Field(description="Module-level imported module paths")
+        ]
+        aliases: Annotated[
+            Mapping[str, str],
+            m.Field(description="Lazy export name to provider module"),
+        ]
+
     class WorkspaceSnapshot(m.ContractModel):
         """The one Rope model of a workspace run and the facts derived from it.
 
@@ -100,13 +108,9 @@ class FlextInfraModelsWorkspaceSnapshot:
         )
         python_module_facts: t.Port[
             dict[
-                t.Infra.RopeNativeParsedModule,
-                Annotated[
-                    p.Infra.PythonModuleFacts,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsCodegenLazyInit.PythonModuleFacts
-                    ),
-                ],
+                # The engine's parsed module is only this cache's identity key.
+                Hashable,
+                p.Infra.PythonModuleFacts,
             ]
         ] = m.Field(
             exclude=True,
@@ -162,12 +166,7 @@ class FlextInfraModelsWorkspaceSnapshot:
         codemod_renderings: t.Port[
             dict[
                 tuple[Path, str],
-                Annotated[
-                    p.Infra.CodemodNativeGenerated,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsRefactorGrep.CodemodNativeGenerated
-                    ),
-                ],
+                p.Infra.CodemodNativeGenerated,
             ]
         ] = m.Field(
             exclude=True,

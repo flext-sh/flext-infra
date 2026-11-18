@@ -9,6 +9,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from collections.abc import Hashable
+
     from flext_cli import p
 
     from flext_infra._protocols import FlextInfraProtocolsRefactorAstGrep
@@ -30,8 +32,7 @@ if TYPE_CHECKING:
     from flext_infra import t
 
 
-@runtime_checkable
-class FlextInfraProtocolsWorkspaceSnapshot(Protocol):
+class FlextInfraProtocolsWorkspaceSnapshot:
     """Workspace snapshot protocols exposed through ``p.Infra``."""
 
     @runtime_checkable
@@ -97,15 +98,33 @@ class FlextInfraProtocolsWorkspaceSnapshot(Protocol):
     class RopePreferences(Protocol):
         """Native preference updates required by project source election."""
 
+        @property
+        def imports(self) -> t.Infra.RopeNativeImportPrefs: ...
+
         def add(self, key: str, value: str) -> None: ...
 
         def set(self, key: str, *, value: bool | Sequence[str]) -> None: ...
 
     @runtime_checkable
+    class RopeChange(Protocol):
+        """One pending native resource update."""
+
+        resource: FlextInfraProtocolsWorkspaceSnapshot.RopeResource
+        new_contents: str
+
+    @runtime_checkable
     class RopeChangeSet(Protocol):
         """Rope change set shape."""
 
-        changes: list[p.AttributeProbe]
+        changes: list[FlextInfraProtocolsWorkspaceSnapshot.RopeChange]
+
+        def do(self) -> None:
+            """Apply the native change set."""
+            ...
+
+        def undo(self) -> None:
+            """Undo the native change set."""
+            ...
 
     @runtime_checkable
     class RopeModuleFinder(Protocol):
@@ -207,13 +226,17 @@ class FlextInfraProtocolsWorkspaceSnapshot(Protocol):
         def find_module(
             self,
             modname: str,
-            folder: FlextInfraProtocolsWorkspaceSnapshot.RopeRoot | None = None,
+            folder: FlextInfraProtocolsWorkspaceSnapshot.RopeRoot
+            | FlextInfraProtocolsWorkspaceSnapshot.RopeResource
+            | None = None,
         ) -> FlextInfraProtocolsWorkspaceSnapshot.RopeResource | None: ...
 
         def get_module(
             self,
             name: str,
-            folder: FlextInfraProtocolsWorkspaceSnapshot.RopeRoot | None = None,
+            folder: FlextInfraProtocolsWorkspaceSnapshot.RopeRoot
+            | FlextInfraProtocolsWorkspaceSnapshot.RopeResource
+            | None = None,
         ) -> t.Infra.RopeNativeSemanticModule: ...
 
         def get_relative_module(
@@ -233,7 +256,9 @@ class FlextInfraProtocolsWorkspaceSnapshot(Protocol):
 
         def validate(
             self,
-            folder: FlextInfraProtocolsWorkspaceSnapshot.RopeRoot | None = None,
+            folder: FlextInfraProtocolsWorkspaceSnapshot.RopeRoot
+            | FlextInfraProtocolsWorkspaceSnapshot.RopeResource
+            | None = None,
         ) -> None: ...
 
         def close(self) -> None: ...
@@ -342,10 +367,7 @@ class FlextInfraProtocolsWorkspaceSnapshot(Protocol):
         @property
         def python_module_facts(
             self,
-        ) -> Mapping[
-            t.Infra.RopeNativeParsedModule,
-            FlextInfraProtocolsCodegenLazyInit.PythonModuleFacts,
-        ]:
+        ) -> dict[Hashable, FlextInfraProtocolsCodegenLazyInit.PythonModuleFacts]:
             """Shared static facts keyed by the original engine parse."""
             ...
 
@@ -423,10 +445,29 @@ class FlextInfraProtocolsWorkspaceSnapshot(Protocol):
         @property
         def codemod_renderings(
             self,
-        ) -> Mapping[
+        ) -> dict[
             tuple[Path, str], FlextInfraProtocolsRefactorAstGrep.CodemodNativeGenerated
         ]:
             """Native codemod rendering per member root and render-input digest."""
+            ...
+
+    @runtime_checkable
+    class ImportGraphModuleFacts(FlextCliProtocols.BaseModel, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def name(self) -> str:
+            """Dotted module name."""
+            ...
+
+        @property
+        def imports(self) -> tuple[str, ...]:
+            """Module-level imported module paths."""
+            ...
+
+        @property
+        def aliases(self) -> Mapping[str, str]:
+            """Lazy export name to provider module."""
             ...
 
 

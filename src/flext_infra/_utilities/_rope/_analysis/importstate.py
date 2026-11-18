@@ -31,7 +31,7 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
     """Rope semantic import state, class discovery, and project-backed probes."""
 
     _SEMANTIC_STATE_CACHE: ClassVar[
-        MutableMapping[tuple[str, str, str], m.Infra.ModuleSemanticState]
+        MutableMapping[tuple[str, str, str], p.Infra.ModuleSemanticState]
     ] = {}
 
     @staticmethod
@@ -186,16 +186,18 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
                 current_package=current_package,
             )
         )
-        return m.Infra.ModuleSemanticState(
-            class_infos=tuple(
-                FlextInfraUtilitiesRopeAnalysisImportState._module_class_infos(
-                    pymodule=pymodule,
-                    resource=resource,
-                ),
+        return m.Infra.ModuleSemanticState.model_validate({
+            "class_infos": (
+                tuple(
+                    FlextInfraUtilitiesRopeAnalysisImportState._module_class_infos(
+                        pymodule=pymodule,
+                        resource=resource,
+                    ),
+                )
             ),
-            declared_imports=declared_imports,
-            semantic_imports=semantic_imports,
-        )
+            "declared_imports": (declared_imports),
+            "semantic_imports": (semantic_imports),
+        })
 
     @staticmethod
     def _module_class_infos(

@@ -6,7 +6,9 @@
 
 - {{ text.VERSION }}: `{{ version }}`
 - {{ text.PROJECT_CLASS }}: `{{ project_class }}`
+{% if package_name -%}
 - {{ text.PACKAGE }}: `{{ package_name }}`
+{% endif -%}
 - {{ text.DESCRIPTION }}: {{ description }}
 
 {{ text.PORTAL_BODY }}
@@ -18,10 +20,12 @@
 - [{{ text.GENERATED_OVERVIEW }}](api-reference/generated/overview.md)
 - [{{ text.GENERATED_MODULE_INDEX }}](api-reference/generated/modules/index.md)
 
+{% if package_name -%}
 ## {{ text.PUBLIC_SURFACE_SUMMARY }}
 
 {{ mk.public_surface(package_name) }}
 
+{% endif -%}
 {{ mk.collection_rules(text, links) }}
 
 {{ mk.quality_gates(text, links) }}

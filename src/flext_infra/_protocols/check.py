@@ -28,8 +28,7 @@ if TYPE_CHECKING:
     from flext_infra._protocols._git import FlextInfraProtocolsGitIdentity
 
 
-@runtime_checkable
-class FlextInfraProtocolsCheck(Protocol):
+class FlextInfraProtocolsCheck:
     """Check-domain protocol definitions."""
 
     @runtime_checkable
@@ -151,15 +150,6 @@ class FlextInfraProtocolsCheck(Protocol):
         def submodule_search_locations(self) -> Sequence[str] | None: ...
 
     @runtime_checkable
-    class GlobalCheckTargetPlanner(Protocol):
-        """Plan native global coverage on demand at the admission boundary."""
-
-        def __call__(
-            self,
-            gates: Sequence[str],
-        ) -> p.Result[tuple[FlextInfraProtocolsCheck.CheckProjectTarget, ...]]: ...
-
-    @runtime_checkable
     class PytestRunContextReceiver(Protocol):
         """Receive the runner's immutable Pydantic receipt through explicit DI."""
 
@@ -168,16 +158,42 @@ class FlextInfraProtocolsCheck(Protocol):
         ) -> None: ...
 
     @runtime_checkable
-    class WorkspaceLoopOutcome(Protocol):
-        """Public structural view of the workspace gate loop outcome."""
-
-        results: tuple[FlextInfraProtocolsCheck.ProjectResult, ...]
-        failed: int
-        total_elapsed: float
-
-    @runtime_checkable
-    class RunCommand(FlextInfraProtocolsMixins.WriteMixin, Protocol):
+    class RunCommand(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
+
+        @property
+        def repository_root(self) -> Path:
+            """Repository root."""
+            ...
+
+        @property
+        def projects(self) -> Sequence[str] | None:
+            """Projects to process; repeat --projects NAME as needed."""
+            ...
+
+        @property
+        def verbose(self) -> bool:
+            """Verbose output."""
+            ...
+
+        @property
+        def apply(self) -> bool:
+            """Apply changes instead of running in dry-run mode."""
+            ...
+
+        @property
+        def gates(self) -> Sequence[str]:
+            """Structural member projected from the owning model.
+
+            Gate names for post-transform validation; empty resolves the requested
+            gate set from the typed Make spec at runtime.
+            """
+            ...
+
+        @property
+        def dry_run(self) -> bool:
+            """Whether writes are disabled (inverse of apply)."""
+            ...
 
         @property
         def fail_fast(self) -> bool:
@@ -224,11 +240,6 @@ class FlextInfraProtocolsCheck(Protocol):
             ...
 
         @property
-        def pyright_args(self) -> str | None:
-            """Extra arguments forwarded to Pyright."""
-            ...
-
-        @property
         def file(self) -> str | None:
             """One literal repository-relative file; read-only gates."""
             ...
@@ -244,65 +255,42 @@ class FlextInfraProtocolsCheck(Protocol):
             ...
 
     @runtime_checkable
-    class MypyResourceLimit(FlextCliProtocols.BaseModel, Protocol):
+    class FixPyreflyConfigCommand(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def memory_limit_mb(self) -> int:
-            """Positive Mypy memory limit in MiB (Linux AS; Darwin RSS)."""
+        def repository_root(self) -> Path:
+            """Repository root."""
             ...
 
         @property
-        def timeout_seconds(self) -> int:
-            """Structural member projected from the owning model.
-
-            Positive Mypy wall-time limit in seconds, resolved from
-            tools.mypy.timeout_seconds in tooling.yaml or the env override.
-            """
-            ...
-
-        @property
-        def memory_limit_bytes(self) -> int:
-            """Validated memory limit converted to bytes for the platform owner."""
-            ...
-
-    @runtime_checkable
-    class MypyInvocation(FlextCliProtocols.BaseModel, Protocol):
-        """Structural data contract projected from the owning model."""
-
-        @property
-        def targets(self) -> tuple[Path, ...]:
-            """Files or directories to check."""
-            ...
-
-        @property
-        def workspace(self) -> Path | None:
-            """Workspace owning the checker environment."""
-            ...
-
-        @property
-        def config_file(self) -> Path | None:
-            """Owned Mypy configuration."""
-            ...
-
-        @property
-        def report_json(self) -> bool:
-            """Emit native JSON diagnostics."""
+        def projects(self) -> Sequence[str] | None:
+            """Projects to process; repeat --projects NAME as needed."""
             ...
 
         @property
         def verbose(self) -> bool:
-            """Emit Mypy progress."""
+            """Verbose output."""
             ...
 
         @property
-        def profile_output(self) -> Path | None:
-            """Optional cProfile output destination."""
+        def apply(self) -> bool:
+            """Apply changes instead of running in dry-run mode."""
             ...
 
-    @runtime_checkable
-    class FixPyreflyConfigCommand(FlextInfraProtocolsMixins.WriteMixin, Protocol):
-        """Structural data contract projected from the owning model."""
+        @property
+        def gates(self) -> Sequence[str]:
+            """Structural member projected from the owning model.
+
+            Gate names for post-transform validation; empty resolves the requested
+            gate set from the typed Make spec at runtime.
+            """
+            ...
+
+        @property
+        def dry_run(self) -> bool:
+            """Whether writes are disabled (inverse of apply)."""
+            ...
 
     @runtime_checkable
     class LineWrapLiteral(FlextCliProtocols.BaseModel, Protocol):
@@ -609,7 +597,11 @@ class FlextInfraProtocolsCheck(Protocol):
         raw_output: str
         raw_receipt: Path | None
         outcome: c.Infra.ToolOutcome
-        process: p.Cli.ProcessOutcome | None
+
+        @property
+        def process(self) -> p.Cli.ProcessOutcome | None:
+            """Original native process, when this gate invoked one."""
+            ...
 
         @property
         def components(self) -> Mapping[str, FlextInfraProtocolsCheck.GateExecution]:

@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Annotated, ClassVar
 
 from flext_cli import m, u
+from typing_extensions import TypeForm
 
 from flext_infra import p, t
 from flext_infra._models import FlextInfraModelsBase
@@ -64,9 +65,7 @@ class FlextInfraModelsTransformers:
         project: Annotated[Path, m.Field(description="Physical owning project root")]
         path: Annotated[Path, m.Field(description="Absolute managed file path")]
         before: Annotated[
-            Annotated[
-                p.Cli.AtomicFileState, t.schema_for_model(lambda: m.Cli.AtomicFileState)
-            ],
+            m.Cli.AtomicFileState,
             m.Field(description="Descriptor-authenticated file state before migration"),
         ]
         desired_content: Annotated[
@@ -202,7 +201,13 @@ class FlextInfraModelsTransformers:
         upstream_aliases: Annotated[
             Mapping[str, str],
             m.Field(description="Proven upstream identities preceding local aliases"),
-        ] = m.Field(default_factory=u.empty(t.TypeForm(Mapping[str, str])))
+        ] = m.Field(default_factory=u.empty(TypeForm(Mapping[str, str])))
+        root_published_modules: Annotated[
+            frozenset[str],
+            m.Field(
+                description=("Service modules whose aliases the package root publishes")
+            ),
+        ] = m.Field(default_factory=frozenset[str])
 
     class PrivateImportRewritePlan(FlextInfraModelsBase.FrozenArbitrary):
         """Binding-proven import rewrites planned for one private-import file."""
@@ -341,10 +346,7 @@ class FlextInfraModelsTransformers:
             m.Field(description="Local names bound by from-import statements"),
         ]
         span: Annotated[
-            Annotated[
-                p.Infra.HeaderSpan,
-                t.schema_for_model(lambda: FlextInfraModelsTransformers.HeaderSpan),
-            ],
+            FlextInfraModelsTransformers.HeaderSpan,
             m.Field(description="Byte offsets for the header sections"),
         ]
 

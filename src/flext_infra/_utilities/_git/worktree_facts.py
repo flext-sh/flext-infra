@@ -114,16 +114,20 @@ class FlextInfraUtilitiesGitWorktreeFacts(
 
         """
         facts, actions = cls.collect_worktree_facts(query)
-        return m.Infra.WorktreesReport(
-            facts=facts,
-            plan=m.Infra.PrunePlan(
-                generated_at=datetime.fromtimestamp(query.now, tz=UTC),
-                mode=mode,
-                apply=apply,
-                actions=actions,
-                total_reclaim_bytes=sum(action.reclaim_bytes for action in actions),
+        return m.Infra.WorktreesReport.model_validate({
+            "facts": (facts),
+            "plan": (
+                m.Infra.PrunePlan.model_validate({
+                    "generated_at": (datetime.fromtimestamp(query.now, tz=UTC)),
+                    "mode": (mode),
+                    "apply": (apply),
+                    "actions": (actions),
+                    "total_reclaim_bytes": (
+                        sum(action.reclaim_bytes for action in actions)
+                    ),
+                })
             ),
-        )
+        })
 
     @classmethod
     def _worktree_fact(

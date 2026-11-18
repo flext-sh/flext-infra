@@ -1,0 +1,51 @@
+# Admissibility guard for every codemod fix that emits the flext-tests
+# matcher binding `tm`.
+#
+# The fix is safe in three states, not only when the canonical import already
+# exists: the module imports `tm` from the tests facade, the module does not
+# bind `tm` at all (the generated import-header binds it from the tm use), or
+# an enclosing scope leaves the module binding visible. It is unsafe when the
+# name resolves to another object at the occurrence: a module or function
+# import of `tm` from another module (tm-foreign-import), or a parameter that
+# shadows the facade.
+#
+# This replaces the former positive `tm-imported-from-flext` guard, which made
+# the cutover a deadlock: the assert was not rewritten without the import and
+# the import-header did not bind `tm` without the rewrite. `ban-test-assert`
+# documents the intended flow: the cutover adds the canonical tm alias to the
+# generated test import, so the repair is a normal `make mod` edit.
+id: tm-binding-admissible
+language: Python
+rule:
+  all:
+    - not:
+        inside:
+          stopBy: end
+          kind: function_definition
+          has:
+            field: parameters
+            stopBy: end
+            has:
+              kind: identifier
+              regex: "^tm$"
+              matches: name-binding
+              stopBy: end
+    - not:
+        inside:
+          stopBy: end
+          kind: lambda
+          has:
+            field: parameters
+            stopBy: end
+            has:
+              kind: identifier
+              regex: "^tm$"
+              matches: name-binding
+              stopBy: end
+    - not:
+        inside:
+          stopBy: end
+          kind: module
+          has:
+            stopBy: end
+            matches: tm-foreign-import

@@ -10,14 +10,29 @@
      ``push`` authorizes a releasing job's pushes to the member repository
      with the job token, as a persisted checkout credential would. -#}
 {% macro superproject_checkout(sha_expression, push=false) %}
+{%- include "_fragments/private_dependency_token.j2" %}
       - name: Checkout workspace {{ superproject.repository }}
         uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].version }}
         with:
           repository: {{ superproject.repository }}
           ref: {{ superproject.ref }}
-          submodules: recursive
+          submodules: {{ "false" if private_dependency_auth else "recursive" }}
           persist-credentials: false
           fetch-depth: 0
+{%- if private_dependency_auth %}
+          token: {% raw %}${{ steps.private_dependency_token.outputs.token }}{% endraw %}
+{%- endif %}
+{%- if private_dependency_auth %}
+{%- include "_fragments/private_dependency_git_auth.j2" %}
+
+      # The authenticated checkout skips submodules; the declared workspace
+      # members are the only trees setup needs. Every other superproject
+      # submodule may be private to a credential this App does not hold, so an
+      # unscoped init would abort the job at its first unauthorized clone.
+      - name: Initialize declared workspace submodules
+        working-directory: .
+        run: git submodule update --init --recursive -- {{ superproject.submodules | join(" ") }}
+{%- endif %}
       - name: Pin {{ dist }} at the tested commit
         working-directory: .
         run: |

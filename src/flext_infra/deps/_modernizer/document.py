@@ -20,7 +20,6 @@ from flext_infra.deps.phases import (
     FlextInfraConsolidateGroupsPhase,
     FlextInfraEnsurePackagingPhase,
     FlextInfraEnsurePyreflyConfigPhase,
-    FlextInfraEnsurePyrightConfigPhase,
     FlextInfraEnsureRuffConfigPhase,
     FlextInfraInjectCommentsPhase,
     FlextInfraToolTablesPhase,
@@ -62,15 +61,8 @@ class FlextInfraPyprojectModernizerDocument(
         bool,
         m.Field(alias="skip-comments", description="Skip managed comment updates"),
     ] = False
-    rewrite_constraints: Annotated[
-        bool,
-        m.Field(
-            alias="rewrite-constraints",
-            description="Rewrite dependency constraints from the provisioned runtime",
-        ),
-    ] = False
     managed_artifacts: Annotated[
-        m.Infra.ProjectManagedArtifactsResolution | None,
+        t.Port[p.Infra.ProjectManagedArtifactsResolution] | None,
         m.Field(
             default=None,
             exclude=True,
@@ -353,53 +345,12 @@ class FlextInfraPyprojectModernizerDocument(
 
         """
         path, payload = state.pyproject_path, state.payload
-        is_root = path.parent.resolve() == self.root.resolve()
-        # Scaffold (pre-write) contexts have no on-disk project root yet: derive
-        # analyzer configuration from declared roots only; disk discovery
-        # converges on the first post-write conformance pass.
-        exists = path.is_file()
-        paths_manager = (
-            FlextInfraExtraPathsManager(
-                repository_root=self.root,
-                analysis_exclusions=topology.analysis_exclusions or (),
-            )
-            if exists
-            else None
-        )
-        analyzer_context = m.Infra.PyprojectAnalyzerContext(
-            is_root=is_root,
-            repository_root=self.root if exists else None,
-            project_dir=path.parent if exists else None,
-            declared_python_dirs=topology.declared_python_dirs,
-            declared_python_dirs_are_complete=(
-                topology.declared_python_dirs_are_complete
-            ),
-        )
+        analyzer_context, paths_manager = self._analyzer_inputs(path, topology)
         tooling = (
             u.Infra.load_tooling_inputs(path.parent).unwrap().document
             if tool_config is None
             else tool_config
         )
-        path_rules = tooling.tools.pyrefly.path_rules
-        if paths_manager is not None:
-            mypy_search_paths = paths_manager.mypy_search_paths(project_dir=path.parent)
-        elif path_rules.source_dir in topology.declared_python_dirs:
-            mypy_search_paths = tuple(
-                root
-                for root in (
-                    path_rules.source_dir,
-                    *path_rules.project_shared_search_paths,
-                )
-                if root != path_rules.project_root
-                and (
-                    root in topology.declared_python_dirs
-                    or (path.parent / root).is_dir()
-                )
-            )
-        else:
-            mypy_search_paths = FlextInfraExtraPathsManager(
-                repository_root=self.root
-            ).mypy_search_paths(project_dir=path.parent)
         managed_artifacts = self.managed_artifacts
         if managed_artifacts is None:
             managed_artifacts = u.Infra.load_project_managed_artifacts(
@@ -412,27 +363,10 @@ class FlextInfraPyprojectModernizerDocument(
                 payload,
                 path=path,
                 repository_namespace_packages=topology.repository_namespace_packages,
-                mypy_search_paths=mypy_search_paths,
             ),
-            # Pyrefly derives its include globs from the canonical Pyright
-            # roots, so resolve Pyright first and converge in one pass.
-            *FlextInfraEnsurePyrightConfigPhase(tooling, codegen=codegen).apply_payload(
-                payload,
-                context=analyzer_context,
-                paths_manager=paths_manager,
-                analysis_exclusions=topology.analysis_exclusions,
-            ),
-            # Declared roots are topology facts only during atomic creation;
-            # normal modernization derives productive roots on disk.
             *FlextInfraEnsurePyreflyConfigPhase(tooling, codegen=codegen).apply_payload(
                 payload,
-                context=(
-                    analyzer_context
-                    if exists
-                    else analyzer_context.model_copy(
-                        update={"declared_python_dirs_are_complete": True},
-                    )
-                ),
+                context=analyzer_context,
                 paths_manager=paths_manager,
             ),
             *FlextInfraEnsureRuffConfigPhase(
@@ -451,15 +385,62 @@ class FlextInfraPyprojectModernizerDocument(
                 topology=topology,
             ),
         ]
-        if paths_manager is not None:
-            changes.extend(
-                paths_manager.sync_payload(
-                    payload,
-                    project_dir=path.parent,
-                    mypy_search_paths=mypy_search_paths,
-                ),
-            )
         return changes
+
+    def _analyzer_inputs(
+        self,
+        path: Path,
+        topology: p.Infra.PyprojectDeclaredTopology,
+    ) -> tuple[p.Infra.PyprojectAnalyzerContext, FlextInfraExtraPathsManager | None]:
+        """Own the analyzer context and path manager of one manifest.
+
+        Scaffold (pre-write) contexts have no on-disk project root yet: they
+        derive analyzer configuration from declared roots only, which are then
+        complete topology facts, and disk discovery converges on the first
+        post-write conformance pass.
+
+        Returns:
+            The analyzer context and, for an on-disk manifest, its path manager.
+
+        """
+        exists = path.is_file()
+        return (
+            m.Infra.PyprojectAnalyzerContext(
+                is_root=path.parent.resolve() == self.root.resolve(),
+                repository_root=self.root if exists else None,
+                project_dir=path.parent if exists else None,
+                declared_python_dirs=topology.declared_python_dirs,
+                declared_python_dirs_are_complete=(
+                    topology.declared_python_dirs_are_complete or not exists
+                ),
+            ),
+            FlextInfraExtraPathsManager(
+                repository_root=self.root,
+                analysis_exclusions=topology.analysis_exclusions or (),
+            )
+            if exists
+            else None,
+        )
+
+    def render_analyzer_source(
+        self,
+        source: str,
+        *,
+        path: Path,
+        topology: p.Infra.PyprojectDeclaredTopology,
+        codegen: p.Infra.CodegenConfigSpec,
+        tool_config: p.Infra.ToolConfigDocument,
+    ) -> p.Result[str]:
+        """Project only the analyzer table through full modernization's inputs.
+
+        Returns:
+            The manifest whose analyzer table equals full modernization's.
+
+        """
+        context, paths_manager = self._analyzer_inputs(path, topology)
+        return FlextInfraEnsurePyreflyConfigPhase(
+            tool_config, codegen=codegen
+        ).render_source(source, context=context, paths_manager=paths_manager)
 
     def _render_document_state(
         self,

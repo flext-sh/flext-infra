@@ -28,7 +28,7 @@ snapshots:
       end: 72
     - source: |
         SOURCE = Path(__file__).parents[2].joinpath("src", "cli.py").read_text()
-        
+
         def test_cli() -> None:
             tm.that(SOURCE, has="def main")
       style: secondary

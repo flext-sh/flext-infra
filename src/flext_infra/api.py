@@ -7,12 +7,12 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from functools import partial
 from pathlib import Path
 from time import monotonic
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import (
-    FlextInfraGitService,
     c,
     check,
     codegen,
@@ -50,8 +50,8 @@ class FlextInfra(
 
     app_name: ClassVar[str] = "flext-infra"
 
-    @staticmethod
     def bootstrap_candidate(
+        self,
         request: p.Infra.CandidateBootstrapCommand,
     ) -> p.Result[bool]:
         """Compose typed declarations, conform planner and one atomic publisher.
@@ -78,7 +78,12 @@ class FlextInfra(
         return services.FlextInfraCandidateBootstrapService(
             planner=codegen.FlextInfraCodegenConform.Generate(
                 repository_root=source_root,
-                state=m.Infra.CodegenConformState(repository_root=source_root),
+                state=m.Infra.CodegenConformState(
+                    repository_root=source_root,
+                    ports=self.codegen_conform_collaborators(),
+                ),
+                runtime_settings=self.settings,
+                initial_context=self.context,
             ),
         ).execute(source_root, observed.value, request)
 
@@ -103,6 +108,9 @@ class FlextInfra(
             resolved_root, rope_repository_root=rope_repository_root
         )
         session.semantic_rename_planner = FlextInfraCodemodRenameSymbols
+        session.model_envelope_checker = partial(
+            FlextInfraModHandlers.model_envelope_diagnostics, session.repository_root
+        )
         return session
 
     @staticmethod
@@ -184,17 +192,6 @@ class FlextInfra(
             The resulting ``p.Result[bool]``.
 
         """
-        ownership = request.ownership
-        if request.checkpoint_ref is not None:
-            selected = FlextInfraGitService.lane_ownership(
-                m.Infra.GitLaneOwnershipRequest(
-                    repo_root=request.root,
-                    checkpoint_ref=request.checkpoint_ref,
-                ),
-            )
-            if selected.failure:
-                return r[bool].from_failure(selected)
-            ownership = selected.value
         return release.FlextInfraReleaseOrchestrator(
             repository_root=request.repository_root,
             apply_changes=request.apply_changes,
@@ -208,7 +205,6 @@ class FlextInfra(
             phase=request.phase,
             index=request.index,
             pr_title=request.pr_title,
-            ownership=ownership,
             conform_collaborators=self.codegen_conform_collaborators(),
             release_forge=FlextInfraUtilitiesReleaseForge,
         ).execute()
@@ -265,16 +261,38 @@ class FlextInfra(
         ).build_report()
 
     @staticmethod
-    def _mod_selection(request: p.Infra.ModCommand) -> p.Result[bool]:
-        """Accept a full-catalog run or a selection of laws the catalog derives.
+    def mod_selection(request: p.Infra.ModCommand) -> p.Result[bool]:
+        """Validate a mod selection before the route queues (ADR-032 fail early).
 
         A selector-free run converges the complete active catalog (ADR-028
-        Decision 18 item 2); a selection only narrows the focus.
+        Decision 18 item 2); a selection only narrows the focus. Laws must be
+        claimed by an active owner; authored rule IDs must exist in a governed
+        repository's authored catalog. Generated rule IDs (``<shape>--...``)
+        are proved by the exact plan selection.
 
         Returns:
-            Acceptance, the catalog failure, or the unknown-law failure.
+            Acceptance, the catalog failure, or the unknown-selection failure.
 
         """
+        if request.rule_ids is not None:
+            root = u.Infra.resolve_repository_root_or_cwd(request.repository_root)
+            authored: set[str] = set()
+            for project in u.Infra.governed_project_roots(root):
+                planned = u.Infra.codemod_compose_rule_plan(project, {project: None})
+                if planned.failure:
+                    return r[bool].from_failure(planned)
+                authored.update(rule.id for rule in planned.value.rules)
+            unknown = sorted(
+                rule_id
+                for rule_id in request.rule_ids
+                if rule_id not in authored
+                and c.Infra.CODEMOD_GENERATED_ID_SEPARATOR not in rule_id
+            )
+            if unknown:
+                return r[bool].fail(
+                    "unknown codemod rule IDs: " + ", ".join(unknown),
+                    error_code=c.ErrorCode.NOT_FOUND,
+                )
         if request.laws is None:
             return r[bool].ok(value=True)
         catalog = u.Infra.enforcement_catalog()
@@ -409,21 +427,19 @@ class FlextInfra(
         nothing, so every selected repository runs and one aggregated failure
         names each failing repository. A selector-free run converges the
         complete active catalog; laws, rule IDs, one rule or a rename plan
-        only narrow the focus (ADR-028 Decision 18 item 2). Laws are
-        validated once against the derived enforcement catalog; each
-        repository expands them into its own planned rules.
+        only narrow the focus (ADR-028 Decision 18 item 2). The CLI route
+        validates the selection once through ``mod_selection`` before it
+        queues; each repository expands laws into its own planned rules.
 
         Returns:
-            The selection failure, the first repository failure for a mutating
+            The project resolution failure, the first repository failure for a mutating
             run, the aggregated failure naming every failing repository for
             check/dry-run, or acceptance of every selected run.
 
         """
         root = u.Infra.resolve_repository_root_or_cwd(request.repository_root)
         governed = frozenset(u.Infra.governed_project_roots(root))
-        selected = self._mod_selection(request).flat_map(
-            lambda _: self._mod_selected_roots(root, request, governed)
-        )
+        selected = self._mod_selected_roots(root, request, governed)
         if selected.failure:
             return r[t.Cli.ResultValue].from_failure(selected)
         selected_roots = selected.value
@@ -464,7 +480,9 @@ class FlextInfra(
 
         """
         root = u.Infra.resolve_repository_root_or_cwd(request.repository_root)
-        return codemod.FlextInfraModTextGateEngine.run(root, apply=request.apply)
+        return codemod.FlextInfraModTextGateEngine.run(
+            root, apply=request.apply, rule_ids=request.rule_ids
+        )
 
     @staticmethod
     def mod_text_candidate(
@@ -572,16 +590,15 @@ class FlextInfra(
             c.Infra.PytestExecutionMode.GLOBAL_INCREMENTAL
         ),
     ) -> p.Result[int]:
-        """Require original global primary source proof before native test engines.
+        """Execute native tests in the selected project contexts.
 
         Ordinary test failures retain their original first status while every
         selected repository is reached. Interruptions and infrastructure errors
         stop dispatch with their native status; configuration failures escape.
-        Discovery and member execution share this operation's clock. The native
-        runner admits the original global source proof immediately before its
-        engines; the transport must not repeat that expensive admission.
+        Discovery and member execution share this operation's clock.
         FULL executes the complete applicable suite once in each project context
         without Testmon, an incremental pre-run or database access.
+        A declared file selects only this repository through that same runner.
 
         Returns:
             The first failing native test status, or zero after every success.
@@ -593,12 +610,20 @@ class FlextInfra(
             return r[int].fail(f"tests require a project context: {context.cwd}")
         root = context.identity.repo_root
         workspace_root = context.runtime.runtime_root
-        if request.scope == c.Infra.CodegenConformScope.SELF:
+        if (
+            request.file is not None
+            or request.scope == c.Infra.CodegenConformScope.SELF
+        ):
             return r[int].ok(
                 validate.FlextInfraPytestRunner.execute_project_context(
                     context,
                     started_at_monotonic=started_at_monotonic,
-                    execution_mode=execution_mode,
+                    execution_mode=(
+                        c.Infra.PytestExecutionMode.FULL
+                        if request.file is not None
+                        else execution_mode
+                    ),
+                    target_file=request.file,
                 )
             )
         observed = workspace.FlextInfraWorkspaceDetector.load_workspace_spec(
@@ -671,11 +696,11 @@ class FlextInfra(
         return r[p.Infra.WorkspaceProjectContext].ok(
             m.Infra.WorkspaceProjectContext(
                 cwd=resolved,
-                identity=identity.value,
-                workspace=workspace,
-                target=target,
+                identity=m.Infra.GitIdentityReport.model_validate(identity.value),
+                workspace=m.Infra.WorkspaceSpec.model_validate(workspace),
+                target=m.Infra.RepositoryConformTarget.model_validate(target),
                 governed=True,
-                runtime=runtime,
+                runtime=m.Infra.WorkspaceRuntimeContext.model_validate(runtime),
             ),
         )
 

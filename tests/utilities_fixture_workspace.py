@@ -9,14 +9,12 @@ from __future__ import annotations
 import dataclasses
 import os
 import runpy
-import shutil
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
-from flext_infra import config, infra
+from flext_infra import FlextInfraWorktreeService, config, infra, u
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-from flext_infra.worktree import FlextInfraWorktreeService
-from tests import c, m, p, t, tm, u
+from tests import c, m, p, t, tm
 from tests.utilities_codegen import TestsFlextInfraUtilitiesCodegen
 from tests.utilities_fixture_project import TestsFlextInfraUtilitiesProjectFixture
 from tests.utilities_fixture_tooling import TestsFlextInfraUtilitiesToolingFixture
@@ -25,6 +23,22 @@ from tests.utilities_git import TestsFlextInfraUtilitiesGit
 
 class TestsFlextInfraUtilitiesWorkspaceFixture:
     """Typed workspace and project-layout fixture helpers."""
+
+    @staticmethod
+    def contract_rule_targets(
+        rule_id: str,
+    ) -> tuple[p.Infra.RopeContractScopeTarget | None, ...]:
+        """Return every declared scope target, or the explicit unscoped case.
+
+        Returns:
+            The native catalog's complete nonempty fixture matrix.
+
+        """
+        root = tm.not_none(u.Infra.project_root(Path(__file__)))
+        (rule,) = (
+            rule for rule in u.Infra.declared_contract_rules(root) if rule.id == rule_id
+        )
+        return (None,) if rule.scope is None else tuple(rule.scope.targets)
 
     @staticmethod
     def prove_contract_migration(
@@ -100,6 +114,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
         project_dir = root / name
         project_dir.mkdir(parents=True, exist_ok=True)
         (project_dir / c.PYPROJECT_FILENAME).write_text(pyproject, encoding="utf-8")
+        TestsFlextInfraUtilitiesGit.git_bootstrap(project_dir, ("init", "--quiet"))
         if markdown_config is not None:
             (project_dir / c.Infra.MARKDOWN_CONFIG_FILENAME).write_text(
                 markdown_config, encoding="utf-8"
@@ -113,7 +128,10 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
             project_dir,
             name,
         )
-        TestsFlextInfraUtilitiesProjectFixture.declare_governed_kind(project_dir)
+        # A real project is a Git checkout; the checker elects its runtime
+        # from Git and refuses a plain directory.
+        TestsFlextInfraUtilitiesGit.initialize_git_repo(project_dir)
+        TestsFlextInfraUtilitiesGit.git_bootstrap(project_dir, ("add", "-A"))
         return project_dir
 
     @staticmethod
@@ -199,6 +217,22 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
         return workspace, project, package
 
     @staticmethod
+    def seed_workspace_root(
+        workspace: Path,
+        *,
+        pyproject: str = "[project]\nname='workspace'\nversion='1.0.0'\n",
+    ) -> None:
+        """Make a workspace root the Git checkout governed roots are.
+
+        The namespace and rule engines scan the workspace root: they open its
+        Git checkout, read its project metadata and run ast-grep through its
+        pinned Mise lock.
+        """
+        (workspace / c.PYPROJECT_FILENAME).write_text(pyproject, encoding="utf-8")
+        TestsFlextInfraUtilitiesToolingFixture.copy_tracked_mise_seeds(workspace)
+        TestsFlextInfraUtilitiesGit.initialize_git_repo(workspace)
+
+    @staticmethod
     def write_standalone_workspace_manifest(
         project_dir: Path,
         name: str,
@@ -276,12 +310,12 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
                     "packaged_data_excludes": tuple(resolved.packaged_data_excludes),
                 },
             )
-        manifest = m.Infra.WorkspaceManifestSpec(
-            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
-            name=name,
-            repository=repository,
-            project=project,
-        )
+        manifest = m.Infra.WorkspaceManifestSpec.model_validate({
+            "version": (c.Infra.WORKSPACE_MANIFEST_VERSION),
+            "name": (name),
+            "repository": (repository),
+            "project": (project),
+        })
         if resolved.gascity_enabled is not None:
             manifest = manifest.model_copy(
                 update={
@@ -298,7 +332,6 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
         config_dir.mkdir(parents=True, exist_ok=True)
         manifest_path = config_dir / c.Infra.WORKSPACE_MANIFEST_FILENAME
         tm.ok(u.Cli.yaml_dump(manifest_path, manifest.model_dump(mode="json")))
-        TestsFlextInfraUtilitiesProjectFixture.declare_governed_kind(project_dir)
         return manifest_path
 
     @staticmethod
@@ -484,7 +517,6 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
         )
         for filename, content in files.items():
             (pkg / filename).write_text(content, encoding="utf-8")
-        TestsFlextInfraUtilitiesProjectFixture.declare_governed_kind(project)
         TestsFlextInfraUtilitiesGit.initialize_git_repo(project)
         return project
 
@@ -535,9 +567,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
         ) -> Path:
             """Register ``branch`` as a native linked worktree at its canonical path.
 
-            Lane admission refuses every ``ADD`` until authoritative Beads
-            ownership reaches the native contract (bead flext-itpd1.3.26), so a
-            test whose subject is an existing lane obtains it the way Git
+            A test whose subject is an existing lane obtains it the way Git
             itself can: ``git worktree add -b`` at the path the production
             topology owner reserves for the branch.
 
@@ -573,28 +603,20 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
             repository: Path,
             branch: str,
             *,
+            reason: str,
             base: str = "HEAD",
             epic_lane: Path | None = None,
-            reason: str = "new lane refused",
         ) -> Path:
             """Request ``ADD`` and prove the refusal left Git and disk untouched.
 
-            Like a real lane owner, the fixture fetches the declared remote
-            first, so the refusal is measured against a fresh remote-tracking
-            tip. The refusal must carry ``reason``, the canonical lane path
-            must not exist, and the refs and worktree registry must equal
-            their state before the request.
+            The refusal must carry ``reason``, the canonical lane path must
+            not exist, and the refs and worktree registry must equal their
+            state before the request.
 
             Returns:
                 The canonical lane path the refused request would have used.
 
             """
-            tm.ok(
-                u.Cli.run_checked(
-                    [c.Infra.GIT, "fetch", "--quiet", c.Infra.GIT_ORIGIN],
-                    cwd=repository,
-                ),
-            )
             state = (
                 tm.ok(u.Cli.capture([c.Infra.GIT, "show-ref"], cwd=repository)),
                 tm.ok(
@@ -700,7 +722,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
                 ),
             )
             member = parent / "apps" / "member"
-            shutil.copytree(source, member)
+            TestsFlextInfraUtilitiesToolingFixture.reflink_copy_tree(source, member)
             return member
 
         @staticmethod
@@ -721,9 +743,8 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
                 '\t@printf "setting up %s\\n" "$(WORKSPACE)"\n',
                 encoding="utf-8",
             )
-            # Lane admission demands authoritative Beads ownership over a
-            # governed manifest: the fixture declares both, exactly as a real
-            # checkout does.
+            # The fixture declares a governed manifest and its Beads project,
+            # exactly as a real checkout does.
             TestsFlextInfraUtilitiesProjectFixture.write_workspace_manifest(
                 repository,
                 "fixture",
@@ -737,8 +758,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
             TestsFlextInfraUtilitiesGit.initialize_git_repo(repository)
             remote = tmp_path / "integration.git"
             git = TestsFlextInfraUtilitiesGit
-            # A forge remote's HEAD declares its default branch; ADD reads it
-            # live through ``ls-remote --symref``.
+            # A forge remote's HEAD declares its default branch.
             git.git_bootstrap(
                 tmp_path,
                 (
@@ -749,17 +769,15 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
                     str(remote),
                 ),
             )
-            policy = config.Infra.codegen.branch_policy
-            action = "set-url" if policy.lane_remote == c.Infra.GIT_ORIGIN else "add"
             git.git_bootstrap(
                 repository,
-                ("remote", action, policy.lane_remote, str(remote)),
+                ("remote", "set-url", c.Infra.GIT_ORIGIN, str(remote)),
             )
             git.git_bootstrap(
                 repository,
                 (
                     "push",
-                    policy.lane_remote,
+                    c.Infra.GIT_ORIGIN,
                     "HEAD:refs/heads/"
                     + TestsFlextInfraUtilitiesProjectFixture.provider_branch(),
                 ),
@@ -794,14 +812,16 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
                 repository,
                 (
                     "push",
-                    config.Infra.codegen.branch_policy.lane_remote,
+                    c.Infra.GIT_ORIGIN,
                     "HEAD:refs/heads/"
                     + TestsFlextInfraUtilitiesProjectFixture.provider_branch(),
                 ),
             )
 
         @classmethod
-        def conformed_root(cls, tmp_path: Path) -> Path:
+        def conformed_root(
+            cls, tmp_path: Path, session_runtime: p.Tests.SessionRuntime
+        ) -> Path:
             """Materialize one governed project and conform it to a fixed point.
 
             Returns:
@@ -821,6 +841,17 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
             TestsFlextInfraUtilitiesGit.commit_git_changes(
                 root,
                 "Declare project identity",
+            )
+            tm.ok(
+                TestsFlextInfraUtilitiesToolingFixture.create_python_environment(
+                    root,
+                    dependency_projects=(
+                        TestsFlextInfraUtilitiesToolingFixture.python_dependency_projects(
+                            root
+                        )
+                    ),
+                    session_runtime=session_runtime,
+                )
             )
             tm.ok(
                 infra.codegen_conform(
@@ -949,6 +980,29 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
                 payload["custom_issue_types"] = [*custom_issue_types]
             tm.ok(u.Cli.yaml_dump(path, payload))
             return path
+
+        @classmethod
+        def register_checker_workspace(cls, root: Path, *projects: Path) -> None:
+            """Make ``root`` a checkout and each project a registered submodule.
+
+            The checker elects every project's runtime from Git, as in a real
+            workspace, so plain project directories under a non-Git root fail.
+            """
+            for project in projects:
+                TestsFlextInfraUtilitiesGit.initialize_git_repo(
+                    project,
+                    origin_url=cls.governed_repository_url(project.name),
+                )
+            # The root is initialized after its members, so it records them
+            # as gitlinks rather than as tracked files.
+            TestsFlextInfraUtilitiesGit.initialize_git_repo(root)
+            for project in projects:
+                cls.attach_submodule(
+                    root,
+                    project,
+                    distribution=project.name,
+                    relative_path=project.relative_to(root).as_posix(),
+                )
 
         @classmethod
         def attach_submodule(

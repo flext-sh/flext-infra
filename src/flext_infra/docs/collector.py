@@ -26,7 +26,7 @@ class FlextInfraDocCollector:
             The resulting ``p.Result[bool]``.
 
         """
-        inputs: MutableMapping[Path, m.Cli.AtomicFileState] = {}
+        inputs: MutableMapping[Path, p.Cli.AtomicFileState] = {}
         configuration = cls._configuration(request, inputs=inputs)
         if configuration.failure:
             return r[bool].from_failure(configuration)
@@ -68,7 +68,7 @@ class FlextInfraDocCollector:
     def _configuration(
         request: p.Infra.DocsCollectRequest,
         *,
-        inputs: MutableMapping[Path, m.Cli.AtomicFileState],
+        inputs: MutableMapping[Path, p.Cli.AtomicFileState],
     ) -> p.Result[p.Infra.PlanCollectionConfig]:
         """Require a physical root and parse the collection configuration.
 

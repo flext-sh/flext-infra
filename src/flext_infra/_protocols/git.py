@@ -10,14 +10,10 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from flext_cli import FlextCliProtocols
 
-from flext_infra._protocols import (
-    FlextInfraProtocolsGitLaneInputs,
-    FlextInfraProtocolsGitLaneOwnership,
-)
 from flext_infra._protocols._git import (
     FlextInfraProtocolsGitIdentity,
     FlextInfraProtocolsGitWorktreeFacts,
@@ -31,8 +27,6 @@ if TYPE_CHECKING:
 
 
 class FlextInfraProtocolsGit(
-    FlextInfraProtocolsGitLaneOwnership,
-    FlextInfraProtocolsGitLaneInputs,
     FlextInfraProtocolsGitIdentity,
     FlextInfraProtocolsGitWorktreeFacts,
     FlextInfraProtocolsGitWorktreeState,
@@ -116,94 +110,6 @@ class FlextInfraProtocolsGit(
             self,
         ) -> tuple[FlextInfraProtocolsGit.GitSigningConfigObservation, ...]:
             """Native origin, scope and raw outcome for every setting."""
-            ...
-
-    @runtime_checkable
-    class GitLaneEvidence(FlextCliProtocols.BaseModel, Protocol):
-        """Structural data contract projected from the owning model."""
-
-        @property
-        def repo_root(self) -> Path:
-            """Receipt repository identity."""
-            ...
-
-        @property
-        def captured_at(self) -> t.AwareDatetime:
-            """Receipt capture time."""
-            ...
-
-        @property
-        def pull_requests(
-            self,
-        ) -> tuple[FlextInfraProtocolsGitLaneInputs.GitLanePullRequest, ...] | None:
-            """Observed PRs; None means not selected/unknown."""
-            ...
-
-        @property
-        def beads(
-            self,
-        ) -> tuple[FlextInfraProtocolsGitLaneOwnership.GitLaneBead, ...] | None:
-            """Observed Beads; None means not selected/unknown."""
-            ...
-
-    @runtime_checkable
-    class GitLaneReport(FlextCliProtocols.BaseModel, Protocol):
-        """Structural data contract projected from the owning model."""
-
-        @property
-        def repo_root(self) -> Path:
-            """Inspected repository."""
-            ...
-
-        @property
-        def integration_branch(self) -> str:
-            """Resolved integration branch."""
-            ...
-
-        @property
-        def integration_oid(self) -> str:
-            """Proven live integration tip."""
-            ...
-
-        @property
-        def inventory(self) -> tuple[str, ...]:
-            """Full exact Git artifact inventory."""
-            ...
-
-        @property
-        def findings(self) -> tuple[str, ...]:
-            """All refusals and inconclusive evidence."""
-            ...
-
-        @property
-        def violations(
-            self,
-        ) -> tuple[FlextInfraProtocolsGitLaneInputs.GitLaneViolation, ...]:
-            """Classified violations from the single evaluator."""
-            ...
-
-    @runtime_checkable
-    class GitLaneFacts(FlextCliProtocols.BaseModel, Protocol):
-        """Structural data contract projected from the owning model."""
-
-        @property
-        def repo_root(self) -> Path:
-            """Inspected Git repository."""
-            ...
-
-        @property
-        def stash_oids(self) -> tuple[t.NonEmptyStr, ...]:
-            """All stash commit identities."""
-            ...
-
-        @property
-        def refs(self) -> tuple[FlextInfraProtocolsGitLaneInputs.GitLaneRef, ...]:
-            """All observed local and configured remote references."""
-            ...
-
-        @property
-        def read_errors(self) -> tuple[str, ...]:
-            """Exact first failures per native read."""
             ...
 
     @runtime_checkable
@@ -457,71 +363,6 @@ class FlextInfraProtocolsGit(
             ...
 
     @runtime_checkable
-    class GitLaneOwnershipRequest(GitRemoteRequest, Protocol):
-        """Structural data contract projected from the owning model."""
-
-        @property
-        def checkpoint_ref(self) -> t.NonEmptyStr:
-            """Existing dedicated checkpoint ref."""
-            ...
-
-        @property
-        def expected_tip(self) -> t.NonEmptyStr | None:
-            """Previously observed integration tip, when selected."""
-            ...
-
-    @runtime_checkable
-    class GitLaneVerificationRequest(GitRemoteRequest, Protocol):
-        """Structural data contract projected from the owning model."""
-
-        @property
-        def declared(self) -> str | None:
-            """Governing integration declaration."""
-            ...
-
-        @property
-        def evidence_file(self) -> Path | None:
-            """Coordinator ownership receipt."""
-            ...
-
-        @property
-        def governance_file(self) -> Path | None:
-            """Coordination governance SSOT."""
-            ...
-
-        @property
-        def read_pull_requests(self) -> bool:
-            """Authorize public PR ownership reads."""
-            ...
-
-        @property
-        def read_beads(self) -> bool:
-            """Authorize declared Beads ownership reads."""
-            ...
-
-        @property
-        def operation(self) -> Literal["verify", "create", "retire"]:
-            """Boundary being verified, not an effect selector."""
-            ...
-
-        @property
-        def candidate(self) -> t.NonEmptyStr:
-            """Commit requiring integration ancestry."""
-            ...
-
-        @property
-        def expected_tip(self) -> t.NonEmptyStr | None:
-            """Previously observed tip."""
-            ...
-
-        @property
-        def ownership(
-            self,
-        ) -> FlextInfraProtocolsGitWorktreeState.GitLaneOwnershipReceipt | None:
-            """Required integrated preservation receipt for creation."""
-            ...
-
-    @runtime_checkable
     class GitRefHeadsRequest(GitRepoRequest, Protocol):
         """Structural data contract projected from the owning model."""
 
@@ -743,13 +584,6 @@ class FlextInfraProtocolsGit(
         @property
         def body_file(self) -> Path:
             """Pull-request body file."""
-            ...
-
-        @property
-        def ownership(
-            self,
-        ) -> FlextInfraProtocolsGitWorktreeState.GitLaneOwnershipReceipt | None:
-            """Live retained and integrated prior owned repository state."""
             ...
 
     @runtime_checkable

@@ -1,4 +1,31 @@
-# Packaged sed-by-list catalogue: no packaged text rule is declared. The
-# static-test-method decorator order is the ast-grep rule
-# `tests-staticmethod-decorator-order`; the engine requires this provider file.
-rules: []
+# Packaged sed-by-list catalogue. The static-test-method decorator order is the
+# ast-grep rule `tests-staticmethod-decorator-order`; the engine requires this
+# provider file.
+#
+# One-shot migrations are deleted at fleet census zero (ADR-028 Decision 18).
+#
+# promoted-command-header-pep723: a promoted command declares its header as a
+# PEP 723 `# /// script` block holding `[tool.flext.command]`, which Ruff
+# exempts from commented-out-code; the retired `# /// flext-command` block is
+# commented-out TOML to Ruff and the dispatcher no longer reads it. Each match
+# is rendered by the canonical header renderer at the project's Ruff line
+# length; a consumer applies it once after `make upg` with
+# `make mod RULES=promoted-command-header-pep723`.
+rules:
+- id: retain-concrete-test-factory-values
+  description: schema fixture factories retain their actual constructed model
+  include:
+  - "tests/utilities_gates.py"
+  - "tests/unit/codemod/test_batch_gate_source_drift.py"
+  find: '(?ms)(^    def (?:create_gate_execution|_finding)\(\n.*?^    \) -> )p\.Infra\.(GateExecution|ModOccurrence):'
+  replace: '\1m.Infra.\2:'
+- id: retire-repository-kind-declaration
+  description: governance kind is derived from native project facts
+  include: [ "config/codegen.yaml", "config/codegen.local.yaml" ]
+  find: '(?m)(^Infra:[^\n]*\n(?:(?!^  codegen:) [^\n]*\n)*^  codegen:[^\n]*\n(?:(?!^    repository:)    [^\n]*\n)*^    repository:[^\n]*\n(?:(?!^      kind:)      [^\n]*\n)*)^      kind:[^\n]*(?:\n|$)'
+  replace: '\1'
+- id: promoted-command-header-pep723
+  description: a promoted command declares its header as a PEP 723 script block
+  include: [ "scripts/**/*.py", "scripts/**/*.sh" ]
+  find: '(?m)^# /// flext-command$\n(?:^#(?:| .*)$\n)+?^# ///$'
+  render: promoted-command-header

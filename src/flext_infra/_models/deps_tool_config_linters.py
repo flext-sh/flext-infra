@@ -1,4 +1,4 @@
-"""Ruff, Mypy and diagnostic-authorization models for the deps subpackage.
+"""Ruff and diagnostic-authorization models for the deps subpackage.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -7,13 +7,13 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 from datetime import date
 from typing import Annotated, Self
 
 from flext_cli import m
 
-from flext_infra import c, p, t
+from flext_infra import c, t
 from flext_infra._models import FlextInfraModelsDepsToolConfigProject
 
 
@@ -180,92 +180,9 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
             strict=False,
             description="Exit statuses with which Ruff reports its findings.",
         )
-        lint: Annotated[
-            p.Infra.RuffLintConfig,
-            t.schema_for_model(
-                lambda: FlextInfraModelsDepsToolConfigLinters.RuffLintConfig
-            ),
-        ] = m.Field(
+        lint: FlextInfraModelsDepsToolConfigLinters.RuffLintConfig = m.Field(
             description="Ruff lint configuration",
         )
-
-    class MypyOverrideConfig(m.ArbitraryTypesModel):
-        """Single [[tool.mypy.overrides]] entry."""
-
-        modules: Annotated[
-            Sequence[str],
-            m.Field(description="Module patterns for this override."),
-        ]
-        settings: Annotated[
-            t.Infra.SettingsPairs,
-            m.Field(description="Native override options as ordered key/value pairs."),
-        ] = ()
-        justification: Annotated[
-            str,
-            m.Field(
-                description=(
-                    "Required citation (GitHub issue / PEP / mypy docs) justifying "
-                    "this override. AGENTS.md:319 forbids suppressions without "
-                    "evidence; leave empty only for strictly transitional overrides "
-                    "with a TODO in the module comment."
-                ),
-            ),
-        ] = ""
-
-    class MypyConfig(m.ArbitraryTypesModel):
-        """Execution budget and ownership policy for native Mypy options."""
-
-        timeout_seconds: Annotated[
-            int,
-            m.Field(
-                gt=0,
-                strict=True,
-                description="Default Mypy wall-time budget in seconds.",
-            ),
-        ]
-        max_timeout_seconds: Annotated[
-            int,
-            m.Field(
-                gt=0,
-                strict=True,
-                description="Finite project budget ceiling in seconds.",
-            ),
-        ]
-
-        @m.model_validator(mode="after")
-        def validate_timeout_ceiling(self) -> Self:
-            """Keep the default inside the declared finite ceiling.
-
-            Returns:
-                The validated policy.
-
-            Raises:
-                ValueError: If the default exceeds the ceiling.
-
-            """
-            if self.timeout_seconds > self.max_timeout_seconds:
-                msg = "Mypy default timeout exceeds max_timeout_seconds"
-                raise ValueError(msg)
-            return self
-
-        ruling_disable_error_codes: tuple[t.NonEmptyStr, ...] = m.Field(
-            (),
-            alias="ruling-disable-error-codes",
-            strict=False,
-            description="Operator-authorized suspended diagnostics.",
-        )
-        overrides: Annotated[
-            tuple[
-                Annotated[
-                    p.Infra.MypyOverrideConfig,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsDepsToolConfigLinters.MypyOverrideConfig
-                    ),
-                ],
-                ...,
-            ],
-            m.Field(description="Module scopes and justified native option pairs."),
-        ] = ()
 
 
 __all__: list[str] = ["FlextInfraModelsDepsToolConfigLinters"]

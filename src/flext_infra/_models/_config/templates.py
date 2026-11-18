@@ -55,8 +55,8 @@ class FlextInfraModelsConfigTemplates:
             m.Field(
                 description=(
                     "VS Code keys actively stripped from the settings projection "
-                    "because they conflict with a pyrightconfig.json/pyproject.toml "
-                    "owner (Pylance settingsNotOverridable)."
+                    "because they conflict with their pyproject.toml or tool-file "
+                    "owner."
                 ),
             ),
         ] = ()
@@ -199,7 +199,6 @@ class FlextInfraModelsConfigTemplates:
                 raise ValueError(msg)
             return self
 
-        @m.computed_field
         @property
         def managed_tool_tables(self) -> tuple[str, ...]:
             """Derive tool-relative table paths from the owner's sections.
@@ -263,13 +262,7 @@ class FlextInfraModelsConfigTemplates:
             m.Field(min_length=1, description="Profiles that consume the artifact"),
         ]
         ownership: Annotated[
-            Annotated[
-                p.Infra.ManagedFileOwnership,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsConfigTemplates.ManagedFileOwnership
-                ),
-            ]
-            | None,
+            FlextInfraModelsConfigTemplates.ManagedFileOwnership | None,
             m.Field(
                 description=(
                     "Explicit generated-file ownership, or null for an authored "
@@ -290,6 +283,15 @@ class FlextInfraModelsConfigTemplates:
         requires_beads: Annotated[
             bool,
             m.Field(description="Whether the projection requires Beads participation"),
+        ] = False
+        requires_package: Annotated[
+            bool,
+            m.Field(
+                description=(
+                    "Whether the seed belongs to the repository's own import "
+                    "package; a consumer repository owns none"
+                ),
+            ),
         ] = False
         bootstrap_distribution: Annotated[
             t.NonEmptyStr | None,
@@ -436,12 +438,7 @@ class FlextInfraModelsConfigTemplates:
         root: Annotated[Path, m.Field(description="Package-relative template root")]
         catalog: Mapping[
             t.NonEmptyStr,
-            Annotated[
-                p.Infra.TemplateDeclarationSpec,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsConfigTemplates.TemplateDeclarationSpec
-                ),
-            ],
+            FlextInfraModelsConfigTemplates.TemplateDeclarationSpec,
         ] = m.Field(
             alias="entries",
             description="Ordered template bodies keyed by destination",
@@ -450,11 +447,11 @@ class FlextInfraModelsConfigTemplates:
         @cached_property
         def entries(
             self,
-        ) -> tuple[FlextInfraModelsConfigTemplates.TemplateEntrySpec, ...]:
+        ) -> tuple[p.Infra.TemplateEntrySpec, ...]:
             """Expose the typed consumer view, validated once per catalog instance."""
             return tuple(
                 FlextInfraModelsConfigTemplates.TemplateEntrySpec.model_validate({
-                    **dict(declaration),
+                    **declaration.model_dump(),
                     "destination": destination,
                 })
                 for destination, declaration in self.catalog.items()
@@ -468,8 +465,38 @@ class FlextInfraModelsConfigTemplates:
                 for destination, declaration in self.catalog.items()
             }
 
+        @cached_property
+        def artifact_order(self) -> tuple[str, ...]:
+            """Order every artifact dependencies-first, proving the graph acyclic.
+
+            The graph engine loads on the first graph query, never while the
+            configuration validates, and its verdict is kept for this catalog.
+
+            Returns:
+                Every catalog key, dependencies first.
+
+            Raises:
+                ValueError: If the declared dependencies form a cycle.
+
+            """
+            ordered = u.Cli.dag_order(self.artifact_requirements)
+            if ordered.failure:
+                msg = f"artifact dependencies are invalid: {ordered.error}"
+                raise ValueError(msg)
+            return tuple(ordered.value)
+
+        def artifact_closure(self, destinations: frozenset[str]) -> frozenset[str]:
+            """Return the destinations with every artifact they transitively require.
+
+            Returns:
+                The closed destination set of the acyclic artifact graph.
+
+            """
+            _ = self.artifact_order
+            return u.Cli.dag_closure(self.artifact_requirements, destinations).unwrap()
+
         @property
-        def bootstrap_entry(self) -> FlextInfraModelsConfigTemplates.TemplateEntrySpec:
+        def bootstrap_entry(self) -> p.Infra.TemplateEntrySpec:
             """Require the single declared executor bootstrap artifact.
 
             Returns:
@@ -507,9 +534,17 @@ class FlextInfraModelsConfigTemplates:
             if len(set(paths)) != len(paths):
                 msg = "artifact destinations must have exactly one declaration"
                 raise ValueError(msg)
-            waves = u.Cli.dag_waves(self.artifact_requirements)
-            if waves.failure:
-                msg = f"artifact dependencies are invalid: {waves.error}"
+            unknown = sorted({
+                dependency
+                for declaration in self.catalog.values()
+                for dependency in declaration.requires_artifacts
+                if dependency not in self.catalog
+            })
+            if unknown:
+                msg = (
+                    "artifact dependencies are invalid: dependency graph "
+                    f"references names outside the graph: {', '.join(unknown)}"
+                )
                 raise ValueError(msg)
             for declaration in self.catalog.values():
                 for dependency in declaration.requires_artifacts:
@@ -561,14 +596,7 @@ class FlextInfraModelsConfigTemplates:
 
         gitignore_sections: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.ScaffoldGitignoreSectionSpec,
-                    t.schema_for_model(
-                        lambda: (
-                            FlextInfraModelsConfigScaffold.ScaffoldGitignoreSectionSpec
-                        )
-                    ),
-                ],
+                (FlextInfraModelsConfigScaffold.ScaffoldGitignoreSectionSpec),
                 ...,
             ],
             m.Field(min_length=1, description="Applicable Git ignore sections"),
@@ -579,14 +607,7 @@ class FlextInfraModelsConfigTemplates:
 
         gitignore_sections: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.ScaffoldGitignoreSectionSpec,
-                    t.schema_for_model(
-                        lambda: (
-                            FlextInfraModelsConfigScaffold.ScaffoldGitignoreSectionSpec
-                        )
-                    ),
-                ],
+                (FlextInfraModelsConfigScaffold.ScaffoldGitignoreSectionSpec),
                 ...,
             ],
             m.Field(

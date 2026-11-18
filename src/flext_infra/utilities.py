@@ -10,7 +10,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_cli import u as flext_cli_u
+from flext_cli import FlextCliUtilities
 
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegen,
@@ -20,6 +20,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesDocs,
     FlextInfraUtilitiesEnforcementCatalog,
     FlextInfraUtilitiesFacadeMembers,
+    FlextInfraUtilitiesGateAdmission,
     FlextInfraUtilitiesLazyInitLetters,
     FlextInfraUtilitiesLazyInitPlan,
     FlextInfraUtilitiesLazyInitRender,
@@ -27,7 +28,6 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesMiseBinary,
     FlextInfraUtilitiesModelsProtocolContracts,
     FlextInfraUtilitiesModelsProtocolRetirement,
-    FlextInfraUtilitiesMypy,
     FlextInfraUtilitiesNetwork,
     FlextInfraUtilitiesPrivateImportAncestry,
     FlextInfraUtilitiesPrivateImportFacades,
@@ -58,7 +58,7 @@ from flext_infra._utilities._rope._analysis import (
 )
 
 
-class FlextInfraUtilities(flext_cli_u):
+class FlextInfraUtilities(FlextCliUtilities):
     """Utility namespace for flext-infra; extends FlextUtilities.
 
     Usage::
@@ -81,12 +81,12 @@ class FlextInfraUtilities(flext_cli_u):
         FlextInfraUtilitiesDocs,
         FlextInfraUtilitiesEnforcementCatalog,
         FlextInfraUtilitiesFacadeMembers,
+        FlextInfraUtilitiesGateAdmission,
         FlextInfraUtilitiesLazyInitLetters,
         FlextInfraUtilitiesLazyInitPlan,
         FlextInfraUtilitiesLazyInitRender,
         FlextInfraUtilitiesLogParser,
         FlextInfraUtilitiesMiseBinary,
-        FlextInfraUtilitiesMypy,
         FlextInfraUtilitiesRefactorNamespaceFlext,
         FlextInfraUtilitiesRefactorNamespaceMoves,
         FlextInfraUtilitiesNetwork,

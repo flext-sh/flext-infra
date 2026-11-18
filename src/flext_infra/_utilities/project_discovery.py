@@ -42,11 +42,11 @@ class FlextInfraUtilitiesProjectDiscovery(
         """
         declared = (
             FlextInfraUtilitiesProjectManagedArtifacts
-            .load_codegen_inputs(
+            .load_codegen_policy(
                 repository_root,
             )
             .unwrap()
-            .spec.repository.refactor
+            .repository.refactor
         )
         return (
             declared
@@ -246,6 +246,13 @@ class FlextInfraUtilitiesProjectDiscovery(
             and not cls._scenario_data_tree(path.relative_to(resolved_root))
         }
         if source_files is not None:
+            # An owned stub is selected by its own name, even when it is a
+            # link whose target is foreign or absent.
+            source_files = tuple(
+                path
+                for path in source_files
+                if path.is_file() or (path.suffix == ".pyi" and path.is_symlink())
+            )
             selected = {
                 (path.absolute() if path.suffix == ".pyi" else path.resolve())
                 .relative_to(resolved_root)
@@ -294,6 +301,21 @@ class FlextInfraUtilitiesProjectDiscovery(
         nonparticipants = cls.repository_nonparticipant_paths(
             project_dir, source_project=source_project
         )
+        # Git owns which files belong to the checkout: one inventory, taken at
+        # the checked root, decides the candidates. No directory below it is
+        # probed, so an ignored or ceiling-bounded directory is never entered.
+        source_paths = cls._source_scope_paths(project_dir)
+        source_containers = frozenset(
+            project_dir / path.relative_to(project_dir).parts[0]
+            for path in source_paths
+            if path.suffix in c.Infra.PYTHON_SOURCE_SUFFIXES
+            and len(path.relative_to(project_dir).parts) > 1
+            and not any(
+                part.startswith(".") or part in effective_skip
+                for part in path.relative_to(project_dir).parts[:-1]
+            )
+            and cls._source_file_admitted(path, source_project, owned_stub=False)
+        )
         return [
             subdir.name
             for subdir in (
@@ -326,11 +348,7 @@ class FlextInfraUtilitiesProjectDiscovery(
                 if source_project is None
                 else source_project.source_query(subdir / c.Infra.GIT_DIR, "exists")
             )
-            and any(
-                cls._walk_python_files(
-                    subdir, effective_skip, source_project=source_project
-                )
-            )
+            and subdir in source_containers
         ]
 
     @classmethod
@@ -591,10 +609,13 @@ class FlextInfraUtilitiesProjectDiscovery(
         project_dir = (
             project_dir.resolve() if source_project is None else project_dir.absolute()
         )
-        if not (
-            project_dir.is_dir()
-            if source_project is None
-            else source_project.source_query(project_dir, "isdir")
+        # A native source view registers every declared folder, including one the
+        # checkout never materialized; an absent directory owns no sources and is
+        # never a Git-scope failure.
+        if not project_dir.is_dir():
+            return ()
+        if source_project is not None and not source_project.source_query(
+            project_dir, "isdir"
         ):
             return ()
         skip_dirs = cls.excluded_parts()
@@ -614,11 +635,13 @@ class FlextInfraUtilitiesProjectDiscovery(
             project_dir / relative
             for relative in (*workspace_excluded_top_dirs, *nonparticipants)
         )
+        # A stub is classified by its own name before any resolution: it keeps
+        # that name even when it links to a module, so it never turns into a
+        # foreign module source. Every other source resolves, and an alias
+        # leaving the project still fails loudly at its consumer.
         return tuple(
             sorted({
-                path.absolute()
-                if owned_path_admission and path.suffix == ".pyi"
-                else path.resolve()
+                path.absolute() if path.suffix == ".pyi" else path.resolve()
                 for path in cls._walk_python_files(
                     project_dir,
                     skip_dirs - owned_artifacts,
@@ -642,8 +665,9 @@ class FlextInfraUtilitiesProjectDiscovery(
             })
         )
 
-    @staticmethod
+    @classmethod
     def _walk_python_files(
+        cls,
         directory: Path,
         skip_dirs: frozenset[str],
         *,
@@ -686,6 +710,14 @@ class FlextInfraUtilitiesProjectDiscovery(
             for artifact in config.Infra.codegen.artifacts
             if artifact.source_scan_ignore and not artifact.retired_typing_root
         ) | {c.Infra.GIT_DIR}
+        source_paths = cls._source_scope_paths(directory)
+        source_containers = frozenset(
+            parent
+            for path in source_paths
+            if path.suffix in c.Infra.PYTHON_SOURCE_SUFFIXES
+            for parent in path.parents
+            if parent.is_relative_to(directory)
+        )
         walk = (
             directory.walk(on_error=on_error)
             if source_project is None
@@ -705,6 +737,14 @@ class FlextInfraUtilitiesProjectDiscovery(
                     )
                 )
                 and parent / name not in excluded_paths
+                and (
+                    parent / name in source_containers
+                    or any((parent / name).is_relative_to(root) for root in owned_roots)
+                    or any(
+                        (parent / name).is_relative_to(directory / root)
+                        for root in config.Infra.source_scan.roots
+                    )
+                )
                 and (
                     not (parent / name).is_symlink() if source_project is None else True
                 )
@@ -742,6 +782,40 @@ class FlextInfraUtilitiesProjectDiscovery(
                     )
                 ):
                     yield parent / file_name
+
+    @staticmethod
+    def _source_scope_paths(directory: Path) -> tuple[Path, ...]:
+        """Return the one source inventory every discovery of a scope shares.
+
+        Git owns the inventory of a checkout. The generator materializes a
+        candidate workspace beside the mutation lock, inside the repository Git
+        directory, and validates it without a checkout of its own; that
+        complete copy is the source scope of a staged preview.
+
+        Returns:
+            The Git inventory of the scope, or the staged preview's own files.
+
+        Raises:
+            OSError: If the Git inventory of the scope cannot be read.
+            RuntimeError: If ``directory`` is neither a Git checkout nor inside a
+                staged preview.
+
+        """
+        try:
+            source_paths = FlextInfraUtilitiesGit.git_source_scope_paths(directory)
+        except OSError as error:
+            error.add_note(f"Python source discovery scope: {directory}")
+            raise
+        if source_paths is not None:
+            return source_paths
+        # A member is scoped by the staged preview that contains it.
+        if not any(
+            scope.name.startswith(c.Infra.SOURCE_PREVIEW_PREFIX)
+            for scope in (directory, *directory.parents)
+        ):
+            msg = f"Python source discovery requires a Git checkout: {directory}"
+            raise RuntimeError(msg)
+        return tuple(path for path in directory.rglob("*") if path.is_file())
 
     @staticmethod
     def _source_file_admitted(

@@ -45,8 +45,12 @@ class FlextInfraProtocolsConfigRepository:
             ...
 
         @property
-        def package_name(self) -> t.NonEmptyStr:
-            """Import package name."""
+        def package_name(self) -> t.NonEmptyStr | None:
+            """Structural member projected from the owning model.
+
+            Import package name; a consumer repository declares none because it owns
+            no package.
+            """
             ...
 
         @property
@@ -110,7 +114,11 @@ class FlextInfraProtocolsConfigRepository:
 
         @property
         def upstream(self) -> t.NonEmptyStr:
-            """Upstream FLEXT facade module."""
+            """Structural member projected from the owning model.
+
+            Upstream facade module; a consumer repository composes its test facades
+            from this consumed distribution's public facades.
+            """
             ...
 
         @property
@@ -313,9 +321,8 @@ class FlextInfraProtocolsConfigRepository:
         def kind(self) -> c.Infra.ProjectKind:
             """Structural member projected from the owning model.
 
-            Governance kind; only internal_flext repositories are rewritten by
-            generation. Required: a generator that cannot read the kind fails closed
-            and never assumes internal_flext.
+            Governance kind detected from native dependency and workspace-
+            composition facts.
             """
             ...
 

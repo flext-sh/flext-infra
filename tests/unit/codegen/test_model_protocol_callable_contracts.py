@@ -7,7 +7,9 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
+from types import ModuleType
 
 from flext_infra import config
 from tests import c, m, p, t, tm, u
@@ -15,6 +17,19 @@ from tests import c, m, p, t, tm, u
 
 class TestsModelProtocolCallableContracts:
     """Exercise public projection, actual Pydantic models and native consumers."""
+
+    @staticmethod
+    def _import_generated_module(path: Path) -> ModuleType:
+        """Import a generated module from its file through the import system.
+
+        Returns:
+            The imported module.
+
+        """
+        spec = tm.not_none(spec_from_file_location("generated_protocols", path))
+        module = module_from_spec(spec)
+        tm.not_none(spec.loader).exec_module(module)
+        return module
 
     @staticmethod
     def _model_workspace(tmp_path: Path, declaration: str) -> tuple[Path, Path]:
@@ -34,6 +49,87 @@ class TestsModelProtocolCallableContracts:
             tm.ok(u.Cli.ensure_dir(path.parent))
             tm.ok(u.Cli.atomic_write_text_file(path, source))
         return root, package
+
+    @staticmethod
+    @c.Tests.MARK.parametrize(
+        ("declaration", "base", "expectation"),
+        [
+            (
+                (
+                    "class Mutable(BaseModel):\n    name: str\n"
+                    "    def read(self) -> str:\n        return self.name\n"
+                ),
+                "Mutable",
+                ("str", "'sample'"),
+            ),
+            (
+                (
+                    "class Mutable[T](BaseModel):\n    name: T\n"
+                    "    def read(self) -> T:\n        return self.name\n"
+                ),
+                "Mutable[str]",
+                ("str", "'sample'"),
+            ),
+            (
+                (
+                    "class Mutable[T](BaseModel):\n    name: T\n"
+                    "    def read(self) -> T:\n        return self.name\n"
+                    "class Intermediate[U](Mutable[U]): pass\n"
+                ),
+                "Intermediate[str]",
+                ("str", "'sample'"),
+            ),
+            (
+                (
+                    "class Mutable[T](BaseModel):\n    name: T\n"
+                    "    def read(self) -> T:\n        return self.name\n"
+                ),
+                "Mutable[dict[str, list[int]]]",
+                ("dict[str, list[int]]", "{'sample': [1]}"),
+            ),
+        ],
+    )
+    def test_frozen_model_does_not_inherit_a_writable_protocol(
+        tmp_path: Path,
+        native_consumer: p.Tests.NativeConsumer,
+        declaration: str,
+        base: str,
+        expectation: tuple[str, str],
+    ) -> None:
+        """A frozen descendant retains specialized inherited fields and methods."""
+        annotation, sample = expectation
+        root, package = TestsModelProtocolCallableContracts._model_workspace(
+            tmp_path,
+            "from pydantic import BaseModel, ConfigDict\n"
+            + declaration
+            + "class ModelsPayload:\n"
+            f"    class Frozen({base}):\n"
+            "        model_config = ConfigDict(frozen=True)\n"
+            "__all__ = ['Mutable', 'ModelsPayload']\n",
+        )
+        with u.Infra.facade_source_project(root) as binding:
+            planned = tm.ok(
+                u.Infra.protocol_model_sources_from_source(root, binding[0])
+            )
+        for relative, source in planned.items():
+            tm.ok(u.Cli.atomic_write_text_file(root / relative, source))
+        native_consumer(
+            "from inspect import getattr_static\n"
+            "from typing import get_type_hints\n"
+            f"sys.path.insert(0, {str(package.parent)!r})\n"
+            f"from {package.name}.models import m\n"
+            f"from {package.name}.protocols import p\n"
+            f"value = m.Frozen(name={sample})\n"
+            "assert isinstance(value, p.Frozen)\n"
+            "descriptor = getattr_static(p.Frozen, 'name')\n"
+            "assert isinstance(descriptor, property)\n"
+            "assert descriptor.fset is None\n"
+            f"assert get_type_hints(descriptor.fget)['return'] == {annotation}\n"
+            f"assert get_type_hints(p.Frozen.read)['return'] == {annotation}\n"
+            f"assert value.read() == {sample}\n"
+            f"assert value.name == {sample}\n",
+            cwd=root,
+        )
 
     @staticmethod
     def test_decorated_model_behavior_is_not_projected_as_a_protocol_member(
@@ -104,6 +200,34 @@ class TestsModelProtocolCallableContracts:
         tm.ok("from functools import cached_property" in generated)
         tm.ok("@cached_property\n        def artifact(self) -> str: ..." in generated)
         tm.fail("@property\n        def artifact(self)" in generated)
+        ast.parse(generated, filename="generated-payload.py")
+
+    @staticmethod
+    def test_quoted_root_model_reference_projects_sibling_protocol(
+        tmp_path: Path,
+    ) -> None:
+        """A quoted nested model reference maps to its projected protocol."""
+        root, package = TestsModelProtocolCallableContracts._model_workspace(
+            tmp_path,
+            "from __future__ import annotations\n"
+            "from typing import Literal\n"
+            "from pydantic import BaseModel, RootModel\n\n"
+            "class ModelsPayload:\n"
+            "    class Bead(BaseModel):\n"
+            "        status: Literal['open']\n\n"
+            "    class BeadShow(RootModel[tuple['ModelsPayload.Bead']]):\n"
+            "        pass\n",
+        )
+
+        with u.Infra.facade_source_project(root) as binding:
+            projected = tm.ok(
+                u.Infra.protocol_model_sources_from_source(root, binding[0])
+            )
+
+        generated = projected[(package / "_protocols" / "payload.py").relative_to(root)]
+        tm.ok("def root(self) -> tuple[ProtocolsPayload.Bead]:" in generated)
+        tm.ok('Literal["open"]' in generated)
+        tm.fail("ModelsPayload.Bead" in generated)
         ast.parse(generated, filename="generated-payload.py")
 
     @staticmethod
@@ -278,11 +402,12 @@ class TestsModelProtocolCallableContracts:
         tm.ok("from flext_cli import FlextCliProtocols" in generated)
         tm.ok("class Request(FlextCliProtocols.ModelCopy, Protocol):" in generated)
         tm.fail("from flext_core import p\n" in generated)
-        namespace: dict[str, object] = {"__name__": "generated_protocols"}
-        exec(  # ruff: ignore[exec-builtin] - execution validates the rendered module
-            compile(generated, "<generated-_protocols/base.py>", "exec"), namespace
-        )
-        holder = namespace["FlextInfraProtocolsPayload"]
+        destination = package / "_protocols" / "payload.py"
+        tm.ok(u.Cli.ensure_dir(destination.parent))
+        tm.ok(u.Cli.atomic_write_text_file(destination, generated))
+        holder = TestsModelProtocolCallableContracts._import_generated_module(
+            destination
+        ).FlextInfraProtocolsPayload
         tm.that(isinstance(holder, type), eq=True)
         tm.that("Request" in vars(holder), eq=True)
 
@@ -337,16 +462,9 @@ class TestsModelProtocolCallableContracts:
         generated = planned[destination]
         tm.ok("from flext_cli import FlextCliProtocols\n" in generated)
         tm.ok(u.Cli.atomic_write_text_file(root / destination, generated))
-        namespace: dict[str, object] = {"__name__": "generated_protocols"}
-        exec(  # ruff: ignore[exec-builtin] - execution validates the persisted module
-            compile(
-                (root / destination).read_text(encoding="utf-8"),
-                str(root / destination),
-                "exec",
-            ),
-            namespace,
-        )
-        holder = namespace["FlextInfraProtocolsPayload"]
+        holder = TestsModelProtocolCallableContracts._import_generated_module(
+            root / destination
+        ).FlextInfraProtocolsPayload
         tm.that("Request" in vars(holder), eq=True)
 
     @classmethod
@@ -506,10 +624,6 @@ class TestsModelProtocolCallableContracts:
         tm.ok("pages: dict[str, p.EnvelopePage]" in generated)
         tm.fail("def child(" in generated)
         tm.fail("def pages(" in generated)
-        conformance = planned[
-            (package / "_protocols" / "model_conformance.py").relative_to(root)
-        ]
-        tm.ok("isinstance(value, m.Envelope)" in conformance)
         native_consumer(
             f"sys.path.insert(0, {str(package.parent)!r})\n"
             f"from {package.name}.models import m\n"
@@ -553,16 +667,15 @@ class TestsModelProtocolCallableContracts:
 
     @staticmethod
     @c.Tests.MARK.parametrize(
-        ("language", "model_text", "evidence_text"),
+        ("language", "model_text"),
         [
-            ("en", "Source-derived structural", "Static instance-to-protocol"),
-            ("pt-BR", "Contratos estruturais", "Prova estática de instância"),
+            ("en", "Source-derived structural"),
+            ("pt-BR", "Contratos estruturais"),
         ],
     )
     def test_protocol_templates_preserve_the_declared_documentation_language(
         language: t.Infra.DocumentationLanguage,
         model_text: str,
-        evidence_text: str,
     ) -> None:
         """The same native render contexts serve English and Portuguese owners."""
         templates = u.Infra.codegen_templates_root(config.Infra.codegen)
@@ -584,18 +697,3 @@ class TestsModelProtocolCallableContracts:
         )
         tm.ok(model_text in rendered)
         ast.parse(rendered)
-        conformance = m.Infra.ModelProtocolConformanceRenderContext(
-            header=c.Infra.AUTOGEN_HEADER,
-            copyright_notice="Copyright (c) 2026 FLEXT Team.",
-            package_name="flext_test_project",
-            imports=(),
-            checks=(),
-            documentation_language=language,
-        )
-        evidence = tm.ok(
-            u.Cli.template_render(
-                templates / c.Infra.TEMPLATE_MODEL_PROTOCOL_CONFORMANCE, conformance
-            )
-        )
-        tm.ok(evidence_text in evidence)
-        ast.parse(evidence)

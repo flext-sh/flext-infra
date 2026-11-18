@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import glob
 import sysconfig
 from collections.abc import Mapping, Sequence
 from pathlib import Path
@@ -35,26 +34,16 @@ class FlextInfraUtilitiesNativeTooling(FlextInfraUtilitiesBase):
         pending: list[tuple[str, t.JsonValue]] = [
             (key, value) for pairs in document.settings.values() for key, value in pairs
         ]
-        pending.extend(
-            (key, value)
-            for override in document.tools.mypy.overrides
-            for key, value in override.settings
-        )
-        pyright = document.tools.pyright.path_rules
         pyrefly = document.tools.pyrefly.path_rules
         pending.extend(
             ("search-path", path)
             for path in (
-                pyright.source_dir,
-                pyright.project_root,
-                *pyright.env_dirs,
-                *pyright.test_like_dirs,
-                *(entry.root for entry in pyright.diagnostic_path_exceptions),
                 pyrefly.source_dir,
                 pyrefly.project_root,
                 *pyrefly.env_dirs,
                 *pyrefly.workspace_include_child_env_dirs,
                 *pyrefly.project_shared_search_paths,
+                *(entry.root for entry in pyrefly.diagnostic_path_exceptions),
             )
         )
         root = repository_root.resolve()
@@ -112,7 +101,7 @@ class FlextInfraUtilitiesNativeTooling(FlextInfraUtilitiesBase):
             FileNotFoundError: If a declared root is absent from the project.
 
         """
-        entries = document.tools.pyright.path_rules.diagnostic_path_exceptions
+        entries = document.tools.pyrefly.path_rules.diagnostic_path_exceptions
         roots = [entry.root for entry in entries]
         duplicated = sorted({root for root in roots if roots.count(root) > 1})
         if duplicated:
@@ -182,7 +171,7 @@ class FlextInfraUtilitiesNativeTooling(FlextInfraUtilitiesBase):
         document: p.Infra.ToolConfigDocument,
         table: str,
         key: str,
-        target: t.TypeForm[TValue],
+        target: TypeForm[TValue],
     ) -> TValue:
         """Validate one native option, preserving lookup and validation failures.
 
@@ -206,22 +195,6 @@ class FlextInfraUtilitiesNativeTooling(FlextInfraUtilitiesBase):
         """
         return FlextInfraUtilitiesNativeTooling.native_tool_setting(
             document, table, key, TypeForm(Sequence[str])
-        )
-
-    @staticmethod
-    def native_exclude_regex(globs: Sequence[str]) -> str:
-        """Translate exclusion globs into one regex for regex-only tools.
-
-        Mypy's ``exclude`` takes a single regular expression; the stdlib
-        translation of the same globs every analyzer excludes keeps one owner.
-
-        Returns:
-            The alternation of every translated glob.
-
-        """
-        return "|".join(
-            glob.translate(pattern, recursive=True, include_hidden=True)
-            for pattern in globs
         )
 
 

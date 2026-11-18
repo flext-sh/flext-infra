@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from functools import lru_cache
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from flext_cli import u
 
@@ -175,7 +175,15 @@ class FlextInfraUtilitiesPyprojectTomlPhases:
         changes = [
             f"{u.Cli.toml_dot_path(prefix, *path)} {outcome}"
             for operation in phase.operations
-            for path, outcome in cls._apply_toml_operation(table, operation)
+            for path, outcome in cls._apply_toml_operation(
+                table,
+                cast(
+                    m.Infra.DepsToml.SetOp
+                    | m.Infra.DepsToml.ListOp
+                    | m.Infra.DepsToml.RemoveOp,
+                    operation,
+                ),
+            )
         ]
         for nested in phase.nested_tables:
             changes.extend(

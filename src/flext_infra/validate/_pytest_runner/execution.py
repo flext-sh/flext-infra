@@ -10,23 +10,18 @@ import os
 import shlex
 import sys
 import time
-import traceback
 from collections.abc import Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, override
+from typing import override
 
 from typing_extensions import TypeForm
 
-from flext_infra import c, config, m, r, t, u
-from flext_infra.check import FlextInfraWorkspaceChecker
+from flext_infra import c, config, m, p, r, t, u
 from flext_infra.validate._pytest_runner import (
     FlextInfraPytestRunnerCommand,
     FlextInfraPytestRunnerReports,
 )
 from flext_infra.validate.testmon_db import FlextInfraTestmonDbInspector
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 
 class FlextInfraPytestRunnerExecution(
@@ -105,13 +100,6 @@ class FlextInfraPytestRunnerExecution(
                 msg = "incremental pytest requires its external Testmon database"
                 raise ValueError(msg)
             overrides.update(dict.fromkeys(testmon_keys, str(database)))
-        if self.scratch_root is not None:
-            overrides.update(
-                dict.fromkeys(
-                    c.Infra.PYTEST_TEMP_ENVIRONMENT_VARIABLES,
-                    str(self.scratch_root),
-                )
-            )
         if self.profile_enabled or self.collection_command_prefix:
             overrides[c.Infra.PYTEST_PROFILE_PROCESS_DIRECTORY_ENV] = (
                 config.Infra.tooling.tools.pytest.profile_process_directory
@@ -128,79 +116,26 @@ class FlextInfraPytestRunnerExecution(
             deadline=self._process_deadline(),
         )
 
-    def _resolve_selection(
-        self,
-        report_dir: Path,
-        *,
-        execution_mode: c.Infra.PytestExecutionMode,
-        database: Path | None = None,
-        complete: bool = False,
-        verify_inventory: bool = True,
-    ) -> p.Infra.PytestSelectionPlan | p.Cli.ProcessOutcome:
-        """Return the typed testmon selection and its manifest owner.
-
-        Each collection is one deadline-bound child of the flext-cli process
-        owner, which runs deadline processes on the main interpreter thread
-        only; the selection and the complete inventory therefore run in order.
-
-        Returns:
-            The typed selection or the original failed collection outcome.
-
-        Raises:
-            RuntimeError: If testmon selected node IDs outside the complete collection
-                inventory.
-
-        """
-        complete = complete or self.target_file is not None
-        selection = self._collect_selection(
-            report_dir,
-            complete=complete,
-            execution_mode=execution_mode,
-            database=database,
-        )
-        if not isinstance(selection, m.Infra.PytestSelectionPlan):
-            return selection
-        if complete or not verify_inventory:
-            return selection
-        inventory = self._collect_selection(
-            report_dir,
-            complete=True,
-            execution_mode=execution_mode,
-            database=database,
-        )
-        if not isinstance(inventory, m.Infra.PytestSelectionPlan):
-            return inventory
-        if inventory.owns_no_tests:
-            return inventory
-        if not set(selection.node_ids).issubset(inventory.node_ids):
-            msg = "testmon selected node IDs outside the complete collection inventory"
-            raise RuntimeError(msg)
-        return selection.model_copy(
-            update={
-                "whole_target": selection.node_ids == inventory.node_ids,
-                "inventory_collected": True,
-            },
-        )
-
     def _collect_selection(
         self,
         report_dir: Path,
         *,
         execution_mode: c.Infra.PytestExecutionMode,
-        complete: bool,
+        complete: bool = False,
         database: Path | None = None,
     ) -> p.Infra.PytestSelectionPlan | p.Cli.ProcessOutcome:
-        """Run one read-only collection and publish its manifest artifacts.
+        """Run the one read-only collection and publish its manifest artifacts.
+
+        The collection is one deadline-bound child of the flext-cli process
+        owner. An incremental one records the selection and the complete
+        inventory in the same manifest; a declared file or a coverage run
+        collects its complete inventory directly.
 
         Returns:
             The selection plan or original failed collection outcome.
 
-        Raises:
-            RuntimeError: If pytest reports no collection with a
-                nonempty manifest; or if a complete inventory outside the slow
-                phase holds no test.
-
         """
+        complete = complete or self.target_file is not None
         artifact = "testmon-inventory" if complete else "testmon-selection"
         selection_log = report_dir / f"{artifact}.log"
         manifest_path = report_dir / f"{artifact}.json"
@@ -241,7 +176,14 @@ class FlextInfraPytestRunnerExecution(
         # entirely outside this phase's marker. Both are empty scopes. A
         # whole-suite budgeted inventory that collects nothing stays a failure.
         scope_may_be_empty = self.slow_phase or self.target_file is not None
-        accepted: set[c.Infra.PytestExitCode] = {c.Infra.PytestExitCode.OK} | (
+        # The selection pass executes the collected items only to fingerprint
+        # their dependencies. An item failure is the suite's outcome, not a
+        # failed collection: the manifest is still complete, and the real suite
+        # run must follow and report it. Collection errors remain fatal.
+        accepted: set[c.Infra.PytestExitCode] = {
+            c.Infra.PytestExitCode.OK,
+            c.Infra.PytestExitCode.TESTS_FAILED,
+        } | (
             set()
             if complete and not scope_may_be_empty
             else {c.Infra.PytestExitCode.NO_TESTS_COLLECTED}
@@ -289,20 +231,12 @@ class FlextInfraPytestRunnerExecution(
             manifest_path.read_text(encoding="utf-8"),
         )
         node_ids = manifest.node_ids
-        if (
-            outcome.raw_return_code == c.Infra.PytestExitCode.NO_TESTS_COLLECTED
-            and node_ids
-        ):
-            msg = "pytest reported no collection with a nonempty manifest"
-            raise RuntimeError(msg)
-        if complete and not node_ids and not owns_no_tests and not scope_may_be_empty:
-            msg = "complete pytest inventory must contain at least one test"
-            raise RuntimeError(msg)
-        # An empty complete inventory in an allowed scope owns no in-scope
-        # test. Collection diagnostics already ran, so a collection failure
-        # never becomes this receipt.
-        owns_no_tests = owns_no_tests or (
-            complete and not node_ids and scope_may_be_empty
+        inventory = self._manifest_inventory(
+            manifest,
+            no_tests_collected=(
+                outcome.raw_return_code == c.Infra.PytestExitCode.NO_TESTS_COLLECTED
+            ),
+            empty_allowed=owns_no_tests or scope_may_be_empty,
         )
         u.Cli.atomic_write_text_file(
             report_dir / f"{artifact}.txt",
@@ -311,10 +245,46 @@ class FlextInfraPytestRunnerExecution(
         return m.Infra.PytestSelectionPlan(
             manifest_path=manifest_path,
             node_ids=node_ids,
-            whole_target=True,
+            whole_target=set(node_ids) == set(inventory),
             inventory_collected=complete,
-            owns_no_tests=owns_no_tests,
+            # An empty complete inventory in an allowed scope owns no in-scope
+            # test. Collection diagnostics already ran, so a collection failure
+            # never becomes this receipt.
+            owns_no_tests=owns_no_tests or (not inventory and scope_may_be_empty),
         )
+
+    @staticmethod
+    def _manifest_inventory(
+        manifest: p.Infra.PytestCollectionManifest,
+        *,
+        no_tests_collected: bool,
+        empty_allowed: bool,
+    ) -> t.StrTuple:
+        """Return the complete inventory the one manifest selected from.
+
+        An incremental collection records it beside the selection; every other
+        manifest is its own complete collection.
+
+        Returns:
+            The complete inventory node IDs.
+
+        Raises:
+            RuntimeError: If pytest reports no collection with a nonempty
+                manifest; if the complete inventory holds no test outside an
+                allowed empty scope; or if the selection lies outside it.
+
+        """
+        if no_tests_collected and manifest.node_ids:
+            msg = "pytest reported no collection with a nonempty manifest"
+            raise RuntimeError(msg)
+        inventory = manifest.inventory_node_ids or manifest.node_ids
+        if not inventory and not empty_allowed:
+            msg = "complete pytest inventory must contain at least one test"
+            raise RuntimeError(msg)
+        if not set(manifest.node_ids).issubset(inventory):
+            msg = "testmon selected node IDs outside the complete collection inventory"
+            raise RuntimeError(msg)
+        return inventory
 
     def _owns_no_tests(self) -> bool:
         """Return whether the project owns zero test files by design.
@@ -590,7 +560,10 @@ class FlextInfraPytestRunnerExecution(
             diagnostics.failed_count,
             diagnostics.error_count,
             warnings,
-            diagnostics.skipped_count,
+            # A connectivity prerequisite skip reports its unmet external
+            # service as not executed; every other skip stays red (operator
+            # decision 2026-11-08, AGENTS.md connectivity rule 2026-10-10).
+            diagnostics.skipped_count > len(diagnostics.connectivity_skip_cases),
             diagnostics.collection_failed_count,
             diagnostics.collection_skipped_count,
             not accounting_complete,
@@ -702,13 +675,13 @@ class FlextInfraPytestRunnerExecution(
             msg = "original suite checkpoint has no native test selection"
             raise ValueError(msg)
         u.Infra.git_finish_gate_capture(
-            m.Infra.GateCaptureFinishRequest(
-                started=start,
-                process=outcome,
-                reports=reports,
-                report_root=report_dir,
-                runtime_identity=self.testmon_environment(selection.execution_mode),
-            ),
+            m.Infra.GateCaptureFinishRequest.model_validate({
+                "started": start,
+                "process": outcome,
+                "reports": reports,
+                "report_root": report_dir,
+                "runtime_identity": self.testmon_environment(selection.execution_mode),
+            }),
             inputs=u.Infra.load_codegen_inputs(self.repository_root),
         ).unwrap()
 
@@ -738,7 +711,7 @@ class FlextInfraPytestRunnerExecution(
 
     @staticmethod
     def _phase_warning_lines(
-        phases: Sequence[tuple[str, m.Infra.PytestDiagnostics]],
+        phases: Sequence[tuple[str, p.Infra.PytestDiagnostics]],
     ) -> str:
         """Return one warnings line per phase.
 
@@ -752,11 +725,9 @@ class FlextInfraPytestRunnerExecution(
 
     @override
     def execute(self) -> p.Result[int]:
-        """Admit the global check before applicable Testmon impact selection.
+        """Execute applicable Testmon impact selection independently of checks.
 
-        Direct public callers retain the same original receipt guard as the
-        workspace composition. Slow items remain eligible without replaying
-        unchanged cases.
+        Slow items remain eligible without replaying unchanged cases.
 
         Returns:
             The resulting ``p.Result[int]``.
@@ -770,21 +741,18 @@ class FlextInfraPytestRunnerExecution(
         context: p.Infra.WorkspaceProjectContext,
         *,
         started_at_monotonic: float,
+        target_file: Path | None = None,
         execution_mode: c.Infra.PytestExecutionMode = (
             c.Infra.PytestExecutionMode.GLOBAL_INCREMENTAL
         ),
     ) -> int:
-        """Execute with the exclusive scratch created by the context factory.
-
-        Caller-provided scratch and persistent Testmon storage are not owned
-        by this lifecycle. A cleanup failure retains the primary exception.
+        """Execute the project's global suite; pytest owns its basetemp.
 
         Returns:
-            The unchanged native status after releasing the owned scratch.
+            The unchanged native status.
 
         Raises:
-            ValueError: If the context factory returned no owned scratch.
-                Also rejects nonglobal modes or changed inputs between suites.
+            ValueError: Rejects nonglobal modes or changed inputs between suites.
 
         """
         if execution_mode not in {
@@ -793,34 +761,20 @@ class FlextInfraPytestRunnerExecution(
         }:
             msg = f"project context requires a global pytest mode: {execution_mode}"
             raise ValueError(msg)
-        runner = cls.from_project_context(
-            context,
-            started_at_monotonic=started_at_monotonic,
-            execution_mode=execution_mode,
+        return (
+            cls
+            .from_project_context(
+                context,
+                started_at_monotonic=started_at_monotonic,
+                target_file=target_file,
+                execution_mode=execution_mode,
+            )
+            .execute_global(execution_mode=execution_mode)
+            .unwrap()
         )
-        scratch = runner.scratch_root
-        if scratch is None:
-            msg = "project context runner requires its exclusive scratch directory"
-            raise ValueError(msg)
-        try:
-            return runner.execute_global(execution_mode=execution_mode).unwrap()
-        finally:
-            primary = sys.exception()
-            try:
-                u.Cli.files_remove_directory(scratch).unwrap()
-            except BaseException as cleanup_failure:
-                if primary is None or (
-                    isinstance(primary, SystemExit)
-                    and (primary.code is None or primary.code == 0)
-                ):
-                    raise
-                primary.add_note(
-                    "pytest scratch cleanup failed:\n"
-                    + "".join(traceback.format_exception(cleanup_failure, chain=False))
-                )
 
     def execute_full(self) -> p.Result[int]:
-        """Run the complete suite once after global primary source admission.
+        """Run the complete suite once independently of quality-check receipts.
 
         Returns:
             The resulting ``p.Result[int]``.
@@ -835,10 +789,10 @@ class FlextInfraPytestRunnerExecution(
             c.Infra.PytestExecutionMode.GLOBAL_INCREMENTAL
         ),
     ) -> p.Result[int]:
-        """Select impacted global cases, retaining primary source admission.
+        """Select impacted global cases independently of quality checks.
 
         Explicit FULL executes once without Testmon. Both operations retain
-        the same marker inventory and original primary-source prerequisite.
+        the same marker inventory and native execution evidence.
 
         Returns:
             The native status with selection, inventory and execution evidence.
@@ -850,20 +804,6 @@ class FlextInfraPytestRunnerExecution(
         if not execution_mode.is_global:
             msg = f"global pytest operation requires a global mode: {execution_mode}"
             raise ValueError(msg)
-        # The admission receipt is the one the project's own check wrote under
-        # its repository root; a workspace member never writes it under the
-        # workspace that owns the shared runtime.
-        root = self.repository_root.resolve()
-        approved = u.Infra.git_require_green_check_receipt(
-            root,
-            u.Infra.load_codegen_inputs(root).unwrap().spec.make,
-            phase=c.Infra.CheckPhase.PRIMARY,
-            plan_global_targets=lambda gates: FlextInfraWorkspaceChecker(
-                repository_root=root,
-            ).plan_global_targets(gates),
-        )
-        if approved.failure:
-            return r.from_failure(approved)
         return (
             self._execute_complete_suite()
             if execution_mode == c.Infra.PytestExecutionMode.FULL
@@ -911,7 +851,7 @@ class FlextInfraPytestRunnerExecution(
             execution_mode=mode,
         )
         selection = self._selection_from_suite(report_dir, outcome)
-        if not isinstance(selection, m.Infra.PytestSelectionPlan):
+        if isinstance(selection, p.Cli.ProcessOutcome):
             return r.ok(selection.raw_return_code)
         if not u.Cli.process_succeeded(outcome) and not self._completed_failure(
             outcome, report_dir
@@ -1044,17 +984,12 @@ class FlextInfraPytestRunnerExecution(
         """
         pre_digest = FlextInfraTestmonDbInspector.digest_file(database)
         cache_restored = self._preflight_cache(pre_digest, report_dir, database)
-        selection_plan = self._resolve_selection(
+        selection_plan = self._collect_selection(
             report_dir,
             database=database,
-            verify_inventory=(
-                pre_digest is not None
-                or self.slow_phase
-                or self.target_file is not None
-            ),
             execution_mode=execution_mode,
         )
-        if not isinstance(selection_plan, m.Infra.PytestSelectionPlan):
+        if isinstance(selection_plan, p.Cli.ProcessOutcome):
             return r.ok(selection_plan.raw_return_code)
         self._record_selection_plan(
             selection_plan, report_dir, cache_restored=cache_restored
@@ -1310,13 +1245,12 @@ class FlextInfraPytestRunnerExecution(
             ),
         )
         # The inventory pass enforces the same collection policy before coverage.
-        selection = self._resolve_selection(
+        selection = self._collect_selection(
             report_dir,
             complete=True,
             execution_mode=c.Infra.PytestExecutionMode.COVERAGE,
-            verify_inventory=False,
         )
-        if not isinstance(selection, m.Infra.PytestSelectionPlan):
+        if isinstance(selection, p.Cli.ProcessOutcome):
             return r.ok(selection.raw_return_code)
         command = self.build_coverage_command(report_dir)
         outcome = self._run_suite(

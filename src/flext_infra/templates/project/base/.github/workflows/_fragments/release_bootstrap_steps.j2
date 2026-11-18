@@ -3,6 +3,7 @@
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+{%- include "_fragments/toolchain_cache_restore.j2" %}
       - name: Boot
         run: make setup
 {%- endmacro %}

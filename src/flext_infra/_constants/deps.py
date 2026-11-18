@@ -61,6 +61,12 @@ class FlextInfraConstantsDeps(FlextInfraConstantsConfig):
     )
     DEPTRY_UNUSED_DEPENDENCY_CODE: ClassVar[str] = "DEP002"
     """Deptry rule code for a declared dependency the code never imports."""
+    DEPTRY_UNDECLARED_IMPORT_CODES: ClassVar[frozenset[str]] = frozenset({
+        "DEP001",
+        "DEP003",
+        "DEP004",
+    })
+    """Deptry codes for imports whose supplier is missing, transitive or dev-only."""
     CONSOLE_SCRIPTS_ENTRY_POINT_GROUP: ClassVar[str] = "console_scripts"
     """Entry-point group naming the executables an installed distribution ships."""
     PYTEST_PLUGIN_ENTRY_POINT_GROUP: ClassVar[str] = "pytest11"

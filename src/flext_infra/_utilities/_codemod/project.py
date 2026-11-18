@@ -17,6 +17,7 @@ import ast
 import sys
 from collections.abc import Mapping, Sequence
 from pathlib import Path
+from re import Match
 
 from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (
@@ -34,8 +35,6 @@ from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConfor
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntime,
-)
-from flext_infra._utilities._rope.runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
 from flext_infra._utilities._rope.runtime_types import (
@@ -44,7 +43,7 @@ from flext_infra._utilities._rope.runtime_types import (
 
 
 class FlextInfraUtilitiesCodemodProject(
-    FlextInfraUtilitiesCodemodBindingChain.FlextInfraUtilitiesCodemodBindingChain,
+    FlextInfraUtilitiesCodemodBindingChain,
     FlextInfraUtilitiesCodemodNative,
     FlextInfraUtilitiesCodemodNativePackage,
     FlextInfraUtilitiesCodemodNativeCascade,
@@ -213,6 +212,25 @@ class FlextInfraUtilitiesCodemodProject(
         return tuple(selected)
 
     @staticmethod
+    def codemod_finding_start(finding: p.Infra.ModScanFinding) -> tuple[int, int]:
+        """Return the zero-based start line and column of one native finding.
+
+        Returns:
+            The finding's zero-based ``(line, column)`` start.
+
+        Raises:
+            TypeError: If the native range carries no integer start position.
+
+        """
+        start = finding.range.get("start")
+        line = start.get("line") if isinstance(start, Mapping) else None
+        column = start.get("column") if isinstance(start, Mapping) else None
+        if not isinstance(line, int) or not isinstance(column, int):
+            msg = f"ast-grep finding without a start position: {finding.rule_id}"
+            raise TypeError(msg)
+        return line, column
+
+    @staticmethod
     def codemod_source_path(root: Path, file_path: Path) -> Path:
         """Resolve one finding file path against its project root.
 
@@ -246,7 +264,7 @@ class FlextInfraUtilitiesCodemodProject(
                 "ruleId": rule.id,
                 "severity": c.Infra.NativeRuleSeverity.ERROR,
                 "message": rule.message,
-                "origin": "owned-path",
+                "origin": c.Infra.ModFindingOrigin.OWNED_PATH,
                 "text": "",
                 "lines": "",
                 "range": {
@@ -439,6 +457,8 @@ class FlextInfraUtilitiesCodemodProject(
         fields = set(m.Cli.PythonScriptExecution.model_fields)
         candidates: dict[Path, list[ast.Call]] = {}
         for path in sources:
+            if not path.is_file():
+                continue
             text = path.read_text(encoding=c.DEFAULT_ENCODING)
             if "__module__" not in text:
                 continue
@@ -743,6 +763,16 @@ class FlextInfraUtilitiesCodemodProject(
         """
         if validation.failure:
             return r[tuple[p.Infra.CensusViolation, ...]].from_failure(validation)
+        matches: list[Match[str]] = []
+        for violation in validation.value.violations:
+            match = c.Infra.VIOLATION_PATTERN.match(violation)
+            if match is None:
+                msg = (
+                    f"namespace violation does not follow the report format: "
+                    f"{violation}"
+                )
+                raise ValueError(msg)
+            matches.append(match)
         with cls.codemod_workspace_snapshot(root) as snapshot:
             planned = cls.codemod_rule_plan(snapshot)
         if planned.failure:
@@ -759,25 +789,17 @@ class FlextInfraUtilitiesCodemodProject(
                 for rule_id in rule_ids
             }
         )
-        parsed: list[p.Infra.CensusViolation] = []
-        for violation in validation.value.violations:
-            match = c.Infra.VIOLATION_PATTERN.match(violation)
-            if match is None:
-                msg = (
-                    f"namespace violation does not follow the report format: "
-                    f"{violation}"
-                )
-                raise ValueError(msg)
-            parsed.append(
-                m.Infra.CensusViolation(
-                    module=match.group("module"),
-                    rule=match.group("rule"),
-                    line=int(match.group("line")),
-                    message=match.group("message"),
-                    fixable=match.group("rule") in repairable,
-                ),
+        parsed = tuple(
+            m.Infra.CensusViolation(
+                module=match.group("module"),
+                rule=match.group("rule"),
+                line=int(match.group("line")),
+                message=match.group("message"),
+                fixable=match.group("rule") in repairable,
             )
-        return r[tuple[p.Infra.CensusViolation, ...]].ok(tuple(parsed))
+            for match in matches
+        )
+        return r[tuple[p.Infra.CensusViolation, ...]].ok(parsed)
 
 
 __all__: list[str] = ["FlextInfraUtilitiesCodemodProject"]

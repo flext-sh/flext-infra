@@ -13,7 +13,6 @@ from pathlib import Path
 from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
-    FlextInfraUtilitiesFacadeComponents,
     FlextInfraUtilitiesWorkspaceSnapshot,
 )
 from flext_infra._utilities._rope import (
@@ -56,7 +55,7 @@ class FlextInfraUtilitiesSemanticComposition(
         authored = dict(cls._editable_sources(sources))
         working = dict(sources)
         with FlextInfraUtilitiesWorkspaceSnapshot.facade_source_project(
-            workspace.repository_root,
+            Path(workspace.rope_project.root.real_path),
             planned_sources=working,
             source_project=workspace.rope_project,
         ) as (project, _sources):
@@ -68,7 +67,7 @@ class FlextInfraUtilitiesSemanticComposition(
                     file_path=path,
                 )[0]
         with FlextInfraUtilitiesWorkspaceSnapshot.facade_source_project(
-            workspace.repository_root,
+            Path(workspace.rope_project.root.real_path),
             planned_sources=working,
             source_project=workspace.rope_project,
         ) as (project, _sources):
@@ -175,8 +174,6 @@ class FlextInfraUtilitiesSemanticComposition(
                 continue
             letter, suffix = family
             resource = project.get_file(f"{c.Infra.DIR_TESTS}/{path.name}")
-            if resource is None:
-                continue
             module = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(
                 project,
                 resource,
@@ -434,48 +431,77 @@ class FlextInfraUtilitiesSemanticComposition(
                 f"facade adoption has no declared layout: {workspace.repository_root}"
             )
             raise ValueError(message)
-        result: dict[Path, str] = {}
+        adopted: dict[Path, str] = {}
         for family in cls.facade_families().values():
             path = layout.package_dir / f"{family.module}.py"
             source = sources.get(path)
             if source is None or source.startswith(c.Infra.AUTOGEN_HEADER):
                 continue
-            module = cls._composition_module(project, path)
             name = f"{layout.class_stem}{family.suffix}"
-            binding = module.get_scope().get_defined_names().get(name)
-            if binding is None:
+            module = cls._composition_module(project, path)
+            if cls._pure_facade_owner(project, module, path, family, name) is None:
                 continue
-            owner = binding.get_object()
-            if not cls.py_class(owner):
-                continue
-            if owner.get_module() is not module:
-                message = (
-                    f"facade adoption has a foreign introducing class: {path}:{name}"
-                )
-                raise ValueError(message)
-            exported = cls._declared_exports(path, rope_project=project)
-            published = module.get_scope().get_defined_names().get(family.letter)
-            if set(exported) != {name, family.letter} or published is None:
-                continue
-            if published.get_object() is not owner:
-                message = (
-                    f"facade adoption has a different publication identity: {path}"
-                )
-                raise ValueError(message)
-            if (
-                not cls._pure_facade_declaration(cls._composition_class_ast(owner))
-                or not cls._pure_facade_module(module.get_ast(), name, family.letter)
-                or cls._facade_declares_protocols(project, module)
-            ):
-                continue
-            result[path] = FlextInfraUtilitiesFacadeComponents.facade_component_source(
-                project,
-                path,
-                layout.package_dir / family.directory,
-                family=c.Infra.FacadeFamily(family.letter),
-                owner_name=name,
-            ).unwrap()
-        return result
+            declared = FlextInfraUtilitiesWorkspaceSnapshot.workspace_declared_sources(
+                Path(project.root.real_path),
+                (),
+                {**sources, **adopted},
+                source_project=project,
+            )
+            projected = workspace.facade_projection(
+                declared_files=declared,
+                selection=(path, c.Infra.FacadeFamily(family.letter)),
+            )
+            for plan in projected.files:
+                if plan.desired_content is None:
+                    message = (
+                        f"facade adoption requires a source retirement: {plan.path}"
+                    )
+                    raise ValueError(message)
+                adopted[plan.path] = plan.desired_content.decode(c.DEFAULT_ENCODING)
+        return adopted
+
+    @classmethod
+    def _pure_facade_owner(
+        cls,
+        project: p.Infra.RopeProject,
+        module: p.Infra.RopeParsedModule,
+        path: Path,
+        family: p.Infra.FacadeFamily,
+        name: str,
+    ) -> p.Infra.RopeSourceClass | None:
+        """Elect the published owner of one pure facade declaration.
+
+        Returns:
+            The published owner class, or ``None`` when the module is not a
+            pure facade declaration.
+
+        Raises:
+            ValueError: The introducing class or publication identity is ambiguous.
+
+        """
+        binding = module.get_scope().get_defined_names().get(name)
+        if binding is None:
+            return None
+        owner = binding.get_object()
+        if not cls.py_class(owner):
+            return None
+        if owner.get_module() is not module:
+            message = f"facade adoption has a foreign introducing class: {path}:{name}"
+            raise ValueError(message)
+        exported = cls._declared_exports(path, rope_project=project)
+        published = module.get_scope().get_defined_names().get(family.letter)
+        if set(exported) != {name, family.letter} or published is None:
+            return None
+        if published.get_object() is not owner:
+            message = f"facade adoption has a different publication identity: {path}"
+            raise ValueError(message)
+        if (
+            not cls._pure_facade_declaration(cls._composition_class_ast(owner))
+            or not cls._pure_facade_module(module.get_ast(), name, family.letter)
+            or cls._facade_declares_protocols(project, module)
+        ):
+            return None
+        return owner
 
     @classmethod
     def _facade_declares_protocols(
@@ -689,7 +715,7 @@ class FlextInfraUtilitiesSemanticComposition(
         aliases: Sequence[
             tuple[p.Infra.RopeSourceClass, str, p.Infra.RopeSourceClass, str]
         ],
-    ) -> dict[tuple[int, int], m.Infra.SourceRewrite]:
+    ) -> dict[tuple[int, int], p.Infra.SourceRewrite]:
         """Rebind method receivers only after their complete native owner proof.
 
         Returns:
@@ -699,7 +725,7 @@ class FlextInfraUtilitiesSemanticComposition(
             ValueError: A behavior alias escapes as a class identity.
 
         """
-        rewritten: dict[tuple[int, int], m.Infra.SourceRewrite] = {}
+        rewritten: dict[tuple[int, int], p.Infra.SourceRewrite] = {}
         tree = module.get_ast()
         parents = cls.ast_parent_map(tree)
         for node in ast.walk(tree):

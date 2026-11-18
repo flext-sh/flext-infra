@@ -424,6 +424,34 @@ class TestsFlextInfraModTextGateEngine:
         )
 
     @staticmethod
+    def test_staged_python_view_still_plans_physical_markdown(
+        mod_workspace: Path,
+    ) -> None:
+        """A Python-only staged view must not hide a declared physical guide."""
+        guide = mod_workspace / "docs" / "guide.md"
+        tm.ok(u.Cli.ensure_dir(guide.parent))
+        tm.ok(u.Cli.atomic_write_text_file(guide, "Old guidance.\n"))
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                mod_workspace / c.Infra.CODEMOD_TEXT_RULES_RELPATH,
+                "rules:\n"
+                "  - id: guide-contract\n"
+                "    include: ['docs/guide.md']\n"
+                "    find: 'Old guidance\\.'\n"
+                "    replace: 'Current guidance.'\n",
+            ),
+        )
+        _report, planned = tm.ok(
+            FlextInfraModTextGateEngine.plan(mod_workspace, sources={})
+        )
+        targets = {plan.path: plan for plan in planned}
+        tm.that(
+            tm.not_none(targets[guide].desired_content).decode(c.DEFAULT_ENCODING),
+            eq="Current guidance.\n",
+        )
+        tm.that(guide.read_text(encoding="utf-8"), eq="Old guidance.\n")
+
+    @staticmethod
     def test_declared_markdown_symlink_fails_before_publication(
         mod_workspace: Path,
     ) -> None:

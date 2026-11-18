@@ -11,58 +11,12 @@ import re
 from enum import StrEnum
 from typing import TYPE_CHECKING, ClassVar
 
-import libcst
-
 if TYPE_CHECKING:
     from flext_infra import t
 
 
 class FlextInfraConstantsSourceCode:
     """Source code patterns, exclusion sets, and detection constants."""
-
-    class Cst:
-        """libcst runtime classes for isinstance operands; annotations read t."""
-
-        AnnAssign = libcst.AnnAssign
-        Annotation = libcst.Annotation
-        Arg = libcst.Arg
-        AsName = libcst.AsName
-        Assign = libcst.Assign
-        AssignTarget = libcst.AssignTarget
-        Attribute = libcst.Attribute
-        AugAssign = libcst.AugAssign
-        BaseCompoundStatement = libcst.BaseCompoundStatement
-        BaseExpression = libcst.BaseExpression
-        BaseStatement = libcst.BaseStatement
-        Call = libcst.Call
-        ClassDef = libcst.ClassDef
-        Comma = libcst.Comma
-        ConcatenatedString = libcst.ConcatenatedString
-        Del = libcst.Del
-        DictComp = libcst.DictComp
-        FunctionDef = libcst.FunctionDef
-        GeneratorExp = libcst.GeneratorExp
-        If = libcst.If
-        Import = libcst.Import
-        ImportAlias = libcst.ImportAlias
-        ImportFrom = libcst.ImportFrom
-        ImportStar = libcst.ImportStar
-        IndentedBlock = libcst.IndentedBlock
-        Index = libcst.Index
-        Lambda = libcst.Lambda
-        List = libcst.List
-        ListComp = libcst.ListComp
-        Module = libcst.Module
-        Name = libcst.Name
-        ParamSpec = libcst.ParamSpec
-        Pass = libcst.Pass
-        SetComp = libcst.SetComp
-        SimpleStatementLine = libcst.SimpleStatementLine
-        SimpleString = libcst.SimpleString
-        Tuple = libcst.Tuple
-        TypeAlias = libcst.TypeAlias
-        TypeVar = libcst.TypeVar
-        TypeVarTuple = libcst.TypeVarTuple
 
     class MergeConflictControl(StrEnum):
         """Closed Git merge-control vocabulary."""
@@ -93,6 +47,22 @@ class FlextInfraConstantsSourceCode:
         r"^\s*\[\[?([^\[\]]+)\]\]?\s*(?:#.*)?$",
     )
     "Regex: one complete TOML table header with an optional comment."
+    TOML_BARE_KEY_RE: ClassVar[t.RegexPattern] = re.compile(r"[A-Za-z0-9_-]+")
+    "Regex: one TOML 1.0 bare key; every other key is quoted."
+    SCRIPT_METADATA_BLOCK_RE: ClassVar[t.RegexPattern] = re.compile(
+        r"(?m)^# /// (?P<type>[a-zA-Z0-9-]+)$\s(?P<content>(^#(| .*)$\s)+)^# ///$",
+    )
+    "PEP 723 reference grammar of one ``# /// <type>`` structured comment block."
+    SCRIPT_METADATA_TYPE: ClassVar[str] = "script"
+    "PEP 723 block type of inline script metadata."
+    SCRIPT_METADATA_START: ClassVar[str] = "# /// "
+    "Opening of a structured comment block, before its type."
+    SCRIPT_METADATA_END: ClassVar[str] = "# ///"
+    "Closing line of a structured comment block."
+    SCRIPT_METADATA_COMMENT: ClassVar[str] = "#"
+    "Comment marker of an empty structured block line."
+    SCRIPT_METADATA_LINE_PREFIX: ClassVar[str] = "# "
+    "Comment marker PEP 723 removes from each structured block line."
 
     # NOTE: the directory-exclusion vocabulary is DERIVED from the declared
     # exclusion registry (config/codegen.yaml exclusions -> CodegenConfigSpec
@@ -108,11 +78,6 @@ class FlextInfraConstantsSourceCode:
         "skills",
     })
     "GitHub provider directories owned by the agentsctl projection."
-    TRANSIENT_PYTEST_SCRATCH_PART: ClassVar[t.RegexPattern] = re.compile(
-        r"^\.flext-.+\.pytest-scratch\.",
-    )
-    "Transient per-run pytest basetemp directories the runners create inside"
-    " the repository; analyzers must never descend into them."
 
     # --- Encoding (was: class Encoding) ---
     ENCODING_DEFAULT: ClassVar[str] = "utf-8"
@@ -348,17 +313,6 @@ class FlextInfraConstantsSourceCode:
         ]
     ] = (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)
     "Python nodes that own a lexical scope: module, class and function bodies."
-    CST_IMPORT_TYPES: ClassVar[
-        tuple[type[t.Infra.Cst.Import], type[t.Infra.Cst.ImportFrom]]
-    ] = (
-        libcst.Import,
-        libcst.ImportFrom,
-    )
-    "libcst import statements, absolute and from-import."
-    CST_DEFINITION_TYPES: ClassVar[
-        tuple[type[t.Infra.Cst.ClassDef], type[t.Infra.Cst.FunctionDef]]
-    ] = (libcst.ClassDef, libcst.FunctionDef)
-    "libcst class and function definition nodes."
 
 
 __all__: list[str] = ["FlextInfraConstantsSourceCode"]

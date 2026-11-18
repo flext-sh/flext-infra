@@ -32,8 +32,8 @@ snapshots:
       end: 32
     - source: |
         __all__: list[str] = ["Example"]
-        
-        
+
+
         class Example:
             """Example."""
       style: secondary

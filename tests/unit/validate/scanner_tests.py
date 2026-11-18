@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra.validate.scanner import FlextInfraTextPatternScanner
+from flext_infra.validate import FlextInfraTextPatternScanner
 from tests import c, tm, u
 
 if TYPE_CHECKING:

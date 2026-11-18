@@ -90,8 +90,13 @@ class FlextInfraCodegenFixerResults:
         ctx: p.Infra.FixContext,
         project_path: Path,
         initial_violations: Sequence[p.Infra.CensusViolation],
-    ) -> None:
-        """Re-run validation and split outstanding violations into fixed vs skipped."""
+    ) -> p.Infra.FixContext:
+        """Re-run validation and split outstanding violations into fixed vs skipped.
+
+        Returns:
+            The updated fix context.
+
+        """
         remaining_result = u.Infra.parse_namespace_validation(
             FlextInfraNamespaceValidator(repository_root=project_path).build_report(),
             project_path,
@@ -103,14 +108,18 @@ class FlextInfraCodegenFixerResults:
                 line=0,
                 message=remaining_result.error or "namespace validation failed",
             )
-        else:
-            fixed, skipped = u.Infra.classify_violation_outcomes(
-                project_path=project_path,
-                initial_violations=initial_violations,
-                remaining_violations=remaining_result.unwrap(),
-            )
-            ctx.violations_fixed.extend(fixed)
-            ctx.violations_skipped.extend(skipped)
+            return ctx
+        fixed, skipped = u.Infra.classify_violation_outcomes(
+            project_path=project_path,
+            initial_violations=initial_violations,
+            remaining_violations=remaining_result.unwrap(),
+        )
+        return ctx.model_copy(
+            update={
+                "violations_fixed": [*ctx.violations_fixed, *fixed],
+                "violations_skipped": [*ctx.violations_skipped, *skipped],
+            },
+        )
 
 
 __all__: list[str] = ["FlextInfraCodegenFixerResults"]

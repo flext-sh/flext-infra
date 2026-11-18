@@ -1,4 +1,9 @@
-"""Real public runner rejects skips while retaining connectivity classification.
+"""Real public runner accepts only owned connectivity prerequisite skips.
+
+An owned connectivity prerequisite skip reports its unmet external service
+as not executed and does not fail the run; any other skip, including forged
+prerequisite metadata, stays red (operator decision 2026-11-08, tracker key
+``operator-decision-2026-11-08-connectivity-skips-not-red``).
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -18,10 +23,10 @@ class TestsFlextInfraPytestRunnerConnectivity:
     @staticmethod
     @c.Tests.MARK.slow
     @c.Tests.MARK.parametrize("owner_skip", [True, False], ids=["owner", "forged"])
-    def test_connectivity_classification_keeps_native_skips_red(
+    def test_only_owned_connectivity_skips_are_accepted(
         cached_runner_project: Path, *, owner_skip: bool
     ) -> None:
-        """Owned prerequisite skips and forged metadata both keep the run red."""
+        """An owned prerequisite skip passes; forged metadata stays red."""
         root = cached_runner_project
         runner = u.Tests.PytestRunner.runner_for(root)
         test_file = root / runner.target / "test_connectivity.py"
@@ -35,10 +40,10 @@ class TestsFlextInfraPytestRunnerConnectivity:
         )
         reports = root / runner.reports
         if owner_skip:
-            tm.that(tm.ok(runner.execute_full()), eq=1)
+            tm.that(tm.ok(runner.execute_full()), eq=0)
             tm.that(
                 u.Tests.PytestRunner.summary(reports),
-                has=["skipped=1", "connectivity_prerequisite_skips=1", "exit=1"],
+                has=["skipped=1", "connectivity_prerequisite_skips=1", "exit=0"],
             )
             latest = (reports / "latest.txt").read_text(encoding="utf-8").strip()
             outcome = m.Cli.ProcessOutcome.model_validate_json(

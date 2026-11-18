@@ -43,4 +43,12 @@ install_lazy_exports(
         "FlextInfraModelsCodegenTransaction": ".transaction",
     },
     public_exports=__all__,
+    deferred_members=(
+        "FlextInfraCodegen",
+        "FlextInfraModelsCodegenFix",
+        "FlextInfraModelsCodegenLazyInit",
+        "FlextInfraModelsCodegenPipeline",
+        "FlextInfraModelsCodegenScaffold",
+        "FlextInfraModelsCodegenTransaction",
+    ),
 )

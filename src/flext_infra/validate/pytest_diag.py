@@ -53,12 +53,17 @@ class FlextInfraPytestDiagExtractor(
     ] = None
 
     @classmethod
-    def _extract_report_events(cls, report_log: Path, diag: p.Infra.DiagResult) -> None:
+    def _extract_report_events(
+        cls, report_log: Path, diag: p.Infra.DiagResult
+    ) -> p.Infra.DiagResult:
         """Read real test attempts and every warning independently of terminal text.
 
         Every reported node must show one setup and one teardown phase, plus a
         call phase whenever setup passed. A native failed worker-crash report
         explains missing phases only for that node; repeated phases still fail.
+
+        Returns:
+            The updated diagnostics result.
 
         Raises:
             ValueError: If pytest report log contains no events; or if incomplete pytest
@@ -75,7 +80,7 @@ class FlextInfraPytestDiagExtractor(
             if event.report_type == "WarningMessage":
                 warnings.append(event)
             else:
-                cls._record_case_event(event, diag)
+                diag = cls._record_case_event(event, diag)
         identities = [
             m.Infra.PytestWarningEvent.model_validate_json(line)
             for line in report_log
@@ -95,14 +100,15 @@ class FlextInfraPytestDiagExtractor(
             ):
                 msg = f"incomplete pytest lifecycle: {nodeid}: {dict(phases)}"
                 raise ValueError(msg)
+        return diag
 
     @staticmethod
     def _record_case_event(
         event: p.Infra.PytestReportEvent,
         diag: p.Infra.DiagResult,
-    ) -> None:
+    ) -> p.Infra.DiagResult:
         if event.nodeid is None:
-            return
+            return diag
         if event.report_type == "TestReport":
             if event.when is None or event.outcome is None:
                 msg = f"TestReport without runtest phase or outcome: {event.nodeid}"
@@ -113,19 +119,26 @@ class FlextInfraPytestDiagExtractor(
                 raise ValueError(msg)
             phases[event.when] = event.outcome
             if event.when == "call":
-                FlextInfraPytestDiagExtractor._record_markdown_properties(event, diag)
-        elif event.report_type == "CollectReport":
+                diag = FlextInfraPytestDiagExtractor._record_markdown_properties(
+                    event, diag
+                )
+            return diag
+        if event.report_type == "CollectReport":
             if event.outcome == "failed":
                 diag.collection_failed_cases.append(event.nodeid)
             elif event.outcome == "skipped":
                 diag.collection_skip_cases.append(event.nodeid)
+        return diag
 
     @staticmethod
     def _record_markdown_properties(
         event: p.Infra.PytestReportEvent,
         diag: p.Infra.DiagResult,
-    ) -> None:
+    ) -> p.Infra.DiagResult:
         """Validate public properties once at their typed ingress boundary.
+
+        Returns:
+            The updated diagnostics result.
 
         Raises:
             TypeError: If Markdown evidence does not contain typed JSON text.
@@ -144,13 +157,18 @@ class FlextInfraPytestDiagExtractor(
                 if item.node_id != event.nodeid:
                     msg = "Markdown origin differs from reported node"
                     raise ValueError(msg)
-                diag.markdown_items.append(item)
+                diag = diag.model_copy(
+                    update={"markdown_items": [*diag.markdown_items, item]},
+                )
             else:
                 proof = m.Infra.PytestMarkdownAttempt.model_validate_json(value)
                 if proof.node_id != event.nodeid:
                     msg = "Markdown attempt proof differs from reported node"
                     raise ValueError(msg)
-                diag.markdown_attempts.append(proof)
+                diag = diag.model_copy(
+                    update={"markdown_attempts": [*diag.markdown_attempts, proof]},
+                )
+        return diag
 
     @staticmethod
     def _record_warning(
@@ -194,7 +212,7 @@ class FlextInfraPytestDiagExtractor(
         log_path.read_text(encoding=c.DEFAULT_ENCODING)
         diag = m.Infra.DiagResult()
         self._parse_xml(junit_path, diag)
-        self._extract_report_events(report_log, diag)
+        diag = self._extract_report_events(report_log, diag)
         return r[p.Infra.PytestDiagnostics].ok(self._diagnostics_model(diag))
 
     @classmethod
@@ -213,7 +231,7 @@ class FlextInfraPytestDiagExtractor(
 
         """
         diag = m.Infra.DiagResult()
-        cls._extract_report_events(report_log, diag)
+        diag = cls._extract_report_events(report_log, diag)
         for node_id, phases in diag.reported_phases.items():
             if phases.get("call") == "failed":
                 diag.failed_cases.append(node_id)

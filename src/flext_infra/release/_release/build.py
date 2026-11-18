@@ -166,15 +166,15 @@ class FlextInfraReleaseReleaseBuild(FlextInfraReleaseReleaseProject):
 
         """
         failures = sum(record.exit_code != 0 for record in records)
-        report = m.Infra.BuildReport(
-            version=ctx.version,
-            total=len(records),
-            failures=failures,
-            records=tuple(records),
-            dry_run=ctx.dry_run,
-            build_constraints_sha256=policy.build_constraints_sha256,
-            gitleaks_policy_sha256=policy.gitleaks_policy_sha256,
-        )
+        report = m.Infra.BuildReport.model_validate({
+            "version": (ctx.version),
+            "total": (len(records)),
+            "failures": (failures),
+            "records": (tuple(records)),
+            "dry_run": (ctx.dry_run),
+            "build_constraints_sha256": (policy.build_constraints_sha256),
+            "gitleaks_policy_sha256": (policy.gitleaks_policy_sha256),
+        })
         written = u.Cli.json_write(
             output_dir / c.Infra.RELEASE_REPORT_FILENAME,
             report.model_dump(mode="json"),

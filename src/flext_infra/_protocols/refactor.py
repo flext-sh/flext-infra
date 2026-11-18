@@ -73,12 +73,7 @@ class FlextInfraProtocolsRefactor:
         """Structural data contract projected from the owning model."""
 
         working: MutableMapping[Path, str]
-
-        @property
-        def originals(self) -> Mapping[Path, p.Cli.AtomicFileState]:
-            """Complete original dependency closure."""
-            ...
-
+        originals: MutableMapping[Path, p.Cli.AtomicFileState]
         modes: MutableMapping[Path, int | None]
 
     @runtime_checkable
@@ -117,8 +112,47 @@ class FlextInfraProtocolsRefactor:
         obsolete: MutableSet[tuple[str, str]]
 
     @runtime_checkable
-    class ModTextCommand(FlextInfraProtocolsMixins.WriteMixin, Protocol):
+    class ModTextCommand(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
+
+        @property
+        def repository_root(self) -> Path:
+            """Repository root."""
+            ...
+
+        @property
+        def projects(self) -> Sequence[str] | None:
+            """Projects to process; repeat --projects NAME as needed."""
+            ...
+
+        @property
+        def verbose(self) -> bool:
+            """Verbose output."""
+            ...
+
+        @property
+        def apply(self) -> bool:
+            """Apply changes instead of running in dry-run mode."""
+            ...
+
+        @property
+        def gates(self) -> Sequence[str]:
+            """Structural member projected from the owning model.
+
+            Gate names for post-transform validation; empty resolves the requested
+            gate set from the typed Make spec at runtime.
+            """
+            ...
+
+        @property
+        def dry_run(self) -> bool:
+            """Whether writes are disabled (inverse of apply)."""
+            ...
+
+        @property
+        def rule_ids(self) -> tuple[t.NonEmptyStr, ...]:
+            """Exact text rule IDs; empty selects the catalogue."""
+            ...
 
     @runtime_checkable
     class ModuleMoveCommand(FlextCliProtocols.BaseModel, Protocol):
@@ -148,13 +182,17 @@ class FlextInfraProtocolsRefactor:
     class RopeRenameOptions(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def resources(self) -> Sequence[t.Infra.RopeResource]:
-            """Resources included in the semantic rename scope."""
-            ...
-
+        resources: Sequence[t.Infra.RopeResource]
         in_hierarchy: bool
         docs: bool
+
+    @runtime_checkable
+    class RopeMoveOptions(FlextCliProtocols.BaseModel, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        resources: Sequence[t.Infra.RopeResource]
+        destination_offset: int | None
+        match_filter: t.Infra.RopeOccurrenceFilter | None
 
     @runtime_checkable
     class SemanticRenameDecision(FlextCliProtocols.BaseModel, Protocol):
@@ -221,6 +259,60 @@ class FlextInfraProtocolsRefactor:
             ...
 
     @runtime_checkable
+    class SemanticRewireIntent(FlextCliProtocols.BaseModel, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def supplier_root(self) -> Path:
+            """Supplier repository relative to the artifact workspace."""
+            ...
+
+        @property
+        def source_path(self) -> Path:
+            """Supplier-relative original module."""
+            ...
+
+        @property
+        def destination_path(self) -> Path:
+            """Supplier-relative destination module."""
+            ...
+
+        @property
+        def kind(self) -> t.NonEmptyStr:
+            """Native census binding kind."""
+            ...
+
+        @property
+        def source_module(self) -> t.NonEmptyStr:
+            """Original import identity."""
+            ...
+
+        @property
+        def source_scope(self) -> str:
+            """Original lexical binding path; empty for a module."""
+            ...
+
+        @property
+        def destination_module(self) -> t.NonEmptyStr:
+            """Current supplier import identity."""
+            ...
+
+        @property
+        def destination_scope(self) -> str:
+            """Current lexical binding path; empty for a module."""
+            ...
+
+        @property
+        def public_routes(self) -> tuple[tuple[str, str], ...]:
+            """Native module and public binding routes retained."""
+            ...
+
+        @property
+        def receiver_rewrites(self) -> Mapping[str, str]:
+            """Native receiver member paths retained by a method transfer."""
+            ...
+
+    @runtime_checkable
     class SemanticRenamePlan(
         FlextInfraProtocolsCodegenTransaction.SemanticSourcePlan, Protocol
     ):
@@ -231,6 +323,18 @@ class FlextInfraProtocolsRefactor:
             self,
         ) -> tuple[FlextInfraProtocolsRefactor.SemanticRenameDecision, ...]:
             """Resolved declarations and their domain naming decisions."""
+            ...
+
+        @property
+        def rewires(
+            self,
+        ) -> tuple[FlextInfraProtocolsRefactor.SemanticRewireIntent, ...]:
+            """Census-derived portable identities for external consumers."""
+            ...
+
+        @property
+        def rewire_sources(self) -> Mapping[Path, str]:
+            """Workspace-relative pre-move source/scaffold overlay bytes."""
             ...
 
         @property
@@ -795,12 +899,52 @@ class FlextInfraProtocolsRefactor:
             ...
 
     @runtime_checkable
-    class RefactorNamespaceEnforceInput(
-        FlextInfraProtocolsMixins.WriteMixin,
-        FlextInfraProtocolsMixins.ModuleSelectionMixin,
-        Protocol,
-    ):
+    class RefactorNamespaceEnforceInput(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
+
+        @property
+        def module(self) -> str | None:
+            """Structural member projected from the owning model.
+
+            Dotted module path to scope verb to a single module (e.g.
+            flext_core.result). Mutually compatible with --projects/--repository-
+            root; narrows the run.
+            """
+            ...
+
+        @property
+        def repository_root(self) -> Path:
+            """Repository root."""
+            ...
+
+        @property
+        def projects(self) -> Sequence[str] | None:
+            """Projects to process; repeat --projects NAME as needed."""
+            ...
+
+        @property
+        def verbose(self) -> bool:
+            """Verbose output."""
+            ...
+
+        @property
+        def apply(self) -> bool:
+            """Apply changes instead of running in dry-run mode."""
+            ...
+
+        @property
+        def gates(self) -> Sequence[str]:
+            """Structural member projected from the owning model.
+
+            Gate names for post-transform validation; empty resolves the requested
+            gate set from the typed Make spec at runtime.
+            """
+            ...
+
+        @property
+        def dry_run(self) -> bool:
+            """Whether writes are disabled (inverse of apply)."""
+            ...
 
     @runtime_checkable
     class CensusOptions(FlextCliProtocols.BaseModel, Protocol):
@@ -852,8 +996,42 @@ class FlextInfraProtocolsRefactor:
             ...
 
     @runtime_checkable
-    class CensusInput(CensusOptions, FlextInfraProtocolsMixins.WriteMixin, Protocol):
+    class CensusInput(CensusOptions, Protocol):
         """Structural data contract projected from the owning model."""
+
+        @property
+        def repository_root(self) -> Path:
+            """Repository root."""
+            ...
+
+        @property
+        def projects(self) -> Sequence[str] | None:
+            """Projects to process; repeat --projects NAME as needed."""
+            ...
+
+        @property
+        def verbose(self) -> bool:
+            """Verbose output."""
+            ...
+
+        @property
+        def apply(self) -> bool:
+            """Apply changes instead of running in dry-run mode."""
+            ...
+
+        @property
+        def gates(self) -> Sequence[str]:
+            """Structural member projected from the owning model.
+
+            Gate names for post-transform validation; empty resolves the requested
+            gate set from the typed Make spec at runtime.
+            """
+            ...
+
+        @property
+        def dry_run(self) -> bool:
+            """Whether writes are disabled (inverse of apply)."""
+            ...
 
         @property
         def check_only(self) -> bool:
@@ -871,13 +1049,61 @@ class FlextInfraProtocolsRefactor:
             ...
 
     @runtime_checkable
-    class AccessorMigrationInput(
-        FlextInfraProtocolsMixins.WriteMixin,
-        FlextInfraProtocolsMixins.ModuleSelectionMixin,
-        FlextInfraProtocolsMixins.NamespaceSelectionMixin,
-        Protocol,
-    ):
+    class AccessorMigrationInput(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
+
+        @property
+        def namespace(self) -> str | None:
+            """Structural member projected from the owning model.
+
+            Alias namespace (c|m|p|t|u|r|e|h|s|x[.<Domain>]) to scope the verb to a
+            single facade slot.
+            """
+            ...
+
+        @property
+        def module(self) -> str | None:
+            """Structural member projected from the owning model.
+
+            Dotted module path to scope verb to a single module (e.g.
+            flext_core.result). Mutually compatible with --projects/--repository-
+            root; narrows the run.
+            """
+            ...
+
+        @property
+        def repository_root(self) -> Path:
+            """Repository root."""
+            ...
+
+        @property
+        def projects(self) -> Sequence[str] | None:
+            """Projects to process; repeat --projects NAME as needed."""
+            ...
+
+        @property
+        def verbose(self) -> bool:
+            """Verbose output."""
+            ...
+
+        @property
+        def apply(self) -> bool:
+            """Apply changes instead of running in dry-run mode."""
+            ...
+
+        @property
+        def gates(self) -> Sequence[str]:
+            """Structural member projected from the owning model.
+
+            Gate names for post-transform validation; empty resolves the requested
+            gate set from the typed Make spec at runtime.
+            """
+            ...
+
+        @property
+        def dry_run(self) -> bool:
+            """Whether writes are disabled (inverse of apply)."""
+            ...
 
         @property
         def preview_limit(self) -> t.PositiveInt:
@@ -958,8 +1184,23 @@ class FlextInfraProtocolsRefactor:
             ...
 
     @runtime_checkable
-    class ModCommand(FlextInfraProtocolsMixins.ScopeMixin, Protocol):
+    class ModCommand(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
+
+        @property
+        def repository_root(self) -> Path:
+            """Repository root."""
+            ...
+
+        @property
+        def projects(self) -> Sequence[str] | None:
+            """Projects to process; repeat --projects NAME as needed."""
+            ...
+
+        @property
+        def verbose(self) -> bool:
+            """Verbose output."""
+            ...
 
         @property
         def check(self) -> bool:
@@ -1035,8 +1276,42 @@ class FlextInfraProtocolsRefactor:
             ...
 
     @runtime_checkable
-    class ApplyRenamesInput(FlextInfraProtocolsMixins.WriteMixin, Protocol):
+    class ApplyRenamesInput(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
+
+        @property
+        def repository_root(self) -> Path:
+            """Repository root."""
+            ...
+
+        @property
+        def projects(self) -> Sequence[str] | None:
+            """Projects to process; repeat --projects NAME as needed."""
+            ...
+
+        @property
+        def verbose(self) -> bool:
+            """Verbose output."""
+            ...
+
+        @property
+        def apply(self) -> bool:
+            """Apply changes instead of running in dry-run mode."""
+            ...
+
+        @property
+        def gates(self) -> Sequence[str]:
+            """Structural member projected from the owning model.
+
+            Gate names for post-transform validation; empty resolves the requested
+            gate set from the typed Make spec at runtime.
+            """
+            ...
+
+        @property
+        def dry_run(self) -> bool:
+            """Whether writes are disabled (inverse of apply)."""
+            ...
 
         @property
         def rename_definitions(self) -> bool:

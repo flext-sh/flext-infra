@@ -6,11 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Generator, Sequence
-from contextlib import contextmanager
+from collections.abc import Callable, Generator, Sequence
+from contextlib import closing, contextmanager
 from pathlib import Path
 
-from flext_infra import c, config, p, t
+from rope.base.exceptions import RopeError
+
+from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesGit,
     FlextInfraUtilitiesProjectDiscovery,
@@ -18,6 +20,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesWorkspaceInventory,
 )
 from flext_infra._utilities._rope import (
+    FlextInfraRopeProject,
     FlextInfraUtilitiesRopeCorePyModule,
     FlextInfraUtilitiesRopeCoreResources,
     FlextInfraUtilitiesRopeRuntime,
@@ -102,7 +105,6 @@ class FlextInfraUtilitiesRopeCore(
         )
         project = FlextInfraUtilitiesRopeRuntime.new_project(
             str(resolved_root),
-            ropefolder="",
             save_objectdb=False,
             filter_lists=(
                 sorted({
@@ -207,6 +209,68 @@ class FlextInfraUtilitiesRopeCore(
 
     @staticmethod
     @contextmanager
+    def workspace_overlay_project(
+        root: Path,
+        project_roots: tuple[Path, ...],
+        *,
+        declared_files: tuple[p.Infra.CodegenFilePlan, ...] = (),
+        additional_source_folders: tuple[str, ...] = (),
+    ) -> Generator[p.Infra.RopeProject]:
+        """Open the native source engine project that reads planned sources first.
+
+        The live project elects the source folders, extension modules and
+        Python path once; the returned project reads the declared plans before
+        the live tree through the same native resolver.
+
+        Yields:
+            The overlaid native project.
+
+        Raises:
+            ValueError: If a declared project root lies outside ``root``.
+
+        """
+        root = root.resolve()
+        if any(not project.is_relative_to(root) for project in project_roots):
+            msg = "Rope declared project root is outside the original authority"
+            raise ValueError(msg)
+        files = FlextInfraRopeProject.OverlayFiles((), source_roots=(root,))
+        with FlextInfraUtilitiesRopeCore.open_project(
+            next(path for path in (root, *root.parents) if path.is_dir()),
+            project_roots=project_roots or None,
+            fscommands=files,
+        ) as live:
+            election = m.Infra.RopeProjectElection(
+                preferred_import_style=live.get_prefs().imports.preferred_import_style,
+                ignored_resources=tuple(
+                    sorted(config.Infra.codegen.source_scan_ignored)
+                ),
+                source_folders=tuple(
+                    sorted(folder.path for folder in live.get_source_folders())
+                ),
+                extension_modules=(
+                    FlextInfraUtilitiesRopeRuntime.extension_module_names(live)
+                ),
+                python_path_folders=tuple(
+                    folder.real_path
+                    for folder in live.get_python_path_folders()
+                    if folder.is_folder()
+                ),
+            )
+            with (
+                closing(
+                    FlextInfraRopeProject.from_atomic_reads(
+                        live,
+                        election=election,
+                        declared_files=declared_files,
+                        additional_source_folders=additional_source_folders,
+                    )
+                ) as project,
+                project.frozen_layout(),
+            ):
+                yield project
+
+    @staticmethod
+    @contextmanager
     def open_import_project(source_root: Path) -> Generator[t.Infra.RopeProject]:
         """Open the native project of the repository that owns ``source_root``.
 
@@ -284,6 +348,75 @@ class FlextInfraUtilitiesRopeCore(
             yield rope_project
         finally:
             rope_project.close()
+
+    @classmethod
+    def apply_reducing_loop(
+        cls,
+        rope_project: t.Infra.RopeProject,
+        steps: Sequence[Callable[[t.Infra.RopeProject], t.Infra.RopeChangeSet]],
+        diagnostics: Callable[[], int],
+    ) -> p.Result[int]:
+        """Aplicar mudanças Rope em laço, mantendo apenas as que reduzem diagnóstico.
+
+        Cada passo recebe o projeto já atualizado pelo passo anterior. O
+        diagnóstico é recalculado após a aplicação; quando não reduz, a mudança
+        é desfeita pelo próprio Rope antes do próximo passo.
+
+        Args:
+            rope_project: O projeto Rope nativo já inicializado.
+            steps: Fábricas de ChangeSet avaliadas em ordem.
+            diagnostics: Contador de diagnósticos corrente, chamado após cada passo.
+
+        Returns:
+            O menor total de diagnósticos alcançado.
+
+        """
+        try:
+            baseline = cls._apply_reducing_steps(
+                rope_project, steps=steps, diagnostics=diagnostics
+            )
+        except (RopeError, TypeError, RuntimeError, ValueError) as exc:
+            return r[int].fail(str(exc), exception=exc)
+        return r[int].ok(value=baseline)
+
+    @classmethod
+    def _apply_reducing_steps(
+        cls,
+        rope_project: t.Infra.RopeProject,
+        *,
+        steps: Sequence[Callable[[t.Infra.RopeProject], t.Infra.RopeChangeSet]],
+        diagnostics: Callable[[], int],
+    ) -> int:
+        """Apply the reducing loop and roll back the active step on failure.
+
+        Returns:
+            The smallest diagnostics total reached.
+
+        Raises:
+            TypeError: If a step returns something that is not a ChangeSet.
+
+        """
+        baseline = diagnostics()
+        active: t.Infra.RopeChangeSet | None = None
+        try:
+            for build in steps:
+                changes = build(rope_project)
+                if not isinstance(changes, p.Infra.RopeChangeSet):
+                    msg = "Rope loop step returned invalid ChangeSet"
+                    raise TypeError(msg)
+                active = changes
+                changes.do()
+                current = diagnostics()
+                if current >= baseline:
+                    changes.undo()
+                    active = None
+                    continue
+                baseline = current
+                active = None
+        finally:
+            if active is not None:
+                active.undo()
+        return baseline
 
 
 __all__: list[str] = ["FlextInfraUtilitiesRopeCore"]

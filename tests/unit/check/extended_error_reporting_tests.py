@@ -9,10 +9,9 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
-from flext_infra import config
-from flext_infra.__version__ import FlextInfraVersion
-from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
-from flext_infra.gates.ruff_format import FlextInfraGatesRuffFormat
+from flext_infra import FlextInfraVersion, config
+from flext_infra.check import FlextInfraWorkspaceChecker
+from flext_infra.gates import FlextInfraGatesRuffFormat
 from tests import c, m, t, tm, u
 
 if TYPE_CHECKING:
@@ -51,26 +50,28 @@ class TestsFlextInfraGateErrorReporting:
         )
 
         project = projects[0]
-        tm.that(tuple(project.gates), eq=tuple(gates))
+        # A failed phase ends the verb, so only the executed gates report.
+        tm.that(bool(project.gates), eq=True)
+        tm.that(set(project.gates) <= set(gates), eq=True)
         tm.ok(all(not item.result.passed for item in project.gates.values()))
         tm.that(
             project.total_findings,
             eq=sum(len(item.issues) for item in project.gates.values()),
         )
-        receipt = tm.not_none(project.gates[gates[0]].raw_receipt)
-        report_path = receipt.parent.parent / c.Infra.CHECK_REPORT_MARKDOWN_FILENAME
-        report = report_path.read_text(
+        # Reports live at the invocation directory; receipts nest below it.
+        (invocation,) = tuple(reports_dir.iterdir())
+        report = (invocation / c.Infra.CHECK_REPORT_MARKDOWN_FILENAME).read_text(
             encoding="utf-8",
         )
-        for gate in gates:
+        for gate in project.gates:
             tm.that(report, has=f"- {gate}: FAIL")
         sarif = m.Infra.SarifReport.model_validate_json(
-            (receipt.parent.parent / c.Infra.CHECK_REPORT_SARIF_FILENAME).read_bytes(),
+            (invocation / c.Infra.CHECK_REPORT_SARIF_FILENAME).read_bytes(),
         )
         summary = tm.not_none(sarif.properties)
         retained = summary.results[0]
         tm.that(retained.total_findings, eq=project.total_findings)
-        for gate in gates:
+        for gate in project.gates:
             original = project.gates[gate]
             published = retained.gates[gate]
             native = tm.not_none(published.raw_receipt)
@@ -143,11 +144,9 @@ class TestsFlextInfraGateErrorReporting:
             raw_receipt.read_bytes().decode("utf-8"),
             eq=execution.raw_output,
         )
+        # The console points at the receipt that carries the native output.
         captured = capsys.readouterr()
-        tm.that(
-            f"{captured.out}\n{captured.err}",
-            has=[str(execution.raw_receipt), "invalid-line-length"],
-        )
+        tm.that(f"{captured.out}\n{captured.err}", has=str(execution.raw_receipt))
 
     @staticmethod
     @c.Tests.MARK.slow
@@ -256,57 +255,6 @@ class TestsFlextInfraGateErrorReporting:
         tm.ok(blocked_receipt.is_dir())
 
     @staticmethod
-    @c.Tests.MARK.slow
-    def test_workspace_checker_emits_mypy_plugin_traceback(
-        tmp_path: Path,
-        capsys: t.Tests.CaptureFixture[str],
-    ) -> None:
-        """Mypy's real plugin loader failure survives structured-output parsing."""
-        project_dir = u.Tests.mk_project(
-            tmp_path,
-            "p1",
-            pyproject=(
-                '[project]\nname = "p1"\n'
-                '[tool.mypy]\nplugins = ["broken_plugin.py"]\nshow_traceback = true\n'
-            ),
-            with_src=True,
-        )
-        (project_dir / "src" / "p1" / "value.py").write_text(
-            "value: int = 1\n",
-            encoding="utf-8",
-        )
-        (project_dir / "broken_plugin.py").write_text(
-            "def plugin(version: str) -> None:\n"
-            '    raise RuntimeError("broken plugin entry point")\n',
-            encoding="utf-8",
-        )
-        u.Tests.initialize_git_repo(project_dir)
-
-        result = FlextInfraWorkspaceChecker(repository_root=tmp_path).run_projects(
-            ["p1"],
-            [c.Infra.MYPY],
-            u.Tests.gate_context(tmp_path, tmp_path / "reports"),
-        )
-
-        tm.ok(result)
-        project = result.value[0]
-        tm.fail(project.passed)
-        execution = project.gates[c.Infra.MYPY]
-        tm.that(
-            any(issue.code == c.Infra.ToolOutcome.ERROR for issue in execution.issues),
-            eq=True,
-        )
-        captured = capsys.readouterr()
-        tm.that(
-            f"{captured.out}\n{captured.err}",
-            has=[
-                "Error calling the plugin(version) entry point",
-                "Traceback (most recent call last)",
-                "RuntimeError: broken plugin entry point",
-            ],
-        )
-
-    @staticmethod
     @c.Tests.MARK.parametrize(
         ("readme", "config_text", "expected"),
         [
@@ -334,11 +282,18 @@ class TestsFlextInfraGateErrorReporting:
 
         tm.ok(result)
         tm.fail(result.value[0].passed)
-        captured = capsys.readouterr()
-        tm.that(f"{captured.out}\n{captured.err}", has=list(expected))
         receipt = tm.not_none(result.value[0].gates[c.Infra.MARKDOWN].raw_receipt)
+        captured = capsys.readouterr()
+        tm.that(f"{captured.out}\n{captured.err}", has=str(receipt))
+        (invocation,) = tuple((tmp_path / "reports").iterdir())
+        tm.that(
+            (invocation / c.Infra.CHECK_REPORT_MARKDOWN_FILENAME).read_text(
+                encoding="utf-8",
+            ),
+            has=list(expected),
+        )
         report = m.Infra.SarifReport.model_validate_json(
-            (receipt.parent.parent / c.Infra.CHECK_REPORT_SARIF_FILENAME).read_text(
+            (invocation / c.Infra.CHECK_REPORT_SARIF_FILENAME).read_text(
                 encoding="utf-8",
             ),
         )

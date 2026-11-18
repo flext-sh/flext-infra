@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra import config
-from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
+from flext_infra.deps import FlextInfraExtraPathsManager
 from tests import c, tm
 from tests.unit.deps.extra_paths_support import TestsFlextInfraExtraPathsSupport
 

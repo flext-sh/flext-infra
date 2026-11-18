@@ -12,9 +12,7 @@ from pathlib import Path
 
 from flext_infra import c, m, p
 from flext_infra._utilities._codemod import FlextInfraUtilitiesCodemodBindingChain
-from flext_infra._utilities._rope.runtime_modules import (
-    FlextInfraUtilitiesRopeRuntimeModules,
-)
+from flext_infra._utilities._rope import FlextInfraUtilitiesRopeRuntimeModules
 from flext_infra._utilities._rope.runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
 )
@@ -167,8 +165,7 @@ class FlextInfraUtilitiesTypesSemanticNesting(
         """
         project, module, scope = native
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        chain = FlextInfraUtilitiesCodemodBindingChain
-        proof = chain.FlextInfraUtilitiesCodemodBindingChain
+        proof = FlextInfraUtilitiesCodemodBindingChain
         actual = runtime.expression_name(scope, expression)
         if isinstance(actual, p.Infra.RopeImportedName) and not (
             proof.single_reaching_declarations(module, scope, expression)

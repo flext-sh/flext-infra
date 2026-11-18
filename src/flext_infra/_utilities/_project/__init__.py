@@ -33,4 +33,8 @@ install_lazy_exports(
         "FlextInfraUtilitiesProjectDiscoveryShape": ".discovery_shape",
     },
     public_exports=__all__,
+    deferred_members=(
+        "FlextInfraUtilitiesProjectDiscoveryCandidates",
+        "FlextInfraUtilitiesProjectDiscoveryShape",
+    ),
 )

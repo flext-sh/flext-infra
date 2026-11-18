@@ -105,10 +105,8 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
             FlextInfraUtilitiesRopeRuntimeTypes.require_source_module(module)
         )
 
-    @classmethod
+    @staticmethod
     def _facade_declared_owner(
-        cls,
-        modules: Mapping[str, tuple[str, bool]],
         module: str,
         letter: str,
         *,
@@ -120,26 +118,31 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
             The class ``letter`` names, or raise with the missing proof.
 
         Raises:
-            ValueError: If ``owner is None``.
+            ValueError: The letter and its class lack a shared public declaration.
 
         """
-        resolved = cls._facade_declared_class(
-            modules, module, letter, frozenset(), project=project
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        types = FlextInfraUtilitiesRopeRuntimeTypes
+        declared = runtime.qualified_name(project, letter, module_name=module)
+        facade = declared.get_object()
+        if not types.py_class(facade):
+            msg = f"{module}.{letter} does not name a native facade class"
+            raise ValueError(msg)
+        owner = facade.get_name()
+        published = runtime.qualified_name(project, owner, module_name=module)
+        exports = FlextInfraUtilitiesRopeAnalysis.public_export_names_source(
+            types.require_declared_source_module(project, module)
         )
-        if resolved is not None and resolved[1] == letter:
-            owner_module, owner_name = resolved
-            exported_here = cls._module_public_exports(modules, module, project=project)
-            exported_owner = cls._module_public_exports(
-                modules, owner_module, project=project
-            )
-            owner = (
-                owner_name
-                if owner_name in exported_here and owner_name in exported_owner
-                else None
-            )
-        else:
-            owner = cls._facade_letter_class(modules, module, letter, project=project)
-        if owner is None:
+        owner_exports = FlextInfraUtilitiesRopeAnalysis.public_export_names_source(
+            types.require_source_module(facade.get_module())
+        )
+        if (
+            published.get_object() is not facade
+            or owner not in exports
+            or letter not in exports
+            or owner not in owner_exports
+            or letter not in owner_exports
+        ):
             msg = (
                 f"{module}.{letter} is not declared with its facade class in the "
                 "__all__ of the module that binds it"

@@ -1,5 +1,14 @@
 id: rewire-test-assert-not-none-message
 snapshots:
+  "assert value is not None, \"A value is required\"":
+    fixed: |-
+      if value is None:
+          tm.reject("A value is required")
+    labels:
+    - source: assert value is not None, "A value is required"
+      style: primary
+      start: 0
+      end: 47
   "from flext_tests import tm\nvalue = 1\ndef check():\n    assert value is not None, explain()\n":
     fixed: |
       from flext_tests import tm
@@ -12,18 +21,6 @@ snapshots:
       style: primary
       start: 54
       end: 89
-    - source: from flext_tests import tm
-      style: secondary
-      start: 0
-      end: 26
-    - source: |
-        from flext_tests import tm
-        value = 1
-        def check():
-            assert value is not None, explain()
-      style: secondary
-      start: 0
-      end: 90
   "from tests import tm\nassert value is not None, \"A value is required\"\n":
     fixed: |
       from tests import tm
@@ -34,16 +31,6 @@ snapshots:
       style: primary
       start: 21
       end: 68
-    - source: from tests import tm
-      style: secondary
-      start: 0
-      end: 20
-    - source: |
-        from tests import tm
-        assert value is not None, "A value is required"
-      style: secondary
-      start: 0
-      end: 69
   "from tests import tm\nif not (value is not None):\n    raise AssertionError(report)\n":
     fixed: |
       from tests import tm
@@ -56,14 +43,3 @@ snapshots:
       style: primary
       start: 21
       end: 81
-    - source: from tests import tm
-      style: secondary
-      start: 0
-      end: 20
-    - source: |
-        from tests import tm
-        if not (value is not None):
-            raise AssertionError(report)
-      style: secondary
-      start: 0
-      end: 82

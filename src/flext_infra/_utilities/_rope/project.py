@@ -73,7 +73,7 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
             dependency_roots: tuple[Path, ...] = (),
             captures: tuple[
                 dict[str, Path],
-                dict[Path, m.Cli.AtomicFileState],
+                dict[Path, p.Cli.AtomicFileState],
                 dict[Path, set[str]],
                 set[Path],
                 bool,
@@ -89,7 +89,7 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
 
             """
             self._physical: dict[str, Path] = {}
-            self._states: dict[Path, m.Cli.AtomicFileState] = {}
+            self._states: dict[Path, p.Cli.AtomicFileState] = {}
             self._files: dict[Path, bytes] = {}
             self._hidden: set[Path] = set()
             self._directories: set[Path] = set()
@@ -121,7 +121,7 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
             self,
         ) -> tuple[
             dict[str, Path],
-            dict[Path, m.Cli.AtomicFileState],
+            dict[Path, p.Cli.AtomicFileState],
             dict[Path, set[str]],
             set[Path],
             bool,
@@ -401,7 +401,7 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
             self,
             plans: tuple[p.Infra.CodegenFilePlan, ...],
             views: Mapping[Path, bytes],
-        ) -> dict[Path, m.Infra.CodegenFilePlan]:
+        ) -> dict[Path, p.Infra.CodegenFilePlan]:
             """Select one consistent candidate plan per physical path.
 
             Returns:
@@ -412,7 +412,7 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
                     plan for the same path, or an analysis view shadows it.
 
             """
-            selected: dict[Path, m.Infra.CodegenFilePlan] = {}
+            selected: dict[Path, p.Infra.CodegenFilePlan] = {}
             for plan in plans:
                 path = self._resolved(str(plan.path))
                 previous = selected.get(path)
@@ -1100,7 +1100,6 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
         self,
         projectroot: str | PathLike[str],
         fscommands: p.Infra.RopeProjectFiles | None = None,
-        ropefolder: str | None = ".ropeproject",
         external_project: p.Infra.RopeResourceOwner | None = None,
         **prefs: bool | Sequence[str],
     ) -> None:
@@ -1109,7 +1108,6 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
         Args:
             projectroot: The root directory of the existing project.
             fscommands: The filesystem view, or ``None`` for the live tree.
-            ropefolder: Native state folder, or ``None`` for a read-only view.
             external_project: Resource owner for external Python modules.
             prefs: Native project preferences.
 
@@ -1161,12 +1159,17 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
                 })
             )
         initializer: p.Infra.RopeProjectInitializer = Project.__dict__["__init__"]
+        # FLEXT supplies every preference; the checkout's pyproject is planned
+        # data under repair, never a Rope configuration source.
         initializer(
             self,
             root,
             fscommands=fscommands,
-            ropefolder=ropefolder,
+            # FLEXT keeps no Rope state: Rope's documented ``None`` folder
+            # disables every data file, so no repository root receives one.
+            ropefolder=None,
             external_project=external_project,
+            config_files=False,
             **prefs,
         )
         if self.root.real_path != root or (
@@ -1224,7 +1227,6 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
         snapshot = cls(
             root,
             fscommands=files,
-            ropefolder=None,
             save_objectdb=False,
             save_history=False,
             ignored_resources=list(election.ignored_resources),
@@ -1266,6 +1268,7 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
             dependency_roots=tuple(election.python_path_folders),
         )
         selected = m.Infra.RopeProjectElection(
+            preferred_import_style=election.preferred_import_style,
             source_folders=tuple(
                 sorted({*election.source_folders, *additional_source_folders})
             ),
@@ -1281,10 +1284,10 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
             for path in selected.python_path_folders
         ]
         preferences = self.get_prefs()
+        preferences.imports.preferred_import_style = selected.preferred_import_style
         preferences.set("ignored_resources", value=list(selected.ignored_resources))
         preferences.set("extension_modules", value=list(selected.extension_modules))
         preferences.set("source_folders", value=list(selected.source_folders))
-        self._ropefolder_name = None
         self._source_election = selected
         self._set_source_view(declared_files, (), None)
         return self

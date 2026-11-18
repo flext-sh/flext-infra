@@ -9,8 +9,10 @@ from __future__ import annotations
 from collections.abc import Sequence
 from pathlib import Path
 
+from typing_extensions import TypeForm
+
 from flext_infra import config
-from tests import c, m, t, tm, u
+from tests import c, m, tm, u
 
 
 @c.Tests.MARK.unit
@@ -47,7 +49,7 @@ class TestsFlextInfraPytestTargetFile:
                 config.Infra.tooling,
                 "pytest.ini_options",
                 "python_files",
-                t.TypeForm(Sequence[str]),
+                TypeForm(Sequence[str]),
             )[0].replace("*", probe)
         )
         proof = root / f"{probe}.log"

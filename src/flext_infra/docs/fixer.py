@@ -46,7 +46,7 @@ class FlextInfraDocFixer(FlextInfraDocServiceBase):
         bundle = prepared.value
         elected: list[
             tuple[
-                m.Infra.DocScope,
+                p.Infra.DocScope,
                 tuple[p.Cli.AtomicFileState, ...],
             ]
         ] = []
@@ -168,13 +168,13 @@ class FlextInfraDocFixer(FlextInfraDocServiceBase):
             if final.encode(c.DEFAULT_ENCODING) == before.content:
                 continue
             planned.append(
-                m.Infra.SemanticFilePlan(
-                    project=scope.path,
-                    path=before.path,
-                    before=before,
-                    desired_content=final.encode(c.DEFAULT_ENCODING),
-                    desired_mode=before.mode,
-                )
+                m.Infra.SemanticFilePlan.model_validate({
+                    "project": (scope.path),
+                    "path": (before.path),
+                    "before": (before),
+                    "desired_content": (final.encode(c.DEFAULT_ENCODING)),
+                    "desired_mode": (before.mode),
+                })
             )
             collected.append(
                 item.model_copy(
@@ -201,20 +201,20 @@ class FlextInfraDocFixer(FlextInfraDocServiceBase):
 
         """
         u.Infra.docs_write_fix_reports(scope, items=items, apply=apply)
-        report = m.Infra.DocsPhaseReport(
-            phase="fix",
-            scope=scope.name,
-            changed_files=len(items),
-            applied=apply,
-            items=tuple(items),
-            result=(
+        report = m.Infra.DocsPhaseReport.model_validate({
+            "phase": "fix",
+            "scope": scope.name,
+            "changed_files": len(items),
+            "applied": apply,
+            "items": tuple(items),
+            "result": (
                 c.Infra.ResultStatus.OK
                 if apply or not items
                 else c.Infra.ResultStatus.FAIL
             ),
-            reason=f"changes:{len(items)}",
-            passed=apply or not items,
-        )
+            "reason": f"changes:{len(items)}",
+            "passed": apply or not items,
+        })
         self.logger.info(
             "fix_scope_completed",
             project=scope.name,

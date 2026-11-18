@@ -77,12 +77,12 @@ class FlextInfraUtilitiesGitStateCheckpoint(FlextInfraUtilitiesGitStateTrees):
             commit = repo.commit(checkpoint_ref)
             match commit.parents:
                 case [_, indexed, *_]:
-                    checkpoint = m.Infra.GitWorktreeStateCheckpoint(
-                        snapshot=snapshot,
-                        checkpoint_ref=checkpoint_ref,
-                        index_commit=indexed.hexsha,
-                        worktree_commit=commit.hexsha,
-                    )
+                    checkpoint = m.Infra.GitWorktreeStateCheckpoint.model_validate({
+                        "snapshot": (snapshot),
+                        "checkpoint_ref": (checkpoint_ref),
+                        "index_commit": (indexed.hexsha),
+                        "worktree_commit": (commit.hexsha),
+                    })
                 case _:
                     msg = "existing checkpoint has incompatible parent topology"
                     raise ValueError(msg)
@@ -126,12 +126,12 @@ class FlextInfraUtilitiesGitStateCheckpoint(FlextInfraUtilitiesGitStateTrees):
             )
         cls._state_require_original(snapshot)
         repo.git.update_ref("--no-deref", checkpoint_ref, worktree_commit, "")
-        checkpoint = m.Infra.GitWorktreeStateCheckpoint(
-            snapshot=snapshot,
-            checkpoint_ref=checkpoint_ref,
-            index_commit=index_commit,
-            worktree_commit=worktree_commit,
-        )
+        checkpoint = m.Infra.GitWorktreeStateCheckpoint.model_validate({
+            "snapshot": (snapshot),
+            "checkpoint_ref": (checkpoint_ref),
+            "index_commit": (index_commit),
+            "worktree_commit": (worktree_commit),
+        })
         cls._state_validate_checkpoint(checkpoint)
         return checkpoint
 

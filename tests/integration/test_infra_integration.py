@@ -127,6 +127,7 @@ class TestsFlextInfraIntegrationInfraIntegration:
         tm.that(initializer.read_text(encoding="utf-8"), eq=reexport_source)
 
     @staticmethod
+    @c.Tests.MARK.slow
     def test_census_test_only_evidence_does_not_block_unused_classification(
         tmp_path: Path,
     ) -> None:

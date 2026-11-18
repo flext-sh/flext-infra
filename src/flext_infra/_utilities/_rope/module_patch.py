@@ -12,6 +12,7 @@ from contextlib import contextmanager
 from pathlib import Path
 
 from flext_infra import c, m, p, r
+from flext_infra._models.transformers import FlextInfraModelsTransformers
 from flext_infra._utilities import FlextInfraUtilitiesWorkspaceSnapshot
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeRuntime,
@@ -138,7 +139,11 @@ class FlextInfraUtilitiesRopeModulePatch:
         return FlextInfraUtilitiesRopeRuntimeRefactors.content_change(
             resource,
             source,
-            (m.Infra.SourceRewrite(start=start, end=end, text=rendered),),
+            (
+                FlextInfraModelsTransformers.SourceRewrite(
+                    start=start, end=end, text=rendered
+                ),
+            ),
         ).new_contents
 
     @staticmethod
@@ -342,7 +347,10 @@ class FlextInfraUtilitiesRopeModulePatch:
         existing = context.environment.lookup(original)
         imported = context.environment.lookup(alias)
         if existing is not None and not runtime.same_name(existing, imported):
-            return r[str].fail(f"import alias destination is occupied: {original}")
+            return r[str].fail(
+                f"import alias destination is occupied: {original} "
+                f"(alias {alias}) in {resource.real_path}"
+            )
         offset = words.get_word_range(fragment.end - 1)[0]
         changes = refactors.rename_changes(
             candidate.pycore.project,
@@ -407,7 +415,7 @@ class FlextInfraUtilitiesRopeModulePatch:
                         resource,
                         source,
                         (
-                            m.Infra.SourceRewrite(
+                            FlextInfraModelsTransformers.SourceRewrite(
                                 start=fragment.start, end=fragment.end, text=original
                             ),
                         ),

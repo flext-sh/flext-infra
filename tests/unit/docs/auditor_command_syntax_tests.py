@@ -14,7 +14,7 @@ class TestsFlextInfraAuditorCommandSyntax:
     """Prove which documented command forms the audit accepts or rejects."""
 
     @staticmethod
-    @c.Tests.MARK.parametrize("tool", ["uv", "mkdocs", "ruff", "pyright", "pre-commit"])
+    @c.Tests.MARK.parametrize("tool", ["uv", "mkdocs", "ruff", "pyrefly", "pre-commit"])
     def test_tool_filename_is_not_a_command(tool: str) -> None:
         """Filename prefixes remain prose; actual tool invocations are rejected."""
         for content, expected in (

@@ -7,6 +7,8 @@ severity: error
 files:
   - "**/tests/**/*.py"
   - "**/conftest.py"
+metadata:
+  enforce: [ENFORCE-127]
 rule:
   all:
     - any:
@@ -22,12 +24,7 @@ rule:
         inside:
           kind: except_clause
           stopBy: end
-    - inside:
-        kind: module
-        stopBy: end
-        has:
-          matches: tm-imported-from-flext
-          stopBy: end
+    - matches: tm-binding-admissible
 constraints:
   X:
     kind: identifier
@@ -35,9 +32,7 @@ constraints:
     not:
       kind: tuple
 fix: |-
-  if isinstance($X, $KIND):
-      pass
-  else:
+  if not isinstance($X, $KIND):
       tm.reject()
 message: Preserve native type narrowing and name bindings through tm.reject.
 ---
@@ -47,6 +42,8 @@ severity: error
 files:
   - "**/tests/**/*.py"
   - "**/conftest.py"
+metadata:
+  enforce: [ENFORCE-127]
 rule:
   all:
     - any:
@@ -58,12 +55,7 @@ rule:
         inside:
           kind: except_clause
           stopBy: end
-    - inside:
-        kind: module
-        stopBy: end
-        has:
-          matches: tm-imported-from-flext
-          stopBy: end
+    - matches: tm-binding-admissible
 constraints:
   X:
     kind: identifier
@@ -71,8 +63,6 @@ constraints:
     not:
       kind: tuple
 fix: |-
-  if isinstance($X, $KIND):
-      pass
-  else:
+  if not isinstance($X, $KIND):
       tm.reject($MSG)
 message: Preserve native type narrowing and lazy assertion arguments through tm.reject.

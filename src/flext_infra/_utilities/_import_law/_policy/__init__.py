@@ -33,4 +33,8 @@ install_lazy_exports(
         "FlextInfraUtilitiesImportLawPolicyPublication": ".publication",
     },
     public_exports=__all__,
+    deferred_members=(
+        "FlextInfraUtilitiesImportLawPolicyNamespace",
+        "FlextInfraUtilitiesImportLawPolicyPublication",
+    ),
 )

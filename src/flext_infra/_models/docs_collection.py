@@ -118,12 +118,7 @@ class FlextInfraModelsDocsCollection:
         ] = None
         sources: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.PlanCollectionSource,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsDocsCollection.PlanCollectionSource
-                    ),
-                ],
+                FlextInfraModelsDocsCollection.PlanCollectionSource,
                 ...,
             ],
             m.Field(
@@ -216,36 +211,21 @@ class FlextInfraModelsDocsCollection:
             ),
         )
         coverage: tuple[
-            Annotated[
-                p.Infra.PlanCollectionCoverage,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsDocsCollection.PlanCollectionCoverage
-                ),
-            ],
+            FlextInfraModelsDocsCollection.PlanCollectionCoverage,
             ...,
         ] = m.Field(
             description="Complete source coverage from the published collection",
         )
 
         revisions: tuple[
-            Annotated[
-                p.Infra.PlanCollectionRevision,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsDocsCollection.PlanCollectionRevision
-                ),
-            ],
+            FlextInfraModelsDocsCollection.PlanCollectionRevision,
             ...,
         ] = m.Field(
             default=(),
             description="Immutable observed source revision history",
         )
         artifacts: tuple[
-            Annotated[
-                p.Infra.PlanCollectionOwnedArtifact,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsDocsCollection.PlanCollectionOwnedArtifact
-                ),
-            ],
+            FlextInfraModelsDocsCollection.PlanCollectionOwnedArtifact,
             ...,
         ] = m.Field(
             default=(),
@@ -298,12 +278,7 @@ class FlextInfraModelsDocsCollection:
         """Read-only planning result consumed by the existing publisher."""
 
         files: tuple[
-            Annotated[
-                p.Infra.CodegenFilePlan,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsConfigArtifact.CodegenFilePlan
-                ),
-            ],
+            FlextInfraModelsConfigArtifact.CodegenFilePlan,
             ...,
         ] = m.Field(description="Effects published through the shared publisher")
         prunable_directories: tuple[Path, ...] = m.Field(
@@ -311,21 +286,11 @@ class FlextInfraModelsDocsCollection:
             description="Owned empty directories removed after publication",
         )
         revisions: tuple[
-            Annotated[
-                p.Infra.PlanCollectionRevision,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsDocsCollection.PlanCollectionRevision
-                ),
-            ],
+            FlextInfraModelsDocsCollection.PlanCollectionRevision,
             ...,
         ] = m.Field(description="Latest newly observed revision per plan")
         coverage: tuple[
-            Annotated[
-                p.Infra.PlanCollectionCoverage,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsDocsCollection.PlanCollectionCoverage
-                ),
-            ],
+            FlextInfraModelsDocsCollection.PlanCollectionCoverage,
             ...,
         ] = m.Field(description="Explicit per-source collection coverage")
 

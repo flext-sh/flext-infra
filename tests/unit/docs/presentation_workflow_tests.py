@@ -175,7 +175,7 @@ class TestsFlextInfraPresentationWorkflow:
     def test_standalone_public_docs_settle_local_language_without_conformance(
         self, tmp_path: Path
     ) -> None:
-        """Exercise the same standalone topology used by the Algar docs verb."""
+        """Exercise the same standalone topology used by a consumer docs verb."""
         project = u.Tests.create_docs_workspace(tmp_path)
         package = project / "src/workspace"
         package.mkdir(parents=True)

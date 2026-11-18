@@ -18,7 +18,7 @@ import time
 from typing import TYPE_CHECKING
 
 from flext_infra import config
-from flext_infra.docs.server import FlextInfraDocServer
+from flext_infra.docs import FlextInfraDocServer
 from tests import c, p, r, tm
 
 if TYPE_CHECKING:
@@ -82,7 +82,7 @@ class TestsFlextInfraIntegrationDocsServeE2e:
             encoding="utf-8",
         )
         (tmp_path / "mkdocs.yml").write_text(
-            "site_name: Flext Demo Docs\n",
+            "site_name: Flext Demo Docs\ntheme:\n  name: material\n",
             encoding="utf-8",
         )
         port = self._free_local_port()

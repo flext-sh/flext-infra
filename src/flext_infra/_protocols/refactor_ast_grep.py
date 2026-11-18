@@ -186,6 +186,16 @@ class FlextInfraProtocolsRefactorAstGrep:
             """Absolute governed roots and their applicable rule IDs."""
             ...
 
+        @property
+        def selected_rule_ids(self) -> tuple[str, ...] | None:
+            """Structural member projected from the owning model.
+
+            Exact focused selection; every other planned rule is a binding stage
+            scanned only on the files the selection matches. None plans the complete
+            catalog.
+            """
+            ...
+
     @runtime_checkable
     class CodemodPackageExportsFacts(FlextInfraProtocolsBase.FrozenArbitrary, Protocol):
         """Structural data contract projected from the owning model."""

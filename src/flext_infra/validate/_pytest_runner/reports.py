@@ -97,14 +97,14 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
                 violations.append(
                     f"Markdown first-attempt execution failed: {item.node_id}",
                 )
-        receipt = m.Infra.PytestMarkdownReconciliation(
-            eligible=manifest.markdown_eligible,
-            selected=selected,
-            deselected=deselected,
-            diagnostics=diagnostics,
-            cache_hit=cache_hit,
-            violations=tuple(violations),
-        )
+        receipt = m.Infra.PytestMarkdownReconciliation.model_validate({
+            "eligible": (manifest.markdown_eligible),
+            "selected": (selected),
+            "deselected": (deselected),
+            "diagnostics": (diagnostics),
+            "cache_hit": (cache_hit),
+            "violations": (tuple(violations)),
+        })
         u.Cli.atomic_write_text_file(
             report_dir / "markdown-reconciliation.json",
             receipt.model_dump_json(indent=2) + "\n",
@@ -282,18 +282,13 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
                 (log.parent / "testmon-selection.json").read_text(encoding="utf-8"),
             )
         )
-        inventory = (
-            selected
-            if context.execution_mode == c.Infra.PytestExecutionMode.FULL
-            or not selection_plan.inventory_collected
-            else m.Infra.PytestCollectionManifest.model_validate_json(
-                (log.parent / "testmon-inventory.json").read_text(encoding="utf-8"),
-            )
-        )
-        if not set(selected.node_ids).issubset(inventory.node_ids):
+        # An incremental selection manifest carries the complete inventory it
+        # selected from; every other manifest is its own complete collection.
+        inventory = selected.inventory_node_ids or selected.node_ids
+        if not set(selected.node_ids).issubset(inventory):
             msg = "testmon selected node IDs outside the complete collection inventory"
             raise RuntimeError(msg)
-        inventory_count = len(inventory.node_ids)
+        inventory_count = len(inventory)
         # Deselection follows the centrally enforced manifest. An empty
         # incremental suite selection deselects the complete inventory; declared
         # file and full requests execute their complete in-scope inventory.
@@ -441,7 +436,7 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
         *,
         context: p.Infra.PytestRunContext,
         suite: p.Infra.PytestDiagnostics,
-    ) -> tuple[tuple[str, m.Infra.PytestDiagnostics], ...]:
+    ) -> tuple[tuple[str, p.Infra.PytestDiagnostics], ...]:
         """Read each subprocess receipt once in execution order.
 
         Whole-project FULL collection belongs to the suite process. Declared
@@ -453,7 +448,7 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
         """
         if context.execution_mode == c.Infra.PytestExecutionMode.FULL:
             return (("suite", suite),)
-        phases: MutableSequence[tuple[str, m.Infra.PytestDiagnostics]] = []
+        phases: MutableSequence[tuple[str, p.Infra.PytestDiagnostics]] = []
         if context.testmon_db is not None:
             selection_plan = m.Infra.PytestSelectionPlan.model_validate_json(
                 (report_dir / "selection-plan.json").read_text(encoding="utf-8"),
@@ -477,11 +472,7 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
                 # collection, so only the inventory receipt exists.
                 if self.target_file is not None and selection_plan.inventory_collected
                 else (
-                    (
-                        ("selection", "inventory")
-                        if selection_plan.inventory_collected
-                        else ("selection",)
-                    )
+                    ("selection",)
                     if context.execution_mode.is_incremental
                     else ("inventory",)
                 )
@@ -527,7 +518,7 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
         report_dir: Path,
         diagnostics: p.Infra.PytestDiagnostics,
         *,
-        phases: tuple[tuple[str, m.Infra.PytestDiagnostics], ...],
+        phases: tuple[tuple[str, p.Infra.PytestDiagnostics], ...],
     ) -> None:
         """Persist each typed diagnostics channel."""
         u.Cli.atomic_write_text_file(

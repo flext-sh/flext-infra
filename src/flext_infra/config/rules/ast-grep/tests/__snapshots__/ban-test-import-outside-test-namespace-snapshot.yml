@@ -46,9 +46,17 @@ snapshots:
       style: primary
       start: 0
       end: 13
+    - source: ai_hub
+      style: secondary
+      start: 7
+      end: 13
   "import flext_tests\n":
     labels:
     - source: import flext_tests
       style: primary
       start: 0
+      end: 18
+    - source: flext_tests
+      style: secondary
+      start: 7
       end: 18

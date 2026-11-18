@@ -1,0 +1,45 @@
+id: ban-runtime-environment-skip
+snapshots:
+  "from tests import u\n\ndef probe(names: tuple[str, ...]) -> None:\n    missing = [name for name in names if not u.Cli.env_read(name, u.Cli.process_env()).unwrap()]\n    if missing:\n        u.Tests.skip(f\"secret missing: {missing}\")\n":
+    labels:
+    - source: "u.Tests.skip(f\"secret missing: {missing}\")"
+      style: primary
+      start: 185
+      end: 227
+    - source: u.Cli.env_read(name, u.Cli.process_env())
+      style: secondary
+      start: 109
+      end: 150
+    - source: |-
+        def probe(names: tuple[str, ...]) -> None:
+            missing = [name for name in names if not u.Cli.env_read(name, u.Cli.process_env()).unwrap()]
+            if missing:
+                u.Tests.skip(f"secret missing: {missing}")
+      style: secondary
+      start: 21
+      end: 227
+    - source: u.Tests.skip
+      style: secondary
+      start: 185
+      end: 197
+  "import os\n\nimport pytest\n\ndef test_needs_token() -> None:\n    if not os.environ.get(\"API_TOKEN\"):\n        pytest.skip(\"no token\")\n":
+    labels:
+    - source: pytest.skip("no token")
+      style: primary
+      start: 106
+      end: 129
+    - source: os.environ
+      style: secondary
+      start: 69
+      end: 79
+    - source: |-
+        def test_needs_token() -> None:
+            if not os.environ.get("API_TOKEN"):
+                pytest.skip("no token")
+      style: secondary
+      start: 26
+      end: 129
+    - source: pytest.skip
+      style: secondary
+      start: 106
+      end: 117

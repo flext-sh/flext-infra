@@ -8,7 +8,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import shutil
 import sys
 from collections.abc import Iterator
 from pathlib import Path
@@ -16,10 +15,9 @@ from pathlib import Path
 import pytest
 
 from flext_infra import config, settings, workspace
-from tests import c, m, p, t, tm, u
+from tests import c, p, t, tm, u
 
-_FIXTURES_DIR = Path(__file__).resolve().parent
-_PROJECT_ROOT = Path(__file__).resolve().parents[2]
+_PROJECT_ROOT = tm.not_none(u.Infra.project_root(Path(__file__)))
 
 
 @pytest.fixture
@@ -65,8 +63,6 @@ def native_consumer(tmp_path: Path) -> p.Tests.NativeConsumer:
         "import importlib, pathlib, sys\n"
         "from pathlib import Path\n"
         "from flext_infra import m\n"
-        "from flext_infra.codegen import FlextInfraCodegenPreconditions as "
-        "preconditions\n"
         "from flext_infra.workspace import "
         "FlextInfraWorkspaceNativeReference as native\n"
         f"runtime_root = Path({str(runtime)!r})\n"
@@ -84,14 +80,29 @@ def native_consumer(tmp_path: Path) -> p.Tests.NativeConsumer:
 
 
 @pytest.fixture
-def declaration_workspace(tmp_path: Path) -> tuple[Path, Path]:
+def declaration_workspace(
+    tmp_path: Path,
+    session_runtime: p.Tests.SessionRuntime,
+) -> tuple[Path, Path]:
     """Provide the standard FLEXT workspace fabric for native declarations.
+
+    The rule plan is elected against the target repository's own physical
+    runtime, so the fixture provisions that environment with the workspace's
+    real local dependencies once for every test that scans it
+    (``test_rule_plan_target_environment``).
 
     Returns:
         The resulting ``tuple[Path, Path]``.
 
     """
-    return u.Tests.create_lazy_init_workspace(tmp_path)
+    root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+    tm.ok(
+        u.Tests.provision_scan_workspace(
+            root,
+            session_runtime=session_runtime,
+        )
+    )
+    return root, package
 
 
 @pytest.fixture
@@ -126,10 +137,6 @@ def source_preview_workspace(
     return root, package
 
 
-def _read_fixture(*parts: str) -> str:
-    return _FIXTURES_DIR.joinpath(*parts).read_text(encoding="utf-8")
-
-
 def _modernizer_pyproject(name: str) -> str:
     return f'[project]\nname = "{name}"\nversion = "0.1.0"\n'
 
@@ -158,14 +165,14 @@ def _write_modernizer_codegen_config(workspace: Path) -> None:
 
 
 @pytest.fixture
-def deptry_report_payload() -> t.JsonPayload:
+def deptry_report_payload(fixture_tree: p.Tests.FixtureTree) -> t.JsonPayload:
     """Provide ``deptry_report_payload``.
 
     Returns:
         The resulting ``t.JsonPayload``.
 
     """
-    parsed = u.Cli.json_parse(_read_fixture("deps", "deptry_report.json"))
+    parsed = u.Cli.json_loads((fixture_tree("deps") / "deptry_report.json").read_text(encoding="utf-8"))
     parsed = tm.not_none(parsed)
     tm.ok(parsed)
     return parsed.value
@@ -328,6 +335,7 @@ def real_python_package(tmp_path: Path) -> Path:
     (project_root / c.PYPROJECT_FILENAME).write_text(
         '[project]\nname = "test-pkg"\nversion = "0.1.0"\n',
     )
+    u.Tests.WorktreeFixture.register_checker_workspace(tmp_path, project_root)
     return project_root
 
 
@@ -518,7 +526,7 @@ def mod_workspace_artifact(
     )
     wheels = tm.ok(
         u.Tests.python_dependency_wheels(
-            session_runtime.directory,
+            session_runtime.storage,
             (workspace,),
         ),
     )
@@ -529,8 +537,13 @@ def mod_workspace_artifact(
 def mod_workspace(
     installed_dependency_path: Path,
     mod_workspace_artifact: tuple[Path, Path],
+    session_runtime: p.Tests.SessionRuntime,
 ) -> Path:
     """Provide case-local sources and a genuinely installed fixture distribution.
+
+    The rule plan is elected against the target repository's own physical
+    runtime, so the workspace receives that environment through the fixture
+    provisioning owner, like ``declaration_workspace``.
 
     Returns:
         The source workspace beside the installed package root.
@@ -538,7 +551,7 @@ def mod_workspace(
     """
     template, wheel = mod_workspace_artifact
     workspace = installed_dependency_path.parent / template.name
-    shutil.copytree(template, workspace)
+    u.Tests.reflink_copy_tree(template, workspace)
     tm.ok(
         u.Cli.run_checked(
             (
@@ -557,6 +570,12 @@ def mod_workspace(
         ),
     )
     u.Tests.initialize_git_repo(workspace)
+    tm.ok(
+        u.Tests.provision_scan_workspace(
+            workspace,
+            session_runtime=session_runtime,
+        )
+    )
     return workspace
 
 

@@ -79,20 +79,12 @@ back to the aggregate, which can reverse native C3 precedence. Explicit exports 
 read through the native source binding index, including annotated `__all__` declarations.
 Generated modules are projections, not independent declaration authorities.
 
-The declared conformance module, named by
-`c.Infra.MODEL_PROTOCOL_CONFORMANCE_FILENAME`, contains constructor-to-port type
-assignments for the authenticated public model inventory. It constructs no records and
-uses no model annotations. The shared candidate validator checks that cohort with the
-configured native Pyrefly gate. A narrower existing Protocol can remain the owner when
-the model satisfies its required capabilities; comparing annotation strings or requiring
-identical field inventories is not an assignability proof. Runtime-checkable membership
-alone checks attribute presence and cannot replace this static proof.
-
-The shared validator rejects a missing witness beside a public models facade.
-It checks the complete witness batch in one native Pyrefly invocation, retaining
-each staged project's nearest configuration and explicit staged source roots.
-The physical runtime still owns the interpreter. Ordinary Pyrefly gate execution
-without injected source roots retains its existing project configuration.
+The shared candidate validator checks cold imports of the actual staged declarations.
+Ordinary native type gates check their real consumers; no generated conformance witness
+is required. Generation retires obsolete generated witnesses through its existing
+retirement publisher. Runtime-checkable membership checks attribute presence and does
+not replace static signature validation. Protocol family placement and ownership follow
+the workspace ADR-018 model and service projection contract.
 
 Independent native field-schema checks include the declaring class's PEP 695
 type parameters in its lexical namespace. This preserves actual generic identities;
@@ -115,7 +107,7 @@ preview, or a runtime-only membership check does not establish production readin
 
 `verify-environment` rejects a checkout synced in the other mode (CI's
 locked noneditable build vs the local editable binding). Per
-[ADR-030](../../../docs/architecture/adr/030-member-locks-composition-upg-guard.md),
+[ADR-030](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/030-member-locks-composition-upg-guard.md),
 root CI checks out declared submodules and installs the composed workspace lock, while
 member CI and standalone checkouts install their own committed member lock. Operation prerequisites
 require the selected physical interpreter; they do not install or retry setup.
@@ -162,28 +154,6 @@ by active journal preparation and committed-destination checks. The retirement
 entry point composes its durable authorization with the same directory/entry
 binding engine. An incompatible journal remains a blocking
 input, not permission to rewrite its version or widen its authority.
-
-The operator's 2026-10-24 authorization permits punctual retirement of the
-prepared v8 journal `ad1c00b704d18eb06a7012e4508eaadb` in `~/cosmos-docgen`,
-whose recorded destination-entry inventory is empty. The last known v8 tree,
-`ceb2b84d5985f6748e493b7d59304ef1f0742586`, supplies the original protocol
-owner; it is not established as the journal's exact producer. Apply the reviewed
-durable-retirement correction to those same source owners in its existing
-isolated maintenance worktree, then rebuild its own wheel through native
-UV with its committed lock, without editable installation, development groups,
-borrowed environments or source overlays. This is authorized protocol
-maintenance, not an alternative setup or generation path for Docgen. The
-one-shot public API holds `FlextInfraCodegenFileLeases.mutation_lease`, reads
-the original journal through `FlextInfraMiseArtifactsJournal.read`, and pins
-its exact path, transaction ID, prepared state, sole root selector and empty
-destination inventory before calling `FlextInfraMiseRecovery.execute` under
-that same lease. The corrected v8 owner must authenticate the current scope and
-the original staging authority before passing the fresh manifest to exact native
-cleanup and retaining its guarded journal CAS.
-Any original failure leaves recovery incomplete. Do not run historical general
-generation or setup, change the journal version, widen its manifest, copy its
-decoder into the current engine, patch an installed package, or remove state
-directly. This maintenance adds no legacy protocol support to the current engine.
 
 ## Orphan imports
 

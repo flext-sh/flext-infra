@@ -38,40 +38,52 @@ jobs:
     env:
       CI: Y
       GITHUB_TOKEN: ${{ github.token }}
+    defaults:
+      run:
+        working-directory: flext-infra
     steps:
-      - name: Checkout
+      - name: Checkout workspace flext-sh/flext
         uses: actions/checkout@v7
         with:
-          fetch-depth: 0
+          repository: flext-sh/flext
+          ref: 0.12.0-dev
           submodules: recursive
-
           persist-credentials: false
-
+          fetch-depth: 0
+      - name: Pin flext-infra at the tested commit
+        working-directory: .
+        run: |
+          set -eu
+          git -C "flext-infra" fetch --no-tags origin "${{ github.sha }}"
+          git -C "flext-infra" checkout --detach FETCH_HEAD
       # Why: the cache keeps Mise's installs and downloads but never its shims.
       # A restored shim points at the Mise binary of an earlier run, which Mise
       # treats as unmanaged ("not replacing unmanaged file in shims directory",
       # one warning per tool); Mise regenerates the shims from mise.lock.
       # The key is the content hash of the locks that decide what is
       # installed: one immutable entry per lock state, never one per run, so
-      # saving never evicts the testmon cache with duplicate generations.
+      # duplicate generations never consume the repository cache quota.
+      # Only that exact key restores. A prefix fallback restored the previous
+      # lock state, whose superseded installs and wheels the next save kept:
+      # the entry grew with every lock change until its restore filled the
+      # runner disk. A lock change
+      # installs cold and saves exactly the new state.
       - name: Restore tool caches
         id: tool-cache
         uses: actions/cache/restore@v6
         with:
           path: |
             __pycache__
-            .mypy_cache
             .pytest_cache
             .ruff_cache
             .pyrefly_cache
             .benchmarks
             .hypothesis
+            ~/.local/bin/mise
             ~/.cache/uv
             ~/.local/share/mise
             !~/.local/share/mise/shims
           key: ${{ runner.os }}-3.13-tools-${{ hashFiles('uv.lock', 'mise.lock', 'pyproject.toml', '.mise.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-3.13-tools-
 
       - name: Boot
         run: CI=Y make setup
@@ -81,20 +93,23 @@ jobs:
         run: CI=Y make release-plan
       - name: Save tool caches
         # Native cache action access mode remains authoritative before upload.
-        # Only declared events may publish; fork requests remain restore-only.
-        # An exact hit already holds this lock state: save only on a miss.
+        # Only branch pushes and explicit dispatch publish. A pull request
+        # restores only: its entry is scoped to refs/pull/N/merge, visible to no
+        # other ref, so saving it stored one ~700 MB copy of the same lock state
+        # per PR until the repository quota evicted the integration branch's
+        # entry. An exact hit already holds this lock state: save only on a miss.
         if: >-
-          ${{ always() && !cancelled() && steps.tool-cache.outcome == 'success' && steps.tool-cache.outputs.cache-hit != 'true' && steps.tool-cache.outputs.cache-primary-key != '' && ((github.event_name == 'push' && startsWith(github.ref, 'refs/heads/')) || github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)) }}
+          ${{ always() && !cancelled() && steps.tool-cache.outcome == 'success' && steps.tool-cache.outputs.cache-hit != 'true' && steps.tool-cache.outputs.cache-primary-key != '' && ((github.event_name == 'push' && startsWith(github.ref, 'refs/heads/')) || github.event_name == 'workflow_dispatch') }}
         uses: actions/cache/save@v6
         with:
           path: |
             __pycache__
-            .mypy_cache
             .pytest_cache
             .ruff_cache
             .pyrefly_cache
             .benchmarks
             .hypothesis
+            ~/.local/bin/mise
             ~/.cache/uv
             ~/.local/share/mise
             !~/.local/share/mise/shims

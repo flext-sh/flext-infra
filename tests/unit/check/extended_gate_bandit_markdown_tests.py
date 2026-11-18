@@ -21,6 +21,10 @@ if TYPE_CHECKING:
 class TestsFlextInfraBanditAndMarkdownGates:
     """Declarative public-contract tests for Bandit and Markdown gates."""
 
+    # Bandit's own id for eval(); skipped ids come from the typed tooling SSOT,
+    # so expectations hold for any declared skip list.
+    EVAL_TEST: ClassVar[str] = "B307"
+    SKIPS: ClassVar[Sequence[str]] = config.Infra.tooling.tools.bandit.skips
     HEADING_SKIP = "# Test\n\n### Skip\n"
     REFLOW_HINT = (
         "# Test\n\n"
@@ -41,7 +45,7 @@ class TestsFlextInfraBanditAndMarkdownGates:
         project_dir = u.Tests.mk_project(tmp_path, "bandit-project")
         (project_dir / c.Infra.DEFAULT_SRC_DIR).mkdir()
         (project_dir / c.Infra.DEFAULT_SRC_DIR / "main.py").write_text(
-            "def check(value):\n    assert value\n",
+            "def check(value):\n    return eval(value)\n",
             encoding="utf-8",
         )
 
@@ -53,7 +57,9 @@ class TestsFlextInfraBanditAndMarkdownGates:
             issues_len=1,
         )
 
-        tm.that(result.issues[0].code, eq="B101")
+        tm.that(
+            result.issues[0].code, eq=TestsFlextInfraBanditAndMarkdownGates.EVAL_TEST
+        )
 
     @staticmethod
     def test_bandit_audits_generated_source_trees(tmp_path: Path) -> None:
@@ -66,7 +72,9 @@ class TestsFlextInfraBanditAndMarkdownGates:
             package / "main.py",
         ):
             module.parent.mkdir(parents=True, exist_ok=True)
-            module.write_text("def check(value):\n    assert value\n", encoding="utf-8")
+            module.write_text(
+                "def check(value):\n    return eval(value)\n", encoding="utf-8"
+            )
 
         result = u.Tests.check_gate_asserting(
             FlextInfraGatesBandit,
@@ -76,7 +84,10 @@ class TestsFlextInfraBanditAndMarkdownGates:
             issues_len=len(names) + 1,
         )
 
-        tm.that({issue.code for issue in result.issues}, eq={"B101"})
+        tm.that(
+            {issue.code for issue in result.issues},
+            eq={TestsFlextInfraBanditAndMarkdownGates.EVAL_TEST},
+        )
 
     @staticmethod
     @c.Tests.MARK.parametrize("surface", config.Infra.source_scan.roots)
@@ -93,7 +104,7 @@ class TestsFlextInfraBanditAndMarkdownGates:
         module.parent.mkdir(parents=True, exist_ok=True)
         module.write_text(
             "import subprocess\n\n\ndef spawn(argv):\n"
-            "    assert argv\n    return subprocess.run(argv, check=True)\n",
+            "    eval(argv)\n    return subprocess.run(argv, check=True)\n",
             encoding="utf-8",
         )
 
@@ -107,7 +118,11 @@ class TestsFlextInfraBanditAndMarkdownGates:
         )
 
         tm.fail(result.result.passed)
-        tm.that({issue.code for issue in result.issues}, eq={"B101", "B404", "B603"})
+        tm.that(
+            {issue.code for issue in result.issues},
+            eq={TestsFlextInfraBanditAndMarkdownGates.EVAL_TEST, "B404", "B603"}
+            - set(TestsFlextInfraBanditAndMarkdownGates.SKIPS),
+        )
 
     @staticmethod
     def test_bandit_syntax_error_is_a_failed_audit(tmp_path: Path) -> None:
@@ -196,17 +211,29 @@ class TestsFlextInfraBanditAndMarkdownGates:
 
     @staticmethod
     def test_bandit_scans_large_tree_with_sanitized_path(tmp_path: Path) -> None:
-        """The workspace interpreter runs Bandit without any PATH-provided tool."""
+        """The workspace interpreter runs Bandit; no PATH-provided Bandit can run.
+
+        Raises:
+            FileNotFoundError: If the host PATH has no git for the discovery.
+
+        """
         project_dir = u.Tests.mk_project(tmp_path, "p1", with_src=True)
         for index in range(51):
             (project_dir / c.Infra.DEFAULT_SRC_DIR / f"module_{index}.py").write_text(
                 "def identity(value):\n    return value\n",
                 encoding="utf-8",
             )
-        empty_path = tmp_path / "empty-path"
-        empty_path.mkdir()
+        # The PATH holds only Git, the one host prerequisite of the source
+        # discovery, so a PATH-provided Bandit can never be what runs.
+        git_only_path = tmp_path / "git-only-path"
+        git_only_path.mkdir()
+        git = shutil.which("git")
+        if git is None:
+            msg = "the source discovery requires git on the host PATH"
+            raise FileNotFoundError(msg)
+        (git_only_path / "git").symlink_to(git)
 
-        with tm.scope(env={"PATH": str(empty_path)}):
+        with tm.scope(env={"PATH": str(git_only_path)}):
             result = u.Tests.run_gate_check(
                 FlextInfraGatesBandit, tmp_path, project_dir
             )
@@ -406,9 +433,11 @@ class TestsFlextInfraBanditAndMarkdownGates:
         # Source discovery needs Git; the Markdown linter remains unavailable on PATH.
         (empty_path / "git").symlink_to(tm.not_none(shutil.which("git")))
         with tm.scope(env={"PATH": str(empty_path)}):
-            result = FlextInfraGatesMarkdown(tmp_path).check(
+            result = u.Tests.run_gate_check(
+                FlextInfraGatesMarkdown,
+                tmp_path,
                 project_dir,
-                u.Tests.gate_context(tmp_path),
+                ctx=u.Tests.gate_context(tmp_path),
             )
 
         tm.ok(result.result.passed)
@@ -431,9 +460,11 @@ class TestsFlextInfraBanditAndMarkdownGates:
         )
         (target_dir / "overview.md").write_text("# Overview\n", encoding="utf-8")
 
-        result = FlextInfraGatesMarkdown(tmp_path).check(
+        result = u.Tests.run_gate_check(
+            FlextInfraGatesMarkdown,
+            tmp_path,
             project_dir,
-            u.Tests.gate_context(tmp_path),
+            ctx=u.Tests.gate_context(tmp_path),
         )
 
         tm.ok(result.result.passed)
@@ -459,9 +490,11 @@ class TestsFlextInfraBanditAndMarkdownGates:
             encoding="utf-8",
         )
 
-        result = FlextInfraGatesMarkdown(tmp_path).check(
+        result = u.Tests.run_gate_check(
+            FlextInfraGatesMarkdown,
+            tmp_path,
             project_dir,
-            u.Tests.gate_context(tmp_path),
+            ctx=u.Tests.gate_context(tmp_path),
         )
 
         tm.fail(result.result.passed)
@@ -484,8 +517,11 @@ class TestsFlextInfraBanditAndMarkdownGates:
         target.write_text("# Target\n", encoding="utf-8")
         gate = FlextInfraGatesMarkdown(tmp_path)
 
+        # Gates read a checkout's tracked files: each state joins the index.
+        u.Tests.git_bootstrap(project_dir, ("add", "-A"))
         first = gate.check(project_dir, u.Tests.gate_context(tmp_path))
         target.unlink()
+        u.Tests.git_bootstrap(project_dir, ("add", "-A"))
         second = gate.check(project_dir, u.Tests.gate_context(tmp_path))
 
         tm.ok(first.result.passed)
@@ -500,7 +536,9 @@ class TestsFlextInfraBanditAndMarkdownGates:
         `[*]` auto-fixable marker, but declared can_fix=False. So `make check`
         blocked on findings while `make fmt` and `make fix` both exited 0
         without repairing any of them. The gate uses the tool's formatter so a
-        successful repair exits zero and leaves the file clean for `check`.
+        successful repair exits zero and leaves the file clean for `check`. A
+        finding the linter cannot repair (a broken link, MD057) stays for
+        `check` to block on.
         """
         project_dir = u.Tests.mk_project(
             tmp_path, "markdown-fix-project", markdown_config=""
@@ -522,13 +560,14 @@ class TestsFlextInfraBanditAndMarkdownGates:
         tm.ok(result.result.passed)
         tm.that(readme.read_text(encoding="utf-8"), eq="# Title\n")
         tm.that(draft.read_text(encoding="utf-8").splitlines()[0], eq="# Draft")
-        _ = u.Tests.check_gate_asserting(
+        after = u.Tests.check_gate_asserting(
             FlextInfraGatesMarkdown,
             tmp_path,
             project_dir,
-            passed=True,
-            issues_len=0,
+            passed=False,
+            issues_len=1,
         )
+        tm.that(after.issues[0].code, eq="MD057")
 
     # The rtk writer's own marker protocol (an external contract, not a
     # FLEXT-owned value); its inner lines carry findings only rtk may repair.

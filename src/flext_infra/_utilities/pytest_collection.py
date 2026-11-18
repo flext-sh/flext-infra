@@ -21,7 +21,7 @@ from pathlib import Path
 from sys import modules, monitoring
 from traceback import format_exception
 from types import CodeType, ModuleType, SimpleNamespace
-from typing import ClassVar, TypeIs
+from typing import ClassVar, TypeIs, cast
 from warnings import WarningMessage
 
 import pytest
@@ -44,8 +44,13 @@ class FlextInfraUtilitiesPytestCollection:
         t.Infra.Pytest.StashKey[dict[str, tuple[str, ...]]]
     ] = pytest.StashKey()
     collection_worker_manifests: ClassVar[
-        t.Infra.Pytest.StashKey[dict[str, m.Infra.PytestCollectionManifest]]
+        t.Infra.Pytest.StashKey[dict[str, p.Infra.PytestCollectionManifest]]
     ] = pytest.StashKey()
+    collection_inventory: ClassVar[t.Infra.Pytest.StashKey[t.StrTuple]] = (
+        pytest.StashKey()
+    )
+    testmon_select_plugin: ClassVar[str] = "TestmonSelect"
+    "Name under which pytest-testmon registers its selecting plugin."
 
     @staticmethod
     def markdown_item(
@@ -84,7 +89,6 @@ class FlextInfraUtilitiesPytestCollection:
         """Measure eligibility before the real collector can omit any item."""
         if not isinstance(collector, t.Infra.Pytest.MarkdownTextFile):
             return
-        state = collector.config.stash[cls.markdown_state]
         parser = collector.config.hook.pytest_markdown_docs_markdown_it()
         syntax = t.Infra.Pytest.FenceSyntax(
             collector.config.getoption("markdowndocs_syntax")
@@ -97,9 +101,13 @@ class FlextInfraUtilitiesPytestCollection:
             markdown_type=collector.path.suffix.removeprefix("."),
             fence_syntax=syntax,
         )
-        state.eligible.extend(
+        state = collector.config.stash[cls.markdown_state]
+        origins = tuple(
             cls.markdown_origin(definition, collector.config.rootpath)
             for definition in definitions
+        )
+        collector.config.stash[cls.markdown_state] = state.model_copy(
+            update={"eligible": (*state.eligible, *origins)},
         )
 
     @classmethod
@@ -107,12 +115,15 @@ class FlextInfraUtilitiesPytestCollection:
         """Retain actual Markdown node identities before selector hooks run."""
         if not cls.markdown_item(item):
             return
-        state = item.config.stash[cls.markdown_state]
+        origin = cls.markdown_origin(item.test_definition, item.config.rootpath)
         observation = m.Infra.PytestMarkdownItem(
             node_id=item.nodeid,
-            origin=cls.markdown_origin(item.test_definition, item.config.rootpath),
+            origin=m.Infra.PytestMarkdownOrigin.model_validate(origin.model_dump()),
         )
-        state.collected.append(observation)
+        state = item.config.stash[cls.markdown_state]
+        item.config.stash[cls.markdown_state] = state.model_copy(
+            update={"collected": (*state.collected, observation)},
+        )
         item.user_properties.append((
             "flext_markdown_origin",
             observation.model_dump_json(),
@@ -330,6 +341,69 @@ class FlextInfraUtilitiesPytestCollection:
         if stop_at is not None and not hasattr(config, "workerinput"):
             config.pluginmanager.register(cls.SuiteStop(stop_at_monotonic=stop_at))
 
+    @classmethod
+    def collection_selection_active(cls, config: t.Infra.Pytest.Config) -> bool:
+        """Return whether this is a runner selection collection under Testmon.
+
+        Returns:
+            Whether the manifest is requested by a read-only collection that
+            Testmon's selecting plugin also steers.
+
+        """
+        return (
+            config.pluginmanager.get_plugin(cls.testmon_select_plugin) is not None
+            and bool(config.getoption("collectonly"))
+            and config.getoption(c.Infra.PYTEST_COLLECTION_MANIFEST_OPTION) is not None
+        )
+
+    @classmethod
+    def collection_keep_stable_files(
+        cls,
+        collection_path: Path,
+        config: t.Infra.Pytest.Config,
+        plugin: object,
+    ) -> bool | None:
+        """Keep Testmon's stable files collected so the inventory is complete.
+
+        Testmon ignores a whole file whose tests are all stable. Its
+        ``pytest_ignore_collect`` is therefore bypassed, and every other
+        plugin's own decision (``--ignore``, ``collect_ignore``) is still
+        asked through pluggy's public subset caller.
+
+        Returns:
+            ``None`` outside a selection collection; otherwise whether any
+            plugin other than Testmon's and ``plugin`` ignores the path.
+
+        """
+        if not cls.collection_selection_active(config):
+            return None
+        others = config.pluginmanager.subset_hook_caller(
+            "pytest_ignore_collect",
+            remove_plugins=[
+                config.pluginmanager.get_plugin(cls.testmon_select_plugin),
+                plugin,
+            ],
+        )
+        return bool(others(collection_path=collection_path, config=config))
+
+    @classmethod
+    def collection_record_inventory(
+        cls,
+        config: t.Infra.Pytest.Config,
+        items: list[t.Infra.Pytest.Item],
+    ) -> None:
+        """Record the items after the selectors and before Testmon deselects.
+
+        Pluggy runs the ``trylast`` implementations in registration order, and
+        Testmon registers its selecting plugin while configuring, after every
+        entry-point plugin: this hook therefore sees the items that pytest's
+        ``-m``/``-k`` and the other trailing selectors kept, ahead of Testmon.
+        """
+        if cls.collection_selection_active(config):
+            config.stash[cls.collection_inventory] = tuple(
+                item.nodeid for item in items
+            )
+
     @staticmethod
     def suite_manifest_target(config: t.Infra.Pytest.Config) -> Path | None:
         """Read the existing manifest destination for an executing suite.
@@ -534,11 +608,29 @@ class FlextInfraUtilitiesPytestCollection:
 
         """
         state = session.config.stash[cls.markdown_state]
+        node_ids = tuple(item.nodeid for item in session.items)
+        inventory = session.config.stash.get(cls.collection_inventory, ())
+        selected = set(node_ids)
+        testmon_deselected = {
+            node_id for node_id in inventory if node_id not in selected
+        }
         return m.Infra.PytestCollectionManifest(
-            node_ids=tuple(item.nodeid for item in session.items),
-            markdown_eligible=tuple(state.eligible),
-            markdown_collected=tuple(state.collected),
-            markdown_deselected=tuple(state.deselected),
+            node_ids=node_ids,
+            inventory_node_ids=inventory,
+            markdown_eligible=tuple(
+                cast("m.Infra.PytestMarkdownOrigin", item) for item in state.eligible
+            ),
+            markdown_collected=tuple(
+                cast("m.Infra.PytestMarkdownItem", item) for item in state.collected
+            ),
+            markdown_deselected=(
+                *state.deselected,
+                *(
+                    item.node_id
+                    for item in state.collected
+                    if item.node_id in testmon_deselected
+                ),
+            ),
         )
 
     @staticmethod
@@ -555,7 +647,13 @@ class FlextInfraUtilitiesPytestCollection:
         The controller stops dispatch through the same path as max-failures:
         xdist queues the shutdown marker, so each worker's final item runs
         with no successor and pytest-testmon flushes every batched result.
-        A process-deadline SIGTERM instead discards the unflushed batches.
+        A stop therefore never waits for a flushed batch: testmon flushes only
+        at its batch size or on an item with no successor, so waiting for one
+        lets the run reach the process deadline, whose SIGTERM discards every
+        unflushed batch and every later run restarts from the same prefix. A
+        single-process session has no shutdown marker: the item after the
+        instant becomes the session's last item, testmon flushes on its
+        teardown, and the stop is requested there.
 
         When every collected item has already completed, nothing is left to
         stop and the stop request would only recolor a finished green suite
@@ -566,10 +664,16 @@ class FlextInfraUtilitiesPytestCollection:
             self.stop_at_monotonic = stop_at_monotonic
             self.session: t.Infra.Pytest.Session | None = None
             self.completed_items: set[str] = set()
+            self.selected_count = 0
 
         def pytest_sessionstart(self, session: t.Infra.Pytest.Session) -> None:
             """Bind the controller session that owns the stop decision."""
             self.session = session
+
+        @FlextInfraUtilitiesPytest.Pytest.hookimpl(trylast=True)
+        def pytest_collection_finish(self, session: t.Infra.Pytest.Session) -> None:
+            """Record the selected population before any stop shortens it."""
+            self.selected_count = len(session.items)
 
         def pytest_runtest_logreport(self, report: t.Infra.Pytest.TestReport) -> None:
             """Request the stop once a completed item crosses the instant.
@@ -592,18 +696,23 @@ class FlextInfraUtilitiesPytestCollection:
             # not actually passed on this process's own monotonic clock.
             if time.monotonic() < self.stop_at_monotonic:
                 return
-            total_items = len(session.items)
+            total_items = self.selected_count or len(session.items)
             if total_items and len(self.completed_items) >= total_items:
-                return
-            # Testmon writes an in-flight coverage batch only when it attaches
-            # nodes_files_lines to a teardown report. Stopping earlier leaves
-            # selected rows without durable execution data on the next run.
-            if not getattr(report, "nodes_files_lines", None):
                 return
             reason = f"suite stop instant {self.stop_at_monotonic:.3f} reached"
             controller = session.config.pluginmanager.getplugin("dsession")
             if controller is None:
-                if not session.shouldstop:
+                # pytest's loop reads ``session.items`` for each successor, so
+                # the next item runs with none and testmon flushes on its
+                # teardown; the stop is requested on that final teardown.
+                position = next(
+                    index
+                    for index, item in enumerate(session.items)
+                    if item.nodeid == report.nodeid
+                )
+                if position + 2 < len(session.items):
+                    del session.items[position + 2 :]
+                elif position + 1 == len(session.items) and not session.shouldstop:
                     session.shouldstop = reason
                 return
             if not isinstance(controller, p.Infra.PytestStopController):

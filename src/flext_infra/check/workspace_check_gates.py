@@ -78,9 +78,12 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
         contexts = {
             target.path: self._isolate_context(ctx, target) for target in projects
         }
-        results = {
+        results: dict[Path, p.Infra.ProjectResult] = {
             target.path: m.Infra.ProjectResult(project=target.name)
             for target in projects
+        }
+        sinks: dict[Path, MutableMapping[str, p.Infra.GateExecution]] = {
+            target.path: {} for target in projects
         }
         for project_ctx in contexts.values():
             u.Cli.ensure_dir(project_ctx.reports_dir).unwrap()
@@ -111,7 +114,7 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
                         gate,
                         target.path,
                         contexts[target.path],
-                        results[target.path].gates,
+                        sinks[target.path],
                     )
                     for target, gate in jobs
                 ),
@@ -119,7 +122,12 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
             )
             u.Cli.info(f"check: prerequisite wave complete gate={gate_id}")
             for (target, gate), outcome in zip(jobs, outcomes, strict=True):
-                execution = results[target.path].gates[gate.gate_id]
+                execution = sinks[target.path][gate.gate_id]
+                results[target.path] = results[target.path].model_copy(
+                    update={
+                        "gates": {**results[target.path].gates, gate.gate_id: execution}
+                    }
+                )
                 if execution.result.passed:
                     outcome.unwrap()
                 self._report_gate_execution(gate.gate_id, execution)
@@ -152,10 +160,19 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
             The resulting ``m.Infra.LoopOutcome``.
 
         """
-        results: MutableMapping[str, m.Infra.ProjectResult] = {
-            result.project: result
-            for result in (() if previous is None else previous.results)
-        }
+        # Projects are keyed by exact root: equal basenames stay distinct.
+        # A previous phase ran the same ordered targets to completion.
+        results: MutableMapping[Path, p.Infra.ProjectResult] = (
+            {}
+            if previous is None
+            else dict(
+                zip(
+                    (target.path for target in projects),
+                    previous.results,
+                    strict=True,
+                )
+            )
+        )
         total = len(projects)
         failed = 0
         loop_start = time.monotonic()
@@ -174,7 +191,7 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
                     if ctx.selected_files or gate_id in target.applicable_gates
                 ),
                 ctx,
-                results.get(target.name),
+                results.get(target.path),
             )
             if union_gates:
                 project_result = self._merged_union_result(
@@ -193,7 +210,7 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
                         if target.path in executions
                     },
                 )
-            results[target.name] = project_result
+            results[target.path] = project_result
             if not project_result.gates and ctx.check_progress is not None:
                 ctx.check_progress(target.path, project_result)
             project_failed = any(
@@ -218,19 +235,21 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
 
     @staticmethod
     def _gate_parallelism(stage_count: int) -> int:
-        """Bound concurrent read-only gates by the typed Mypy memory reservation.
+        """Bound concurrent read-only gates by the declared gate memory reservation.
 
         Each concurrent gate may host one whole-program checker, so the host's
-        physical memory divided by the memory the tooling policy reserves for
-        one Mypy run caps the concurrency.
+        physical memory divided by the memory reserved for one such gate caps
+        the concurrency.
 
         Returns:
             The number of gates that may run at once, at least one.
 
         """
         physical_bytes = os.sysconf("SC_PAGE_SIZE") * os.sysconf("SC_PHYS_PAGES")
-        reserved_bytes = u.Infra.mypy_resource_limit().memory_limit_bytes
-        return max(1, min(stage_count, physical_bytes // reserved_bytes))
+        return max(
+            1,
+            min(stage_count, physical_bytes // c.Infra.GATE_MEMORY_RESERVATION_BYTES),
+        )
 
     @staticmethod
     def _prerequisite_parallelism(gate_id: str, stage_count: int) -> int:
@@ -307,23 +326,23 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
 
         Read-only gates share no mutable state, so they run concurrently
         through the public CLI pipeline inside one process signal wave,
-        bounded by the memory the typed Mypy policy reserves per
-        whole-program checker. Repairs share mutable files and keep their
-        declared serial order and locks; an explicit fail-fast run stays
-        serial so it can stop at the first failure. Every operation retains
-        its verdict and receipt, reported in declared order.
+        bounded by the memory reserved per whole-program checker. Repairs
+        share mutable files and keep their declared serial order and locks;
+        an explicit fail-fast run stays serial so it can stop at the first
+        failure. Every operation retains its verdict and receipt, reported in
+        declared order.
 
         Returns:
             The resulting ``m.Infra.ProjectResult``.
 
         """
-        result = (
+        result: p.Infra.ProjectResult = (
             m.Infra.ProjectResult(project=project_dir.name)
             if previous is None
             else previous
         )
         mutating = ctx.apply_fixes and not ctx.check_only
-        executions: MutableMapping[str, m.Infra.GateExecution] = {}
+        executions: MutableMapping[str, p.Infra.GateExecution] = {}
         instances = self._gate_instances(gates, mutating=mutating)
         concurrent = (
             self._run_concurrent_stages(instances, project_dir, ctx, executions)
@@ -342,7 +361,9 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
             execution = executions[gate_id]
             if execution.result.passed:
                 pipeline_result.unwrap()
-            result.gates[gate_id] = execution
+            result = result.model_copy(
+                update={"gates": {**result.gates, gate_id: execution}}
+            )
             if ctx.check_progress is not None:
                 ctx.check_progress(project_dir, result)
             self._report_gate_execution(gate_id, execution)
@@ -385,7 +406,7 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
         instances: Sequence[FlextInfraGates],
         project_dir: Path,
         ctx: p.Infra.GateContext,
-        executions: MutableMapping[str, m.Infra.GateExecution],
+        executions: MutableMapping[str, p.Infra.GateExecution],
     ) -> Mapping[str, p.Result[p.Cli.PipelineResult]]:
         """Run read-only gate stages concurrently in one signal wave.
 
@@ -439,7 +460,7 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
         gate_instance: FlextInfraGates,
         project_dir: Path,
         ctx: p.Infra.GateContext,
-        executions: MutableMapping[str, m.Infra.GateExecution],
+        executions: MutableMapping[str, p.Infra.GateExecution],
         signal_wave: p.Cli.SignalWave | None,
     ) -> p.Result[p.Cli.PipelineResult]:
         """Run one gate stage through the public CLI pipeline.
@@ -470,7 +491,7 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
         gate_instance: FlextInfraGates,
         project_dir: Path,
         ctx: p.Infra.GateContext,
-        gates_sink: MutableMapping[str, m.Infra.GateExecution],
+        gates_sink: MutableMapping[str, p.Infra.GateExecution],
     ) -> p.Cli.PipelineStage:
         """Build a pipeline stage handler that executes a single gate.
 

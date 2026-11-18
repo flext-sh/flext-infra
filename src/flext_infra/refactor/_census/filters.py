@@ -55,14 +55,14 @@ class FlextInfraRefactorCensusFilters:
                 continue
             canonical = min(definitions, key=object_location)
             duplicates.append(
-                m.Infra.DuplicateGroup(
-                    name=definitions[0].name,
-                    kind=definitions[0].kind,
-                    definitions=definitions,
-                    canonical=canonical.project,
-                    value_identical=len({item.fingerprint for item in definitions})
+                m.Infra.DuplicateGroup.model_validate({
+                    "name": definitions[0].name,
+                    "kind": definitions[0].kind,
+                    "definitions": definitions,
+                    "canonical": canonical.project,
+                    "value_identical": len({item.fingerprint for item in definitions})
                     == 1,
-                ),
+                }),
             )
         for fingerprint in sorted(payloads):
             definitions = sorted(payloads[fingerprint], key=object_location)
@@ -77,14 +77,14 @@ class FlextInfraRefactorCensusFilters:
             if len(owners) == 1:
                 continue
             duplicates.append(
-                m.Infra.DuplicateGroup(
-                    name=definitions[0].name,
-                    kind=definitions[0].kind,
-                    definitions=definitions,
-                    canonical=definitions[0].project,
-                    value_identical=False,
-                    semantic_candidate=True,
-                ),
+                m.Infra.DuplicateGroup.model_validate({
+                    "name": definitions[0].name,
+                    "kind": definitions[0].kind,
+                    "definitions": definitions,
+                    "canonical": definitions[0].project,
+                    "value_identical": False,
+                    "semantic_candidate": True,
+                }),
             )
         return tuple(duplicates)
 

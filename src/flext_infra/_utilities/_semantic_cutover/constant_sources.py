@@ -6,17 +6,15 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableMapping, MutableSequence
+from collections.abc import Iterator, Mapping, MutableMapping, MutableSequence
 from pathlib import Path
 
 from flext_infra import c, e, p, t
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeAnalysis,
     FlextInfraUtilitiesRopeCore,
-    FlextInfraUtilitiesRopeStructure,
-)
-from flext_infra._utilities._rope.runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
+    FlextInfraUtilitiesRopeStructure,
 )
 from flext_infra._utilities._rope.runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
@@ -453,15 +451,38 @@ class FlextInfraUtilitiesSemanticConstantSources:
                 continue
             if not FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(owner):
                 continue
-            for name, binding in owner.get_attributes().items():
-                if name.startswith("_"):
-                    continue
-                reference = f"{prefix}.{name}"
+            if not isinstance(owner, p.Infra.RopeClassObject):
+                continue
+            for reference, binding, value in cls._constant_public_members(
+                prefix, owner
+            ):
                 found[reference] = binding
-                value = binding.get_object()
                 if FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(value):
                     pending.append((reference, value, (*ancestors, owner)))
         return found
+
+    @staticmethod
+    def _constant_public_members(
+        prefix: str,
+        owner: p.Infra.RopeClassObject,
+    ) -> Iterator[tuple[str, p.Infra.RopePyName, p.Infra.RopePyObject]]:
+        """Yield a namespace's public members without its inherited parts.
+
+        A base class is the internal part the composition extends, never a
+        composed public member, so its name is not a second owner path.
+
+        Yields:
+            The public reference, its binding and its native object.
+
+        """
+        bases = tuple(owner.get_mro())
+        for name, binding in owner.get_attributes().items():
+            if name.startswith("_"):
+                continue
+            value = binding.get_object()
+            if value in bases:
+                continue
+            yield f"{prefix}.{name}", binding, value
 
     @staticmethod
     def _constant_owner_binding(

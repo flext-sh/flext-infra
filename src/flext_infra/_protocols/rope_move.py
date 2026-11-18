@@ -24,11 +24,7 @@ class FlextInfraProtocolsRopeMove:
     class ClassMoveRequest(FlextInfraProtocolsMixins.PositiveLineMixin, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def rope_project(self) -> t.Infra.RopeProject:
-            """Active Rope project that owns both files."""
-            ...
-
+        rope_project: t.Infra.RopeProject
         source_file: Path
         target_file: Path
         class_name: t.NonEmptyStr

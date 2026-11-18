@@ -9,7 +9,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from flext_infra.deps.detection import FlextInfraDependencyDetectionService
+from flext_infra.deps import FlextInfraDependencyDetectionService
 from tests import c, tm, u
 
 

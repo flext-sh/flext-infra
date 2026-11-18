@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
 from flext_cli import FlextCliProtocols
 
-from flext_infra._protocols import FlextInfraProtocolsBase, FlextInfraProtocolsMixins
+from flext_infra._protocols import FlextInfraProtocolsBase
 
 if TYPE_CHECKING:
     from flext_cli import p
@@ -59,8 +59,13 @@ class FlextInfraProtocolsScan:
             ...
 
     @runtime_checkable
-    class ScanViolation(FlextInfraProtocolsMixins.PositiveLineMixin, Protocol):
+    class ScanViolation(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
+
+        @property
+        def line(self) -> t.PositiveInt:
+            """Line number."""
+            ...
 
         @property
         def message(self) -> str:
@@ -237,7 +242,16 @@ class FlextInfraProtocolsScan:
         """Structural data contract projected from the owning model."""
 
         project_source_roots: Mapping[Path, Path] | None
-        inventory: Mapping[Path, p.Cli.AtomicFileState]
+
+        @property
+        def inventory(self) -> Mapping[Path, p.Cli.AtomicFileState | None]:
+            """Structural member projected from the owning model.
+
+            Exact sources captured before the native scan; a lexical stub leaf is a
+            path-only entry without content.
+            """
+            ...
+
         repository_roots: tuple[Path, ...]
 
         @property
@@ -248,6 +262,8 @@ class FlextInfraProtocolsScan:
             ...
 
         repositories: MutableMapping[Path, str]
+        runner: p.Cli.CommandRunner | None
+        scan_batch_files: int | None
 
     @runtime_checkable
     class ModScanFindingReference(ModScanFinding, Protocol):
@@ -316,6 +332,11 @@ class FlextInfraProtocolsScan:
         """Structural data contract projected from the owning model."""
 
         @property
+        def entries(self) -> tuple[FlextInfraProtocolsScan.ModScanFinding, ...]:
+            """Every validated ast-grep finding in stable order."""
+            ...
+
+        @property
         def repository_root(self) -> Path | None:
             """Repository elected by the original native scan."""
             ...
@@ -340,6 +361,15 @@ class FlextInfraProtocolsScan:
         @property
         def native_artifacts(self) -> tuple[p.Cli.AtomicFileReceipt, ...]:
             """Complete authenticated native output inventory."""
+            ...
+
+        @property
+        def native_failures(self) -> tuple[str, ...]:
+            """Structural member projected from the owning model.
+
+            Blocking failures of scanners that stopped early; entries then hold only
+            the complete records those scanners had published.
+            """
             ...
 
     @runtime_checkable
@@ -455,6 +485,11 @@ class FlextInfraProtocolsScan:
             """Exact finding count the rule must produce when set."""
             ...
 
+        @property
+        def render(self) -> c.Infra.ModTextRender | None:
+            """Declared renderer replacing each match instead."""
+            ...
+
     @runtime_checkable
     class ModTextFinding(FlextInfraProtocolsBase.FrozenArbitrary, Protocol):
         """Structural data contract projected from the owning model."""
@@ -511,6 +546,13 @@ class FlextInfraProtocolsScan:
     @runtime_checkable
     class ModScanEvidence(ModScanCounts[ModScanFindingReference], Protocol):
         """Structural data contract projected from the owning model."""
+
+        @property
+        def entries(
+            self,
+        ) -> tuple[FlextInfraProtocolsScan.ModScanFindingReference, ...]:
+            """Every validated ast-grep finding in stable order."""
+            ...
 
         @property
         def schema_version(self) -> int:

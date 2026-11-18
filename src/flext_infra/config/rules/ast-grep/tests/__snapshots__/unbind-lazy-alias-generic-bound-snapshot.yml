@@ -3,7 +3,7 @@ snapshots:
   "from flext_infra import t\n\nclass Service[TResult: t.Cli.ResultValue](Base):\n    \"\"\"Lazy alias bound on a class generic.\"\"\"\n":
     fixed: |
       from flext_infra import t
-      
+
       class Service[TResult](Base):
           """Lazy alias bound on a class generic."""
     labels:
@@ -30,7 +30,7 @@ snapshots:
   "from flext_infra import t\n\ndef handler[TParams, TResult: t.Cli.ResultValue](self) -> None:\n    \"\"\"Lazy alias bound on a method generic.\"\"\"\n":
     fixed: |
       from flext_infra import t
-      
+
       def handler[TParams, TResult](self) -> None:
           """Lazy alias bound on a method generic."""
     labels:

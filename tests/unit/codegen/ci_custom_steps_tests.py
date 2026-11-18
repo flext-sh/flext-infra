@@ -7,7 +7,7 @@ counterpart of ``custom.mk``.
 
 Premise (regression of 39982c92ef): the renderer kept reading the block into
 ``custom_steps`` while the merge dropped its injection from ``ci.yml.j2``, so
-cosmos-charts lost its declared GitOps checkout and its CI tests failed with
+a consumer lost its declared GitOps checkout and its CI tests failed with
 "no GitOps values directory declared". The contract is therefore asserted on
 the rendered workflow, never on the render model.
 
@@ -89,6 +89,16 @@ class TestsFlextInfraCodegenCiCustomSteps:
 
         tm.that(rendered.count(self.block), eq=1)
         tm.ok(rendered.index(self.block) < rendered.index("name: Boot"))
+
+    def test_docs_job_receives_the_block_before_its_gates(self) -> None:
+        """Docs runs the same ``make check``, so it needs the same runtime steps."""
+        rendered = self._render(
+            self.ci_template.with_name("docs.yml.j2"),
+            custom_steps=self.block,
+        )
+
+        tm.that(rendered.count(self.block), eq=1)
+        tm.ok(rendered.index(self.block) < rendered.index("run: make gen"))
 
     def test_a_project_declaring_nothing_changes_nothing(self) -> None:
         """Without a custom-steps file the workflow carries no project block."""

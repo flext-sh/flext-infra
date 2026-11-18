@@ -228,11 +228,6 @@ class FlextInfraProtocolsGates:
             ...
 
         @property
-        def pyright_args(self) -> Sequence[str]:
-            """Extra arguments for Pyright."""
-            ...
-
-        @property
         def selected_files(self) -> tuple[Path, ...]:
             """Validated literal file selection; empty means project."""
             ...
@@ -247,167 +242,6 @@ class FlextInfraProtocolsGates:
             self,
         ) -> Callable[[Path, FlextInfraProtocolsCheck.ProjectResult], None] | None:
             """Invocation-owned observer of reached native gate results."""
-            ...
-
-    @runtime_checkable
-    class MypyDiagnostic(FlextCliProtocols.BaseModel, Protocol):
-        """Structural data contract projected from the owning model."""
-
-        @property
-        def file(self) -> str:
-            """Diagnostic source file path."""
-            ...
-
-        @property
-        def line(self) -> int:
-            """Diagnostic start line."""
-            ...
-
-        @property
-        def column(self) -> int:
-            """Diagnostic start column."""
-            ...
-
-        @property
-        def end_line(self) -> int | None:
-            """Diagnostic end line."""
-            ...
-
-        @property
-        def end_column(self) -> int | None:
-            """Diagnostic end column."""
-            ...
-
-        @property
-        def message(self) -> t.NonEmptyStr:
-            """Diagnostic message."""
-            ...
-
-        @property
-        def hint(self) -> str | None:
-            """Diagnostic hint."""
-            ...
-
-        @property
-        def code(self) -> str | None:
-            """Mypy diagnostic code."""
-            ...
-
-        @property
-        def severity(self) -> Literal["error", "note"]:
-            """Mypy diagnostic severity."""
-            ...
-
-    @runtime_checkable
-    class PyrightPosition(FlextCliProtocols.BaseModel, Protocol):
-        """Structural data contract projected from the owning model."""
-
-        @property
-        def line(self) -> t.NonNegativeInt:
-            """Zero-based line index."""
-            ...
-
-        @property
-        def character(self) -> t.NonNegativeInt:
-            """Zero-based character index."""
-            ...
-
-    @runtime_checkable
-    class PyrightRange(FlextCliProtocols.BaseModel, Protocol):
-        """Structural data contract projected from the owning model."""
-
-        @property
-        def start(self) -> FlextInfraProtocolsGates.PyrightPosition:
-            """Diagnostic range start position."""
-            ...
-
-        @property
-        def end(self) -> FlextInfraProtocolsGates.PyrightPosition:
-            """Diagnostic range end position."""
-            ...
-
-    @runtime_checkable
-    class PyrightDiagnostic(FlextCliProtocols.BaseModel, Protocol):
-        """Structural data contract projected from the owning model."""
-
-        @property
-        def file(self) -> str:
-            """Diagnostic source file path."""
-            ...
-
-        @property
-        def severity(self) -> Literal["error", "warning", "information"]:
-            """Pyright diagnostic severity."""
-            ...
-
-        @property
-        def message(self) -> t.NonEmptyStr:
-            """Diagnostic message."""
-            ...
-
-        @property
-        def range(self) -> FlextInfraProtocolsGates.PyrightRange | None:
-            """Diagnostic source range when available."""
-            ...
-
-        @property
-        def rule(self) -> str | None:
-            """Pyright diagnostic rule when available."""
-            ...
-
-    @runtime_checkable
-    class PyrightSummary(FlextCliProtocols.BaseModel, Protocol):
-        """Structural data contract projected from the owning model."""
-
-        @property
-        def files_analyzed(self) -> t.NonNegativeInt:
-            """Number of analyzed files."""
-            ...
-
-        @property
-        def error_count(self) -> t.NonNegativeInt:
-            """Number of error diagnostics."""
-            ...
-
-        @property
-        def warning_count(self) -> t.NonNegativeInt:
-            """Number of warning diagnostics."""
-            ...
-
-        @property
-        def information_count(self) -> t.NonNegativeInt:
-            """Number of informational diagnostics."""
-            ...
-
-        @property
-        def time_in_sec(self) -> float:
-            """Analysis duration in seconds."""
-            ...
-
-    @runtime_checkable
-    class PyrightReport(FlextCliProtocols.BaseModel, Protocol):
-        """Structural data contract projected from the owning model."""
-
-        @property
-        def version(self) -> t.NonEmptyStr:
-            """Pyright version."""
-            ...
-
-        @property
-        def time(self) -> t.NonEmptyStr:
-            """Report timestamp."""
-            ...
-
-        @property
-        def general_diagnostics(
-            self,
-        ) -> Sequence[FlextInfraProtocolsGates.PyrightDiagnostic]:
-            """Pyright diagnostics."""
-            ...
-
-        @property
-        def summary(self) -> FlextInfraProtocolsGates.PyrightSummary:
-            """Completed analysis summary."""
             ...
 
     @runtime_checkable
@@ -1006,6 +840,133 @@ class FlextInfraProtocolsGates:
         @property
         def reused(self) -> bool:
             """Existing immutable proof was reused."""
+            ...
+
+    @runtime_checkable
+    class GateCandidateIdentity(FlextCliProtocols.BaseModel, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def repository(self) -> t.NonEmptyStr:
+            """Observed origin remote URL."""
+            ...
+
+        @property
+        def head_oid(self) -> str:
+            """Candidate HEAD commit."""
+            ...
+
+        @property
+        def base_oid(self) -> str | None:
+            """Optional base commit for PR checks."""
+            ...
+
+        @property
+        def tree_oid(self) -> str:
+            """Candidate commit tree."""
+            ...
+
+        @property
+        def merge_oid(self) -> str | None:
+            """Optional synthetic merge commit for PR checks."""
+            ...
+
+        @property
+        def dirty(self) -> bool:
+            """Candidate has uncommitted WIP."""
+            ...
+
+        @property
+        def changed_paths_digest(self) -> str | None:
+            """Digest of changed paths when dirty."""
+            ...
+
+    @runtime_checkable
+    class GateCandidateAdmissionRequest(FlextCliProtocols.BaseModel, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def workspace(self) -> str:
+            """Git repository root."""
+            ...
+
+        @property
+        def candidate(self) -> FlextInfraProtocolsGates.GateCandidateIdentity:
+            """Exact candidate identity as a JSON object."""
+            ...
+
+        @property
+        def allowed_signers(self) -> t.NonEmptyStr:
+            """OpenSSH allowed_signers file."""
+            ...
+
+        @property
+        def expected_gates(self) -> Sequence[str]:
+            """Required original stage."""
+            ...
+
+        @property
+        def context_digest(self) -> str:
+            """Expected execution context."""
+            ...
+
+        @property
+        def policy(self) -> c.Infra.GateAcceptancePolicy:
+            """Required policy for stage reuse."""
+            ...
+
+        @property
+        def policy_digest(self) -> str:
+            """Required recorded policy."""
+            ...
+
+        @property
+        def receipt(self) -> Path:
+            """Exact original workspace receipt."""
+            ...
+
+        @property
+        def require_clean(self) -> bool:
+            """Require native_outcome CLEAN (not just complete_execution)."""
+            ...
+
+        @property
+        def merge_check(self) -> bool:
+            """Admit for PR merge (requires clean candidate)."""
+            ...
+
+        @property
+        def ttl_seconds(self) -> int:
+            """Maximum attestation age in seconds."""
+            ...
+
+    @runtime_checkable
+    class GateCandidateAdmissionReport(FlextCliProtocols.BaseModel, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def eligible(self) -> bool:
+            """Candidate is eligible."""
+            ...
+
+        @property
+        def reasons(self) -> tuple[str, ...]:
+            """Human-readable admission reasons."""
+            ...
+
+        @property
+        def attestation(self) -> FlextInfraProtocolsGates.GateAttestationReport | None:
+            """Verified attestation if eligible."""
+            ...
+
+        @property
+        def candidate_head(self) -> str | None:
+            """Candidate head that was evaluated."""
+            ...
+
+        @property
+        def attested_head(self) -> str | None:
+            """Attested head from the proof."""
             ...
 
 

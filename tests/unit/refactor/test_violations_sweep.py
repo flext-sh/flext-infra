@@ -87,9 +87,7 @@ class TestsFlextInfraRefactorViolationsSweep(
             )
         with u.Tests.raises(ValueError, match="deferred differs"):
             m.Infra.ModScanEvidence.model_validate({
-                **evidence.model_dump(
-                    mode="python", exclude=set(type(evidence).model_computed_fields)
-                ),
+                **evidence.model_dump(mode="python", exclude_computed_fields=True),
                 "totals_by_class": {
                     **evidence.totals_by_class,
                     c.Infra.ModScanFindingClass.DEFERRED_SOURCE_DRIFT: evidence.deferred

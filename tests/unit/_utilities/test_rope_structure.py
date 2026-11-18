@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections.abc import MutableMapping
 from pathlib import Path
 
-from tests import c, m, tm, u
+from tests import c, p, tm, u
 
 
 class TestsFlextInfraRopeStructure:
@@ -56,7 +56,7 @@ class TestsFlextInfraRopeStructure:
             eq=["namespace", "regular", "stubs"],
         )
 
-    def _by_line(self) -> MutableMapping[int, m.Infra.LogicalStatement]:
+    def _by_line(self) -> MutableMapping[int, p.Infra.LogicalStatement]:
         return {s.line: s for s in u.Infra.logical_statements(self._SOURCE)}
 
     def test_reports_real_statement_lines_not_target_module_lines(self) -> None:

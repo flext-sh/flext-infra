@@ -21,6 +21,18 @@ class FlextInfraConstantsRope:
     " through the direct identity map."
 
     @unique
+    class RopeImportStyle(StrEnum):
+        """Import form the native source engine prefers when it adds an import.
+
+        The values are the engine's own vocabulary; a contract test binds them
+        to the installed engine, so this declaration loads no engine.
+        """
+
+        NORMAL_IMPORT = "normal-import"
+        FROM_MODULE = "from-module"
+        FROM_GLOBAL = "from-global"
+
+    @unique
     class RopeScopeKind(StrEnum):
         """Semantic scope kinds returned by rope's ``PyScope.get_kind()``.
 

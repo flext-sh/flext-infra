@@ -26,6 +26,42 @@ class TestsFlextInfraPyprojectConformTopologySources(
 ):
     """Tests for ``FlextInfraPyprojectConformTopologySources``."""
 
+    def test_standalone_editable_sources_override_transitive_git_requests(self) -> None:
+        """Keep declared editable dependencies as the resolver's single source."""
+        workspace = self._workspace(role=self._ROLE.STANDALONE)
+        source = (
+            '[project]\nname = "consumer"\nversion = "0.1.0"\n'
+            'dependencies = ["flext-core", "flext-cli"]\n'
+            "[tool.uv.sources]\n"
+            'flext-core = { path = "../flext-core", editable = true }\n'
+            'flext-cli = { path = "../flext-cli", editable = true }\n'
+            'unused = { path = "../unused", editable = true }\n'
+        )
+        result = tm.ok(
+            u.Infra.pyproject_conform(
+                source,
+                workspace=workspace,
+                required_dev_dependencies=(),
+                uv_resolution=self._toolchain_resolution(),
+                options=self._conform_options(workspace),
+            )
+        )
+        overrides = u.Tests.toml_strings_at(
+            result, "tool", "uv", "override-dependencies"
+        )
+        tm.ok({"flext-core", "flext-cli"} <= set(overrides))
+        tm.ok("unused" not in overrides)
+        repeated = tm.ok(
+            u.Infra.pyproject_conform(
+                result,
+                workspace=workspace,
+                required_dev_dependencies=(),
+                uv_resolution=self._toolchain_resolution(),
+                options=self._conform_options(workspace),
+            )
+        )
+        tm.that(repeated, eq=result)
+
     @c.Tests.MARK.slow
     @c.Tests.MARK.parametrize("source_matches", [False, True])
     def test_modern_candidate_declaration_reaches_the_existing_requirement_owner(
@@ -98,8 +134,8 @@ class TestsFlextInfraPyprojectConformTopologySources(
         source_matches: bool,
     ) -> tuple[
         Path,
-        m.Infra.WorkspaceSpec,
-        m.Infra.DependencyCommitSourceSpec,
+        p.Infra.WorkspaceSpec,
+        p.Infra.DependencyCommitSourceSpec,
     ]:
         """Render the modern fixture declaring one candidate dependency.
 
@@ -246,7 +282,12 @@ class TestsFlextInfraPyprojectConformTopologySources(
         tm.that(repeated, eq=rendered)
 
     def test_root_members_resolve_through_the_native_workspace(self) -> None:
-        """Member requirements stay as authored; uv resolves them natively."""
+        """Members leave the uv workspace and compose as editable overrides.
+
+        ADR-030: every member is excluded from the native workspace, bound as
+        an editable path source and overridden at the root, so each member
+        locks its own ``uv.lock``. A legacy workspace source migrates.
+        """
         workspace_line = u.Tests.integration().branch
         flext_member = self._member_ref("flext-core", "flext-core")
         other_member = self._member_ref("acme-charts", "apps/acme-charts")
@@ -265,6 +306,9 @@ class TestsFlextInfraPyprojectConformTopologySources(
             'dependencies = ["acme-charts", "flext-core", '
             f'"{infra_requirement}"]\n'
             '\n[dependency-groups]\nworkspace = ["flext-core"]\n'
+            "\n[tool.uv.sources]\nflext-core = { workspace = true }\n"
+            "workspace = { workspace = true }\n"
+            '\n[tool.uv.workspace]\nmembers = ["flext-core"]\n'
         )
         options = self._conform_options(workspace)
         rendered = tm.ok(
@@ -286,10 +330,27 @@ class TestsFlextInfraPyprojectConformTopologySources(
         )
         uv = u.Tests.toml_table_at(rendered, "tool", "uv")
         sources = u.Tests.toml_mapping(uv["sources"])
-        for ref in workspace.subprojects:
-            tm.that(
-                u.Tests.toml_mapping(sources[ref.distribution]), eq={"workspace": True}
-            )
+        tm.that(
+            {name: u.Tests.toml_mapping(entry) for name, entry in sources.items()},
+            eq={
+                ref.distribution: {"path": ref.path.as_posix(), "editable": True}
+                for ref in workspace.subprojects
+            },
+        )
+        tm.that(
+            u.Tests.toml_strings_at(rendered, "tool", "uv", "workspace", "members"),
+            eq=(),
+        )
+        tm.that(
+            u.Tests.toml_strings_at(rendered, "tool", "uv", "workspace", "exclude"),
+            eq=tuple(ref.path.as_posix() for ref in workspace.subprojects),
+        )
+        tm.ok(
+            {ref.distribution for ref in workspace.subprojects}
+            <= set(
+                u.Tests.toml_strings_at(rendered, "tool", "uv", "override-dependencies")
+            ),
+        )
         tm.that(
             u.Tests.toml_strings_at(rendered, "dependency-groups", "dev"),
             eq=(),
@@ -587,12 +648,16 @@ class TestsFlextInfraPyprojectConformTopologySources(
         tm.that(result.error or "", contains="not declared requirements: flext-cli")
 
     def test_removing_candidate_removes_global_override(self) -> None:
-        """A normal branch resolution leaves no stale candidate override."""
+        """A normal branch resolution leaves no stale candidate override.
+
+        The only override left is the one derived from the declared Git URL.
+        """
         infra = self._member_ref("flext-infra", "flext-infra")
         stale_commit = "a" * 40
+        declared = self._inline_requirement(infra)
         source = (
             '[project]\nname = "workspace"\nversion = "0.1.0"\n'
-            f'dependencies = ["{self._inline_requirement(infra)}"]\n'
+            f'dependencies = ["{declared}"]\n'
             "\n[tool.uv]\noverride-dependencies = "
             f'["{infra.distribution} @ git+{infra.url}@{stale_commit}"]\n'
         )
@@ -609,8 +674,8 @@ class TestsFlextInfraPyprojectConformTopologySources(
             ),
         )
         tm.that(
-            "override-dependencies" in u.Tests.toml_table_at(rendered, "tool", "uv"),
-            eq=False,
+            u.Tests.toml_strings_at(rendered, "tool", "uv", "override-dependencies"),
+            eq=(f"{infra.distribution} @ {declared.partition('@')[2].strip()}",),
         )
 
     def _assert_direct_source(self, rendered: str, ref: p.Infra.RepositoryRef) -> None:

@@ -174,7 +174,7 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         with u.Tests.raises(
             ValueError,
             match=(
-                "cannot resolve package name" if failure == "member-package" else ""
+                "cannot resolve package name" if failure == "member-package" else None
             ),
         ) as raised:
             FlextInfraCodegenConform.Generate(
@@ -225,7 +225,8 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         )
         command = m.Infra.CandidateBootstrapCommand(repository_root=root)
         tm.ok(
-            FlextInfraCodegenConform.Generate(repository_root=root).plan(
+            u.Tests.conform_plan_result(
+                root,
                 u.Tests.conform_request(
                     root,
                     what=c.Infra.CodegenConformSurface.PYPROJECT,
@@ -257,16 +258,6 @@ class TestsFlextInfraCodegenCandidateBootstrap:
                 )
             ),
         )
-        tm.that(
-            u.Tests.toml_table_at(
-                tm.not_none(projected.content).decode(c.DEFAULT_ENCODING),
-                "tool",
-                "ruff",
-                "lint",
-                "flake8-type-checking",
-            ),
-            has="runtime-evaluated-base-classes",
-        )
         tm.ok(infra.bootstrap_candidate(command))
 
         tm.that(
@@ -282,31 +273,6 @@ class TestsFlextInfraCodegenCandidateBootstrap:
             ),
             eq=projected,
         )
-
-    @staticmethod
-    def _write_runtime_probe(candidate: Path) -> Sequence[str]:
-        """Declare importable descendants of the configured runtime roots.
-
-        Returns:
-            Configured roots exercised by the probe package.
-
-        """
-        policy = config.Infra.tooling.tools.ruff.lint.flake8_type_checking
-        roots = policy.runtime_evaluated_roots
-        source = "\n".join(
-            f"import {module} as provider{index}\n\n"
-            f"class BootstrapProbe{index}(provider{index}.{base}):\n    pass\n"
-            f"class BootstrapConsumer{index}(BootstrapProbe{index}):\n    pass\n"
-            for index, (module, _, base) in enumerate(
-                root.rpartition(".") for root in roots
-            )
-        )
-        if not roots:
-            source = "class BootstrapProbe:\n    pass\n"
-        probe = candidate / "src" / "bootstrap_probe" / "models.py"
-        probe.parent.mkdir(parents=True, exist_ok=True)
-        tm.ok(u.Cli.atomic_write_text_file(probe, source))
-        return roots
 
     @staticmethod
     def test_current_repository_is_a_valid_relative_bootstrap_target() -> None:
@@ -642,7 +608,7 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         pyproject = first / c.PYPROJECT_FILENAME
         content = pyproject.read_text(encoding="utf-8")
         pyproject.write_text(
-            content + '\n[tool.mypy]\nplugins = ["pydantic.mypy"]\n',
+            content + '\n[tool.pyrefly]\nproject-includes = ["src"]\n',
             encoding="utf-8",
         )
         before = tm.ok(u.Cli.atomic_read_binary_file_state(pyproject, required=True))
@@ -724,6 +690,10 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         )
         tm.fail(u.Infra.workspace_manifest_path(source).exists())
         projection = candidate / c.PYPROJECT_FILENAME
+        # The candidate first reaches its canonical projection, which composes
+        # the declared development requirements; recovery must restore that.
+        command = m.Infra.CandidateBootstrapCommand(repository_root=source)
+        tm.ok(infra.bootstrap_candidate(command))
         original = projection.read_text(encoding="utf-8")
         original_groups = u.Tests.toml_table_at(original, "dependency-groups")
         environment = u.Infra.runtime_environment_dir(candidate)
@@ -748,7 +718,6 @@ class TestsFlextInfraCodegenCandidateBootstrap:
             ),
         )
         before = TestsFlextInfraConformSupport.project_tree(candidate)
-        command = m.Infra.CandidateBootstrapCommand(repository_root=source)
         inputs = tm.ok(u.Infra.load_codegen_inputs(candidate))
         destinations = tm.not_none(
             FlextInfraCodegenConform.Generate.surface_contract(

@@ -1,0 +1,23 @@
+id: protocol-namespace-part-plain
+valid:
+- |
+  from typing import Protocol
+  class FlextDemoProtocolsBase:
+      class Source(Protocol):
+          def read(self) -> str: ...
+- |
+  from typing import Protocol, runtime_checkable
+  @runtime_checkable
+  class FlextDemoProtocolsReader(Protocol):
+      def read(self) -> str: ...
+invalid:
+- |
+  from typing import Protocol, runtime_checkable
+  @runtime_checkable
+  class FlextDemoProtocolsBase(Protocol):
+      class Source(Protocol):
+          def read(self) -> str: ...
+- |
+  from typing import Protocol
+  class FlextDemoProtocolsRuntime(FlextDemoProtocolsSnapshot, Protocol):
+      """Namespace."""

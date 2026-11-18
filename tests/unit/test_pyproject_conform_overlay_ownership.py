@@ -68,6 +68,26 @@ class TestsFlextInfraPyprojectConformOverlayOwnership(
         )
         tm.that(repeated, eq=rendered)
 
+    @staticmethod
+    def test_overlay_keeps_an_authored_direct_reference() -> None:
+        """The overlay knows no topology, so a direct reference survives it.
+
+        Only the conform step, which knows the workspace, may replace a member
+        reference by its name; a standalone consumer keeps its Git source.
+        """
+        requirement = (
+            "flext-fixture @ git+https://example.invalid/flext-fixture.git@line"
+        )
+        source = (
+            '[project]\nname = "consumer"\nversion = "1.0.0"\n'
+            f'dependencies = ["{requirement}"]\n'
+        )
+        merged = tm.ok(u.Infra.overlay_preserved(source, source))
+        tm.that(
+            u.Tests.toml_strings_at(merged, "project", "dependencies"),
+            eq=(requirement,),
+        )
+
     def test_overlay_preserves_custom_values_and_rederives_owned_members(
         self,
         tmp_path: Path,

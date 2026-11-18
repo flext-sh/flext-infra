@@ -54,6 +54,11 @@ class FlextInfraProtocolsConfigScaffold:
             """Config base class name."""
             ...
 
+        @property
+        def settings_class_name(self) -> t.NonEmptyStr:
+            """Settings base class name in the same module."""
+            ...
+
     @runtime_checkable
     class ScaffoldProjectSpec(
         FlextInfraProtocolsConfigContract.ConfigContract, Protocol
@@ -212,6 +217,16 @@ class FlextInfraProtocolsConfigScaffold:
     @runtime_checkable
     class ScaffoldSpec(FlextInfraProtocolsConfigContract.ConfigContract, Protocol):
         """Structural data contract projected from the owning model."""
+
+        @property
+        def source_stems(self) -> tuple[t.NonEmptyStr, ...]:
+            """Required component stems in every production facade family."""
+            ...
+
+        @property
+        def auxiliary_stems(self) -> tuple[t.NonEmptyStr, ...]:
+            """Required component stems in every auxiliary facade family."""
+            ...
 
         @property
         def build(self) -> FlextInfraProtocolsConfigScaffold.ScaffoldBuildSpec:

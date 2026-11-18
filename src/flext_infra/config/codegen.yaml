@@ -31,6 +31,9 @@ Infra:
     # pair and its lock publisher/converger retired with mise self-management
     # — the pinned release is the [tools] entry mise.lock provisions).
     retired_projections:
+    # Model contracts are checked through their actual consumers. The former
+    # generated assignment witnesses retire in every discovered Python tier.
+    - '**/_protocols/model_conformance.py'
     # The former full-managed JSON template had no generated banner. Its exact
     # context-width declaration identifies the retired native-import competitor.
     - path: .markdownlint.json
@@ -99,12 +102,14 @@ Infra:
     # Fresh import probes are independent subprocesses within one validation.
     fresh_import_workers: 3
     # Protected-edit lint snapshots run their gate subprocesses in this many
-    # threads per level (paths, then gates per path); mypy keeps its own
+    # threads per level (paths, then gates per level); pyrefly keeps its own
     # resource-limited deadline, so the bound caps concurrent type checkers.
     lint_snapshot_workers: 4
 
-    # Per-module scc code-LOC ceiling, enforced by the loc-cap gate. This key
-    # is its only declaration; guidance references the key, never its value.
+    # Per-module scc code-LOC ceiling of authored modules, enforced by the
+    # loc-cap gate. A generated projection (declared generator header or a
+    # generated_sources tree) never counts (operator ruling 2026-11-14). This
+    # key is its only declaration; guidance references the key, never its value.
     loc_cap:
       max_lines: 1000
 
@@ -161,8 +166,8 @@ Infra:
       - name: codemod_type_set_rules
         shapes: [ type-set ]
         enforce: [ ENFORCE-079 ]
-      # One rule failing and rewiring every read of a compat-marked constant
-      # to the new owner its warnings.deprecated marker names.
+      # One rule failing and rewiring every read of a compat-marked name of
+      # any facade letter to the new owner its warnings.deprecated marker names.
       - name: codemod_compat_rules
         shapes: [ compat-read ]
       # Layer-zero import boundary rendered from the import-law classifier:
@@ -254,22 +259,30 @@ Infra:
       # model forbids).
       python_version: "3.13"
       # Supply-chain cooldown (rule security/supply-chain: a rolling cooldown
-      # of at least seven days): ONE value for every resolver — the generated
-      # mise `minimum_release_age` (so `make upg` never selects a release
-      # younger than this, e.g. a Python patch with no precompiled builds yet)
-      # and every dependabot ecosystem entry. Forks and local projects never
-      # enter it: dependabot excludes the requirements a project takes by
-      # direct git reference. No project surface carries a uv cooldown key
-      # (`exclude-newer` is banned, rule ethics/conformance-sweep; pyproject
-      # conformance removes it from [tool.uv]). The one native writer is mise:
-      # for a `pypi:` tool it passes this cutoff to uv, and uv serializes it as
-      # `[options] exclude-newer` in the tool's sidecar lock
-      # (.mise/locks/pypi-<tool>/<version>/uv.lock), written only by
-      # `make upg` and digest-pinned by mise.lock (flext-qqasl, operator
-      # decision "Allow in the mise lock"). 10d, not 7d: the asset-less
-      # 20260929 python-build release aged past a 7d window and re-entered
-      # every python resolution, breaking the 3.13 lock-time listing.
+      # of at least seven days). Operator decision 2026-11-13: the cooldown
+      # applies to everything, uv included, except FLEXT's own packages, our
+      # `-dc` forks and declared CVE/critical-fix cases. ONE value for every
+      # resolver: the generated mise `minimum_release_age`, every dependabot
+      # ecosystem entry and the [tool.uv] `exclude-newer` span ("P<days>D")
+      # that pyproject conformance projects into every project. The span is
+      # relative, so uv.lock records `exclude-newer-span` and stays current as
+      # time passes; only `make upg` re-resolves under it. uv applies it to
+      # registry distributions only: FLEXT members and forks resolve by git,
+      # URL or path source at their pinned revisions, natively outside it
+      # (dependabot excludes those direct git requirements likewise). For a
+      # `pypi:` tool mise passes the same cutoff to uv in its sidecar lock.
+      # 10d, not 7d: the asset-less 20260929 python-build release aged past a
+      # 7d window and re-entered every python resolution, breaking the 3.13
+      # lock-time listing.
       dependency_cooldown_days: 10
+      # Registry packages that must resolve inside the cooldown: package ->
+      # advisory id (GHSA/CVE) or the critical problem it fixes. Rendered as
+      # [tool.uv] exclude-newer-package `false` and excluded from the
+      # dependabot pip cooldown (security updates bypass it natively). A
+      # repository adds its own cases through its config/codegen.yaml overlay
+      # (mappings merge). Remove an entry once its fix ages past the cooldown.
+      dependency_cooldown_exceptions:
+        soupsieve: GHSA-mmhr-3c5m-f64f
       # Native uv default on Linux/macOS: copy-on-write clone from the uv cache.
       # The cache (~/.cache/uv) and the checkouts share one btrfs filesystem
       # here, so `copy` duplicated about 1 GB per environment, twice per upg,
@@ -281,14 +294,15 @@ Infra:
       uv_environments: [ "sys_platform == 'linux'", "sys_platform == 'darwin'" ]
       # Security floors become [tool.uv] constraint-dependencies in every
       # project, including projects that use the package only transitively.
-      # Operator decision 2026-10-24 (bead flext-y9dqj, "cooldown via
-      # constraint floors"): exclude-newer stays banned; each floor below is
-      # the first release fixing an open Dependabot advisory, reviewed by hand.
+      # Each floor below is the first release fixing an open Dependabot
+      # advisory, reviewed by hand; a floor younger than the cooldown also
+      # declares its package in dependency_cooldown_exceptions.
       # Raise a floor only for a reviewed advisory and remove it once every
       # direct dependent requires the fixed release; an empty list removes
       # the key from all projections.
       uv_constraint_dependencies:
       - pillow>=13.0.0
+      - soupsieve>=4.0.0
       - certifi>=2026.10.19
       - setuptools>=84.1.0
       - virtualenv>=21.14.13
@@ -304,7 +318,7 @@ Infra:
       # override-dependencies bind only this project's own resolution, never
       # the metadata an installer of this distribution resolves.
       uv_override_dependencies:
-      - rope @ git+https://github.com/marlon-costa-dc/rope.git@64cbd65bc458c689880be41182c52715397b143a
+      - rope @ git+https://github.com/marlon-costa-dc/rope.git@3a0cb69024fb5f17ba32064bf6c294d016c7d9d8
       # Moving selectors consumed by generated .mise.toml and CI. Only
       # `make upg` resolves them to the newest release and writes mise.lock;
       # setup installs exactly what the committed lock pins, and only these
@@ -322,8 +336,8 @@ Infra:
       # (mise.lock then carries the URL only); every other tool's current
       # platform lock section must carry one.
       # Base toolchain: only what this generator's own verbs run (python, the
-      # self-managed mise, uv, direnv, taplo, ast-grep, gitleaks, scc, node for
-      # the pyright wrapper, qlty, jscpd, waza, prek). A project that needs more
+      # self-managed mise, uv, direnv, taplo, ast-grep, gitleaks, scc, qlty,
+      # jscpd, waza, prek). A project that needs more
       # (kubectl, helm, kind, kubeconform, go, ...) declares them as additions
       # in its own config/codegen.yaml under Infra.codegen.toolchain.tools;
       # the config loader concatenates them onto this base. The library never
@@ -381,13 +395,6 @@ Infra:
           binary: scc
           arguments: [ --version ]
           pattern: "^scc version {version}$"
-      # pyright's PyPI wrapper runs node from PATH.
-      - name: node
-        version: latest
-        version_probe:
-          binary: node
-          arguments: [ --version ]
-          pattern: "^v{version}$"
       # Make, curl and Git remain system-owned. Recursive Make keeps the
       # physical executable that invoked the generated lifecycle.
       - name: qlty
@@ -567,11 +574,6 @@ Infra:
     # Nothing here catalogs organizations, and nothing resolves a provider by
     # matching a Git origin against configured rows.
     branch_policy:
-      lane_remote: origin
-      lane_pr_limit: 1000
-      lane_governance_file:
-      lane_temporary_roots:
-      - /tmp
       # Pushes to these branches trigger the generated CI workflow. The renderer
       # adds the repository's own integration branch to this list; it never
       # hardcodes a fleet branch name.
@@ -585,7 +587,7 @@ Infra:
       preservation_ref_namespaces:
       - refs/heads/preserve/
       - refs/heads/wip/sweep-preserve/
-      - refs/ai-hub/wip/
+      - refs/wip/checkpoint/
     # SonarCloud automatic analysis (GitHub App) honors only the scope keys of
     # .sonarcloud.properties: sonar.sources/tests, exclusions/inclusions,
     # test.exclusions/inclusions, sourceEncoding and cpd.exclusions. Anything
@@ -625,7 +627,22 @@ Infra:
       # generated file as documentation only.
       # The committed lock contract supersedes the former lockfile-ban exclusion.
       # An empty list resets the setting and requires an empty effective readback.
-      issue_exclusions: []
+      issue_exclusions:
+      # HISTORICAL: Axiom "generic facade publication" (python/mypy#22457; operator
+      # decision 2026-11-13: "Yes, add to the axiom"): the generated
+      # `Name: TypeAlias = Part.Name` publication is the only form mypy can
+      # subscript; Sonar python:S6794 (use a `type` statement) rejects it as
+      # ruff UP040 does. Justification and retirement condition at
+      # tools.ruff.lint.ruling-disabled-rules in tooling.yaml; retire this
+      # entry together with those four when mypy resolves #22457.
+      - rule_key: python:S6794
+        resource_key: "**/*.py"
+        reason: >-
+          HISTORICAL: Axiom "generic facade publication" (python/mypy#22457; operator
+          decision 2026-11-13 "Yes, add to the axiom"): the generated
+          `Name: TypeAlias = Part.Name` publication is the only form mypy can
+          subscript. Retire with ruff UP040, pyrefly implicit-any-type-argument
+          and bad-override when mypy resolves #22457.
     infra_repository:
       distribution: flext-infra
       provider: flext-sh
@@ -656,6 +673,42 @@ Infra:
       # A partial inventory or any diagnostic prevents subsequent phases.
       check_prerequisite_gates: [ lint, pyrefly ]
       check_prerequisite_pyrefly_workers: 4
+      scan_threads: 4
+      # Each scan batch persists its cache fragments on completion, so a run
+      # killed by its budget keeps its finished batches for the next run.
+      scan_batch_files: 64
+      # Host admission and run limits of every public verb (ADR-032): on the
+      # shared host a verb refuses to start while the 5-minute load average
+      # exceeds max_load5, and each recipe runs in a cgroup scope bounded by
+      # memory_limit_gb and max_processes CPUs. overrides declares an explicit
+      # exception per public verb. Every verb runs at idle CPU and IO weight,
+      # so agents use light processes instead of waiting for the load; only the
+      # full forms (tests-full, and mod without RULES or LAWS, named mod-full)
+      # keep max_load5. A selected mod is admitted through the mod override.
+      admission:
+        max_load5: 20
+        memory_limit_gb: 5
+        max_processes: 2
+        # Operator 2026-11-14: host load from other actors sits at 85-113,
+        # so the provisioning path (setup, gen, check) admits to 160.
+        overrides:
+          setup: {max_load5: 160}
+          upg: {max_load5: 80}
+          gen: {max_load5: 160}
+          mod: {max_load5: 80}
+          fix: {max_load5: 80}
+          fmt: {max_load5: 80}
+          check: {max_load5: 160}
+          tests: {max_load5: 80}
+          help: {max_load5: 80}
+          build: {max_load5: 80}
+          clean: {max_load5: 80}
+        refusal_guidance:
+        - Do not wait for the load to drop; run the lighter form now, it runs at idle priority.
+        - Prefer make tests (incremental Testmon) over make tests-full; run tests-full only occasionally.
+        - Prefer a narrow make mod RULES=<rule ids> over a full make mod, and make check CHECK_PHASE=primary over the full check.
+        - Use at most 2 workers and never run heavy verbs in parallel across lanes.
+        - A verb exception is a declared make.admission.overrides entry in the config SSOT, never a local edit or an environment bypass.
       common_arguments: [ HELP, OPTIONS ]
       examples_timeout_seconds: 120
       # Setup clones absent gitlinks submodule_jobs at a time and gives each
@@ -707,12 +760,6 @@ Infra:
         external_storage_directory: flext/infra/testmon
         target_directory: tests
         reports_directory: .reports/tests
-      # Storage law (operator 2026-09-12): every pytest verb declares its
-      # TMPDIR/basetemp under $HOME/tmp/.flext-runtime<absolute checkout>/scratch
-      # — never /tmp and never inside a versioned tree. A workspace member's
-      # parent directory is the superproject checkout, so a scratch "beside the
-      # checkout" landed inside another repository and Git refused every test
-      # fixture repository created there.
       # Isolated environment that runs `make upg`'s one residual flext-infra
       # step (the Mise platform-gap repair). Native uv syncs it from the
       # project's own frozen lock, the dependency group that pins flext-infra,
@@ -722,11 +769,6 @@ Infra:
       executor_environment:
         directory: .flext/executor
         dependency_group: dev
-      pytest_scratch:
-        user_home_environment_variable: HOME
-        home_relative_directory: .local/state
-        state_directory_name: .flext-runtime
-        namespace: scratch
       # Actions-cache policy for the shared testmon database: two-phase
       # generations, a per-repository byte budget with an ascending quota
       # ladder, and the refs allowed to publish (never pull requests).
@@ -740,20 +782,6 @@ Infra:
         maintenance_threshold_percent: 90
         block_threshold_percent: 95
         key_prefix: flext-testmon
-      # The Mypy gate shares one analysis per project name inside one
-      # environment (u.Infra.mypy_cache_directory keys the directory with the
-      # interpreter plus the installed core distribution version). Relocks
-      # retain the directory; Mypy revalidates changed modules by source hash,
-      # so a warm cache never masks a finding, while distinct checkouts whose
-      # environments resolve different installed views never share a cache.
-      # Distinct project names keep their module namespaces in separate
-      # directories.
-      mypy_cache:
-        cache_environment_variable: MYPY_CACHE_DIR
-        data_home_environment_variable: XDG_CACHE_HOME
-        user_home_environment_variable: HOME
-        home_cache_directory: .cache
-        external_storage_directory: flext/infra/mypy
       ruff_cache:
         external_storage_directory: flext/infra/ruff
       # Public verbs execute their declared operation without mode selectors.
@@ -792,6 +820,10 @@ Infra:
         # pre_commit_value: the generated commit hook passes this token to its
         # check row, which then runs only the commit-stage (fast) gates.
         pre_commit_value: C
+        # Every remote runner exports this pair whatever CI token a step
+        # passes.
+        remote_variable: GITHUB_ACTIONS
+        remote_value: "true"
         # Gate baseline of the 0.12 line (tracker memory
         # operator-ruling-2026-10-09-gate-baseline-0122). Every gate blocks in
         # every context that runs it; there is no informative gate. No gate
@@ -804,17 +836,13 @@ Infra:
         # - CI=Y runs MakeSpec.check_gates_ci, the commit and CI stages
         #   (pyrefly included, so CI is never blind to types);
         # - CI=N and an unset CI (a developer's make check and the pre-push
-        #   hook) run every active gate: the whole-program checkers mypy and
-        #   pyright, the codemod rule set, smells and the project's own
-        #   validators block there. Mypy stays bounded by MYPY_MEMORY_LIMIT_MB
-        #   and the project-owned tools.mypy.timeout_seconds budget.
+        #   hook) run every active gate: pyrefly, the codemod rule set, smells
+        #   and the project's own validators block there.
         # tooling.tools.pytest.ci-excluded-markers defines the slow-test
         # exclusion for CI, not local/pre-push runs.
         # Tests discover the complete global population and execute Testmon's
-        # incremental selection. Pre-commit never runs tests. The pre-push hook
-        # CI owns the complete gate. A pre-push row that runs make check/tests over
-        # the whole tree blocks every push for minutes, so only the commit-stage
-        # incremental hook is emitted.
+        # incremental selection. Pre-commit never runs tests. An opt-in pre-push
+        # hook reuses the primary check; the local workflow owns its test steps.
       pre_commit: true
       pre_push: false
       # Public refactor violations-sweep default; custom sequences use verbs below.
@@ -826,14 +854,16 @@ Infra:
       - pydantic-field-positional-default
       - pydantic-unset-private-attribute
       workflow:
-      - { identity: setup, verb: setup, contexts: [ local, ci ] }
+      # A commit provisions the checkout before its check, so a fresh lane
+      # worktree commits against its own locked toolchain, never PATH.
+      - { identity: setup, verb: setup, contexts: [ local, ci, pre_commit ] }
       # Initial behavioral admission requires global source evidence, not full check.
       - { identity: check-primary, verb: check, phase: primary, contexts: [ local, ci, pre_push ] }
       - identity: tests-primary
         verb: tests
-        contexts: [ local, ci, pre_push ]
+        contexts: [ local ]
         requires:
-        - { step: check-primary, contexts: [ local, ci, pre_push ] }
+        - { step: check-primary, contexts: [ local ] }
       # CI never generates: check's `codegen conform --mode check` is the
       # read-only projection verdict of the LOCKED generator, so a stale or
       # skewed projection fails there, while CI generation would run the
@@ -850,41 +880,42 @@ Infra:
         - { step: mod, contexts: [ local ] }
       - identity: check
         verb: check
-        contexts: [ local, ci, pre_push, pre_commit ]
+        contexts: [ local, pre_commit ]
         requires:
-        - { step: tests-primary, contexts: [ local, ci, pre_push ] }
+        - { step: tests-primary, contexts: [ local ] }
         - { step: check-primary-refresh, contexts: [ local ] }
       - identity: tests
         verb: tests
-        contexts: [ local, ci, pre_push ]
+        contexts: [ local ]
         requires:
-        - { step: check, contexts: [ local, ci, pre_push ] }
-        - { step: check-primary, contexts: [ ci, pre_push ] }
+        - { step: check, contexts: [ local ] }
         - { step: check-primary-refresh, contexts: [ local ] }
       # Acceptance composes operations explicitly; each operation retains its domain.
       lifecycle_steps:
-      - { verb: help, contexts: [ local, ci ] }
+      - { verb: help, contexts: [ local ] }
       - { verb: setup, contexts: [ local, ci ] }
       - { verb: check, phase: primary, contexts: [ local, ci ] }
-      - { verb: tests, contexts: [ local, ci ] }
-      - { verb: gen, contexts: [ local, ci ] }
-      - { verb: gen, contexts: [ local, ci ] }
-      - { verb: fmt, contexts: [ local, ci ] }
-      - { verb: fix, contexts: [ local, ci ] }
-      - { verb: mod, contexts: [ local, ci ] }
+      - { verb: tests, contexts: [ local ] }
+      - { verb: gen, contexts: [ local ] }
+      - { verb: gen, contexts: [ local ] }
+      - { verb: fmt, contexts: [ local ] }
+      - { verb: fix, contexts: [ local ] }
+      - { verb: mod, contexts: [ local ] }
       # Consecutive generation proves convergence on unchanged declarations.
-      - { verb: gen, contexts: [ local, ci ] }
-      - { verb: gen, contexts: [ local, ci ] }
+      - { verb: gen, contexts: [ local ] }
+      - { verb: gen, contexts: [ local ] }
       - { verb: check, phase: primary, contexts: [ local, ci ] }
-      - { verb: check, contexts: [ local, ci ] }
-      - { verb: tests, contexts: [ local, ci ] }
-      - { verb: build, contexts: [ local, ci ] }
+      - { verb: check, contexts: [ local ] }
+      - { verb: tests, contexts: [ local ] }
+      - { verb: build, contexts: [ local ] }
+      # Repository-local directory of the project's Mise shims. Mise itself is
+      # the official installer's shared default executable, never copied here.
+      bootstrap_bin_dir: .bin
       # Artifacts `make clean` removes. Read by Makefile.j2 for the cache
       # sweep and the root-level directory/file lists.
       clean:
         cache_dirs:
         - __pycache__
-        - .mypy_cache
         - .pytest_cache
         - .ruff_cache
         - .pyrefly_cache
@@ -931,11 +962,14 @@ Infra:
         arguments: [ FLEXT, RECREATE ]
       - name: upg
         description: Resolve declared dependency and tool updates and publish their resolution metadata and locks.
+      - name: lock
+        description: Resolve newly declared dependencies into the locks and keep every existing pin; only upg moves pins.
       - name: gen
+        arguments: [ ROOT ]
         description: Materialize explicitly declared new projects and publish every applicable generated projection.
         requires_activation: false
       - name: gen-scope
-        arguments: [ WHAT, MODULE, SCOPE ]
+        arguments: [ ROOT, WHAT, MODULE, SCOPE ]
         description: Run the focal generation surface (WHAT, MODULE for facades, SCOPE) through the same engine, lock and budget as gen.
         requires_activation: false
       - name: mod
@@ -949,9 +983,9 @@ Infra:
         description: Validate declarations, projections, environment, documentation and configured gates without repairs or publication.
         arguments: [ CHECK_PHASE ]
       - name: tests
-        description: Discover the complete global pytest inventory and execute testmon-selected cases with the persistent external database.
+        description: Run native incremental tests through the persistent Testmon selection.
       - name: tests-full
-        description: Execute the complete applicable population once without Testmon or a preliminary incremental run, preserving the existing database untouched.
+        description: Run the complete selected inventory once without Testmon.
       - name: help
         description: Discover the declared public interface without effects.
       - name: build
@@ -1005,7 +1039,6 @@ Infra:
     # Agent tool state (hook-state/hook-status) is machine-local cache, never
     # production input.
     - { name: .mimosa, source_scan_ignore: true }
-    - { name: .mypy_cache, source_scan_ignore: true, analysis_exclude: true }
     - { name: .omo }
     - { name: .pylance_cache, analysis_exclude: true }
     - { name: .pytest_cache, source_scan_ignore: true, analysis_exclude: true }
@@ -1107,7 +1140,6 @@ Infra:
       - docs/plans/2026-09-14-stabilization-handoff/previous-handoff-source.md
       - docs/plans/2026-09-22-pipeline-integracao-continua-plano.md
       - docs/plans/2026-09-22-rope-generator-stabilization/02-achados-codegen.md
-      - docs/plans/2026-09-23-handoff-mypy-stabilization-e-integracao.md
       - docs/plans/2026-09-25-v8-flext-service-base/05-phases.md
       - docs/plans/2026-09-25-v8-flext-service-base/07-sessions-guide.md
       - docs/standards/consumption-law.md
@@ -1177,9 +1209,6 @@ Infra:
       - [ terminal.integrated.env.linux, { PATH: '${runtimeEnvironment}/bin:${env:PATH}', VIRTUAL_ENV: '${runtimeEnvironment}' } ]
       - [ ruff.interpreter, [ '${runtimeEnvironment}/bin/python' ] ]
       - [ ruff.path, [ '${runtimeEnvironment}/bin/ruff' ] ]
-      - [ mypy-type-checker.interpreter, [ '${runtimeEnvironment}/bin/python' ] ]
-      - [ mypy-type-checker.path, [ '${interpreter}', -m, mypy ] ]
-      - [ mypy-type-checker.cwd, '${nearestConfig}' ]
       - [ editor.mouseWheelZoom, true ]
       - [ explorer.excludeGitIgnore, true ]
       - [ files.autoSave, afterDelay ]
@@ -1192,7 +1221,7 @@ Infra:
       - [ python.analysis.autoImportCompletions, true ]
       - [ python.analysis.completeFunctionParens, true ]
       - [ python.analysis.diagnosticMode, workspace ]
-      - [ python.analysis.diagnosticsSource, Pylance + Pyright ]
+      - [ python.analysis.diagnosticsSource, Pylance + Pyrefly ]
       - [ python.analysis.displayEnglishDiagnostics, true ]
       - [ python.analysis.enableAsyncProgram, false ]
       - [ python.analysis.enableExternalTypeServer, false ]
@@ -1216,7 +1245,6 @@ Infra:
       - [ python.analysis.languageServerBackend, default ]
       - [ python.analysis.languageServerMode, default ]
       - [ python.analysis.logLevel, Information ]
-      - [ python.analysis.pyrightVersion, fromEnvironment ]
       - [ python.analysis.referencesCodeLens, true ]
       - [ python.analysis.renameInDocstrings, true ]
       - [ python.analysis.showOnlyDirectDependenciesInAutoImport, false ]
@@ -1432,7 +1460,6 @@ Infra:
       archive_globs:
       - "*.log"
       - pytest_*.txt
-      - pyright_errors*.log
       - test_output.txt
       # Content submodule trees and agent law dirs are out of product-docs relocate.
       # .agents is already skipped via allow_hidden (dotdir); data/ is explicit.
@@ -1449,6 +1476,8 @@ Infra:
       project_overrides: {}
 
     scaffold:
+      source_stems: [base, config, settings]
+      auxiliary_stems: [base]
       build:
         backend: hatchling.build
         requirements: [ hatchling ]
@@ -1456,7 +1485,7 @@ Infra:
         readme: README.md
         # Existing-tree ProjectSpec year. Do not derive from datetime.
         copyright_year: 2026
-        supported_licenses: [ MIT, Proprietary ]
+        supported_licenses: [ MIT, Proprietary, LicenseRef-Proprietary ]
         classifiers:
         - "Development Status :: 4 - Beta"
         - "Intended Audience :: Developers"
@@ -1475,7 +1504,9 @@ Infra:
         - bandit>=1.9.4
         # Floors let uv select released tools without a cap or downgrade path.
         # Every diagnostic from the resolved release remains blocking.
-        - mkdocs
+        # ProperDocs is the docs engine (FLEXT ADR-009); the MkDocs plugins and
+        # theme below load through its mkdocs entry points.
+        - properdocs>=1.6.7
         - mkdocs-autorefs
         - mkdocs-exclude>=1.0.2
         - mkdocs-git-revision-date-localized-plugin>=1.5.4
@@ -1491,10 +1522,8 @@ Infra:
         # breaking editable wheel builds (release/wheel tests) after any
         # re-sync; declared here so every projected project keeps it.
         - editables>=0.6
-        - mypy>=2.3.1
         - pymdown-extensions
         - pyrefly>=1.2.0
-        - pyright>=1.1.411
         - pytest>=9.1.1
         - hypothesis
         - pytest-asyncio
@@ -1529,23 +1558,37 @@ Infra:
         - vulture>=2.16
         - yamlfix>=1.19.1
         # Flask and Werkzeug ship inline typing; their legacy stubs shadow it.
+        # ProperDocs replaced the unmaintained MkDocs engine (FLEXT ADR-009);
+        # mkdocs stays only as the Material theme's own transitive dependency.
+        # Mypy and Pyright are retired: Ruff and Pyrefly own Python analysis
+        # (operator order 2026-11-13, ag-6w7a).
         retired_dev:
+        - mkdocs
+        - mypy
+        - pyright
         - types-flask
         - types-werkzeug
         required_flext_dev: [ flext-infra, flext-tests ]
-        # Precedence order: a generated _config.py composes the first base
-        # whose distribution is among the project's runtime requirements or
-        # its declared upstream.
+        # Precedence order: generated _config.py and _settings.py compose the
+        # first base whose distribution is among the project's runtime
+        # requirements or its declared upstream.
         config_bases:
+        - distribution: flext-api
+          module: flext_api
+          class_name: FlextApiConfig
+          settings_class_name: FlextApiSettings
         - distribution: flext-meltano
           module: flext_meltano
           class_name: FlextMeltanoConfig
+          settings_class_name: FlextMeltanoSettings
         - distribution: flext-cli
           module: flext_cli
           class_name: FlextCliConfig
+          settings_class_name: FlextCliSettings
         - distribution: flext-core
           module: flext_core
           class_name: FlextConfig
+          settings_class_name: FlextSettings
       ping_example:
         command_name: ping
         help_text: Return the configured health response.
@@ -1603,6 +1646,9 @@ Infra:
         patterns:
         - "!scripts/"
         - "scripts/*.py"
+        # The generated package initializer is tracked: without it a checker
+        # names scripts/hooks/* as hooks.* and `import scripts.hooks` fails.
+        - "!scripts/__init__.py"
         - "scripts/*.sh"
         - "scripts/*.md"
         - "scripts/maintenance/"
@@ -1777,6 +1823,7 @@ Infra:
         - ".claude/*.agents-governance.json"
         - ".gemini/*.agents-governance.json"
         - ".claude/settings.local.json"
+        - ".claude/scheduled_tasks.lock"
       # The repository loader merges config/<file>.local.yaml after the
       # tracked config/<file>.yaml; that layer carries operator-private data.
       - name: "Private local config layers"
@@ -1877,7 +1924,6 @@ Infra:
         - "*.rej"
       - name: "Python caches inside allowed directories"
         patterns:
-        - "**/.mypy_cache/"
         - "**/.ruff_cache/"
         - "**/.pytest_cache/"
         - "**/.hypothesis/"
@@ -2340,8 +2386,10 @@ Infra:
             - build-system
             - dependency-groups
             - tool.pytest.ini_options
+            - tool.uv
             - tool.uv.environments
             - tool.uv.link-mode
+            - tool.uv.package
             - tool.uv.constraint-dependencies
             - tool.uv.override-dependencies
             - tool.uv.workspace.members
@@ -2353,8 +2401,6 @@ Infra:
             - tool.hatch.build
             - tool.ruff
             - tool.ruff.lint.isort
-            - tool.mypy
-            - tool.pyright
             - tool.pyrefly
             - tool.pytest
             - tool.coverage
@@ -2363,7 +2409,6 @@ Infra:
             - tool.yamlfix
             - tool.deptry
             - tool.hatch.version
-            - tool.pydantic-mypy
             - tool.vulture
             # Written by the conform pipeline from the project SSOT
             # (_sync_namespace_scope), so a conflict inside it is the owner's
@@ -2406,108 +2451,133 @@ Infra:
             policy: full
         "src/{package_name}/api.py":
           source: base/src/api.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         "src/{package_name}/cli.py":
           source: base/src/cli.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         "src/{package_name}/__main__.py":
           source: base/src/__main__.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         "src/{package_name}/base.py":
           source: base/src/base.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         "src/{package_name}/models.py":
           source: base/src/models.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         "src/{package_name}/typings.py":
           source: base/src/typings.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         "src/{package_name}/protocols.py":
           source: base/src/protocols.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         "src/{package_name}/constants.py":
           source: base/src/constants.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         "src/{package_name}/utilities.py":
           source: base/src/utilities.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         "src/{package_name}/{config}.py":
           source: base/src/_config.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         "src/{package_name}/{settings}.py":
           source: base/src/_settings.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         "src/{package_name}/py.typed":
           source: base/src/py.typed.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         # Domain behavior is generated in services, not base.py.
         "src/{package_name}/services/ping.py":
           source: base/src/services/ping.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         # Runtime defaults belong to the declaring import-package resource.
         "src/{package_name}/config/{ns}.yaml":
           source: base/src/config/ns.yaml.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         # Config/settings declarations live in
         # the canonical public models/config/settings facets, never parallel parts.
         "src/{package_name}/_models/ping.py":
           source: base/src/_models/ping.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         "src/{package_name}/_models/config.py":
           source: base/src/_models/config.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         "src/{package_name}/config_models.py":
           source: base/src/config_models.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         "src/{package_name}/_models/settings.py":
           source: base/src/_models/settings.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         "src/{package_name}/_constants/config.py":
           source: base/src/_constants/config.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         "src/{package_name}/_constants/settings.py":
           source: base/src/_constants/settings.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         "src/{package_name}/_protocols/config.py":
           source: base/src/_protocols/config.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         "src/{package_name}/_protocols/ping.py":
           source: base/src/_protocols/ping.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         "src/{package_name}/_protocols/settings.py":
           source: base/src/_protocols/settings.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         "src/{package_name}/_typings/base.py":
           source: base/src/_typings/base.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         # New projects receive a real runtime test; subsequent generation preserves
         # this authored file because only managed_file_specs are reprojected.
         tests/test_api.py:
           source: base/tests/test_api.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         # Every repository's pytest bootstrap is one projection of this template:

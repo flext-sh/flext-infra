@@ -346,7 +346,7 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
                 gates=request.gates,
             )
         )
-        before_states: dict[Path, m.Cli.AtomicFileState] = {}
+        before_states: dict[Path, p.Cli.AtomicFileState] = {}
         for path in normalized_updates:
             path.parent.mkdir(parents=True, exist_ok=True)
             observed = u.Cli.atomic_read_binary_file_state(

@@ -23,18 +23,18 @@ snapshots:
       style: secondary
       start: 0
       end: 165
-  "from flext_ldap import m\nfrom typing import ClassVar\nfrom algar_sample import c\nclass C:\n    model_config: ClassVar[c.ConfigDict] = c.ConfigDict(extra=\"forbid\", frozen=True)\n":
+  "from flext_ldap import m\nfrom typing import ClassVar\nfrom acme_sample import c\nclass C:\n    model_config: ClassVar[c.ConfigDict] = c.ConfigDict(extra=\"forbid\", frozen=True)\n":
     fixed: |
       from flext_ldap import m
       from typing import ClassVar
-      from algar_sample import c
+      from acme_sample import c
       class C:
           model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
     labels:
     - source: "model_config: ClassVar[c.ConfigDict] = c.ConfigDict(extra=\"forbid\", frozen=True)"
       style: primary
-      start: 93
-      end: 173
+      start: 92
+      end: 172
     - source: from flext_ldap import m
       style: secondary
       start: 0
@@ -42,12 +42,12 @@ snapshots:
     - source: |
         from flext_ldap import m
         from typing import ClassVar
-        from algar_sample import c
+        from acme_sample import c
         class C:
             model_config: ClassVar[c.ConfigDict] = c.ConfigDict(extra="forbid", frozen=True)
       style: secondary
       start: 0
-      end: 174
+      end: 173
   "from sample import c, m, p, t\nfrom typing import ClassVar\nclass D:\n    model_config: ClassVar[c.ConfigDict] = c.ConfigDict(\n        frozen=True,\n        extra=\"forbid\",\n    )\n":
     fixed: |
       from sample import c, m, p, t

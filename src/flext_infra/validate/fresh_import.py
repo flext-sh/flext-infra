@@ -13,13 +13,16 @@ from __future__ import annotations
 import sys
 from collections.abc import Iterable, Mapping, MutableSequence, Sequence
 from concurrent.futures import ThreadPoolExecutor
+from importlib import import_module
 from inspect import getsource
 from pathlib import Path
 from textwrap import dedent, indent
 from types import ModuleType
-from typing import Annotated, override
+from typing import Annotated, cast, override
 
+from flext_core import resolve_lazy_members
 from pydantic.warnings import UnsupportedFieldAttributeWarning
+from typing_extensions import TypeForm
 
 from flext_infra import c, config, m, p, r, s, settings, t, u
 from flext_infra.workspace._environment.provenance_module_source import (
@@ -88,7 +91,11 @@ class FlextInfraValidateFreshImport(s[bool]):
     def _project_layouts(
         repository_roots: Sequence[Path],
     ) -> p.Result[tuple[p.Infra.RopeProjectLayout, ...]]:
-        """Resolve one Rope layout per requested repository root.
+        """Resolve package layouts without treating explicit non-packages as packages.
+
+        A missing layout is accepted only when the native project metadata
+        explicitly declares ``tool.uv.package = false``. Invalid metadata and
+        every other missing package layout remain failures.
 
         Returns:
             The resulting project layouts.
@@ -98,6 +105,13 @@ class FlextInfraValidateFreshImport(s[bool]):
         for root in repository_roots:
             layout = u.Infra.layout(root)
             if layout is None:
+                metadata = u.Infra.read_project_metadata_state(root)
+                if metadata.failure:
+                    return r[tuple[p.Infra.RopeProjectLayout, ...]].from_failure(
+                        metadata
+                    )
+                if metadata.value.packaging.uv_package is False:
+                    continue
                 return r[tuple[p.Infra.RopeProjectLayout, ...]].fail(
                     f"fresh-import has no Python layout for {root}",
                 )
@@ -307,7 +321,7 @@ class FlextInfraValidateFreshImport(s[bool]):
         # ``-B``: a validator never writes into the checkout it validates, so
         # the probed sources leave no bytecode cache behind.
         def run_probe(
-            indexed: tuple[int, m.Infra.FreshImportProbe],
+            indexed: tuple[int, p.Infra.FreshImportProbe],
         ) -> p.Result[p.Cli.CommandOutput]:
             index, probe = indexed
             u.Cli.info(f"fresh-import: probe {index} start {probe.subject}")
@@ -371,18 +385,22 @@ class FlextInfraValidateFreshImport(s[bool]):
             + "import os, sysconfig\n"
             "from collections.abc import Iterable, Mapping, MutableSequence, Sequence\n"
             "from contextlib import ExitStack\n"
+            "from importlib import import_module\n"
             "from importlib.machinery import BuiltinImporter, ExtensionFileLoader, "
             "FrozenImporter, ModuleSpec\n"
             "from sys import modules\n"
             "from types import ModuleType\n"
             "from pydantic.warnings import UnsupportedFieldAttributeWarning\n"
-            "from flext_core import c, p, r, t, u\n"
+            "from typing import cast\n"
+            "from typing_extensions import TypeForm\n"
+            "from flext_core import c, p, r, resolve_lazy_members, t, u\n"
             + getsource(FlextInfraWorkspaceEnvironmentProvenanceModuleSource)
             + "\nclass FlextInfraValidateFreshImport:\n"
             + "\n".join(
                 indent(dedent(getsource(method)), "    ")
                 for method in (
                     FlextInfraValidateFreshImport.require_complete_models,
+                    FlextInfraValidateFreshImport.require_complete_standin,
                     FlextInfraValidateFreshImport._require_schema_fields,
                 )
             )
@@ -402,7 +420,9 @@ class FlextInfraValidateFreshImport(s[bool]):
         use would. An annotation that stays unresolved (a ``TYPE_CHECKING``-
         only type, a misspelled name) still fails that build, and pydantic's
         own error escapes unchanged naming the unresolved name. Inherited
-        classes belong to their own package's probe.
+        classes belong to their own package's probe. Every deferred member
+        along a reached class's MRO resolves first, so a broken deferred
+        capability fails exactly as its eager import would.
 
         """
         package = module.__name__.partition(".")[0]
@@ -418,6 +438,8 @@ class FlextInfraValidateFreshImport(s[bool]):
             if klass in seen or not klass.__module__.startswith(prefix):
                 continue
             seen.add(klass)
+            resolve_lazy_members(klass)
+            FlextInfraValidateFreshImport.require_complete_standin(klass)
             if vars(klass).get("__pydantic_complete__") is False:
                 incomplete.append(klass)
             pending.extend(
@@ -437,6 +459,47 @@ class FlextInfraValidateFreshImport(s[bool]):
         FlextInfraValidateFreshImport._require_schema_fields(package, seen)
         for klass in owned:
             u.type_adapter(klass).rebuild(raise_errors=True)
+
+    @staticmethod
+    def require_complete_standin(klass: type) -> None:
+        """Fail when a stand-in does not list the runtime namespace of its class.
+
+        A stand-in carries its real class's module and qualified name. Every
+        non-dunder name the real class exposes at runtime, including names
+        bound by unpacking, decorators or ``setattr``, must be exposed by the
+        stand-in, and nothing else (root ADR-018 stand-in composition law,
+        rule 2). A real class is its own counterpart and passes unchanged.
+
+        Raises:
+            AttributeError: If the two runtime namespaces differ.
+
+        """
+        real = sys.modules.get(klass.__module__)
+        if real is None:
+            # A deferred stand-in carries its owner module's name while the lazy
+            # facade has not imported that module yet; the probe resolves the
+            # owner first, exactly as the class's first eager use would.
+            real = import_module(klass.__module__)
+        for part in klass.__qualname__.split("."):
+            real = getattr(real, part)
+        if real is klass:
+            return
+        standin_names, real_names = (
+            {
+                name
+                for name in dir(target)
+                if not (name.startswith("__") and name.endswith("__"))
+            }
+            for target in (klass, real)
+        )
+        if standin_names != real_names:
+            msg = (
+                f"stand-in {klass.__module__}.{klass.__qualname__} differs from "
+                f"its real class: missing {sorted(real_names - standin_names)}, "
+                f"extra {sorted(standin_names - real_names)}; fix: run make gen "
+                "(ADR-018 stand-in composition law, rule 2)"
+            )
+            raise AttributeError(msg)
 
     @staticmethod
     def _require_schema_fields(package: str, classes: Iterable[type]) -> None:
@@ -491,7 +554,7 @@ class FlextInfraValidateFreshImport(s[bool]):
                     }
                     | {klass.__name__: klass}
                 )
-                u.type_adapter(probe_subclass).rebuild(
+                u.type_adapter(cast(TypeForm[object], probe_subclass)).rebuild(
                     force=True,
                     raise_errors=True,
                     _types_namespace=parent_namespace,
@@ -532,10 +595,11 @@ class FlextInfraValidateFreshImport(s[bool]):
                             "__pydantic_fields__" in vars(annotation)
                         ):
                             # A model field type builds in its own module namespace.
-                            u.type_adapter(annotation)
+                            u.type_adapter(cast(TypeForm[object], annotation))
                         else:
                             u.type_adapter(
-                                annotation, config={"defer_build": True}
+                                cast(TypeForm[object], annotation),
+                                config={"defer_build": True},
                             ).rebuild(
                                 force=True,
                                 raise_errors=True,

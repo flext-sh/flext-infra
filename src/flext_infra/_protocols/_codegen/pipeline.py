@@ -8,13 +8,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from flext_cli import FlextCliProtocols
 
-from flext_infra._protocols import FlextInfraProtocolsBase, FlextInfraProtocolsMixins
+from flext_infra._protocols import FlextInfraProtocolsBase
 
 if TYPE_CHECKING:
     from flext_cli import p
@@ -34,8 +34,42 @@ class FlextInfraProtocolsCodegenPipeline:
     """Own the structural contracts declared by its model source."""
 
     @runtime_checkable
-    class CodegenCommand(FlextInfraProtocolsMixins.WriteMixin, Protocol):
+    class CodegenCommand(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
+
+        @property
+        def repository_root(self) -> Path:
+            """Repository root."""
+            ...
+
+        @property
+        def projects(self) -> Sequence[str] | None:
+            """Projects to process; repeat --projects NAME as needed."""
+            ...
+
+        @property
+        def verbose(self) -> bool:
+            """Verbose output."""
+            ...
+
+        @property
+        def apply(self) -> bool:
+            """Apply changes instead of running in dry-run mode."""
+            ...
+
+        @property
+        def gates(self) -> Sequence[str]:
+            """Structural member projected from the owning model.
+
+            Gate names for post-transform validation; empty resolves the requested
+            gate set from the typed Make spec at runtime.
+            """
+            ...
+
+        @property
+        def dry_run(self) -> bool:
+            """Whether writes are disabled (inverse of apply)."""
+            ...
 
         @property
         def check_only(self) -> bool:
@@ -81,6 +115,25 @@ class FlextInfraProtocolsCodegenPipeline:
             ...
 
     @runtime_checkable
+    class CodegenRootSelection(FlextCliProtocols.BaseModel, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def workspace_root(self) -> Path:
+            """Resolved workspace root."""
+            ...
+
+        @property
+        def requested_root(self) -> Path:
+            """Resolved requested generation root."""
+            ...
+
+        @property
+        def members(self) -> tuple[Path, ...]:
+            """Resolved declared member checkouts."""
+            ...
+
+    @runtime_checkable
     class CodegenRepositoryPlanOutcome(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
@@ -106,10 +159,7 @@ class FlextInfraProtocolsCodegenPipeline:
     class CodegenPlan(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def request(self) -> FlextInfraProtocolsConfigArtifact.CodegenGenerateRequest:
-            """Validated public request."""
-            ...
+        request: FlextInfraProtocolsConfigArtifact.CodegenGenerateRequest
 
         @property
         def repositories(
@@ -200,22 +250,9 @@ class FlextInfraProtocolsCodegenPipeline:
     class CodegenConformState(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def source_inputs(self) -> Mapping[Path, p.Cli.AtomicFileState]:
-            """Original source witnesses retained after native planning."""
-            ...
-
-        @property
-        def source_imports(self) -> dict[Path, tuple[frozenset[str], frozenset[str]]]:
-            """Original runtime and typing import facts of captured sources."""
-            ...
-
-        @property
-        def request(
-            self,
-        ) -> FlextInfraProtocolsConfigArtifact.CodegenGenerateRequest | None:
-            """Validated projection request retained by reference."""
-            ...
+        source_inputs: dict[Path, p.Cli.AtomicFileState]
+        source_imports: dict[Path, tuple[frozenset[str], frozenset[str]]]
+        request: FlextInfraProtocolsConfigArtifact.CodegenGenerateRequest | None
 
         @property
         def provider_plans(
@@ -225,32 +262,10 @@ class FlextInfraProtocolsCodegenPipeline:
             ...
 
         repository_root: Path
-
-        @property
-        def initial_workspace(
-            self,
-        ) -> FlextInfraProtocolsConfigWorkspace.WorkspaceSpec | None:
-            """Declared scaffold specification."""
-            ...
-
-        @property
-        def ports(
-            self,
-        ) -> FlextInfraProtocolsCodegenPipeline.CodegenConformPorts | None:
-            """Facade-bound docs planning."""
-            ...
-
-        @property
-        def docs_planner(self) -> FlextInfraProtocolsBase.DocsArtifactPlanner | None:
-            """Actual planner before effects."""
-            ...
-
-        @property
-        def snapshot(
-            self,
-        ) -> FlextInfraProtocolsWorkspaceSnapshot.WorkspaceSnapshot | None:
-            """The run's one workspace snapshot; present while repositories plan."""
-            ...
+        initial_workspace: FlextInfraProtocolsConfigWorkspace.WorkspaceSpec | None
+        ports: FlextInfraProtocolsCodegenPipeline.CodegenConformPorts | None
+        docs_planner: FlextInfraProtocolsBase.DocsArtifactPlanner | None
+        snapshot: FlextInfraProtocolsWorkspaceSnapshot.WorkspaceSnapshot | None
 
 
 __all__: list[str] = [

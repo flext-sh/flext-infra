@@ -10,7 +10,7 @@ from collections.abc import Iterator
 from typing import TYPE_CHECKING
 
 from flext_infra import FlextInfraCli
-from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
+from flext_infra.check import FlextInfraWorkspaceChecker
 from tests import c, r, tm, u
 
 if TYPE_CHECKING:
@@ -131,10 +131,9 @@ class TestsFlextInfraWorkspaceChecker:
         result = FlextInfraWorkspaceChecker(repository_root=tmp_path).resolve_gates([
             "lint",
             "pyrefly",
-            "mypy",
-            "pyright",
+            "format",
         ])
-        tm.ok(result, eq=["lint", "pyrefly", "mypy", "pyright"])
+        tm.ok(result, eq=["lint", "pyrefly", "format"])
 
     @staticmethod
     def test_resolve_gates_rejects_a_repeated_gate(tmp_path: Path) -> None:

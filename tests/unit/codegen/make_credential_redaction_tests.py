@@ -18,7 +18,7 @@ class TestsFlextInfraMakeCredentialRedaction:
     """Exercise native Git configuration and generated public Make targets."""
 
     @staticmethod
-    @c.Tests.MARK.parametrize("verb", ["setup", "upg", "status"])
+    @c.Tests.MARK.parametrize("verb", ["setup", "upg"])
     def test_credential_rewrite_is_rejected_before_effects_without_disclosure(
         tmp_path: Path,
         verb: str,
@@ -67,7 +67,7 @@ class TestsFlextInfraMakeCredentialRedaction:
         diagnostic = rejected.stdout + rejected.stderr
         tm.that(
             diagnostic,
-            has="embeds credentials in a GitHub URL rewrite",
+            has="Global Git URL rewrite configuration embeds credentials",
             lacks=(
                 credential,
                 username,

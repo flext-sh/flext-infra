@@ -2,7 +2,7 @@
 
 A mirror whose contracts reference sibling contracts through the holder it
 declares (``Holder.Item``) must not import that holder back from its family
-package: the import shadows the class it then redeclares (mypy ``no-redef``)
+package: the import shadows the class it then redeclares (a redefinition)
 and every facade route through it becomes undefined. Two inputs produced it:
 a nested package (``infra.contracts``) whose declaring module was named from
 its parent directory, and a source model that imports the holder itself.

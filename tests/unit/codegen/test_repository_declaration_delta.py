@@ -75,17 +75,23 @@ class TestsFlextInfraRepositoryDeclarationDelta:
         for kind in c.Infra.ProjectKind:
             for state in c.Infra.RepositoryState:
                 for codegen in c.Infra.CodegenKind:
-                    legacy = m.Infra.WorkspaceManifestSpec(
-                        version=c.Infra.WORKSPACE_MANIFEST_VERSION,
-                        name=repository.name,
-                        repository=repository.model_copy(
-                            update={"kind": kind, "state": state, "codegen": codegen},
+                    legacy = m.Infra.WorkspaceManifestSpec.model_validate({
+                        "version": (c.Infra.WORKSPACE_MANIFEST_VERSION),
+                        "name": (repository.name),
+                        "repository": (
+                            repository.model_copy(
+                                update={
+                                    "kind": kind,
+                                    "state": state,
+                                    "codegen": codegen,
+                                },
+                            )
                         ),
-                    )
+                    })
 
                     declaration = tm.ok(u.Infra.repository_declaration_delta(legacy))
 
-                    tm.ok(declaration.kind is kind)
+                    tm.fail("kind" in declaration.model_dump())
                     tm.ok(declaration.state is state)
                     tm.ok(declaration.codegen is codegen)
 
@@ -105,14 +111,14 @@ class TestsFlextInfraRepositoryDeclarationDelta:
             provider=repository.provider,
             branch=config.Infra.codegen.branch_policy.integration_branch,
         )
-        legacy = m.Infra.WorkspaceManifestSpec(
-            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
-            name=repository.name,
-            repository=repository,
-            project=project,
-            integration=integration,
-            namespace_scan_dirs=config.Infra.source_scan.roots,
-        )
+        legacy = m.Infra.WorkspaceManifestSpec.model_validate({
+            "version": (c.Infra.WORKSPACE_MANIFEST_VERSION),
+            "name": (repository.name),
+            "repository": (repository),
+            "project": (project),
+            "integration": (integration),
+            "namespace_scan_dirs": (config.Infra.source_scan.roots),
+        })
 
         declaration = tm.ok(u.Infra.repository_declaration_delta(legacy))
         portable = m.Infra.RepositoryDeltaSpec.model_validate_json(
@@ -151,13 +157,13 @@ class TestsFlextInfraRepositoryDeclarationDelta:
             beads_enabled=False,
             ci_enabled=True,
         )
-        legacy = m.Infra.WorkspaceManifestSpec(
-            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
-            name=repository.name,
-            repository=repository,
-            project=project,
-            repository_policy_overlays=(overlay,),
-        )
+        legacy = m.Infra.WorkspaceManifestSpec.model_validate({
+            "version": (c.Infra.WORKSPACE_MANIFEST_VERSION),
+            "name": (repository.name),
+            "repository": (repository),
+            "project": (project),
+            "repository_policy_overlays": ((overlay,)),
+        })
 
         declaration = tm.ok(u.Infra.repository_declaration_delta(legacy))
 
@@ -174,12 +180,12 @@ class TestsFlextInfraRepositoryDeclarationDelta:
     ) -> None:
         """Changing composition does not change a repository's own configuration."""
         repository = u.Tests.repository_ref(tmp_path.name)
-        legacy = m.Infra.WorkspaceManifestSpec(
-            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
-            name=repository.name,
-            repository=repository,
-            project=u.Tests.project_spec(repository.distribution),
-        )
+        legacy = m.Infra.WorkspaceManifestSpec.model_validate({
+            "version": (c.Infra.WORKSPACE_MANIFEST_VERSION),
+            "name": (repository.name),
+            "repository": (repository),
+            "project": (u.Tests.project_spec(repository.distribution)),
+        })
         member = u.Tests.repository_ref(f"{tmp_path.name}-member").model_copy(
             update={"path": Path("member")},
         )

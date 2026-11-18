@@ -29,4 +29,8 @@ install_lazy_exports(
         "TestsFlextInfraModelsSemanticCutover": ".semantic_cutover",
     },
     public_exports=__all__,
+    deferred_members=(
+        "TestsFlextInfraModelsBase",
+        "TestsFlextInfraModelsSemanticCutover",
+    ),
 )

@@ -21,6 +21,7 @@ if TYPE_CHECKING:
 
 
 class FlextInfraConstantsGit:
+    GITMODULES_FILENAME: ClassVar[str] = ".gitmodules"
     """Git-specific constants for the GitPython-backed facet."""
 
     GIT_COMMIT_OID_RE: ClassVar[t.RegexPattern] = re.compile(
@@ -33,8 +34,6 @@ class FlextInfraConstantsGit:
     )
     "A ref naming a commit, abbreviated or full, rather than an integration line."
 
-    GIT_UNBORN_HEAD_ERROR_CODE: ClassVar[str] = "GIT_UNBORN_HEAD"
-    "Identity is unavailable because HEAD names a branch that has no ref yet."
     GIT_UNBORN_HEAD_MARKER: ClassVar[str] = "UNBORN"
     "Fingerprint input standing for HEAD when the current branch has no commit."
     GIT_REF_MISSING_EXIT_CODE: ClassVar[int] = 2
@@ -144,48 +143,11 @@ class FlextInfraConstantsGit:
     GIT_REV_PARSE_ABSOLUTE_PATHS: ClassVar[str] = "--path-format=absolute"
     "``git rev-parse`` option that prints the path queries following it as absolute."
 
-    # --- Lane hygiene audit (stashes, merged branches, orphan worktrees) ---
-
-    @unique
-    class LaneViolationKind(StrEnum):
-        """Classes of lane accumulation the lane hygiene audit rejects."""
-
-        STASH = "stash"
-        MERGED_BRANCH = "merged-branch"
-        TEMP_WORKTREE = "temp-worktree"
-        MISSING_WORKTREE = "missing-worktree"
-        MERGED_WORKTREE = "merged-worktree"
-        DETACHED_WORKTREE = "detached-worktree"
-
-    GIT_LANE_VIOLATION_REMEDY: ClassVar[Mapping[LaneViolationKind, str]] = (
-        MappingProxyType({
-            LaneViolationKind.STASH: (
-                "preserve every stash parent, index and untracked object; "
-                "coordinate validated integration before authorized retirement"
-            ),
-            LaneViolationKind.MERGED_BRANCH: (
-                "prove published integration ancestry, preservation and inactive "
-                "ownership before authorizing retirement of {ref}"
-            ),
-            LaneViolationKind.TEMP_WORKTREE: (
-                "adjudicate registered ownership and preserve all content at {ref}; "
-                "temporary location alone never authorizes removal"
-            ),
-            LaneViolationKind.MISSING_WORKTREE: (
-                "preserve registry and Git objects for {ref}; coordinator must "
-                "prove recovery and integration before authorized registry retirement"
-            ),
-            LaneViolationKind.MERGED_WORKTREE: (
-                "prove published ancestry, clean index/untracked content and "
-                "inactive unlocked ownership before authorized retirement of {ref}"
-            ),
-            LaneViolationKind.DETACHED_WORKTREE: (
-                "prove registered ownership and preserve detached content at {ref}; "
-                "never infer permission to discard it"
-            ),
-        })
-    )
-    "Fix instruction per lane violation class; ``{ref}`` names the offender."
+    GIT_PROJECTION_ATTRIBUTES: ClassVar[Mapping[str, str]] = MappingProxyType({
+        "merge": "unset",
+        "linguist-generated": "set",
+    })
+    "``git check-attr`` values ``.gitattributes`` gives a regenerated full projection."
 
     # --- Linked-worktree registry (filesystem discovery, no Git subprocess) ---
 

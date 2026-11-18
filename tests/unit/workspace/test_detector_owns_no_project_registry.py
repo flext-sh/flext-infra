@@ -44,11 +44,11 @@ class TestsFlextInfraDetectorOwnsNoProjectRegistry:
             ValueError,
             match="pending subprojects require managed workspace-relative paths",
         ):
-            m.Infra.WorkspaceSpec(
-                name=repository.name,
-                repository=repository,
-                pending_subprojects=(declaration,),
-            )
+            m.Infra.WorkspaceSpec.model_validate({
+                "name": (repository.name),
+                "repository": (repository),
+                "pending_subprojects": ((declaration,)),
+            })
 
     @staticmethod
     @c.Tests.MARK.parametrize("directory_exists", [False, True])

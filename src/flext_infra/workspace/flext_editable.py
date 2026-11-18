@@ -87,27 +87,13 @@ class FlextInfraWorkspaceFlextEditable:
                 f"FLEXT={request.flext_root} is a local development input; "
                 "CI installs frozen locks only",
             )
-        lock_path = context.value.lock_path
-        return (
-            cls
-            ._elect(
-                runtime_root,
-                request.flext_root.expanduser().resolve(),
-                candidate_environment=environment,
-            )
-            .flat_map(
-                # Each selected source must be the commit the lock pins before
-                # it replaces the locked install (flext-92rpb).
-                lambda selection: (
-                    FlextInfraWorkspaceEnvironment.editable_sources_at_lock(
-                        lock_path, selection.distributions
-                    ).map(lambda _at_lock: selection)
-                )
-            )
-            .flat_map(
-                lambda selection: cls._install(
-                    runtime_root, selection, candidate_environment=environment
-                )
+        return cls._elect(
+            runtime_root,
+            request.flext_root.expanduser().resolve(),
+            candidate_environment=environment,
+        ).flat_map(
+            lambda selection: cls._install(
+                runtime_root, selection, candidate_environment=environment
             )
         )
 
@@ -140,15 +126,9 @@ class FlextInfraWorkspaceFlextEditable:
                 for repository in spec.value.subprojects
             ),
         )
-        # Every distribution the consumer DECLARES and the workspace PROVIDES is
-        # an editable candidate — not only the currently-installed ones. The
-        # frozen sync before this step may have removed a member entirely;
-        # electing from installed
-        # state alone then never restores it and the consumer's pin check fails
-        # forever. The declared-deps intersection keeps workspace members the
-        # consumer does not use (e.g. the umbrella meta-distribution) out of the
-        # receipt — the provenance gate needs an installed distribution per
-        # receipt member.
+        # Direct declarations restore missing installs; native installed metadata
+        # also elects transitive providers. Both use the same workspace sources.
+        # Otherwise a local Core can consume an incompatible locked Web wheel.
         document = u.Cli.toml_read_document(runtime_root / c.PYPROJECT_FILENAME)
         if document.failure:
             return r[tuple[dict[str, Path], tuple[str, ...]]].from_failure(document)
@@ -162,6 +142,11 @@ class FlextInfraWorkspaceFlextEditable:
             for name in u.Infra.declared_dependency_names(document.value)
         }
         declared.add(consumer_name)
+        declared.update(
+            canonicalize_name(distribution)
+            for providers in observed.value.package_distributions.values()
+            for distribution in providers
+        )
         distributions = {
             repository.distribution: (
                 runtime_root
@@ -294,10 +279,25 @@ class FlextInfraWorkspaceFlextEditable:
     ) -> p.Result[int]:
         """Reinstall the selection editable, then publish its receipt.
 
+        The workspace declaration is captured before the installation: this
+        command runs from the distribution it reinstalls, so loading the
+        workspace after the editable install would read the packaged
+        configuration of a distribution whose files were just replaced.
+
         Returns:
             The number of distributions installed editable.
 
         """
+        workspace = FlextInfraWorkspaceDetector.load_workspace_spec(
+            selection.flext_root
+        )
+        if workspace.failure:
+            return r[int].from_failure(workspace)
+        provided = {
+            canonicalize_name(repository.distribution)
+            for repository in (workspace.value.repository, *workspace.value.subprojects)
+            if repository.package
+        }
         uv = u.Infra.managed_mise_binary("uv", runtime_root)
         if uv.failure:
             return r[int].from_failure(uv)
@@ -316,6 +316,7 @@ class FlextInfraWorkspaceFlextEditable:
             selection,
             python=python,
             candidate_environment=candidate_environment,
+            provided=provided,
         )
 
     @classmethod
@@ -326,6 +327,7 @@ class FlextInfraWorkspaceFlextEditable:
         *,
         python: str,
         candidate_environment: Path,
+        provided: set[NormalizedName],
     ) -> p.Result[int]:
         """Verify installed editables and publish their selection receipt.
 
@@ -341,16 +343,6 @@ class FlextInfraWorkspaceFlextEditable:
         )
         if observed.failure:
             return r[int].from_failure(observed)
-        workspace = FlextInfraWorkspaceDetector.load_workspace_spec(
-            selection.flext_root
-        )
-        if workspace.failure:
-            return r[int].from_failure(workspace)
-        provided = {
-            canonicalize_name(repository.distribution)
-            for repository in (workspace.value.repository, *workspace.value.subprojects)
-            if repository.package
-        }
         packages = cls._editable_package_sources(selection, provided, observed.value)
         if packages.failure:
             return r[int].from_failure(packages)

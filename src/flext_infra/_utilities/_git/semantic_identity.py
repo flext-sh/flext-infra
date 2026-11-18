@@ -9,6 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from git import (
+    Git,
     GitCommandError,
     GitCommandNotFound,
     InvalidGitRepositoryError,
@@ -30,18 +31,27 @@ class FlextInfraUtilitiesGitSemanticIdentity(FlextInfraUtilitiesGitRepo):
     def git_identity(
         cls,
         request: p.Infra.GitRepoRequest,
+        *,
+        include_status: bool = True,
     ) -> p.Result[p.Infra.GitIdentityReport]:
         """Return consolidated Git identity for one repository path.
 
         One call replaces 6+ separate queries. Implemented over GitPython
-        native OO API.
+        native OO API. A consumer that reads only topology facts (root, branch,
+        remotes, superproject) elects ``include_status=False`` and the
+        working-tree scan is never executed; the report then carries no
+        porcelain and is not dirty by that unread scan. Every consumer that
+        judges the working tree keeps the default and its exact evidence.
 
         Returns:
             Consolidated Git identity for one repository path.
 
         """
+        opened = cls._open_repo(request.repo_root)
+        if opened.failure:
+            return r[p.Infra.GitIdentityReport].from_failure(opened)
+        repo = opened.value
         try:
-            repo = cls._repo(request.repo_root)
             primary = cls._git_primary_worktree_root_path(request.repo_root)
             if primary.failure:
                 return r[p.Infra.GitIdentityReport].from_failure(primary)
@@ -49,6 +59,7 @@ class FlextInfraUtilitiesGitSemanticIdentity(FlextInfraUtilitiesGitRepo):
                 repo,
                 primary_root=primary.value,
                 requested_path=request.repo_root,
+                include_status=include_status,
             )
         except GitCommandError as exc:
             return r[p.Infra.GitIdentityReport].fail(str(exc), exception=exc)
@@ -58,6 +69,52 @@ class FlextInfraUtilitiesGitSemanticIdentity(FlextInfraUtilitiesGitRepo):
                 exception=exc,
             )
         return r[p.Infra.GitIdentityReport].ok(report)
+
+    @classmethod
+    def repository_cache_namespace(cls, path: Path) -> p.Result[str]:
+        """Return the checkout-independent identity of ``path`` inside its repository.
+
+        The identity is the canonical origin remote (shared by every clone and
+        every linked worktree), or the Git common directory when the repository
+        has no origin (shared by every linked worktree), joined with the path
+        relative to the repository root. A directory outside every Git
+        repository is its own identity: its physical path. Unlike
+        ``git_identity`` this probes names only and never runs ``git status``.
+
+        Returns:
+            The identity text, or the failure of a genuine Git probe error.
+
+        """
+        resolved = path.expanduser().resolve(strict=True)
+        inside = cls.git_is_inside_work_tree(m.Infra.GitRepoRequest(repo_root=resolved))
+        if inside.failure:
+            return r[str].from_failure(inside)
+        if not inside.value.value:
+            return r[str].ok(str(resolved))
+        try:
+            with cls._repo(resolved) as repo:
+                toplevel = Path(
+                    repo.working_tree_dir or str(repo.working_dir)
+                ).resolve()
+                origin = next(
+                    (
+                        remote.url
+                        for remote in repo.remotes
+                        if remote.name == c.Infra.GIT_DEFAULT_REMOTE
+                    ),
+                    None,
+                )
+                identity = (
+                    FlextInfraUtilitiesGitRemote.canonical_origin_remote(origin)
+                    if origin
+                    else str(Path(repo.common_dir).resolve())
+                )
+        except (GitCommandError, GitCommandNotFound, OSError, ValueError) as exc:
+            return r[str].fail(
+                f"failed to resolve repository cache namespace: {exc}",
+                exception=exc,
+            )
+        return r[str].ok(f"{identity}\0{resolved.relative_to(toplevel).as_posix()}")
 
     @staticmethod
     def _git_head_is_unborn(repo: Repo) -> bool:
@@ -129,8 +186,11 @@ class FlextInfraUtilitiesGitSemanticIdentity(FlextInfraUtilitiesGitRepo):
             The authenticated Git directory, or the causal topology failure.
 
         """
+        opened = cls._open_repo(requested)
+        if opened.failure:
+            return r[Path].from_failure(opened)
         try:
-            with cls._repo(requested) as repo:
+            with opened.value as repo:
                 return cls._exact_worktree_control(repo, requested)
         except (GitCommandError, GitCommandNotFound, OSError, ValueError) as exc:
             return r[Path].fail(
@@ -219,8 +279,13 @@ class FlextInfraUtilitiesGitSemanticIdentity(FlextInfraUtilitiesGitRepo):
         try:
             return r[p.Infra.GitBoolReport].ok(
                 m.Infra.GitBoolReport(
-                    value=not repo.bare and repo.working_tree_dir is not None,
+                    value=Git(resolved).rev_parse("--is-inside-work-tree") == "true",
                 ),
+            )
+        except (GitCommandError, GitCommandNotFound, OSError, ValueError) as exc:
+            return r[p.Infra.GitBoolReport].fail(
+                f"failed to probe Git work tree: {exc}",
+                exception=exc,
             )
         finally:
             repo.close()
@@ -302,8 +367,13 @@ class FlextInfraUtilitiesGitSemanticIdentity(FlextInfraUtilitiesGitRepo):
         *,
         primary_root: Path,
         requested_path: Path | None = None,
+        include_status: bool = True,
     ) -> p.Infra.GitIdentityReport:
         """Collect GitPython-native identity facts into one report.
+
+        The working-tree scan is the dominant cost of this call and only its
+        dirty verdict consumers read. ``include_status=False`` skips it for the
+        topology-only readers and reports no porcelain.
 
         Returns:
             The resulting ``m.Infra.GitIdentityReport``.
@@ -313,7 +383,11 @@ class FlextInfraUtilitiesGitSemanticIdentity(FlextInfraUtilitiesGitRepo):
         working_tree = Path(repo.working_tree_dir or str(repo.working_dir)).resolve()
         git_dir = Path(repo.git_dir).resolve()
         common_dir = Path(repo.common_dir).resolve()
-        porcelain = repo.git.status("--porcelain", "--untracked-files=all")
+        porcelain = (
+            repo.git.status("--porcelain", "--untracked-files=all")
+            if include_status
+            else ""
+        )
         branch = None if repo.head.is_detached else repo.active_branch.name
         origin_remote, upstream_remote = cls._redacted_remotes(repo)
         superproject, is_attached_submodule = cls._superproject_root(

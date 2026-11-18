@@ -17,6 +17,7 @@ from flext_infra import u
 
 if TYPE_CHECKING:
     from collections.abc import Generator
+    from pathlib import Path
 
     from flext_infra import t
 
@@ -61,6 +62,30 @@ class FlextInfraPytestCollection:
     def pytest_configure(config: t.Infra.Pytest.Config) -> None:
         """Pin testmon outside the checkout and record warnings once."""
         u.Infra.collection_configure(config)
+
+    @classmethod
+    @u.Infra.Pytest.hookimpl(tryfirst=True)
+    def pytest_ignore_collect(
+        cls,
+        collection_path: Path,
+        config: t.Infra.Pytest.Config,
+    ) -> bool | None:
+        """Keep Testmon's stable files collected in the selection collection.
+
+        Returns:
+            The veto result of the other plugins, or no opinion.
+
+        """
+        return u.Infra.collection_keep_stable_files(collection_path, config, cls)
+
+    @staticmethod
+    @u.Infra.Pytest.hookimpl(trylast=True)
+    def pytest_collection_modifyitems(
+        config: t.Infra.Pytest.Config,
+        items: list[t.Infra.Pytest.Item],
+    ) -> None:
+        """Record the complete inventory ahead of Testmon's deselection."""
+        u.Infra.collection_record_inventory(config, items)
 
     @staticmethod
     @u.Infra.Pytest.hookimpl(optionalhook=True)

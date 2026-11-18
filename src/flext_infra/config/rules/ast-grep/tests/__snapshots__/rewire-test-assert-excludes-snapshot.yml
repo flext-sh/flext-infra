@@ -1,5 +1,12 @@
 id: rewire-test-assert-excludes
 snapshots:
+  assert left not in right:
+    fixed: tm.that(right, lacks=left)
+    labels:
+    - source: assert left not in right
+      style: primary
+      start: 0
+      end: 24
   "from tests import tm\nassert (\n    \"a long expected fragment\"\n    not in observed\n)\n":
     fixed: |
       from tests import tm
@@ -13,19 +20,6 @@ snapshots:
       style: primary
       start: 21
       end: 82
-    - source: from tests import tm
-      style: secondary
-      start: 0
-      end: 20
-    - source: |
-        from tests import tm
-        assert (
-            "a long expected fragment"
-            not in observed
-        )
-      style: secondary
-      start: 0
-      end: 83
   "from tests import tm\nassert left not in right\n":
     fixed: |
       from tests import tm
@@ -35,13 +29,3 @@ snapshots:
       style: primary
       start: 21
       end: 45
-    - source: from tests import tm
-      style: secondary
-      start: 0
-      end: 20
-    - source: |
-        from tests import tm
-        assert left not in right
-      style: secondary
-      start: 0
-      end: 46

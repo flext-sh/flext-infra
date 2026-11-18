@@ -51,4 +51,12 @@ install_lazy_exports(
         "FlextInfraUtilitiesImportLawRoutes": ".routes",
     },
     public_exports=__all__,
+    deferred_members=(
+        "FlextInfraUtilitiesImportLawAst",
+        "FlextInfraUtilitiesImportLawGraph",
+        "FlextInfraUtilitiesImportLawNormalization",
+        "FlextInfraUtilitiesImportLawPlacement",
+        "FlextInfraUtilitiesImportLawPolicy",
+        "FlextInfraUtilitiesImportLawRoutes",
+    ),
 )

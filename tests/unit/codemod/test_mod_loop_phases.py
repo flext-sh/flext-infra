@@ -18,9 +18,7 @@ from flext_infra.codemod.loop import (
     FlextInfraCodemodLoopPhaseAccessorRename,
     FlextInfraCodemodLoopPhaseNamespaceRelocation,
 )
-from flext_infra.refactor.accessor_migration import (
-    FlextInfraAccessorMigrationOrchestrator,
-)
+from flext_infra.refactor import FlextInfraAccessorMigrationOrchestrator
 from tests import c, m, p, tm, u
 
 _FIRST_RENAME = FlextInfraAccessorMigrationOrchestrator.automated_rules()[0]

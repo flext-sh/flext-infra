@@ -1,0 +1,51 @@
+{#- Hand Git the minted installation token for the declared repositories
+    only, through native process configuration. A standalone job runs it
+    after its own checkout; an attached member runs it right after the
+    superproject checkout, before any member fetch. -#}
+{%- if private_dependency_auth %}
+
+      - name: Authenticate git for private dependencies
+        shell: bash
+        working-directory: .
+        env:
+          PRIVATE_DEPENDENCY_TOKEN: {% raw %}${{ steps.private_dependency_token.outputs.token }}{% endraw %}
+        run: |
+          set -euo pipefail
+          : "${GITHUB_ENV:?GITHUB_ENV is required for private dependency identity}"
+          : "${GITHUB_REPOSITORY_OWNER:?GITHUB_REPOSITORY_OWNER is required}"
+          count="${GIT_CONFIG_COUNT:-0}"
+          if [[ ! "${count}" =~ ^(0|[1-9][0-9]{0,9})$ ]]; then
+            echo "::error::GIT_CONFIG_COUNT must be a non-negative decimal integer"
+            exit 1
+          fi
+          if (( count > 2147483647 - {{ private_dependency_auth.repositories | length * 2 }} )); then
+            echo "::error::private dependency configuration exceeds Git's entry limit"
+            exit 1
+          fi
+          # Let Git validate inherited entries without displaying their values.
+          git config --list --name-only > /dev/null
+          repositories=(
+{% for repository in private_dependency_auth.repositories %}
+            '{{ repository | replace("'", "'\"'\"'") }}'
+{% endfor %}
+          )
+          for repository in "${repositories[@]}"; do
+            if [[ ! "${repository}" =~ ^[A-Za-z0-9_.-]+$ || "${repository}" == . || "${repository}" == .. ]]; then
+              echo "::error::private dependency repositories must be repository names"
+              exit 1
+            fi
+          done
+          authorization="$(printf 'x-access-token:%s' "${PRIVATE_DEPENDENCY_TOKEN}" | base64 | tr -d '\n')"
+          printf '::add-mask::%s\n' "${authorization}"
+          for repository in "${repositories[@]}"; do
+            # Both canonical HTTPS spellings use the same minted identity.
+            for suffix in '' '.git'; do
+              printf 'GIT_CONFIG_KEY_%s=http.https://github.com/%s/%s%s.extraheader\n' \
+                "${count}" "${GITHUB_REPOSITORY_OWNER}" "${repository}" "${suffix}" >> "${GITHUB_ENV}"
+              printf 'GIT_CONFIG_VALUE_%s=AUTHORIZATION: basic %s\n' \
+                "${count}" "${authorization}" >> "${GITHUB_ENV}"
+              count=$((count + 1))
+            done
+          done
+          printf 'GIT_CONFIG_COUNT=%s\n' "${count}" >> "${GITHUB_ENV}"
+{%- endif -%}

@@ -38,21 +38,14 @@ class FlextInfraConstantsDocs:
             "Structural member projected from the owning model.",
             "Membro estrutural projetado do modelo responsável.",
         )
-        MODEL_PROTOCOL_CONFORMANCE = (
-            "Static instance-to-protocol evidence required by candidate admission.",
-            (
-                "Prova estática de instância para protocolo exigida no aceite "
-                "do candidato."
-            ),
-        )
         VERSION = ("Version", "Versão")
         PROJECT_CLASS = ("Project class", "Classe do projeto")
         PACKAGE = ("Package", "Pacote")
         PACKAGE_DOCSTRING = ("{package_name} package.", "Pacote {package_name}.")
         DESCRIPTION = ("Description", "Descrição")
         UNKNOWN = ("unknown", "desconhecida")
-        NOT_DECLARED = ("_not declared_", "_não declarado_")
-        NONE = ("_none_", "_nenhum_")
+        NOT_DECLARED = ("*not declared*", "*não declarado*")
+        NONE = ("*none*", "*nenhum*")
         MORE = ("more", "a mais")
         COLLECTION_RULES = ("Collection Rules", "Regras da coleção")
         COLLECTION_BODY = (
@@ -280,6 +273,10 @@ class FlextInfraConstantsDocs:
             "_No public modules discovered._",
             "_Nenhum módulo público encontrado._",
         )
+        NO_PUBLIC_API = (
+            "_No package here: the API is the consumed distribution's._",
+            "_Sem pacote próprio: a API é a da distribuição consumida._",
+        )
         DARK_MODE = ("Switch to dark mode", "Alternar para o modo escuro")
         LIGHT_MODE = ("Switch to light mode", "Alternar para o modo claro")
         ROOT_SITE_DESCRIPTION = (
@@ -303,6 +300,8 @@ class FlextInfraConstantsDocs:
             """
             return self.value[1 if language == "pt-BR" else 0]
 
+    DOCS_ENGINE_MODULE: ClassVar[str] = "properdocs"
+    "Docs engine run as ``python -m``; its CLI installs the MkDocs plugin alias."
     DEFAULT_DOCS_OUTPUT_DIR: ClassVar[str] = ".reports/docs"
     "Rooted exclusions: the project README mirror and the curated API mirror."
     # Registered docs CLI action names; make.docs.actions must stay inside this
@@ -355,6 +354,7 @@ class FlextInfraConstantsDocs:
         "undocumented-public-init",
         "missing-copyright-notice",
         "implicit-namespace-package",
+        "shebang-not-executable",
         "print",
         "assert",
         "boolean-positional-value-in-call",
@@ -366,6 +366,8 @@ class FlextInfraConstantsDocs:
     )
     """Only module-header (docstring, copyright notice) and package rules are
     inapplicable to a standalone Markdown fence, which is not a module file;
+    a fence is materialized as one non-executable temporary file for the
+    native batch, so a shebang in its content has no executable-file contract;
     the pydocstyle public-surface family is inapplicable for the same reason
     (the surrounding prose is the fence's documentation), as is the
     docstring-completeness contract (example helpers keep their one-line
@@ -457,7 +459,7 @@ class FlextInfraConstantsDocs:
     """Match direct pytest execution that bypasses the root Testmon verb."""
     DOCS_RAW_TOOL_COMMAND_RE: ClassVar[t.RegexPattern] = re.compile(
         r"^\s*(?:\$\s*)?(?:(?:[A-Za-z_][A-Za-z0-9_]*=\S+)\s+)*"
-        r"(?:(?:ruff|pyrefly|mypy|pyright|mkdocs|uv|poetry|pdm|tox|nox|pre-commit)(?=\s|$)|"
+        r"(?:(?:ruff|pyrefly|mkdocs|properdocs|uv|poetry|pdm|tox|nox|pre-commit)(?=\s|$)|"
         r"python(?:3(?:\.\d+)?)?(?:\s+-m|\s+[^\s]+\.py\b))",
         re.IGNORECASE,
     )

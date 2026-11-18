@@ -15,7 +15,7 @@ from pathlib import Path
 
 from flext_tests import u as flext_tests_u
 
-from flext_infra import config, u as flext_infra_u
+from flext_infra import FlextInfraUtilities, config
 from tests import c, m, p, r, t, tm
 from tests._utilities import TestsFlextInfraUtilitiesSemanticCutover
 from tests.utilities_codegen import TestsFlextInfraUtilitiesCodegen
@@ -33,7 +33,7 @@ from tests.utilities_toml import TestsFlextInfraUtilitiesToml
 from tests.utilities_workspace_env import TestsFlextInfraUtilitiesWorkspaceEnv
 
 
-class TestsFlextInfraUtilities(flext_infra_u):
+class TestsFlextInfraUtilities(FlextInfraUtilities):
     """Typed test utilities for flext-infra."""
 
     class Tests(
@@ -132,31 +132,35 @@ class TestsFlextInfraUtilities(flext_infra_u):
                     else overrides
                 )
                 codegen = config.Infra.codegen
-                return m.Infra.GithubWorkflowRenderSpec(
-                    dist=dist,
-                    gate_original_receipt_filename=c.Infra.GATE_ORIGINAL_RECEIPT_FILENAME,
-                    setup_operations_report_directory=(
+                return m.Infra.GithubWorkflowRenderSpec.model_validate({
+                    "dist": dist,
+                    "gate_original_receipt_filename": (
+                        c.Infra.GATE_ORIGINAL_RECEIPT_FILENAME
+                    ),
+                    "setup_operations_report_directory": (
                         c.Infra.WORKSPACE_OPERATION_REPORT_DIRECTORY
                     ),
-                    make_profile=make_profile,
-                    repository_branch=repository_branch,
-                    ci_trigger_branches=ci_trigger_branches,
-                    system_packages=overrides.system_packages,
-                    packages_read=overrides.packages_read,
-                    python_version=codegen.toolchain.python_version,
-                    github_actions=codegen.github_actions,
-                    toolchain=codegen.toolchain,
-                    make=codegen.make,
-                    workspace_repositories=overrides.workspace_repositories,
-                    checkout_submodules=codegen.checkout_submodules,
-                    custom_steps=overrides.custom_steps,
-                    custom_post_steps=overrides.custom_post_steps,
-                    has_devcontainer=overrides.has_devcontainer,
-                    dependency_cooldown_days=codegen.toolchain.dependency_cooldown_days,
-                    cooldown_excluded_dependencies=(
+                    "make_profile": make_profile,
+                    "repository_branch": repository_branch,
+                    "ci_trigger_branches": ci_trigger_branches,
+                    "system_packages": overrides.system_packages,
+                    "packages_read": overrides.packages_read,
+                    "python_version": codegen.toolchain.python_version,
+                    "github_actions": codegen.github_actions,
+                    "toolchain": codegen.toolchain,
+                    "make": codegen.make,
+                    "workspace_repositories": overrides.workspace_repositories,
+                    "checkout_submodules": codegen.checkout_submodules,
+                    "custom_steps": overrides.custom_steps,
+                    "custom_post_steps": overrides.custom_post_steps,
+                    "has_devcontainer": overrides.has_devcontainer,
+                    "dependency_cooldown_days": (
+                        codegen.toolchain.dependency_cooldown_days
+                    ),
+                    "cooldown_excluded_dependencies": (
                         overrides.cooldown_excluded_dependencies
                     ),
-                )
+                })
 
             @staticmethod
             def ci_job_steps(rendered: str) -> tuple[t.JsonMapping, ...]:
@@ -245,6 +249,9 @@ class TestsFlextInfraUtilities(flext_infra_u):
             script_dispatch: p.Infra.ScriptDispatchSpec | None = None
             verb_groups: tuple[p.Infra.MakeVerbGroupSpec, ...] = ()
             version: str | None = None
+            # Repository-relative promoted command files and their header
+            # tables, written before rendering because headers declare verbs.
+            commands: tuple[tuple[str, t.JsonMapping], ...] = ()
 
         @staticmethod
         def render_make_environment(
@@ -283,7 +290,8 @@ class TestsFlextInfraUtilities(flext_infra_u):
                 project_root,
                 repository.distribution,
             )
-            u.Tests.declare_governed_kind(project_root)
+            for relative, command in shape.commands:
+                u.Tests.write_promoted_command(project_root / relative, command)
             if shape.version is not None:
                 tm.ok(u.Infra.replace_project_version(project_root, shape.version))
             # The generated Makefile consumes the tracked Mise launcher for every
@@ -396,8 +404,8 @@ class TestsFlextInfraUtilities(flext_infra_u):
                         '\t@test "$(MAKE_COMMAND)" = "$(SELF_MAKE_EXECUTABLE)"\n'
                         "\t@$(UV_RUN) python -c 'import importlib.metadata, sys; "
                         "from pathlib import Path; import tomllib; "
-                        "project = tomllib.loads(Path( "
-                        "c.PYPROJECT_FILENAME).read_text())"
+                        "project = tomllib.loads(Path("
+                        f'"{c.PYPROJECT_FILENAME}").read_text())'
                         '["project"]; '
                         'assert Path(sys.prefix) == Path("$(RUNTIME_VENV)"); '
                         'assert importlib.metadata.version(project["name"]) == '

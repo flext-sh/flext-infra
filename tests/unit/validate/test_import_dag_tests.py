@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
-from flext_infra.validate.test_import_dag import FlextInfraValidateTestImportDag
+from flext_infra.validate import FlextInfraValidateTestImportDag
 from tests import c, p, tm
 
 if TYPE_CHECKING:

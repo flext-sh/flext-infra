@@ -2,7 +2,7 @@
 #
 # `ban-test-fakes` owns double names at the word boundaries (prefix `Fake…`,
 # suffix `…Fake`). The infix form slips past it: a project-prefixed class like
-# `AlgarOudMigFakeLdapClient` or `TestsFooSpyWriter` carries the double word in
+# `AcmeAppFakeLdapClient` or `TestsFooSpyWriter` carries the double word in
 # the middle, where the prefix/suffix regexes cannot see it. The class is a
 # hand-rolled double whatever its prefix says — and its type never satisfies
 # the owner protocol, which is why these classes surface as type errors

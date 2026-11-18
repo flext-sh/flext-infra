@@ -28,17 +28,14 @@ class TestsFlextInfraWorktreePaths(u.Tests.WorktreeFixture):
 
         tm.that(listed, has=f"worktree {repository}")
 
-    def test_remove_keeps_the_isolated_lane_while_retirement_is_closed(
+    def test_remove_retires_the_isolated_lane(
         self,
         tmp_path: Path,
     ) -> None:
-        """REMOVE resolves the isolated lane and fails closed at retirement.
+        """REMOVE resolves the isolated lane and removes its clean checkout.
 
-        The lane is registered natively because admission refuses every ADD
-        (bead flext-itpd1.3.26). REMOVE resolves it from Git's registry and
-        proves integration ancestry, then the native retirement contract
-        refuses: ancestry alone never authorizes removal, so actually removing
-        the checkout is unreachable until retirement admission opens.
+        REMOVE resolves the lane from Git's registry, removes the clean
+        worktree and keeps its branch; without ``apply`` it changes nothing.
         """
         repository = self._repository(tmp_path)
         branch = "feature/example"
@@ -53,16 +50,80 @@ class TestsFlextInfraWorktreePaths(u.Tests.WorktreeFixture):
             ).porcelain,
             has=f"worktree {lane}",
         )
+        tm.fail(
+            FlextInfraWorktreeService(
+                repository_root=repository,
+                operation=c.Infra.WorktreeOperation.REMOVE,
+                branch=branch,
+            ).execute(),
+            has="worktree remove requires --apply",
+        )
+        tm.ok(lane.is_dir())
 
-        refused = FlextInfraWorktreeService(
+        removed = FlextInfraWorktreeService(
             repository_root=repository,
             operation=c.Infra.WorktreeOperation.REMOVE,
             branch=branch,
             apply_changes=True,
         ).execute()
 
-        tm.fail(refused, has="retirement refused")
-        tm.ok(lane.is_dir())
+        tm.that(tm.ok(removed), eq=str(lane))
+        tm.fail(lane.exists())
+        tm.that(u.Tests.git_ref_exists(repository, f"refs/heads/{branch}"), eq=True)
+
+    def test_add_creates_the_canonical_lane_and_refuses_a_second_one(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """ADD registers the branch at its canonical path, once, only on apply."""
+        repository = self._repository(tmp_path)
+        branch = "feature/added"
+        lane = tm.ok(FlextInfraWorktreeService.canonical_lane_path(repository, branch))
+
+        tm.fail(
+            FlextInfraWorktreeService(
+                repository_root=repository,
+                operation=c.Infra.WorktreeOperation.ADD,
+                branch=branch,
+                base=c.Infra.GIT_HEAD,
+            ).execute(),
+            has="worktree add requires --apply",
+        )
+        tm.fail(lane.exists())
+
+        added = FlextInfraWorktreeService(
+            repository_root=repository,
+            operation=c.Infra.WorktreeOperation.ADD,
+            branch=branch,
+            base=c.Infra.GIT_HEAD,
+            apply_changes=True,
+        ).execute()
+
+        tm.that(tm.ok(added), eq=str(lane))
+        tm.that(
+            tm.ok(FlextInfraWorktreeService.registered_lane(repository, branch)),
+            eq=lane,
+        )
+        tm.that(
+            tm.ok(
+                u.Infra.git_repository_head(m.Infra.GitRepoRequest(repo_root=lane)),
+            ).oid,
+            eq=tm.ok(
+                u.Infra.git_repository_head(
+                    m.Infra.GitRepoRequest(repo_root=repository),
+                ),
+            ).oid,
+        )
+        tm.fail(
+            FlextInfraWorktreeService(
+                repository_root=repository,
+                operation=c.Infra.WorktreeOperation.ADD,
+                branch=branch,
+                base=c.Infra.GIT_HEAD,
+                apply_changes=True,
+            ).execute(),
+            has=f"worktree branch is already registered: {branch}",
+        )
 
     def test_lane_path_escapes_a_dirty_outer_project_ancestor(
         self,

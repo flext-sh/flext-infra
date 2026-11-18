@@ -10,33 +10,39 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import pytest
+from flext_core import FlextTypingNativeExport
 
 
 class FlextInfraUtilitiesPytest:
     """pytest functions published under ``u.Infra.Pytest``."""
 
     class Pytest:
-        """pytest functions; flext-tests inherits them."""
+        """pytest functions; flext-tests inherits them.
 
-        approx = staticmethod(pytest.approx)
-        exit = staticmethod(pytest.exit)
+        Every member is republished through ``FlextTypingNativeExport``, which
+        returns pytest's object unchanged for class and instance reads with
+        its complete static type. ``staticmethod`` takes one
+        ``Callable[P, R]``, so it would keep only the first overload of
+        ``fixture`` (whose keyword factory form is the second), ``raises``
+        and ``warns``; a bare function would bind the facade class to the
+        first parameter.
+        """
+
+        approx = FlextTypingNativeExport(pytest.approx)
+        exit = FlextTypingNativeExport(pytest.exit)
         # ``skip`` is a pytest outcome object called like a function (its
         # class declares ``__call__``), so ``u`` owns it beside ``exit``.
         # ``fail`` is not published: ``u.Tests`` inherits this class ahead of
         # its result matchers, and the matcher ``fail`` owns that name.
-        fixture = staticmethod(pytest.fixture)
-        # ``pytest.hookimpl`` is a pluggy ``HookimplMarker`` instance, not a
-        # function: it is not a descriptor, so wrapping it in ``staticmethod``
-        # adds nothing at runtime and erases its overloaded ``__call__``
-        # contract for static type checkers. Keep the bare instance.
-        hookimpl = pytest.hookimpl
-        importorskip = staticmethod(pytest.importorskip)
-        main = staticmethod(pytest.main)
-        monkeypatch_context = staticmethod(pytest.MonkeyPatch.context)
-        param = staticmethod(pytest.param)
-        raises = staticmethod(pytest.raises)
-        skip = staticmethod(pytest.skip)
-        warns = staticmethod(pytest.warns)
+        fixture = FlextTypingNativeExport(pytest.fixture)
+        hookimpl = FlextTypingNativeExport(pytest.hookimpl)
+        importorskip = FlextTypingNativeExport(pytest.importorskip)
+        main = FlextTypingNativeExport(pytest.main)
+        monkeypatch_context = FlextTypingNativeExport(pytest.MonkeyPatch.context)
+        param = FlextTypingNativeExport(pytest.param)
+        raises = FlextTypingNativeExport(pytest.raises)
+        skip = FlextTypingNativeExport(pytest.skip)
+        warns = FlextTypingNativeExport(pytest.warns)
 
 
 __all__: list[str] = ["FlextInfraUtilitiesPytest"]

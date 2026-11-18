@@ -1,6 +1,12 @@
 id: rewire-test-assert-guard
-# Every rewrite requires the `tm` binding to the flext-tests matchers.
+# Every rewrite requires an admissible `tm` binding at the occurrence.
 valid:
+- |
+  from other_library import tm
+  assert self.value is not None
+- |
+  def check(tm: object) -> None:
+      assert self.value is not None
 - |
   from flext_tests import tm
   assert value == expected
@@ -20,8 +26,8 @@ valid:
   from flext_tests import tm
   if value is None:
       raise AssertionError
-- assert self.value is not None
 invalid:
+- assert self.value is not None
 - |
   from flext_tests import tm
   assert self.value is not None

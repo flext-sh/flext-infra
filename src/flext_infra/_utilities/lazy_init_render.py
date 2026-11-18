@@ -22,6 +22,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesLintRecipes,
     FlextInfraUtilitiesNativeTooling,
+    FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesProjectManagedArtifacts,
 )
 from flext_infra._utilities._docs import FlextInfraUtilitiesDocsScopeState
@@ -44,17 +45,24 @@ class FlextInfraUtilitiesLazyInitRender:
 
     @staticmethod
     def lazy_init_project_root(run: p.Infra.PythonModelRun, pkg_dir: Path) -> Path:
-        """Return the nearest enclosing directory declaring a ``pyproject.toml``.
+        """Return the canonical owner of an initializer, including bootstrap.
 
         Returns:
             The owning project root of ``pkg_dir``.
 
+        Raises:
+            ValueError: If the initializer has no declared owner.
+
         """
-        return next(
-            folder
-            for folder in (pkg_dir, *pkg_dir.parents)
-            if run.source_project.source_query(folder / c.PYPROJECT_FILENAME, "isfile")
+        owner = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
+            Path(run.source_project.root.real_path),
+            pkg_dir,
+            source_project=run.source_project,
         )
+        if owner is None:
+            msg = f"lazy-init package has no repository owner: {pkg_dir}"
+            raise ValueError(msg)
+        return owner
 
     @classmethod
     def lazy_init_render(
@@ -97,13 +105,22 @@ class FlextInfraUtilitiesLazyInitRender:
             m.Infra.LazyInitRootRender(
                 autogen_header=c.Infra.AUTOGEN_HEADER,
                 docstring=cls._lazy_init_docstring(plan, project_root, model),
-                runtime_import_lines=cls._lazy_init_runtime_imports(helpers),
+                runtime_import_lines=cls._lazy_init_runtime_imports(
+                    helpers,
+                    deferring=bool(plan.deferred_instances),
+                ),
                 type_checking_lines="\n".join(
                     cls._lazy_init_type_checking(public, first_party)
                 ),
                 eager_binding_lines=cls._lazy_init_eager_bindings(plan, first_party),
                 exports_tuple=cls._lazy_init_exports_tuple((*public, *helpers)),
                 lazy_export_mapping=cls._lazy_init_mapping(entries),
+                deferred_exports_argument=cls._lazy_init_deferred_exports(
+                    plan.deferred_exports
+                ),
+                deferred_instances_call=cls._lazy_init_instances_call({
+                    name: entries[name] for name in plan.deferred_instances
+                }),
             ),
         ).unwrap()
         compile(rendered, str(plan.context.init_path), "exec")
@@ -215,20 +232,46 @@ class FlextInfraUtilitiesLazyInitRender:
         )
 
     @classmethod
-    def _lazy_init_runtime_imports(cls, helpers: Sequence[str]) -> str:
+    def _lazy_init_runtime_imports(
+        cls, helpers: Sequence[str], *, deferring: bool
+    ) -> str:
         """Render the lazy-helper import, the only pre-installer runtime import.
 
         Returns:
             The runtime import lines.
 
         """
+        names = sorted({
+            *(helpers or ("install_lazy_exports",)),
+            *(("defer_lazy_instances",) if deferring else ()),
+        })
         return "\n".join(
-            cls.source_import_lines(
-                "",
-                c.Infra.LAZY_BOOTSTRAP_MODULE,
-                helpers or ("install_lazy_exports",),
-            )
+            cls.source_import_lines("", c.Infra.LAZY_BOOTSTRAP_MODULE, names)
         )
+
+    @classmethod
+    def _lazy_init_instances_call(cls, entries: t.LazyAliasMap) -> str:
+        """Render the ``defer_lazy_instances`` call bound after the installer.
+
+        It receives exactly the lazy entries of the deferred roots, so it
+        resolves each root through the module the installer maps it to.
+
+        Returns:
+            The call source, empty when no configuration root is deferred.
+
+        """
+        if not entries:
+            return ""
+        names = sorted(entries, key=cls.lazy_init_export_key)
+        quoted = ", ".join(f'"{name}"' for name in names)
+        return "\n".join((
+            "defer_lazy_instances(",
+            "    __name__,",
+            "    globals(),",
+            cls._lazy_init_mapping(entries),
+            f"    ({quoted}{',' if len(names) == 1 else ''}),",
+            ")",
+        ))
 
     @classmethod
     def _lazy_init_eager_bindings(
@@ -289,7 +332,8 @@ class FlextInfraUtilitiesLazyInitRender:
     ) -> Mapping[str, Sequence[tuple[str, str]]]:
         """Group public targets by the module their static import names.
 
-        Preserve the elected origin used by the runtime lazy mapping.
+        Preserve the elected origin used by the runtime lazy mapping. A module
+        object export (no attribute) is imported from its parent package.
 
         Returns:
             The ``(export, imported)`` pairs per importing module.
@@ -298,6 +342,8 @@ class FlextInfraUtilitiesLazyInitRender:
         groups: defaultdict[str, list[tuple[str, str]]] = defaultdict(list)
         for name in sorted(public):
             module, attr = public[name]
+            if not attr:
+                module, _, attr = module.rpartition(".")
             groups[module].append((name, attr))
         return groups
 
@@ -414,6 +460,29 @@ class FlextInfraUtilitiesLazyInitRender:
             )
         lines.append("    },")
         return "\n".join(lines)
+
+    @classmethod
+    def _lazy_init_deferred_exports(cls, deferred: Sequence[str]) -> str:
+        """Render the installer's ``deferred_members`` argument in Ruff's fixed point.
+
+        It names the stand-in exports only; the magic trailing comma keeps
+        the tuple exploded, one export per line.
+
+        Returns:
+            The argument lines, each prefixed by a newline; empty for no export.
+
+        """
+        if not deferred:
+            return ""
+        return "\n".join((
+            "",
+            "    deferred_members=(",
+            *(
+                f'        "{name}",'
+                for name in sorted(deferred, key=cls.lazy_init_export_key)
+            ),
+            "    ),",
+        ))
 
     @staticmethod
     def _lazy_init_compact_module(current: str, module: str) -> str:

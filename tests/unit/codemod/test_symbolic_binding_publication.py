@@ -9,8 +9,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
-from flext_infra.codemod.batch_replacements import FlextInfraModReplacements
+from flext_infra.codemod import FlextInfraModGateEngine, FlextInfraModReplacements
 from tests import c, tm, u
 
 # Shared fixture line: the owned-constant read every receiver scenario asserts on.

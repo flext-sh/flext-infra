@@ -11,10 +11,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import shutil
 from typing import TYPE_CHECKING
 
 from flext_infra import config
-from flext_infra.gates.loc_cap import FlextInfraGatesLocCap
+from flext_infra.gates import FlextInfraGatesLocCap
 from tests import c, m, tm, u
 
 if TYPE_CHECKING:
@@ -98,6 +99,8 @@ class TestsFlextInfraLocCapGate:
         project = self.gate_project(tmp_path, code_lines=1)
         empty_path = tmp_path / "empty-path"
         empty_path.mkdir()
+        # The checkout's tracked files need Git; scc remains unavailable on PATH.
+        (empty_path / "git").symlink_to(tm.not_none(shutil.which("git")))
 
         with (
             tm.scope(env={"PATH": str(empty_path)}),

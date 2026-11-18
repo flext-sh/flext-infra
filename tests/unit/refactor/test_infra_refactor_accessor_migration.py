@@ -13,9 +13,9 @@ from typing import TYPE_CHECKING
 from flext_infra import config, infra
 from flext_infra.codemod import FlextInfraModGateEngine
 from flext_infra.codemod.loop import FlextInfraCodemodLoopPhaseAccessorRename
-from flext_infra.refactor import FlextInfraRefactorAccessor
-from flext_infra.refactor.accessor_migration import (
+from flext_infra.refactor import (
     FlextInfraAccessorMigrationOrchestrator,
+    FlextInfraRefactorAccessor,
 )
 from tests import c, m, p, tm, u
 

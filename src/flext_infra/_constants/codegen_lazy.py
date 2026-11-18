@@ -23,6 +23,8 @@ class FlextInfraConstantsCodegenLazy:
     "Maximum length of a public facade alias."
     AUTOGEN_HEADER: ClassVar[str] = "# AUTO-GENERATED FILE — Regenerate with: make gen"
     "Header opening every generator projection; it identifies generated files."
+    LAZY_IMPORTS: ClassVar[str] = "_LAZY_IMPORTS"
+    "Mapping name every generated initializer publishes its lazy exports through."
     GENERATED_EXPORT_SIDECAR_RE: ClassVar[t.RegexPattern] = re.compile(
         r"^(?:_exports(?:_lazy(?:_part_[0-9]+)?)?|_lazy_exports)\.py$",
     )
@@ -82,8 +84,6 @@ class FlextInfraConstantsCodegenLazy:
         # Ruff runs with NO --select override: the project's pyproject.toml
         # (select=ALL + narrow whitelist + preview) is the ONLY rule policy.
         ("ruff", ("ruff", "check", "{file}", "--no-fix")),
-        ("pyright", ("pyright", "{file}")),
-        ("mypy", ("mypy", "{file}", "--no-error-summary")),
         ("pyrefly", ("pyrefly", "check", "{file}")),
     )
     "Lint tool names and their CLI command templates for validation."
@@ -145,6 +145,14 @@ class FlextInfraConstantsCodegenLazy:
     "Package name whose modules are governed fixture publication owners."
     LAZY_INIT_CONSTANTS_MARKER: ClassVar[str] = "Constants"
     "Class-name marker of the facade class whose bases declare facade parents."
+    LAZY_INIT_STANDIN_FIELD_DECORATORS: ClassVar[frozenset[str]] = frozenset({
+        "field_validator",
+        "model_validator",
+        "computed_field",
+    })
+    "Pydantic decorators whose effect a stand-in of a facade part would lose."
+    LAZY_INIT_STANDIN_CLASS_ANNOTATION: ClassVar[str] = "ClassVar"
+    "Annotation head that keeps a class attribute out of a model's fields."
 
     @unique
     class LazyInitScore(IntEnum):

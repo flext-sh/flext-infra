@@ -14,6 +14,7 @@ from pathlib import Path
 from flext_cli import u
 
 from flext_infra import c, m, p, r, t
+from flext_infra._models.transformers import FlextInfraModelsTransformers
 from flext_infra._utilities import (
     FlextInfraUtilitiesProjectManagedArtifacts,
     FlextInfraUtilitiesProtectedEditLinting,
@@ -1216,7 +1217,7 @@ class FlextInfraUtilitiesRopeImports:
         edits: list[p.Infra.SourceRewrite] = []
         if first_selected:
             edits.append(
-                m.Infra.SourceRewrite(
+                FlextInfraModelsTransformers.SourceRewrite(
                     start=provider[0], end=provider[1], text=target_module
                 )
             )
@@ -1232,11 +1233,13 @@ class FlextInfraUtilitiesRopeImports:
         # The original first group retains every comment, parenthesis and
         # whitespace token. Only indexed aliases and separators are removed.
         edits.extend(
-            m.Infra.SourceRewrite(start=region[0], end=region[1], text="")
+            FlextInfraModelsTransformers.SourceRewrite(
+                start=region[0], end=region[1], text=""
+            )
             for _name, _alias, region in statement.aliases[len(first_names) :]
         )
         edits.extend(
-            m.Infra.SourceRewrite(start=left, end=right, text="")
+            FlextInfraModelsTransformers.SourceRewrite(start=left, end=right, text="")
             for left, right in statement.separators[len(first_names) - 1 :]
         )
         declarations = [
@@ -1248,7 +1251,7 @@ class FlextInfraUtilitiesRopeImports:
             for selected, names in groups[1:]
         ]
         edits.append(
-            m.Infra.SourceRewrite(
+            FlextInfraModelsTransformers.SourceRewrite(
                 start=end,
                 end=end,
                 text="".join(

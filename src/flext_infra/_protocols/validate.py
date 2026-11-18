@@ -99,7 +99,6 @@ class FlextInfraProtocolsValidate:
     class StubAnalysisReport(FlextInfraProtocolsMixins.ProjectNameMixin, Protocol):
         """Structural data contract projected from the owning model."""
 
-        mypy_hints: MutableSequence[str]
         internal_missing: MutableSequence[str]
         unresolved_missing: MutableSequence[str]
         total_missing: t.NonNegativeInt
@@ -191,6 +190,16 @@ class FlextInfraProtocolsValidate:
         @property
         def node_ids(self) -> t.StrTuple:
             """Unique node IDs in execution order."""
+            ...
+
+        @property
+        def inventory_node_ids(self) -> t.StrTuple:
+            """Structural member projected from the owning model.
+
+            Unique node IDs of the complete inventory kept after the marker and
+            keyword selectors and before Testmon deselects; empty when the manifest
+            is itself the complete collection.
+            """
             ...
 
         @property

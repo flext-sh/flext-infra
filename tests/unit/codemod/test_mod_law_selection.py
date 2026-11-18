@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import FlextInfraCli
-from flext_infra.codemod import FlextInfraModTextGateEngine
+from flext_infra.codemod import FlextInfraModGateEngine, FlextInfraModTextGateEngine
 from tests import c, t, tm, u
 
 
@@ -145,3 +145,53 @@ class TestsFlextInfraModLawSelection:
         console = capsys.readouterr()
         tm.that(selected, eq=0, msg=console.out + console.err)
         tm.that(target.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+
+    @staticmethod
+    def test_selected_scan_binds_other_rules_only_where_the_selection_matches(
+        mod_workspace: Path,
+    ) -> None:
+        """A focused scan locates its selection, then scans only those files."""
+        rule_id = "require-future-annotations"
+        matched = mod_workspace / "matched.py"
+        clean = mod_workspace / "clean.py"
+        tm.ok(u.Cli.atomic_write_text_file(matched, 'value = "before"\n'))
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                clean, 'from __future__ import annotations\n\nvalue = "kept"\n'
+            )
+        )
+        with u.Infra.codemod_workspace_snapshot(mod_workspace) as snapshot:
+            complete = tm.ok(u.Infra.codemod_rule_plan(snapshot))
+            focused = tm.ok(u.Infra.codemod_rule_plan(snapshot, rule_ids=(rule_id,)))
+        tm.that(complete.selected_rule_ids, none=True)
+        tm.that(focused.selected_rule_ids, eq=(rule_id,))
+        binding = frozenset(rule.id for rule in focused.rules) - {rule_id}
+        header = f"{c.Infra.CODEMOD_IMPORT_HEADER_SHAPE}"
+        tm.that(all(rule.startswith(header) for rule in binding), eq=True)
+        tm.that(
+            binding,
+            eq=frozenset(
+                rule.id for rule in complete.rules if rule.id.startswith(header)
+            ),
+        )
+        report = tm.ok(
+            FlextInfraModGateEngine.scan(mod_workspace, fix=False, selection=focused)
+        )
+        tm.that(report.source_files, eq=(matched.resolve(),))
+        tm.that(
+            {mod_workspace.resolve() / path for path in report.files},
+            eq={matched.resolve()},
+        )
+        tm.that({entry.rule_id for entry in report.entries} >= {rule_id}, eq=True)
+        tm.that(report.rule_plan, eq=focused)
+
+    @staticmethod
+    def test_selected_rule_keeps_the_generated_utilities_it_references(
+        mod_workspace: Path,
+    ) -> None:
+        """A selected catalog rule calling a generated utility still scans."""
+        rule_id = "rewire-collapsed-family-package"
+        with u.Infra.codemod_workspace_snapshot(mod_workspace) as snapshot:
+            focused = tm.ok(u.Infra.codemod_rule_plan(snapshot, rule_ids=(rule_id,)))
+        tm.that(c.Infra.CODEMOD_GENERATED_PROVIDER in focused.provider_order, eq=True)
+        tm.ok(FlextInfraModGateEngine.scan(mod_workspace, fix=False, selection=focused))

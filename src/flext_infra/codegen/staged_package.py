@@ -7,6 +7,8 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+import shutil
+import time
 from collections import deque
 from collections.abc import Callable, Mapping, MutableMapping
 from functools import lru_cache, partial
@@ -39,6 +41,29 @@ class FlextInfraStagedPackage:
         gettempdir()
         return "from tempfile import gettempdir as _source_storage\n_source_storage()\n"
 
+    @staticmethod
+    def sweep_stale_previews(parent: Path) -> None:
+        """Remove candidate trees that killed producers could not clean up.
+
+        ``TemporaryDirectory`` cleans on a normal exit. A SIGTERM/SIGKILL during
+        generation never runs that finalizer, so each killed run leaves a full
+        workspace copy beside the mutation lock — 31 such trees accumulated in
+        this rig, the oldest three weeks old, and a stale copy can shadow the
+        installed package for member plan validation. A tree older than an hour
+        cannot belong to a live run and is deleted before a new one is created.
+        """
+        cutoff = time.time() - 3600
+        try:
+            candidates = list(parent.glob(f"{c.Infra.SOURCE_PREVIEW_PREFIX}*"))
+        except OSError:
+            return
+        for candidate in candidates:
+            try:
+                if candidate.is_dir() and candidate.stat().st_mtime < cutoff:
+                    shutil.rmtree(candidate, ignore_errors=True)
+            except OSError:
+                continue
+
     def preview_sources[T](
         self,
         workspace: Path,
@@ -46,12 +71,14 @@ class FlextInfraStagedPackage:
         validator: Callable[[Path, Mapping[Path, Path]], T],
         *,
         options: p.Infra.StageSourceOptions | None = None,
+        storage_root: Path | None = None,
     ) -> p.Result[T]:
         """Validate updates and retirements inside a candidate tree.
 
         The candidate tree lives beside the workspace's mutation lock, on the
         destination filesystem and outside the working tree, and is removed
-        once the validator returns.
+        once the validator returns. Nested validators retain the producer's
+        explicit storage root while reading their candidate workspace.
 
         Returns:
             The validator outcome, or the first planning or staging failure.
@@ -63,20 +90,23 @@ class FlextInfraStagedPackage:
             return r[T].from_failure(planned)
         plan = planned.value
         u.Cli.info(f"stage=source-preview-plan state=end inputs={len(plan.inputs)}")
-        lock = u.Infra.mutation_lock_path(plan.workspace)
+        lock = u.Infra.mutation_lock_path(
+            plan.workspace if storage_root is None else storage_root
+        )
         if lock.failure:
             return r[T].from_failure(lock)
         storage = u.Cli.ensure_dir(lock.value.parent)
         if storage.failure:
             return r[T].from_failure(storage)
+        self.sweep_stale_previews(lock.value.parent)
         with TemporaryDirectory(
-            prefix="flext-source-preview-", dir=lock.value.parent
+            prefix=c.Infra.SOURCE_PREVIEW_PREFIX, dir=lock.value.parent
         ) as directory:
             root = Path(directory)
             u.Cli.info("stage=source-preview-materialize state=start")
             materialized = self.materialize_sources(plan, root)
             if materialized.failure:
-                return r[T].from_failure(materialized)
+                return r[bool].from_failure(materialized)
             u.Cli.info("stage=source-preview-materialize state=end")
             return r[T].ok(
                 validator(
@@ -272,7 +302,7 @@ class FlextInfraStagedPackage:
                     durability=c.Cli.WriteDurability.SCRATCH,
                 ),
             )
-        except Exception as error:  # ruff: ignore[blind-except]
+        except Exception as error:  # ruff: ignore[blind-except] - retain the original filesystem exception on ordered failure
             # Results are consumed in source order after the concurrent wave;
             # retain the original filesystem exception on that ordered failure.
             return r[bool].fail(str(error), exception=error)
@@ -285,6 +315,7 @@ class FlextInfraStagedPackage:
         updates: Mapping[Path, str | None],
         *,
         options: p.Infra.StageSourceOptions | None = None,
+        scoped: bool = False,
     ) -> p.Result[p.Infra.StageSourcePlan]:
         """Elect the candidate closure of the desired sources.
 
@@ -292,6 +323,7 @@ class FlextInfraStagedPackage:
             workspace: The root of the Git workspace containing the projects.
             updates: Desired content by live path; None retires an artifact.
             options: Composition roots, file modes and declared file effects.
+            scoped: Whether the caller already elected the exact scope root.
 
         Returns:
             A result wrapping the planned stage source or the first failure encountered.
@@ -306,10 +338,13 @@ class FlextInfraStagedPackage:
             return result_type.from_failure(modes)
         if options.workspaces:
             return cls._composed_scope_plan(updates, options, modes.value)
-        containing = cls.workspace_root(workspace.resolve())
-        if containing.failure:
-            return result_type.from_failure(containing)
-        workspace = containing.value
+        if scoped:
+            workspace = workspace.resolve()
+        else:
+            containing = cls.workspace_root(workspace.resolve())
+            if containing.failure:
+                return result_type.from_failure(containing)
+            workspace = containing.value
         # No broad catch: the first exception escapes with its traceback.
         with u.Infra.facade_source_project(
             workspace,
@@ -372,33 +407,41 @@ class FlextInfraStagedPackage:
             and states[item.project_root / c.PYPROJECT_FILENAME].content is None
         )
         return r[p.Infra.StageSourcePlan].ok(
-            m.Infra.StageSourcePlan(
-                workspace=workspace,
-                roots=tuple(
-                    dict.fromkeys((
-                        workspace,
-                        *(item.project_root for item in selected),
-                    ))
-                ),
-                inputs=tuple(states.values()),
-                updates=MappingProxyType(dict(normalized)),
-                modes=MappingProxyType(dict(modes)),
-                declared_files=cls._declared_source_effects(
-                    workspace, normalized, states, modes, options.declared_files
-                ),
-                layouts=tuple(
-                    item for item in selected if item.project_root not in introduced
-                ),
-                workspace_packages=tuple(
-                    sorted(
-                        name
-                        for name, item in layouts.items()
-                        if item.project_root not in introduced
+            m.Infra.StageSourcePlan.model_validate({
+                "workspace": (workspace),
+                "roots": (
+                    tuple(
+                        dict.fromkeys((
+                            workspace,
+                            *(item.project_root for item in selected),
+                        ))
                     )
                 ),
-                candidate_layouts=tuple(selected),
-                candidate_workspace_packages=tuple(sorted(layouts)),
-            )
+                "inputs": (tuple(states.values())),
+                "updates": (MappingProxyType(dict(normalized))),
+                "modes": (MappingProxyType(dict(modes))),
+                "declared_files": (
+                    cls._declared_source_effects(
+                        workspace, normalized, states, modes, options.declared_files
+                    )
+                ),
+                "layouts": (
+                    tuple(
+                        item for item in selected if item.project_root not in introduced
+                    )
+                ),
+                "workspace_packages": (
+                    tuple(
+                        sorted(
+                            name
+                            for name, item in layouts.items()
+                            if item.project_root not in introduced
+                        )
+                    )
+                ),
+                "candidate_layouts": (tuple(selected)),
+                "candidate_workspace_packages": (tuple(sorted(layouts))),
+            })
         )
 
     @staticmethod
@@ -475,28 +518,33 @@ class FlextInfraStagedPackage:
                     for path, source in updates.items()
                     if path.is_relative_to(root)
                 },
-                options=m.Infra.StageSourceOptions(
-                    modes={
+                options=m.Infra.StageSourceOptions.model_validate({
+                    "modes": ({
                         path: mode
                         for path, mode in modes.items()
                         if path.is_relative_to(root)
-                    },
-                    declared_files=tuple(
-                        file
-                        for file in options.declared_files
-                        if file.path.is_relative_to(root)
+                    }),
+                    "declared_files": (
+                        tuple(
+                            file
+                            for file in options.declared_files
+                            if file.path.is_relative_to(root)
+                        )
                     ),
-                    inputs=tuple(
-                        state
-                        for state in options.inputs
-                        if state.path.is_relative_to(root)
+                    "inputs": (
+                        tuple(
+                            state
+                            for state in options.inputs
+                            if state.path.is_relative_to(root)
+                        )
                     ),
-                    import_edges={
+                    "import_edges": ({
                         path: edges
                         for path, edges in options.import_edges.items()
                         if path.is_relative_to(root)
-                    },
-                ),
+                    }),
+                }),
+                scoped=True,
             )
             if planned.failure:
                 return result_type.from_failure(planned)
@@ -512,43 +560,57 @@ class FlextInfraStagedPackage:
                         f"ambiguous elected candidate package: {layout.package_name}"
                     )
         return result_type.ok(
-            m.Infra.StageSourcePlan(
-                workspace=Path(commonpath(plan.workspace for plan in plans)),
-                workspaces=scopes,
-                roots=tuple(
-                    dict.fromkeys(root for plan in plans for root in plan.roots)
+            m.Infra.StageSourcePlan.model_validate({
+                "workspace": (Path(commonpath(plan.workspace for plan in plans))),
+                "workspaces": (scopes),
+                "roots": (
+                    tuple(dict.fromkeys(root for plan in plans for root in plan.roots))
                 ),
-                inputs=tuple(
-                    {
-                        state.path: state for plan in plans for state in plan.inputs
-                    }.values()
+                "inputs": (
+                    tuple(
+                        {
+                            state.path: state for plan in plans for state in plan.inputs
+                        }.values()
+                    )
                 ),
-                updates=MappingProxyType({
-                    path: source
-                    for plan in plans
-                    for path, source in plan.updates.items()
-                }),
-                modes=MappingProxyType({
-                    path: mode for plan in plans for path, mode in plan.modes.items()
-                }),
-                declared_files=tuple(
-                    file for plan in plans for file in plan.declared_files
-                ),
-                layouts=tuple(layout for plan in plans for layout in plan.layouts),
-                workspace_packages=tuple(
-                    sorted({name for plan in plans for name in plan.workspace_packages})
-                ),
-                candidate_layouts=tuple(
-                    layout for plan in plans for layout in plan.candidate_layouts
-                ),
-                candidate_workspace_packages=tuple(
-                    sorted({
-                        name
+                "updates": (
+                    MappingProxyType({
+                        path: source
                         for plan in plans
-                        for name in plan.candidate_workspace_packages
+                        for path, source in plan.updates.items()
                     })
                 ),
-            )
+                "modes": (
+                    MappingProxyType({
+                        path: mode
+                        for plan in plans
+                        for path, mode in plan.modes.items()
+                    })
+                ),
+                "declared_files": (
+                    tuple(file for plan in plans for file in plan.declared_files)
+                ),
+                "layouts": (tuple(layout for plan in plans for layout in plan.layouts)),
+                "workspace_packages": (
+                    tuple(
+                        sorted({
+                            name for plan in plans for name in plan.workspace_packages
+                        })
+                    )
+                ),
+                "candidate_layouts": (
+                    tuple(layout for plan in plans for layout in plan.candidate_layouts)
+                ),
+                "candidate_workspace_packages": (
+                    tuple(
+                        sorted({
+                            name
+                            for plan in plans
+                            for name in plan.candidate_workspace_packages
+                        })
+                    )
+                ),
+            })
         )
 
     @classmethod
@@ -557,12 +619,12 @@ class FlextInfraStagedPackage:
         workspace: Path,
         normalized: Mapping[Path, str | None],
         options: p.Infra.StageSourceOptions,
-        layouts: MutableMapping[str, m.Infra.RopeProjectLayout],
+        layouts: MutableMapping[str, p.Infra.RopeProjectLayout],
         source_project: p.Infra.RopeProject,
     ) -> p.Result[
         tuple[
             list[p.Infra.RopeProjectLayout],
-            MutableMapping[Path, m.Cli.AtomicFileState],
+            MutableMapping[Path, p.Cli.AtomicFileState],
         ]
     ]:
         """Elect the layouts and file states of the candidate tree.
@@ -587,7 +649,7 @@ class FlextInfraStagedPackage:
             ]
         ]
         selected: list[p.Infra.RopeProjectLayout] = []
-        states: MutableMapping[Path, m.Cli.AtomicFileState] = {}
+        states: MutableMapping[Path, p.Cli.AtomicFileState] = {}
         for state in inputs:
             states.setdefault(state.path, state)
         unchanged_imports: MutableMapping[Path, p.Result[tuple[str, ...]]] = {}
@@ -666,9 +728,9 @@ class FlextInfraStagedPackage:
     def _source_roots(
         cls,
         normalized: Mapping[Path, str | None],
-        layouts: MutableMapping[str, m.Infra.RopeProjectLayout],
+        layouts: MutableMapping[str, p.Infra.RopeProjectLayout],
         source_project: p.Infra.RopeProject,
-        states: MutableMapping[Path, m.Cli.AtomicFileState],
+        states: MutableMapping[Path, p.Cli.AtomicFileState],
     ) -> p.Result[list[tuple[p.Infra.RopeProjectLayout, bool]]]:
         """Elect rewrite roots while preserving original common-source witnesses.
 
@@ -727,7 +789,7 @@ class FlextInfraStagedPackage:
     def _declared_source_effects(
         workspace: Path,
         normalized: Mapping[Path, str | None],
-        states: Mapping[Path, m.Cli.AtomicFileState],
+        states: Mapping[Path, p.Cli.AtomicFileState],
         modes: Mapping[Path, int],
         declared_files: tuple[p.Infra.CodegenFilePlan, ...],
     ) -> tuple[p.Infra.CodegenFilePlan, ...]:
@@ -853,7 +915,7 @@ class FlextInfraStagedPackage:
         workspace: Path,
         *,
         source_project: p.Infra.RopeProject | None = None,
-    ) -> p.Result[MutableMapping[str, m.Infra.RopeProjectLayout]]:
+    ) -> p.Result[MutableMapping[str, p.Infra.RopeProjectLayout]]:
         """Retain Python providers independently of their generation participation.
 
         Returns:
@@ -868,7 +930,7 @@ class FlextInfraStagedPackage:
         )
         if targets.failure:
             return result_type.from_failure(targets)
-        layouts: MutableMapping[str, m.Infra.RopeProjectLayout] = {}
+        layouts: MutableMapping[str, p.Infra.RopeProjectLayout] = {}
         for target in targets.value:
             repository = target.root
             applicability = u.Infra.repository_operation_applicability(
@@ -1039,7 +1101,7 @@ class FlextInfraStagedPackage:
     def _layout_states(
         cls,
         layout: p.Infra.RopeProjectLayout,
-        states: MutableMapping[Path, m.Cli.AtomicFileState],
+        states: MutableMapping[Path, p.Cli.AtomicFileState],
         view: tuple[p.Infra.RopeProject, p.Infra.WorkspaceSnapshot | None],
         *,
         updates: Mapping[Path, str | None] | None = None,
@@ -1146,7 +1208,7 @@ class FlextInfraStagedPackage:
     def _closure(
         cls,
         local: p.Infra.RopeProjectLayout,
-        layouts: MutableMapping[str, m.Infra.RopeProjectLayout],
+        layouts: MutableMapping[str, p.Infra.RopeProjectLayout],
         read: Callable[
             [p.Infra.RopeProjectLayout, Mapping[Path, str | None] | None],
             p.Result[tuple[str, ...]],

@@ -15,7 +15,6 @@ from __future__ import annotations
 import ast
 import functools
 import re
-from bisect import bisect_right
 from collections.abc import Mapping, MutableMapping, Sequence
 from fnmatch import fnmatch
 from pathlib import Path
@@ -252,11 +251,15 @@ class FlextInfraModTextGateEngine:
             c.Infra.CODEMOD_TEXT_KEY_EXPECTED,
             c.Infra.CODEMOD_TEXT_KEY_CAPTURE_EQUALS,
             c.Infra.CODEMOD_TEXT_KEY_DISTRIBUTIONS,
+            c.Infra.CODEMOD_TEXT_KEY_RENDER,
         ))
         if unknown:
             return r[Mapping[str, t.JsonValue]].fail(
                 f"unknown text rule keys {sorted(unknown)} in {source}",
             )
+        render = FlextInfraModTextGateEngine._validated_render(raw, source)
+        if render.failure:
+            return r[Mapping[str, t.JsonValue]].from_failure(render)
         return r[Mapping[str, t.JsonValue]].ok(raw)
 
     @staticmethod
@@ -389,6 +392,31 @@ class FlextInfraModTextGateEngine:
         ))
 
     @staticmethod
+    def _validated_render(
+        entry: Mapping[str, t.JsonValue],
+        source: Path,
+    ) -> p.Result[bool]:
+        """Validate the optional renderer that replaces each match.
+
+        Returns:
+            Acceptance of a template rule or of one closed renderer declared
+            without ``replace``, or the failure of any other declaration.
+
+        """
+        declared = entry.get(c.Infra.CODEMOD_TEXT_KEY_RENDER)
+        if declared is None or (
+            isinstance(declared, str)
+            and declared in {render.value for render in c.Infra.ModTextRender}
+            and c.Infra.CODEMOD_TEXT_KEY_REPLACE not in entry
+        ):
+            return r[bool].ok(value=True)
+        return r[bool].fail(
+            "text rule render must name one of "
+            f"{sorted(render.value for render in c.Infra.ModTextRender)} "
+            f"and declare no replace in {source}",
+        )
+
+    @staticmethod
     def _selector_failure(
         source: Path,
     ) -> p.Result[tuple[tuple[str, ...], Mapping[str, str], int | None]]:
@@ -445,6 +473,7 @@ class FlextInfraModTextGateEngine:
         if selector.failure:
             return r[p.Infra.ModTextRule].from_failure(selector)
         distributions, captures, expected = selector.value
+        render = entry.value.get(c.Infra.CODEMOD_TEXT_KEY_RENDER)
         scopes: MutableMapping[str, tuple[str, ...]] = {}
         for key in (
             c.Infra.CODEMOD_TEXT_KEY_INCLUDE,
@@ -469,6 +498,7 @@ class FlextInfraModTextGateEngine:
             flags=flags,
             capture_equals=captures,
             expected=expected,
+            render=c.Infra.ModTextRender(render) if isinstance(render, str) else None,
             **scopes,
         )
         if not rule.rule_id:
@@ -483,11 +513,10 @@ class FlextInfraModTextGateEngine:
         root: Path,
         rules: tuple[p.Infra.ModTextRule, ...],
     ) -> tuple[p.Infra.Issue, ...]:
-        """Report declared formats outside this phase's existing source contract.
+        """Reject text input declarations outside the repository boundary.
 
         Returns:
-            Central issues for unsupported explicit input declarations. A scope
-            glob without a suffix still selects the canonical Python inventory.
+            Central issues for escaping explicit input declarations.
 
         """
         return tuple(
@@ -496,14 +525,12 @@ class FlextInfraModTextGateEngine:
                 line=0,
                 column=0,
                 code=c.Infra.ToolOutcome.ERROR.value,
-                message=f"text rule {rule.rule_id} declares an unsupported input: "
+                message=f"text rule {rule.rule_id} declares an escaping input: "
                 f"{pattern}",
             )
             for rule in rules
             for pattern in rule.include
-            if Path(pattern).suffix
-            and Path(pattern).suffix != c.Infra.EXT_PYTHON
-            and Path(pattern).suffix != ".md"
+            if Path(pattern).is_absolute() or ".." in Path(pattern).parts
         )
 
     @classmethod
@@ -538,6 +565,10 @@ class FlextInfraModTextGateEngine:
         if markdown.failure:
             return markdown
         paths.update(markdown.value)
+        declared = cls._declared_source_paths(root, rules)
+        if declared.failure:
+            return declared
+        paths.update(declared.value)
         members = tuple(
             project
             for project in u.Infra.governed_project_roots(root)
@@ -574,18 +605,13 @@ class FlextInfraModTextGateEngine:
                     return r[tuple[Path, ...]].fail(
                         f"text Markdown include escapes repository: {pattern}",
                     )
-                matches = tuple(
-                    sorted(
-                        set(root.glob(pattern))
-                        if sources is None
-                        else {
-                            path
-                            for path in sources or ()
-                            if path.is_relative_to(root)
-                            and fnmatch(path.relative_to(root).as_posix(), pattern)
-                        }
-                    )
-                )
+                staged = {
+                    path
+                    for path in sources or ()
+                    if path.is_relative_to(root)
+                    and fnmatch(path.relative_to(root).as_posix(), pattern)
+                }
+                matches = tuple(sorted(staged | set(root.glob(pattern))))
                 if not matches:
                     return r[tuple[Path, ...]].fail(
                         f"text Markdown include has no source: {pattern}",
@@ -594,16 +620,58 @@ class FlextInfraModTextGateEngine:
                     if sources is not None and path in sources:
                         paths.add(path)
                         continue
-                    if not cls._physical_markdown_source(path):
+                    if not cls._physical_source(path):
                         return r[tuple[Path, ...]].fail(
                             f"text Markdown source must be physical: {path}",
                         )
                     paths.add(path)
         return r[tuple[Path, ...]].ok(tuple(paths))
 
+    @classmethod
+    def _declared_source_paths(
+        cls,
+        root: Path,
+        rules: tuple[p.Infra.ModTextRule, ...],
+    ) -> p.Result[tuple[Path, ...]]:
+        """Authenticate the non-Python text sources explicitly declared by rules.
+
+        Shell sources are a repository inventory, like Python, not named
+        documents, like Markdown: a declared glob that selects nothing is no
+        failure, so one packaged rule elects shell commands wherever a
+        repository has them.
+
+        Returns:
+            The declared physical shell paths, or the first boundary failure.
+
+        """
+        patterns = [
+            Path(pattern)
+            for rule in rules
+            for pattern in rule.include
+            if Path(pattern).suffix not in {c.Infra.EXT_PYTHON, ".md"}
+        ]
+        escaped = [
+            pattern
+            for pattern in patterns
+            if pattern.is_absolute() or ".." in pattern.parts
+        ]
+        if escaped:
+            return r[tuple[Path, ...]].fail(
+                f"text source include escapes repository: {escaped[0]}",
+            )
+        paths = sorted({
+            path for pattern in patterns for path in root.glob(str(pattern))
+        })
+        aliased = [path for path in paths if not cls._physical_source(path)]
+        if aliased:
+            return r[tuple[Path, ...]].fail(
+                f"text source must be physical: {aliased[0]}",
+            )
+        return r[tuple[Path, ...]].ok(tuple(paths))
+
     @staticmethod
-    def _physical_markdown_source(path: Path) -> bool:
-        """Check that a Markdown source has one physical, non-symlink identity.
+    def _physical_source(path: Path) -> bool:
+        """Check that a declared source has one physical, non-symlink identity.
 
         Returns:
             Whether the source is a regular, unaliased file.
@@ -623,7 +691,7 @@ class FlextInfraModTextGateEngine:
     ) -> p.Result[
         tuple[
             tuple[p.Cli.AtomicFileState, ...],
-            m.Cli.AtomicFileState,
+            p.Cli.AtomicFileState,
             tuple[p.Infra.ModTextRule, ...],
         ]
     ]:
@@ -706,13 +774,15 @@ class FlextInfraModTextGateEngine:
             before = u.Infra.codegen_target_snapshot(path)
             if before.failure:
                 return outcome.from_failure(before)
-            if sources is not None:
+            if sources is not None and path in sources:
                 source = sources[path]
             elif before.value.content is None:
                 return outcome.fail(f"text source disappeared during inventory: {path}")
             else:
                 source = before.value.content.decode(c.DEFAULT_ENCODING)
-            updated, found, _actionable = cls._rewrite_source(source, relative, rules)
+            updated, found, _actionable = cls._rewrite_source(
+                source, relative, rules, root
+            )
             entries.extend(found)
             if updated == source:
                 continue
@@ -737,12 +807,14 @@ class FlextInfraModTextGateEngine:
                     )
                 )
         return outcome.ok((
-            m.Infra.ModTextReport(
-                findings=len(entries),
-                actionable=sum(entry.text != entry.replacement for entry in entries),
-                files=frozenset(entry.file for entry in entries),
-                entries=tuple(entries),
-            ),
+            m.Infra.ModTextReport.model_validate({
+                "findings": (len(entries)),
+                "actionable": (
+                    sum(entry.text != entry.replacement for entry in entries)
+                ),
+                "files": (frozenset(entry.file for entry in entries)),
+                "entries": (tuple(entries)),
+            }),
             tuple(plans),
         ))
 
@@ -787,12 +859,12 @@ class FlextInfraModTextGateEngine:
             plans.extend(project_plans)
             actionable += report.actionable
         return outcome.ok((
-            m.Infra.ModTextReport(
-                findings=len(entries),
-                actionable=actionable,
-                files=frozenset(files),
-                entries=tuple(entries),
-            ),
+            m.Infra.ModTextReport.model_validate({
+                "findings": (len(entries)),
+                "actionable": (actionable),
+                "files": (frozenset(files)),
+                "entries": (tuple(entries)),
+            }),
             tuple(plans),
         ))
 
@@ -918,6 +990,7 @@ class FlextInfraModTextGateEngine:
         source: str,
         target: str,
         rules: tuple[p.Infra.ModTextRule, ...],
+        project: Path,
     ) -> tuple[str, list[p.Infra.ModTextFinding], int]:
         """Rewrite one source text through every elected rule entry.
 
@@ -931,16 +1004,13 @@ class FlextInfraModTextGateEngine:
         for rule in rules:
             if not cls._rule_elects(rule, target):
                 continue
-            line_starts = [0]
-            for line in updated.splitlines(keepends=True):
-                line_starts.append(line_starts[-1] + len(line))
             found: list[p.Infra.ModTextFinding] = []
             pattern = cls._compiled(rule)
             expand = functools.partial(
                 cls._expand_match,
                 rule,
                 target,
-                line_starts,
+                project,
                 found,
             )
             candidate = pattern.sub(expand, updated)
@@ -956,7 +1026,7 @@ class FlextInfraModTextGateEngine:
     def _expand_match(
         rule: p.Infra.ModTextRule,
         target: str,
-        line_starts: Sequence[int],
+        project: Path,
         found: list[p.Infra.ModTextFinding],
         match: t.RegexMatch,
     ) -> str:
@@ -977,18 +1047,63 @@ class FlextInfraModTextGateEngine:
                     f"{expected!r}, matched {actual!r} in {target}"
                 )
                 raise ValueError(msg)
-        replacement = match.expand(rule.replace)
-        line_index = bisect_right(line_starts, match.start()) - 1
+        replacement = (
+            match.expand(rule.replace)
+            if rule.render is None
+            else FlextInfraModTextGateEngine._rendered(rule, project, target, match)
+        )
         found.append(
             m.Infra.ModTextFinding(
                 rule_id=rule.rule_id,
                 file=Path(target),
-                line=line_index + 1,
+                line=match.string.count("\n", 0, match.start()) + 1,
                 text=match.group(0),
                 replacement=replacement,
             ),
         )
         return replacement
+
+    @staticmethod
+    def _rendered(
+        rule: p.Infra.ModTextRule,
+        project: Path,
+        target: str,
+        match: t.RegexMatch,
+    ) -> str:
+        """Render one match, a structured comment block, as the rule declares.
+
+        ``promoted-command-header`` reads the block's TOML as PEP 723 does and
+        renders it through the canonical promoted header renderer at the
+        project's configured Ruff line length.
+
+        Returns:
+            The rendered replacement.
+
+        Raises:
+            ValueError: If the match is not exactly one structured block of
+                valid TOML.
+
+        """
+        blocks = u.Infra.script_metadata_blocks(match.group(0))
+        if len(blocks) != 1:
+            msg = (
+                f"text rule {rule.rule_id} matched no single structured block "
+                f"in {target}"
+            )
+            raise ValueError(msg)
+        parsed = u.Cli.toml_mapping_from_text_result(
+            u.Infra.script_metadata_toml(blocks[0])
+        )
+        if parsed.failure:
+            msg = f"text rule {rule.rule_id} matched invalid TOML in {target}"
+            raise ValueError(msg) from parsed.exception
+        width: int = u.Infra.native_tool_setting(
+            u.Infra.load_tooling_inputs(project).unwrap().document,
+            "ruff",
+            "line-length",
+            int,
+        )
+        return u.Infra.promoted_render_header(parsed.value, width=width)
 
     @staticmethod
     def _rule_elects(rule: p.Infra.ModTextRule, target: str) -> bool:

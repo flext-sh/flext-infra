@@ -78,24 +78,26 @@ class TestsFlextInfraCodegenWorkspaceMemberGroup:
             next(item for item in first.files if item.path == root_pyproject),
         )
         sources = u.Tests.toml_table_at(rendered, "tool", "uv", "sources")
+        packaged = tuple(member for member in members if member.package)
         tm.that(
-            u.Tests.toml_strings_at(rendered, "tool", "uv", "workspace", "members"),
-            eq=tuple(member.path.as_posix() for member in members if member.editable),
+            "workspace" in u.Tests.toml_table_at(rendered, "tool", "uv"),
+            eq=bool(packaged),
         )
-        tm.that(
-            set(
+        if packaged:
+            tm.that(
+                u.Tests.toml_strings_at(rendered, "tool", "uv", "workspace", "exclude"),
+                eq=tuple(member.path.as_posix() for member in packaged),
+            )
+        tm.ok(
+            {member.distribution for member in packaged}
+            <= set(
                 u.Tests.toml_strings_at(rendered, "tool", "uv", "override-dependencies")
             ),
-            eq={member.distribution for member in members},
         )
-        for member in members:
+        for member in packaged:
             tm.that(
                 sources[member.distribution],
-                eq=(
-                    {"workspace": True}
-                    if member.editable
-                    else {"path": member.path.as_posix(), "editable": False}
-                ),
+                eq={"path": member.path.as_posix(), "editable": True},
             )
             tm.that(
                 member.distribution
@@ -107,10 +109,6 @@ class TestsFlextInfraCodegenWorkspaceMemberGroup:
                 },
                 eq=True,
             )
-        tm.that(
-            "workspace" in u.Tests.toml_table_at(rendered, "tool", "uv"),
-            eq=any(member.editable for member in members),
-        )
         tm.that(
             "workspace" in u.Tests.toml_table_at(rendered, c.Infra.DEPENDENCY_GROUPS),
             eq=False,

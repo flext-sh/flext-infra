@@ -15,7 +15,6 @@ from tests import (
     TestsFlextInfraUtilitiesCodegen,
     TestsFlextInfraUtilitiesGit,
     TestsFlextInfraUtilitiesProjectFixture,
-    TestsFlextInfraUtilitiesWorkspaceFixture,
     c,
     p,
     r,
@@ -111,7 +110,7 @@ class TestsFlextInfraUtilitiesDocsFixture:
             )
 
         if project_names:
-            TestsFlextInfraUtilitiesWorkspaceFixture.declare_workspace_projects(
+            TestsFlextInfraUtilitiesProjectFixture.declare_workspace_projects(
                 workspace,
                 project_names,
             )
@@ -173,12 +172,12 @@ class TestsFlextInfraUtilitiesDocsFixture:
                 ),
                 encoding="utf-8",
             )
-            TestsFlextInfraUtilitiesWorkspaceFixture.write_member_package(
+            TestsFlextInfraUtilitiesProjectFixture.write_member_package(
                 project,
                 name,
             )
         if project_names:
-            TestsFlextInfraUtilitiesWorkspaceFixture.declare_workspace_projects(
+            TestsFlextInfraUtilitiesProjectFixture.declare_workspace_projects(
                 workspace,
                 project_names,
             )

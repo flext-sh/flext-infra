@@ -1,0 +1,65 @@
+# Data fields validate through the concrete model; only DI capabilities are Ports.
+# The generated twin inventory proves the schema owner rather than guessing names.
+id: model-field-schema-owner
+language: Python
+severity: error
+files: ["**/*.py"]
+ignores: ["**/protocols.py", "**/_protocols/**"]
+rule:
+  all:
+  - kind: attribute
+  - pattern: $PATH
+  - regex: "^p(?:\\.[A-Z][A-Za-z0-9_]*)+$"
+  - matches: protocol-model-path
+  - not:
+      inside:
+        kind: attribute
+        matches: protocol-model-path
+  - not:
+      inside:
+        stopBy: end
+        kind: call
+  - not:
+      inside:
+        stopBy: end
+        any:
+        - kind: subscript
+          has:
+            field: value
+            regex: "(?:^|\\.)(?:Callable|type|Type|Port)$"
+        - kind: generic_type
+          has:
+            kind: identifier
+            regex: "^(?:Callable|type|Type|Port)$"
+  - inside:
+      stopBy: end
+      kind: type
+      inside:
+        kind: assignment
+        matches: model-field-assignment
+        inside:
+          kind: expression_statement
+          inside:
+            kind: block
+            inside:
+              kind: class_definition
+              has:
+                field: superclasses
+                has:
+                  regex: "^(?:m|FlextModels[A-Za-z0-9_]*)\\.|^s\\[|(?:Model|Settings)$"
+  - inside:
+      kind: module
+      stopBy: end
+      has:
+        matches: p-imported-from-flext
+        stopBy: end
+transform:
+  MODEL:
+    replace:
+      source: $PATH
+      replace: "^p\\."
+      by: m.
+fix: $MODEL
+message: Data fields use the concrete model schema owner; retain protocols for consumer signatures and Ports for DI capabilities.
+metadata:
+  enforce: [ENFORCE-115]

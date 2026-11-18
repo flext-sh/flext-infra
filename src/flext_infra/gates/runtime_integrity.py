@@ -46,13 +46,13 @@ class FlextInfraGatesRuntimeIntegrity(FlextInfraGates):
         )
         component_ctx = ctx.model_copy(update={"reports_dir": ctx.reports_dir / name})
         return self._build_gate_execution(
-            m.Infra.GateExecutionParams(
-                project_dir=project_dir,
-                verdict=passed,
-                issues=tuple(issues),
-                raw_output=self._raw_output(native),
-                started=started,
-            ),
+            m.Infra.GateExecutionParams.model_validate({
+                "project_dir": project_dir,
+                "verdict": passed,
+                "issues": tuple(issues),
+                "raw_output": self._raw_output(native),
+                "started": started,
+            }),
             component_ctx,
         ).model_copy(
             update={
@@ -156,7 +156,7 @@ class FlextInfraGatesRuntimeIntegrity(FlextInfraGates):
                 ),
             ),
         )
-        components: dict[str, m.Infra.GateExecution] = {}
+        components: dict[str, p.Infra.GateExecution] = {}
         if ctx.fail_fast:
             for name, command in commands:
                 execution = self.native_execution(name, command, project_dir, ctx)
@@ -184,17 +184,23 @@ class FlextInfraGatesRuntimeIntegrity(FlextInfraGates):
             issue for execution in components.values() for issue in execution.issues
         )
         return self._build_gate_execution(
-            m.Infra.GateExecutionParams(
-                project_dir=project_dir,
-                verdict=len(components) == len(commands)
-                and all(execution.result.passed for execution in components.values()),
-                issues=tuple(issues),
-                raw_output="\n".join(
-                    f"{name}: {execution.raw_receipt}"
-                    for name, execution in components.items()
+            m.Infra.GateExecutionParams.model_validate({
+                "project_dir": (project_dir),
+                "verdict": (
+                    len(components) == len(commands)
+                    and all(
+                        execution.result.passed for execution in components.values()
+                    )
                 ),
-                started=started,
-            ),
+                "issues": (tuple(issues)),
+                "raw_output": (
+                    "\n".join(
+                        f"{name}: {execution.raw_receipt}"
+                        for name, execution in components.items()
+                    )
+                ),
+                "started": (started),
+            }),
             ctx,
         ).model_copy(
             update={

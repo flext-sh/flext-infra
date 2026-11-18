@@ -11,10 +11,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
-from flext_infra._protocols import (
-    FlextInfraProtocolsMiseToolchainBase,
-    FlextInfraProtocolsMixins,
-)
+from flext_infra._protocols import FlextInfraProtocolsMiseToolchainBase
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -226,11 +223,14 @@ class FlextInfraProtocolsLayout:
 
     @runtime_checkable
     class LayoutProjectReport(
-        FlextInfraProtocolsMixins.ProjectNameMixin,
-        FlextInfraProtocolsMiseToolchainBase.SchemaRecord,
-        Protocol,
+        FlextInfraProtocolsMiseToolchainBase.SchemaRecord, Protocol
     ):
         """Structural data contract projected from the owning model."""
+
+        @property
+        def project(self) -> t.NonEmptyStr:
+            """Project name."""
+            ...
 
         @property
         def findings(self) -> tuple[FlextInfraProtocolsLayout.LayoutFinding, ...]:

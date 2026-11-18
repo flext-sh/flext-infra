@@ -16,8 +16,7 @@ from typing import Protocol, runtime_checkable
 from flext_cli import FlextCliProtocols
 
 
-@runtime_checkable
-class FlextInfraProtocolsPromoted(Protocol):
+class FlextInfraProtocolsPromoted:
     """Promoted-command protocol definitions."""
 
     """flext-command registry protocol namespace."""

@@ -6,6 +6,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import os
+import re
 from pathlib import Path
 
 from flext_infra import config
@@ -67,6 +69,78 @@ class TestsFlextInfraCodegenMakeRuntimeIdentity:
         tm.that(result.stdout, has="application-environment-preserved")
         tm.that(result.stderr, lacks="invalid-host")
         tm.that(lock.read_bytes(), eq=lock_before)
+
+    @staticmethod
+    @c.Tests.MARK.parametrize(
+        "profile",
+        [c.Infra.MakeProfile.STANDALONE, c.Infra.MakeProfile.WORKSPACE],
+    )
+    def test_rendered_makefile_never_invokes_a_bare_direnv(
+        tmp_path: Path,
+        profile: c.Infra.MakeProfile,
+    ) -> None:
+        """Every generated direnv invocation runs the Mise-provisioned executable.
+
+        A bare ``direnv`` resolves through the operator PATH, so a consumer
+        without a host direnv could not run any activated verb.
+        """
+        root, _ = u.Tests.render_make_environment(tmp_path, profile)
+        commands = tuple(
+            line
+            for line in (root / c.Infra.MAKEFILE_FILENAME)
+            .read_text(encoding="utf-8")
+            .splitlines()
+            if not line.lstrip().startswith("#")
+        )
+        bare = tuple(
+            line
+            for line in commands
+            if re.search(r"(?<![$\w])direnv (?:allow|exec)\b", line)
+        )
+        tm.that(bare, empty=True)
+        tm.that(
+            "\n".join(commands),
+            has=[
+                '$(DIRENV) exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-$@',
+                '$(DIRENV) allow "$(PROJECT_ROOT)"',
+                'which "direnv"',
+            ],
+        )
+
+    @staticmethod
+    def test_activated_verb_never_selects_the_host_direnv(tmp_path: Path) -> None:
+        """A public verb activates through the locked direnv, never host PATH."""
+        root, _ = u.Tests.render_make_environment(
+            tmp_path,
+            c.Infra.MakeProfile.STANDALONE,
+        )
+        tm.ok(u.Tests.provision_python_project_environment(root))
+        host_bin = tmp_path / "host-bin"
+        u.Tests.write_executable(
+            host_bin / "direnv",
+            "#!/bin/sh\nprintf 'host-direnv-selected\\n' >&2\nexit 97\n",
+        )
+        (root / config.Infra.codegen.make.custom_handler_policy.filename).write_text(
+            ".PHONY: post-status\n"
+            "post-status:\n\t@printf 'locked-direnv-activated\\n'\n",
+            encoding="utf-8",
+        )
+
+        result = tm.ok(
+            u.Tests.run_isolated_make(
+                ["--no-print-directory", "status"],
+                cwd=root,
+                env={"PATH": os.pathsep.join((str(host_bin), os.environ["PATH"]))},
+            ),
+        )
+
+        tm.that(
+            u.Cli.process_succeeded(result.outcome),
+            eq=True,
+            msg=result.stdout + result.stderr,
+        )
+        tm.that(result.stderr, lacks="host-direnv-selected")
+        tm.that(result.stdout, has="locked-direnv-activated")
 
     @staticmethod
     def test_status_ignores_a_project_local_mise_override(

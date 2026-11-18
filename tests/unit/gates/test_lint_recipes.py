@@ -8,9 +8,14 @@ from __future__ import annotations
 
 import ast
 from pathlib import Path
+from typing import Final
 
 from flext_infra import config
 from tests import c, m, tm, u
+
+LINE_LIMIT: Final[int] = u.Infra.native_tool_setting(
+    config.Infra.tooling, "ruff", "line-length", int
+)
 
 
 class TestsFlextInfraLintRecipes:
@@ -314,6 +319,37 @@ class TestsFlextInfraLintRecipes:
                 "        assert self\n"
             ),
         )
+
+        long_source = (
+            "class TestsSample:\n"
+            "    def test_fonte_incompleta_perde_para_a_completa_e_cruzamento_sem_"
+            "regra_interrompe(\n"
+            "        self,\n"
+            "    ) -> None:\n"
+            "        assert self\n"
+        )
+        long_repaired = self._apply(
+            long_source,
+            (
+                "undocumented-public-method",
+                2,
+                "Missing docstring in public method",
+            ),
+        )
+        tm.that(
+            max(len(line) for line in long_repaired.splitlines()) <= LINE_LIMIT,
+            truth=True,
+        )
+        tm.that(long_repaired, has='"""Test fonte incompleta')
+
+        init_source = (
+            "class Sample:\n    def __init__(self) -> None:\n        self.value = 1\n"
+        )
+        init_repaired = self._apply(
+            init_source,
+            ("undocumented-public-init", 2, "Missing docstring in public method"),
+        )
+        tm.that(init_repaired, has='"""Initialize the instance."""')
 
     @c.Tests.MARK.parametrize(
         ("source", "findings", "expected"),

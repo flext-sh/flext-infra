@@ -10,14 +10,14 @@ import ast
 import builtins
 import hashlib
 import types as python_types
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from typing import cast
 
 from flext_cli import u
 
-from flext_infra import m, p, r, t
-from flext_infra._utilities import FlextInfraUtilitiesProjectDiscovery
+from flext_infra import c, m, p, r, t
+from flext_infra._models.transformers import FlextInfraModelsTransformers
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeRuntimeMatching,
     FlextInfraUtilitiesRopeRuntimeModuleQueries,
@@ -253,27 +253,27 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
         descriptor = cls._attribute_descriptor(member)
         source = project.source_text(Path(resource.real_path))
         span = cls._source_byte_range(source, node)
-        return m.Infra.RopeAttributeReadProof(
-            project=project,
-            source_path=Path(resource.real_path),
-            source_sha256=hashlib.sha256(source.encode("utf-8")).hexdigest(),
-            start_byte=span[0],
-            end_byte=span[1],
-            expression=ast.dump(node, include_attributes=False),
-            access=access,
-            base=base_reference,
-            accessor=cls._binding_reference(project, accessor, "__getattribute__"),
-            member=cls._binding_reference(project, member, node.attr),
-            descriptor=descriptor,
-            native_base=native_base,
-            native_accessor=accessor,
-            native_member=member,
-            native_descriptor=(
+        return m.Infra.RopeAttributeReadProof.model_validate({
+            "project": (project),
+            "source_path": (Path(resource.real_path)),
+            "source_sha256": (hashlib.sha256(source.encode("utf-8")).hexdigest()),
+            "start_byte": (span[0]),
+            "end_byte": (span[1]),
+            "expression": (ast.dump(node, include_attributes=False)),
+            "access": (access),
+            "base": (base_reference),
+            "accessor": (cls._binding_reference(project, accessor, "__getattribute__")),
+            "member": (cls._binding_reference(project, member, node.attr)),
+            "descriptor": (descriptor),
+            "native_base": (native_base),
+            "native_accessor": (accessor),
+            "native_member": (member),
+            "native_descriptor": (
                 runtime.qualified_name(project, "staticmethod", module_name="builtins")
                 if descriptor is not None
                 else None
             ),
-        )
+        })
 
     @classmethod
     def _attribute_accessor(
@@ -422,9 +422,6 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
             msg = "attribute receiver has no source class identity"
             raise ValueError(msg)
         module = value.get_module()
-        if module is None:
-            msg = "attribute receiver class has no source module"
-            raise ValueError(msg)
         attributes = []
         scope = value.get_scope()
         while scope is not None and scope.get_kind() == "Class":
@@ -642,7 +639,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
         prefix = lines.get_line(layout.header_start)
         prefix = prefix[: len(prefix) - len(prefix.lstrip())]
         edits = [
-            m.Infra.SourceRewrite(
+            FlextInfraModelsTransformers.SourceRewrite(
                 start=start,
                 end=end,
                 text="".join(
@@ -667,7 +664,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
                 msg = "Rope wrapper body has inconsistent indentation"
                 raise ValueError(msg)
             edits.append(
-                m.Infra.SourceRewrite(
+                FlextInfraModelsTransformers.SourceRewrite(
                     start=offset,
                     end=offset + layout.indentation,
                     text="",
@@ -675,7 +672,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
             )
         if layout.docstring_span is not None:
             edits.append(
-                m.Infra.SourceRewrite(
+                FlextInfraModelsTransformers.SourceRewrite(
                     start=lines.get_line_start(layout.docstring_span[0]),
                     end=min(
                         lines.get_line_end(layout.docstring_span[1]) + 1,
@@ -1016,6 +1013,8 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
         transfer: p.Infra.RopeMethodTransfer,
         paths: Sequence[Path],
         resolver: p.Infra.RopeSourceMemberResolver,
+        *,
+        match_filter: Callable[[p.Infra.RopeOccurrence], bool] | None = None,
     ) -> p.Infra.RopeChangeSet | None:
         """Delegate existing-class method ownership to the native SDK batch.
 
@@ -1099,6 +1098,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
                 destination_resource,
                 destination_offset,
                 **arguments,
+                **({"match_filter": match_filter} if match_filter is not None else {}),
             )
         if not isinstance(changes, p.Infra.RopeChangeSet):
             message = "Rope MoveMethod returned an invalid change set"
@@ -1220,6 +1220,116 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
         return mover
 
     @classmethod
+    def move_class_changes(
+        cls,
+        project: p.Infra.RopeProject,
+        origin: p.Infra.RopeResource,
+        origin_offset: int,
+        destination: p.Infra.RopeResource,
+        *,
+        options: p.Infra.RopeMoveOptions,
+    ) -> p.Infra.RopeChangeSet:
+        """Delegate nested-class transfer to its native SDK owner without effects.
+
+        Returns:
+            The native unapplied changes, preserving its first refusal.
+
+        Raises:
+            TypeError: The installed native mover lacks the class-transfer contract.
+
+        """
+        mover = cls.runtime_callable("rope.refactor.move", "create_move")(
+            project, origin, origin_offset
+        )
+        if not isinstance(
+            mover, cls.runtime_type("rope.refactor.move", "MoveClass")
+        ) or not isinstance(mover, p.Infra.RopeMoveClass):
+            message = "native Rope class transfer requires MoveClass"
+            raise TypeError(message)
+        return mover.get_changes(
+            destination,
+            resources=options.resources,
+            destination_offset=options.destination_offset,
+            match_filter=options.match_filter,
+        )
+
+    @classmethod
+    def preserved_receiver_reference_filter(
+        cls,
+        project: p.Infra.RopeProject,
+        public_routes: Sequence[tuple[str, str]],
+    ) -> Callable[[p.Infra.RopeOccurrence], bool]:
+        """Retain explicitly observed public receivers during native relocation.
+
+        Returns:
+            The occurrence predicate for references that may be rewritten.
+
+        """
+        receivers = tuple(
+            FlextInfraUtilitiesRopeRuntimeModules.qualified_name(
+                project, route.rpartition(".")[0], module_name=module
+            ).get_object()
+            for module, route in public_routes
+        )
+
+        def selected(occurrence: p.Infra.RopeOccurrence) -> bool:
+            names = occurrence.get_primary_and_pyname()
+            if names is None or names[0] is None:
+                return True
+            receiver = names[0].get_object()
+            return all(receiver is not public for public in receivers)
+
+        return selected
+
+    @classmethod
+    def move_binding_changes(
+        cls,
+        project: p.Infra.RopeProject,
+        origin: p.Infra.RopeResource,
+        origin_offset: int,
+        destination: p.Infra.RopeResource,
+        *,
+        options: p.Infra.RopeMoveOptions,
+    ) -> p.Infra.RopeChangeSet:
+        """Delegate a resolved declaration to its native class or global mover.
+
+        Returns:
+            Native unapplied changes retaining the source binding's kind.
+
+        Raises:
+            TypeError: The native source or mover does not satisfy its contract.
+
+        """
+        source_binding = cls.runtime_callable("rope.base.evaluate", "eval_location")(
+            project.get_pymodule(origin), origin_offset
+        )
+        if not isinstance(source_binding, p.Infra.RopePyName):
+            message = "native move source has no declaration binding"
+            raise TypeError(message)
+        source = source_binding.get_object()
+        if FlextInfraUtilitiesRopeRuntimeTypes.py_class(source) and (
+            options.destination_offset is not None
+            or (
+                (owner := source.get_scope().parent) is not None
+                and owner.get_kind() == "Class"
+            )
+        ):
+            mover = cls.runtime_callable("rope.refactor.move", "MoveClass")(
+                project, origin, origin_offset
+            )
+            if not isinstance(mover, p.Infra.RopeMoveClass):
+                message = "native Rope class mover violates its planning contract"
+                raise TypeError(message)
+            return mover.get_changes(
+                destination,
+                resources=options.resources,
+                destination_offset=options.destination_offset,
+                match_filter=options.match_filter,
+            )
+        mover = cls.create_move(project, origin, origin_offset)
+        return mover.get_changes(destination, resources=options.resources)
+
+    @classmethod
     def rename_changes(
         cls,
         rope_project: t.Infra.RopeProject,
@@ -1282,9 +1392,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
             msg = "native rename requires a producer project"
             raise ValueError(msg)
         producer = cls.require_semantic_module(projects[0].get_pymodule(resource))
-        module_name = FlextInfraUtilitiesProjectDiscovery.module_name_for_provider(
-            producer, source_project=projects[0]
-        )
+        module_name = producer.get_name()
         # Each project edits only its own sources that carry the identifier.
         retired = (
             module_name.rpartition(".")[2]
@@ -1292,11 +1400,22 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
             else cls._identifier_at(sources[Path(resource.real_path)], offset)
         )
         changes: list[tuple[p.Infra.RopeProject, p.Infra.RopeChangeSet]] = []
+        resource_path = Path(resource.real_path)
         for project in projects:
             # Foreign declarations must use the same authenticated resource owner
             # as imports, not MultiProjectRefactoring's global NoProject resolver.
             elected = project.find_module(module_name)
-            if elected is None or elected.real_path != resource.real_path:
+            if elected is None or Path(elected.real_path) != resource_path:
+                # A multi-root workspace names the same file from each root; the
+                # producer name is not resolvable verbatim in a consumer project.
+                project_root = Path(project.root.real_path)
+                if resource_path.is_relative_to(project_root):
+                    relative = resource_path.relative_to(project_root).with_suffix("")
+                    parts = list(relative.parts)
+                    if parts and parts[-1] == c.Infra.INIT_PY:
+                        parts.pop()
+                    elected = project.find_module(".".join(parts))
+            if elected is None or Path(elected.real_path) != resource_path:
                 msg = f"native rename lost its elected module: {module_name}"
                 raise ValueError(msg)
             changes.append((
@@ -1314,6 +1433,13 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
                             and project.source_owned(Path(candidate.real_path))
                             and (
                                 candidate.real_path == resource.real_path
+                                or (
+                                    offset is None
+                                    and resource.is_folder()
+                                    and Path(candidate.real_path).is_relative_to(
+                                        Path(resource.real_path)
+                                    )
+                                )
                                 or retired in sources[Path(candidate.real_path)]
                             )
                         ),

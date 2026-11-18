@@ -50,8 +50,7 @@ if TYPE_CHECKING:
     )
 
 
-@runtime_checkable
-class FlextInfraProtocolsBase(Protocol):
+class FlextInfraProtocolsBase:
     """Base protocols for flext-infra project."""
 
     @runtime_checkable
@@ -152,7 +151,7 @@ class FlextInfraProtocolsBase(Protocol):
 
         def codegen_conform_collaborators(
             self,
-        ) -> FlextInfraProtocolsCodegenPipeline.CodegenConformPorts | None: ...
+        ) -> FlextInfraProtocolsCodegenPipeline.CodegenConformPorts: ...
 
     @runtime_checkable
     class CodegenService(
@@ -251,6 +250,7 @@ class FlextInfraProtocolsBase(Protocol):
             *,
             options: (FlextInfraProtocolsCodegenTransaction.StageSourceOptions)
             | None = None,
+            storage_root: Path | None = None,
         ) -> p.Result[T]:
             """Validate staged updates and retirements while preserving live sources."""
             ...

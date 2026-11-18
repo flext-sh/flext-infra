@@ -8,7 +8,7 @@ Domain *keys* live here (never business-rule values — those stay in
 ``config/*.yaml``).
 
 Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
-SPDX-License-Identifier: MIT
+SPDX-License-Identifier: {{ license }}
 """
 
 from __future__ import annotations
@@ -22,13 +22,13 @@ from collections.abc import (
     Sequence,
 )
 {# AGENTS.md U2-U8 pattern (pure leaf, no facade import; keys, never business-rule values). #}
-from typing import Final
+from typing import ClassVar
 
 
 class {{ class_stem }}ConstantsConfig:
     """Config-domain key constants for {{ class_stem }} (no business rules)."""
 
-    CONFIG_DIR: Final[str] = "config"
+    CONFIG_DIR: ClassVar[str] = "config"
 
 
 __all__: list[str] = ["{{ class_stem }}ConstantsConfig"]

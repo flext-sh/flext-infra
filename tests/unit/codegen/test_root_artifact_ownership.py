@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import codegen, config, infra
+from flext_infra import config, infra
 from tests import c, m, tm, u
 from tests.unit.codegen import conform_support
 
@@ -75,12 +75,30 @@ class TestsFlextInfraRootArtifactOwnership:
 
     @staticmethod
     def test_github_managed_owner_must_be_full() -> None:
-        """Reject weaker policies for every config-declared GitHub artifact."""
+        """Reject weaker policies for every config-declared GitHub artifact.
+
+        Raises:
+            TypeError: If a templates payload is not a mapping.
+
+        """
         spec = config.Infra.codegen
         payload = spec.model_dump(exclude_computed_fields=True)
-        for destination, entry in payload["templates"]["entries"].items():
+        templates = payload["templates"]
+        if not isinstance(templates, dict):
+            msg = "templates payload is not a mapping"
+            raise TypeError(msg)
+        entries = templates["entries"]
+        if not isinstance(entries, dict):
+            msg = "templates entries payload is not a mapping"
+            raise TypeError(msg)
+        for destination, entry in entries.items():
+            if not isinstance(entry, dict):
+                continue
+            ownership = entry.get("ownership")
+            if not isinstance(ownership, dict):
+                continue
             if Path(destination).parts[:1] == (".github",):
-                entry["ownership"]["policy"] = "merge"
+                ownership["policy"] = "merge"
 
         with u.Tests.raises(ValueError, match="must be full-managed"):
             type(spec).model_validate(payload)
@@ -127,15 +145,7 @@ class TestsFlextInfraRootArtifactOwnership:
         }
         before = conform_support.TestsFlextInfraConformSupport.project_tree(root)
 
-        plan = tm.ok(
-            codegen.FlextInfraCodegenConform.Generate(
-                repository_root=root,
-                state=m.Infra.CodegenConformState(
-                    repository_root=root,
-                    request=request,
-                ),
-            ).plan(request)
-        )
+        plan = tm.ok(u.Tests.conform_plan_result(root, request))
         governed = tuple(file for file in plan.files if file.policy is not None)
         tm.that(
             {file.path: file.policy for file in governed},
@@ -194,13 +204,5 @@ class TestsFlextInfraRootArtifactOwnership:
             (root.parent / "origin.git").rename(root.parent / "origin.git.removed")
             request = m.Infra.CodegenConformRequest(root=root)
             tm.ok(
-                codegen.FlextInfraCodegenConform.Generate(
-                    repository_root=root,
-                    state=m.Infra.CodegenConformState(
-                        repository_root=root,
-                        request=request,
-                    ),
-                ).plan(
-                    request,
-                ),
+                u.Tests.conform_plan_result(root, request),
             )

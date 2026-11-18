@@ -11,7 +11,7 @@ from collections.abc import Iterable, Mapping, MutableMapping, Sequence
 from itertools import islice
 from typing import TYPE_CHECKING
 
-from flext_cli import m as cli_m, u
+from flext_cli import u
 
 from flext_infra import c, m, p, r
 
@@ -35,7 +35,7 @@ class FlextInfraUtilitiesCodegenFilePlan:
             One effect per destination with its original witness and dependencies.
 
         """
-        files: dict[Path, m.Infra.CodegenFilePlan] = {}
+        files: dict[Path, p.Infra.CodegenFilePlan] = {}
         for file in plans:
             previous = files.get(file.path)
             if previous is None and not inputs:
@@ -48,7 +48,11 @@ class FlextInfraUtilitiesCodegenFilePlan:
                 for name, equal in (
                     ("project", previous.project == file.project),
                     ("path", previous.path == file.path),
-                    ("before", previous.before == file.before),
+                    (
+                        "before",
+                        previous.before is file.before
+                        or (previous.before.content == file.before.content),
+                    ),
                     ("owner", previous.owner == file.owner),
                     ("policy", previous.policy == file.policy),
                     ("tracking", previous.tracking == file.tracking),
@@ -115,7 +119,7 @@ class FlextInfraUtilitiesCodegenFilePlan:
     @classmethod
     def codegen_stage_file_plans(
         cls,
-        index: MutableMapping[Path, m.Infra.CodegenFilePlan],
+        index: MutableMapping[Path, p.Infra.CodegenFilePlan],
         plans: Sequence[p.Infra.CodegenFilePlan],
         *,
         ordered: bool = False,
@@ -178,7 +182,7 @@ class FlextInfraUtilitiesCodegenFilePlan:
         edit: p.Infra.SemanticMigrationEdit,
         *,
         source_project: p.Infra.RopeProject,
-        declared_files: Mapping[Path, m.Infra.CodegenFilePlan],
+        declared_files: Mapping[Path, p.Infra.CodegenFilePlan],
     ) -> p.Infra.CodegenFilePlan:
         """Bind a semantic edit to its original candidate publication witness.
 
@@ -229,7 +233,7 @@ class FlextInfraUtilitiesCodegenFilePlan:
         )
 
     @staticmethod
-    def codegen_target_snapshot(path: Path) -> p.Result[cli_m.Cli.AtomicFileState]:
+    def codegen_target_snapshot(path: Path) -> p.Result[p.Cli.AtomicFileState]:
         """Observe the destination state a plan guards; absence is a state.
 
         Returns:
@@ -272,23 +276,23 @@ class FlextInfraUtilitiesCodegenFilePlan:
     @staticmethod
     def required_file_states(
         paths: Iterable[Path],
-    ) -> p.Result[tuple[cli_m.Cli.AtomicFileState, ...]]:
+    ) -> p.Result[tuple[p.Cli.AtomicFileState, ...]]:
         """Snapshot descriptor-authenticated states for an inventoried path set.
 
         Every path must exist: an absent input is a planning defect, not an empty
         snapshot.
 
         Returns:
-            The resulting ``p.Result[tuple[cli_m.Cli.AtomicFileState, ...]]``.
+            The resulting ``p.Result[tuple[p.Cli.AtomicFileState, ...]]``.
 
         """
-        states: list[cli_m.Cli.AtomicFileState] = []
+        states: list[p.Cli.AtomicFileState] = []
         for path in sorted(set(paths)):
             state = u.Cli.atomic_read_binary_file_state(path, required=True)
             if state.failure:
-                return r[tuple[cli_m.Cli.AtomicFileState, ...]].from_failure(state)
+                return r[tuple[p.Cli.AtomicFileState, ...]].from_failure(state)
             states.append(state.value)
-        return r[tuple[cli_m.Cli.AtomicFileState, ...]].ok(tuple(states))
+        return r[tuple[p.Cli.AtomicFileState, ...]].ok(tuple(states))
 
     @staticmethod
     def atomic_file_state_differs(

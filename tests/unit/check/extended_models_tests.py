@@ -66,7 +66,7 @@ class TestsFlextInfraModels:
         payload = tm.ok(u.Cli.json_dumps(native))
         result = m.Infra.SarifResult.model_validate_json(payload)
         emitted = u.Cli.json_as_mapping(
-            tm.ok(u.Cli.json_parse(result.model_dump_json())),
+            tm.ok(u.Cli.json_loads(result.model_dump_json())),
         )
         for key in ("locations", "relatedLocations"):
             location = u.Cli.json_deep_mapping_list(emitted, key)[0]
@@ -77,7 +77,7 @@ class TestsFlextInfraModels:
             tm.that(published_region, eq=region or {})
 
     @staticmethod
-    def _sample_issues() -> tuple[p.Infra.Issue, m.Infra.Issue, m.Infra.Issue]:
+    def _sample_issues() -> tuple[p.Infra.Issue, p.Infra.Issue, p.Infra.Issue]:
         """Build three distinct sample gate issues for summary assertions.
 
         Returns:
@@ -147,12 +147,12 @@ class TestsFlextInfraModels:
         """Test run-command gate parsing for check workflows."""
         command = m.Infra.RunCommand.model_validate({
             "projects": ["flext-core"],
-            "gates": ["lint,format,pyrefly,mypy,pyright,security,markdown"],
+            "gates": ["lint,format,pyrefly,security,markdown"],
         })
 
         tm.that(
             command.gates,
-            eq=("lint", "format", "pyrefly", "mypy", "pyright", "security", "markdown"),
+            eq=("lint", "format", "pyrefly", "security", "markdown"),
         )
 
     def test_total_findings_multiple_gates(self) -> None:
@@ -177,16 +177,16 @@ class TestsFlextInfraModels:
             file="a.py",
             line=1,
             column=1,
-            code="reportPrivateUsage",
+            code="bad-assignment",
             message="warning",
             severity="warning",
         )
         execution = u.Tests.create_gate_execution(
-            "pyright",
+            "pyrefly",
             passed=False,
             issues=(warning,),
         )
-        project = m.Infra.ProjectResult(project="p", gates={"pyright": execution})
+        project = m.Infra.ProjectResult(project="p", gates={"pyrefly": execution})
 
         tm.that(execution.finding_count, eq=1)
         tm.that(project.total_findings, eq=1)

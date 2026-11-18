@@ -3,7 +3,7 @@ snapshots:
   "from flext_core import m\n\n@dataclass(frozen=True)\nclass Point:\n    x: int\n    label: str | None = None\n":
     fixed: |
       from flext_core import m
-      
+
       class Point(m.FrozenModel):
           x: int
           label: str | None = None
@@ -67,7 +67,7 @@ snapshots:
       end: 24
     - source: |
         from flext_core import m
-        
+
         @dataclass(frozen=True)
         class Point:
             x: int
@@ -78,7 +78,7 @@ snapshots:
   "from flext_infra import m, t\n\n@dataclass(frozen=True, slots=True)\nclass Span:\n    start: int\n    path: Path\n":
     fixed: |
       from flext_infra import m, t
-      
+
       class Span(m.FrozenModel):
           start: int
           path: Path
@@ -142,7 +142,7 @@ snapshots:
       end: 28
     - source: |
         from flext_infra import m, t
-        
+
         @dataclass(frozen=True, slots=True)
         class Span:
             start: int

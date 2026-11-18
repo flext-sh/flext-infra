@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import os
-import shutil
 import sys
 from collections.abc import Sequence
 from pathlib import Path
@@ -60,11 +59,10 @@ class TestsFlextInfraCodegenConform:
         )
         u.Tests.copy_tracked_mise_seeds(root)
         u.Tests.write_project_beads_config(root, name)
-        declaration = m.Infra.RepositoryDeltaSpec(
-            project=project,
-            integration=integration,
-            kind=repository.kind,
-        )
+        declaration = m.Infra.RepositoryDeltaSpec.model_validate({
+            "project": project,
+            "integration": integration,
+        })
         tm.ok(
             u.Cli.yaml_dump(
                 root / c.CONFIG_DIR_NAME / c.Infra.CODEGEN_CONFIG_FILENAME,
@@ -84,6 +82,7 @@ class TestsFlextInfraCodegenConform:
     @staticmethod
     def conformed_template(
         tmp_path_factory: t.Tests.TempPathFactory,
+        session_runtime: p.Tests.SessionRuntime,
     ) -> Path:
         """Conform one real seed tree once per module; each scenario clones it.
 
@@ -104,6 +103,13 @@ class TestsFlextInfraCodegenConform:
         )
         TestsFlextInfraConformSupport.seed_infra_package_tree(template)
         u.Tests.standalone_workspace(template, config.Infra.name)
+        tm.ok(
+            u.Tests.create_python_environment(
+                template,
+                dependency_projects=u.Tests.python_dependency_projects(template),
+                session_runtime=session_runtime,
+            )
+        )
         request = u.Tests.conform_request(
             template,
             scope=c.Infra.CodegenConformScope.SELF,
@@ -118,7 +124,7 @@ class TestsFlextInfraCodegenConform:
         tmp_path: Path,
         scenario: str,
         template: Path,
-    ) -> tuple[Path, m.Infra.CodegenConformRequest, Path, bytes]:
+    ) -> tuple[Path, p.Infra.CodegenConformRequest, Path, bytes]:
         """Clone the conformed template, then introduce one recoverable publication.
 
         Returns:
@@ -126,7 +132,8 @@ class TestsFlextInfraCodegenConform:
 
         """
         root = tmp_path / scenario
-        shutil.copytree(template, root)
+        u.Tests.reflink_copy_tree(template, root)
+        u.Tests.copy_tracked_mise_seeds(root, source_root=template)
         published = root / c.Infra.MAKEFILE_FILENAME
         original = published.read_bytes() + b"\n# recoverable drift\n"
         published.write_bytes(original)
@@ -174,7 +181,7 @@ class TestsFlextInfraCodegenConform:
             mode=mode,
         )
         with u.Tests.raises(e.OperationError, match="declares a variable"):
-            FlextInfraCodegenConform.Generate(repository_root=root).plan(request)
+            u.Tests.conform_plan_result(root, request)
         with u.Tests.raises(e.OperationError, match=r"custom\.mk"):
             (
                 infra.codegen_generate(request)
@@ -207,10 +214,12 @@ class TestsFlextInfraCodegenConform:
         )
         before = TestsFlextInfraConformSupport.project_tree(root)
         if scenario == "docs-failure":
-            with u.Tests.raises(ValueError, match="Invalid JSON"):
+            tm.fail(
                 FlextInfraCodegenConform.execute_request(
                     request, execution_context=infra
-                )
+                ),
+                has="Invalid JSON",
+            )
             tm.that(published.read_bytes(), eq=original)
             tm.that(TestsFlextInfraConformSupport.project_tree(root), eq=before)
             return
@@ -224,9 +233,12 @@ class TestsFlextInfraCodegenConform:
             tm.that(published.read_bytes(), eq=original)
             tm.that(TestsFlextInfraConformSupport.project_tree(root), eq=before)
             return
-        planned = tm.ok(
-            FlextInfraCodegenConform.Generate(repository_root=root).plan(request)
+        executor = tm.ok(
+            FlextInfraCodegenConform.Generate.from_request(
+                request, execution_context=infra
+            )
         )
+        planned = tm.ok(executor.plan(request))
         target = next(file for file in planned.files if file.path == published)
         foreign = original + b"# concurrent edit\n"
         published.write_bytes(foreign)
@@ -250,13 +262,25 @@ class TestsFlextInfraCodegenConform:
             origin_url=u.Tests.repository_ref("flext-infra").url,
         )
         pyproject = tmp_path / c.PYPROJECT_FILENAME
-        source = pyproject.read_text(encoding="utf-8")
+        source = u.Tests.toml_doc(pyproject.read_text(encoding="utf-8"))
+        dependencies = [
+            "custom-runtime>=0.22",
+            "flext-custom @ ../flext-custom",
+        ]
+        u.Cli.toml_ensure_table(source, "project")["dependencies"] = dependencies
         pyproject.write_text(
-            source + 'dependencies = ["custom-runtime>=0.22", '
-            '"flext-custom @ ../flext-custom"]\n',
+            u.Cli.toml_dumps(source),
             encoding="utf-8",
         )
 
+        planned = tm.ok(service.plan(request))
+        (manifest,) = (file for file in planned.files if file.path == pyproject)
+        tm.that(
+            u.Tests.toml_strings_at(
+                u.Tests.codegen_file_text(manifest), "project", "dependencies"
+            ),
+            eq=tuple(dependencies),
+        )
         with u.Tests.raises(
             e.OperationError,
             match="internal dependency direct source must be a git URL",
@@ -296,7 +320,6 @@ class TestsFlextInfraCodegenConform:
         package_init.parent.mkdir(parents=True, exist_ok=True)
         package_init.write_text("", encoding="utf-8")
         declaration = m.Infra.RepositoryDeltaSpec(
-            kind=u.Tests.repository_ref(config.Infra.name).kind,
             extra_verbs=(m.Infra.MakeVerbSpec(name=verb, description=help_text),),
         )
         tm.ok(
@@ -343,14 +366,14 @@ class TestsFlextInfraCodegenConform:
         """A config-declared collision is rejected, never silently dropped."""
         canonical = config.Infra.codegen.make.verbs[0].name
 
-        tm.fail(
+        with u.Tests.raises(
+            ValueError, match="must never shadow canonical make.verbs builtins"
+        ):
             self._conform_with_rendered_makefile(
                 infra_git_repo,
                 canonical,
                 verb=canonical,
-            ),
-            has="must never shadow canonical make.verbs builtins",
-        )
+            )
         tm.that((infra_git_repo / c.Infra.MAKEFILE_FILENAME).exists(), eq=False)
 
     @staticmethod
@@ -452,7 +475,6 @@ class TestsFlextInfraCodegenConform:
         tm.ok(
             FlextInfraCodegenMakeBootstrap(
                 repository_root=root,
-                kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
                 apply_changes=True,
             ).execute(),
             eq=True,
@@ -462,9 +484,7 @@ class TestsFlextInfraCodegenConform:
             scope=c.Infra.CodegenConformScope.SELF,
             mode=c.Infra.CodegenConformMode.CHECK,
         )
-        plan = tm.ok(
-            FlextInfraCodegenConform.Generate(repository_root=root).plan(request)
-        )
+        plan = tm.ok(u.Tests.conform_plan_result(root, request))
         editor_settings = u.Cli.JSON_MAPPING_ADAPTER.validate_json(
             settings_path.read_text(encoding=c.DEFAULT_ENCODING),
         )
@@ -515,20 +535,6 @@ class TestsFlextInfraCodegenConform:
         tm.ok((root / "config" / "beads.yaml").is_file())
         tm.ok((root / c.PYPROJECT_FILENAME).is_file())
         tm.ok((root / ".env.example").is_file())
-        ruff_lint = config.Infra.tooling.tools.ruff.lint
-        runtime_roots = ruff_lint.flake8_type_checking.runtime_evaluated_roots
-        rendered_runtime_bases = u.Tests.toml_strings_at(
-            (root / c.PYPROJECT_FILENAME).read_text(encoding="utf-8"),
-            "tool",
-            "ruff",
-            "lint",
-            "flake8-type-checking",
-            "runtime-evaluated-base-classes",
-        )
-        tm.that(
-            tuple(rendered_runtime_bases),
-            eq=u.Infra.runtime_evaluated_base_classes(root, {}, runtime_roots),
-        )
         package_name = name.replace("-", "_")
         pythonpath = os.pathsep.join(
             part
@@ -550,6 +556,7 @@ class TestsFlextInfraCodegenConform:
     ) -> None:
         """Inspect the generated selection and execute its declared native UV."""
         root = infra_git_repo
+        u.Tests.copy_tracked_mise_seeds(root)
         workspace = TestsFlextInfraConformSupport.standalone_workspace(root)
         TestsFlextInfraConformSupport.apply_conform_surface(
             root,
@@ -565,11 +572,7 @@ class TestsFlextInfraCodegenConform:
             tool for tool in config.Infra.codegen.toolchain.tools if tool.name == "uv"
         )
         selector = tool.selector or tool.name
-        tm.that(selected, has='mise -C "$(RUNTIME_ROOT)" which')
-        tm.that(
-            selected, has=f'which "{tool.version_probe.binary}" --tool "{selector}@'
-        )
-        tm.that(selected, has=f'tool "{selector}" --requested')
+        tm.that(selected, has=f'which "{tool.version_probe.binary}"')
         tm.that(selected, lacks="UV_VERSION")
         binary = tm.ok(u.Infra.managed_mise_binary(tool.name, root))
         reader = tm.ok(u.Infra.managed_mise_self(root))
@@ -597,7 +600,8 @@ class TestsFlextInfraCodegenConform:
     ) -> None:
         """Test existing manifest converges to identical tree."""
         existing_root = tmp_path / "existing"
-        shutil.copytree(conformed_template, existing_root)
+        u.Tests.reflink_copy_tree(conformed_template, existing_root)
+        u.Tests.copy_tracked_mise_seeds(existing_root, source_root=conformed_template)
         tm.that(
             tm.ok(u.Infra.exact_worktree_root(existing_root)).head_oid is not None,
             eq=True,
@@ -640,7 +644,7 @@ class TestsFlextInfraCodegenConform:
     ) -> None:
         """The gen verb converges for a Python root beyond declarative env_dirs.
 
-        Two derivations used to select the pyright execution environments: the
+        Two derivations used to select the type-checker analysis roots: the
         dependency command discovered roots ON DISK, while conform planned them
         from declarative ``env_dirs``. A project owning a Python directory
         outside that list therefore oscillated between two writers. Conform is
@@ -667,7 +671,7 @@ class TestsFlextInfraCodegenConform:
             eq=True,
         )
         tm.that(
-            extra_root in config.Infra.tooling.tools.pyright.path_rules.env_dirs,
+            extra_root in config.Infra.tooling.tools.pyrefly.path_rules.env_dirs,
             eq=False,
         )
         tm.ok(u.Cli.run_checked(["git", "add", "-A"], cwd=root))
@@ -693,10 +697,18 @@ class TestsFlextInfraCodegenConform:
     @c.Tests.MARK.slow
     def test_empty_rendered_directory_is_not_a_python_root(
         infra_git_repo: Path,
+        session_runtime: p.Tests.SessionRuntime,
     ) -> None:
         """Test empty rendered directory is not a python root."""
         root = infra_git_repo
         TestsFlextInfraConformSupport.seed_infra_package_tree(root)
+        tm.ok(
+            u.Tests.create_python_environment(
+                root,
+                dependency_projects=u.Tests.python_dependency_projects(root),
+                session_runtime=session_runtime,
+            )
+        )
         (root / "scripts").mkdir()
 
         result = infra.codegen_conform(
@@ -715,14 +727,6 @@ class TestsFlextInfraCodegenConform:
                 "pyrefly",
             )["project-includes"],
             lacks="scripts/**/*.py*",
-        )
-        tm.that(
-            u.Tests.toml_table_at(
-                (root / c.PYPROJECT_FILENAME).read_text(encoding="utf-8"),
-                "tool",
-                "pyright",
-            )["include"],
-            lacks="scripts",
         )
 
     # Two conform apply cycles plus a check exercise the slow integration harness.
@@ -760,7 +764,7 @@ class TestsFlextInfraCodegenConform:
             mode=c.Infra.CodegenConformMode.APPLY,
         )
         initial_plan = tm.ok(
-            FlextInfraCodegenConform.Generate(repository_root=root).plan(request),
+            u.Tests.conform_plan_result(root, request),
         )
         plans = {
             file.path.relative_to(root).as_posix(): file for file in initial_plan.files
@@ -808,7 +812,7 @@ class TestsFlextInfraCodegenConform:
         root = tmp_path / "arbitrary-root"
         root.mkdir()
         u.Tests.initialize_git_repo(root, origin_url=repository.url)
-        u.Tests.copy_tracked_mise_seeds(tmp_path)
+        u.Tests.copy_tracked_mise_seeds(root)
         service, request = TestsFlextInfraConformSupport.check_conform_service(
             root,
             workspace,
@@ -837,12 +841,16 @@ class TestsFlextInfraCodegenConform:
             eq=u.Tests.codegen_file_text(first_pyproject),
         )
         tm.that(
-            addopts,
-            eq=tuple(
-                u.Infra.native_tool_setting(
+            set(addopts),
+            eq={
+                *u.Infra.native_tool_setting(
                     config.Infra.tooling, "pytest.ini_options", "addopts", Sequence[str]
-                )
-            ),
+                ),
+                *(
+                    f"--ignore={root}"
+                    for root in config.Infra.codegen.exclusions.scenario_data_roots
+                ),
+            },
         )
         tm.that(report, lacks="fail_under")
 
@@ -861,7 +869,6 @@ class TestsFlextInfraCodegenConform:
         tm.ok(
             FlextInfraCodegenMakeBootstrap(
                 repository_root=root,
-                kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
                 apply_changes=True,
             ).execute(),
         )

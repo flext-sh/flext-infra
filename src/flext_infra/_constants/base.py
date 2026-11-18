@@ -13,8 +13,8 @@ from typing import ClassVar
 
 from flext_core import c
 
+from flext_infra._constants import FlextInfraConstantsSourceCode
 from flext_infra._constants.make import FlextInfraConstantsMake
-from flext_infra._constants.source_code import FlextInfraConstantsSourceCode
 from flext_infra._constants.validate import FlextInfraConstantsSharedInfra
 
 
@@ -87,17 +87,11 @@ class FlextInfraConstantsBase(
     "Entries kept by the per-directory ownership memo cache of a workspace scan."
     PYREFLY: ClassVar[str] = "pyrefly"
     "Pyrefly tool section key."
-    MYPY: ClassVar[str] = "mypy"
-    "Mypy tool section key."
-    PYRIGHT: ClassVar[str] = "pyright"
-    "Pyright tool section key."
     DIAGNOSTIC_LEVELS: ClassVar[Mapping[str, frozenset[str]]] = MappingProxyType({
-        PYRIGHT: frozenset({"none", "information", "warning", "error"}),
         PYREFLY: frozenset({"ignore", "info", "warn", "error"}),
     })
     "Native diagnostic levels each type checker accepts for one rule."
     DIAGNOSTIC_RULE_PATTERNS: ClassVar[Mapping[str, str]] = MappingProxyType({
-        PYRIGHT: r"^report[A-Z][A-Za-z]*$",
         PYREFLY: r"^[a-z]+(?:-[a-z]+)*$",
     })
     "Native rule-name grammar of each type checker."
@@ -127,26 +121,16 @@ class FlextInfraConstantsBase(
     "Pyrefly sub-config glob key naming the files the entry governs."
     SUB_CONFIG_ERRORS: ClassVar[str] = "errors"
     "Pyrefly sub-config error-severity table key."
-    EXTRA_PATHS: ClassVar[str] = "extraPaths"
-    "Pyright extra paths settings key."
-    REPORT_PRIVATE_USAGE: ClassVar[str] = "reportPrivateUsage"
-    "Pyright execution-environment private-usage settings key."
-    VENV_NAME: ClassVar[str] = "venv"
-    "Pyright virtualenv name settings key."
-    VENV_PATH: ClassVar[str] = "venvPath"
-    "Pyright virtualenv base path settings key."
     VENV_DIR: ClassVar[str] = ".venv"
     "Runtime virtual environment directory name owned by the workspace."
     PYTHON_VERSION_HYPHEN: ClassVar[str] = "python-version"
-    "Pyrefly/pyright python-version settings key (hyphenated)."
+    "Pyrefly python-version settings key (hyphenated)."
     PYTHON_VERSION_FILENAME: ClassVar[str] = ".python-version"
     "Interpreter-selection file consumed by pyenv/asdf/mise."
     TAPLO_CONFIG_FILENAME: ClassVar[str] = ".taplo.toml"
     "Taplo workspace formatting configuration filename."
     TAPLO_MISE_TOOL_NAME: ClassVar[str] = "taplo"
     "Mise selector key whose locked release formats managed TOML."
-    PYTHON_VERSION_UNDERSCORE: ClassVar[str] = "python_version"
-    "Mypy python_version settings key (underscored)."
     EXTEND: ClassVar[str] = "extend"
     "Ruff extend settings key."
     KNOWN_FIRST_PARTY_HYPHEN: ClassVar[str] = "known-first-party"
@@ -175,8 +159,6 @@ class FlextInfraConstantsBase(
     "Pytest ini key projecting the Make CI context variable name."
     FLEXT_MAKE_CI_VALUE: ClassVar[str] = "flext_make_ci_value"
     "Pytest ini key projecting the value that marks the Make CI context."
-    PLUGINS: ClassVar[str] = "plugins"
-    "Mypy plugins settings key."
     IGNORE: ClassVar[str] = "ignore"
     "Pyrefly sub-config ignore key."
     INCLUDE: ClassVar[str] = "include"
@@ -246,7 +228,6 @@ class FlextInfraConstantsBase(
     "Root of regenerable codegen transaction state; never repository content."
     MUTATION_LOCK_NAME: ClassVar[str] = "flext-infra.lock"
     "Exclusive lock serializing every writer of one mutation scope."
-    ATOMIC_SOURCE_CHANGED: ClassVar[str] = "atomic source changed"
     "Publisher verdict: another writer changed a planned destination first."
     RELEASE_GITLEAKS_CONFIG_PATH: ClassVar[str] = "config/gitleaks-release.toml"
     "Workspace-relative trusted release secret-scan configuration."
@@ -306,6 +287,12 @@ class FlextInfraConstantsBase(
     "Canonical ast-grep include/exclude glob option."
     SG_UPDATE_ALL: ClassVar[str] = "--update-all"
     "ast-grep fixture and rewrite update flag."
+    SG_THREADS_FLAG: ClassVar[str] = "--threads"
+    "Canonical ast-grep worker thread count option."
+    SG_INSPECT_FLAG: ClassVar[str] = "--inspect"
+    "Canonical ast-grep inspection/summary option."
+    SG_STDIN_FLAG: ClassVar[str] = "--stdin"
+    "Canonical ast-grep scan standard input flag."
     BANDIT: ClassVar[str] = "bandit"
     "Bandit security linter binary."
     RUMDL: ClassVar[str] = "rumdl"

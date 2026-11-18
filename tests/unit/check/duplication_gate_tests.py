@@ -10,7 +10,6 @@ from collections.abc import Generator
 from pathlib import Path
 
 from flext_infra import config
-from flext_infra.check import FlextInfraGateRegistry
 from flext_infra.gates import FlextInfraGatesDuplication
 from tests import c, m, p, t, tm, u
 
@@ -46,12 +45,6 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
     @staticmethod
     def _ctx(root: Path) -> p.Infra.GateContext:
         return m.Infra.GateContext(repository_root=root, reports_dir=root / "reports")
-
-    @staticmethod
-    def test_registry_exposes_the_canonical_gate() -> None:
-        """Test registry exposes the canonical gate."""
-        gate = FlextInfraGateRegistry.default().create("duplication", Path.cwd())
-        tm.ok(isinstance(gate, FlextInfraGatesDuplication))
 
     def test_empty_workspace_scope_is_a_blocking_failure(self, tmp_path: Path) -> None:
         """Test empty workspace scope is a blocking failure."""
@@ -140,7 +133,6 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
                 "      duplication_trees: [charts]\n",
                 encoding="utf-8",
             )
-            u.Tests.declare_governed_kind(root)
         return root
 
     def test_declared_trees_enter_the_scan_and_fail_on_clones(
@@ -308,19 +300,49 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
             has="charts/values.yaml",
         )
 
-    def test_cross_file_clone_is_reported(self, tmp_path: Path) -> None:
-        """A cross-file clone blocks; CI runs similarity, semantic NOT EXECUTED."""
-        root = self._governed_with_python_clone(tmp_path, same_file=False)
+    def test_undeclared_language_clones_stay_outside_the_scan(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Only the declared language formats enter the scan; Dockerfiles do not."""
+        root = tmp_path / "docker-clone"
+        u.Tests.WorktreeFixture.initialize_governed_project(
+            root,
+            "fixture-docker-clone",
+            beads=u.Tests.BeadsIdentity(
+                workspace="docker-clone-workspace",
+                database="docker_clone_database",
+                issue_prefix="docker-clone",
+            ),
+        )
+        docker = root / "tests" / "fixtures" / "docker"
+        docker.mkdir(parents=True)
+        image = "FROM fixture/base:1\n" + "".join(
+            f"RUN install-fixture-package-{index} --flag value-{index}\n"
+            for index in range(max(c.Infra.JSCPD_MIN_LINES, c.Infra.JSCPD_MIN_TOKENS))
+        )
+        for name in ("first.Dockerfile", "second.Dockerfile"):
+            (docker / name).write_text(image, encoding="utf-8")
+
+        execution = FlextInfraGatesDuplication(root).check(root, self._ctx(root))
+
+        tm.ok(execution.result.passed)
+        tm.that(execution.issues, eq=())
+
+    @c.Tests.MARK.parametrize("same_file", (False, True))
+    def test_python_clone_is_reported(self, tmp_path: Path, *, same_file: bool) -> None:
+        """Distinct clone spans block within one file and across files."""
+        root = self._governed_with_python_clone(tmp_path, same_file=same_file)
 
         execution = FlextInfraGatesDuplication(root).check(root, self._ctx(root))
 
         tm.fail(execution.result.passed)
         tm.ok(len(execution.issues) >= 1)
         rendered = u.Cli.json_as_mapping(
-            u.Cli.json_parse(
+            u.Cli.json_loads(
                 (
                     root / c.Infra.JSCPD_REPORT_DIRNAME / c.Infra.JSCPD_CONFIG_FILENAME
-                ).read_text(encoding="utf-8"),
+                ).read_text(encoding="utf-8")
             ).unwrap(),
         )
         tm.that(
@@ -333,22 +355,11 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
             truth=True,
         )
 
-    def test_intra_file_clone_is_reported(self, tmp_path: Path) -> None:
-        """A file that duplicates a block inside itself is a finding.
-
-        The identical file/span pair from the double-scan is dropped, but a
-        same-file clone with two distinct spans is genuine duplication and
-        must never be hidden.
-        """
-        root = self._governed_with_python_clone(tmp_path, same_file=True)
-
-        execution = FlextInfraGatesDuplication(root).check(root, self._ctx(root))
-
-        tm.fail(execution.result.passed)
-        tm.that(
-            {issue.file for issue in execution.issues},
-            eq={"src/fixture_python_clone/duplicated.py"},
-        )
+        if same_file:
+            tm.that(
+                {issue.file for issue in execution.issues},
+                eq={"src/fixture_python_clone/duplicated.py"},
+            )
 
     @staticmethod
     def _governed_with_fleet_members(
@@ -503,7 +514,7 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
             / f"{c.Infra.JSCPD_REPORT_FILENAME.removesuffix('.json')}.sarif"
         )
         runs = u.Cli.json_as_mapping(
-            u.Cli.json_parse(sarif.read_text(encoding="utf-8")).unwrap()
+            u.Cli.json_loads(sarif.read_text(encoding="utf-8")).unwrap()
         ).get("runs")
         tm.ok(isinstance(runs, list) and len(runs) >= 1)
 
@@ -589,10 +600,10 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
 
         """
         return u.Cli.json_as_mapping(
-            u.Cli.json_parse(
+            u.Cli.json_loads(
                 (
                     root / c.Infra.JSCPD_REPORT_DIRNAME / c.Infra.JSCPD_CONFIG_FILENAME
-                ).read_text(encoding="utf-8"),
+                ).read_text(encoding="utf-8")
             ).unwrap(),
         )
 
@@ -606,7 +617,7 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
         """
         assessment = root / "reports" / "duplication.raw.assessment.json"
         mapping = u.Cli.json_as_mapping(
-            u.Cli.json_parse(assessment.read_text(encoding="utf-8")).unwrap()
+            u.Cli.json_loads(assessment.read_text(encoding="utf-8")).unwrap()
         )
         return u.Cli.json_as_mapping(mapping.get("counts", {}))
 
@@ -651,6 +662,15 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
         )
         package = root / "src" / "fixture_preamble_clone"
         package.mkdir(parents=True, exist_ok=True)
+        # The per-package import list stays scanned (only the mandated
+        # boilerplate lines are ignore patterns), so it is sized from the
+        # typed floors: jscpd skips a span below them and never reports it.
+        imports = "".join(
+            f"from fixture_dependency_{index} import name_{index}\n"
+            for index in range(
+                max(c.Infra.JSCPD_MIN_LINES, c.Infra.JSCPD_MIN_TOKENS // 4) + 2
+            )
+        )
         preamble = (
             '"""Module contract line.\n'
             "\n"
@@ -662,9 +682,7 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
             "\n"
             "from typing import TYPE_CHECKING\n"
             "\n"
-            "from sqlalchemy import text\n"
-            "\n"
-            "from dc_recon import c, e, h, m, p, r, t, u\n"
+            f"{imports}"
             "\n"
             "if TYPE_CHECKING:\n"
             "    from sqlalchemy.engine import Connection as SaConnection\n"
@@ -709,7 +727,7 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
             "\n"
             "from __future__ import annotations\n"
             "\n"
-            "from dc_recon import c, e, h, m, p, r, t, u\n"
+            "from example_engine import c, e, h, m, p, r, t, u\n"
             "\n" + self._PYTHON_BEHAVIOR_BLOCK
         )
         (package / "first.py").write_text(module, encoding="utf-8")

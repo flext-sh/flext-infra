@@ -1,7 +1,7 @@
 """Structural ping declarations for {{ package_name }}.
 
 Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
-SPDX-License-Identifier: MIT
+SPDX-License-Identifier: {{ license }}
 """
 
 {# NOTE:public ping annotations use field-only protocols; Pydantic models only validate and construct. -#}
@@ -16,7 +16,9 @@ from collections.abc import (
     Sequence,
 )
 
-from typing import Final, Protocol, runtime_checkable
+from typing import Protocol, runtime_checkable
+
+from {{ upstream }} import t
 
 
 class {{ class_stem }}ProtocolsPing:
@@ -30,7 +32,10 @@ class {{ class_stem }}ProtocolsPing:
     class PingResult(Protocol):
         """Structural surface of a successful ping response."""
 
-        message: Final[str]
+        @property
+        def message(self) -> t.StrictStr:
+            """Read-only greeting of the frozen ping result."""
+            ...
 
 
 __all__: list[str] = ["{{ class_stem }}ProtocolsPing"]

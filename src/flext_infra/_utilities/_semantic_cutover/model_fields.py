@@ -8,9 +8,10 @@ from __future__ import annotations
 
 import ast
 from collections.abc import Mapping, MutableMapping, Sequence
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, override
 
 from flext_infra import c
+from flext_infra._utilities import FlextInfraUtilitiesWorkspaceSnapshot
 from flext_infra._utilities._codemod import FlextInfraUtilitiesCodemodProject
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeModulePatch,
@@ -408,16 +409,21 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
             The resulting ``p.Result[tuple[p.Infra.SemanticMigrationEdit, ...]]``.
 
         """
-        models = cls._pydantic_model_classes(sources, source_project=source_project)
-        return cls._semantic_edits(
-            cls._editable_sources(sources),
-            lambda path, source: cls._rewrite_fields(
-                path,
-                source,
-                source_project=source_project,
-                models=models,
-            ),
-        )
+        # Earlier phases rewrote the working sources; the native inventory
+        # reads exactly those planned bytes.
+        with FlextInfraUtilitiesWorkspaceSnapshot.workspace_planned_source_view(
+            source_project, sources
+        ):
+            models = cls._pydantic_model_classes(sources, source_project=source_project)
+            return cls._semantic_edits(
+                cls._editable_sources(sources),
+                lambda path, source: cls._rewrite_fields(
+                    path,
+                    source,
+                    source_project=source_project,
+                    models=models,
+                ),
+            )
 
     @classmethod
     def _rewrite_fields(
@@ -611,20 +617,32 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
 
     @classmethod
     def _port_protocol_annotation(cls, annotation: ast.expr) -> tuple[ast.expr, bool]:
-        """Return an annotation with direct public protocol nodes port-wrapped."""
+        """Return an annotation with direct public protocol nodes port-wrapped.
+
+        Returns:
+            The rewritten annotation and whether any node was wrapped.
+
+        Raises:
+            TypeError: If the rewritten annotation is not an expression.
+
+        """
 
         class PortWrapper(ast.NodeTransformer):
             changed = False
 
-            def visit_Subscript(self, node: ast.Subscript) -> ast.expr:
+            @override
+            def visit_Subscript(self, node: ast.Subscript) -> ast.AST:
                 if cls._is_port_annotation(node) or cls._is_callable_annotation(node):
                     return node
                 return self.generic_visit(node)
 
-            def visit_Attribute(self, node: ast.Attribute) -> ast.expr:
-                node = self.generic_visit(node)
-                if not cls._is_public_protocol_reference(node):
-                    return node
+            @override
+            def visit_Attribute(self, node: ast.Attribute) -> ast.AST:
+                visited = self.generic_visit(node)
+                if not isinstance(
+                    visited, ast.Attribute
+                ) or not cls._is_public_protocol_reference(visited):
+                    return visited
                 self.changed = True
                 return ast.copy_location(
                     ast.Subscript(
@@ -633,14 +651,17 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
                             attr="Port",
                             ctx=ast.Load(),
                         ),
-                        slice=node,
+                        slice=visited,
                         ctx=ast.Load(),
                     ),
-                    node,
+                    visited,
                 )
 
         wrapper = PortWrapper()
         updated = wrapper.visit(ast.fix_missing_locations(annotation))
+        if not isinstance(updated, ast.expr):
+            msg = "port-wrapped annotation is not an expression"
+            raise TypeError(msg)
         return ast.fix_missing_locations(updated), wrapper.changed
 
     @staticmethod

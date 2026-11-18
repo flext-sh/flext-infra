@@ -28,17 +28,11 @@ class FlextInfraModelsProjectArtifacts(
         """Project-owned configuration for generated artifacts."""
 
         Mise: Annotated[
-            p.Infra.ProjectMiseConfig,
-            t.schema_for_model(
-                lambda: FlextInfraModelsDepsToolConfigProjectMise.ProjectMiseConfig
-            ),
+            FlextInfraModelsDepsToolConfigProjectMise.ProjectMiseConfig,
             m.Field(description="Mise additions owned by the current project."),
         ]
         Gitignore: Annotated[
-            p.Infra.ProjectGitignoreConfig,
-            t.schema_for_model(
-                lambda: FlextInfraModelsProjectGitignore.ProjectGitignoreConfig
-            ),
+            FlextInfraModelsProjectGitignore.ProjectGitignoreConfig,
             m.Field(description="Ignore patterns owned by the current project."),
         ]
 
@@ -46,14 +40,7 @@ class FlextInfraModelsProjectArtifacts(
         """Composed project configuration plus selector provenance."""
 
         artifacts: Annotated[
-            Annotated[
-                p.Infra.ProjectManagedArtifactsConfig,
-                t.schema_for_model(
-                    lambda: (
-                        FlextInfraModelsProjectArtifacts.ProjectManagedArtifactsConfig
-                    )
-                ),
-            ],
+            (FlextInfraModelsProjectArtifacts.ProjectManagedArtifactsConfig),
             m.Field(description="Composed managed-artifact configuration."),
         ]
         mise_tool_sources: Annotated[
@@ -69,14 +56,7 @@ class FlextInfraModelsProjectArtifacts(
             m.Field(description="Ordered exact project configuration sources."),
         ]
         resolution: Annotated[
-            Annotated[
-                p.Infra.ProjectManagedArtifactsResolution,
-                t.schema_for_model(
-                    lambda: (
-                        FlextInfraModelsProjectArtifacts.ProjectManagedArtifactsResolution
-                    )
-                ),
-            ],
+            (FlextInfraModelsProjectArtifacts.ProjectManagedArtifactsResolution),
             m.Field(description="Managed artifacts parsed from those exact sources."),
         ]
 

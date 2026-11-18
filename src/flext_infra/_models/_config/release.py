@@ -12,7 +12,7 @@ from typing import Annotated, ClassVar, Self
 
 from flext_cli import m
 
-from flext_infra import c, p, t
+from flext_infra import c, t
 from flext_infra._models._config import FlextInfraModelsConfigContract
 
 
@@ -89,14 +89,7 @@ class FlextInfraModelsConfigRelease:
         overrides: Annotated[
             Mapping[
                 t.NonEmptyStr,
-                Annotated[
-                    p.Infra.ReleaseAutomationOverrideSpec,
-                    t.schema_for_model(
-                        lambda: (
-                            FlextInfraModelsConfigRelease.ReleaseAutomationOverrideSpec
-                        )
-                    ),
-                ],
+                (FlextInfraModelsConfigRelease.ReleaseAutomationOverrideSpec),
             ],
             m.Field(description="Per-distribution deviations from the shared contract"),
         ]
@@ -194,12 +187,7 @@ class FlextInfraModelsConfigRelease:
         ] = c.Infra.PYPI_UPLOAD_URL
         build_constraints: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.BuildConstraintSpec,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsConfigRelease.BuildConstraintSpec
-                    ),
-                ],
+                FlextInfraModelsConfigRelease.BuildConstraintSpec,
                 ...,
             ],
             m.Field(

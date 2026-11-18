@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import FlextInfraCli, codegen, config, infra, workspace
+from flext_infra import FlextInfraCli, config, infra, workspace
 from tests import c, m, p, tm, u
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
@@ -108,9 +108,7 @@ class TestsFlextInfraCodegenWorkflowRetirement:
             mode=c.Infra.CodegenConformMode.CHECK,
         )
         plan = tm.ok(
-            codegen.FlextInfraCodegenConform.Generate(repository_root=root).plan(
-                request
-            ),
+            u.Tests.conform_plan_result(root, request),
         )
 
         workflow_paths = {root / entry.destination for entry in workflows}

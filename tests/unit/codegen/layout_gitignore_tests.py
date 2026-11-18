@@ -1,4 +1,4 @@
-"""Tests for layout ignore, tracked-file moves, and the canonical render.
+"""Tests for layout gitignore, tracked-file moves, and the canonical render.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -15,7 +15,7 @@ from tests.unit.codegen.layout_support import TestsFlextInfraCodegenLayoutSuppor
 
 
 class TestsFlextInfraCodegenLayoutGitignore:
-    """Test suite for layout ignore, tracked-file moves, and canonical render."""
+    """Test suite for layout gitignore, tracked-file moves, and canonical render."""
 
     @staticmethod
     def _declare_layout_override(root: Path, project_name: str) -> None:
@@ -143,7 +143,7 @@ class TestsFlextInfraCodegenLayoutGitignore:
         tm.ok(rendered)
         (tmp_path / ".ignore").write_text(rendered.value, encoding="utf-8")
         tm.ok(u.Cli.capture([c.Infra.GIT, "init"], cwd=tmp_path))
-        source = tmp_path / "src" / "dc_backup" / "workspace_backup_request.py"
+        source = tmp_path / "src" / "demo_app" / "workspace_backup_request.py"
         source.parent.mkdir(parents=True)
         source.write_text("pass\n", encoding="utf-8")
         tracked = u.Cli.capture(
@@ -185,13 +185,12 @@ class TestsFlextInfraCodegenLayoutGitignore:
         )
         u.Tests.copy_tracked_mise_seeds(root)
         u.Tests.write_project_beads_config(root, owner)
-        declaration = m.Infra.RepositoryDeltaSpec(
-            project=u.Tests.project_spec(owner).model_copy(
+        declaration = m.Infra.RepositoryDeltaSpec.model_validate({
+            "project": u.Tests.project_spec(owner).model_copy(
                 update={"upstream": "flext_cli"}
             ),
-            integration=integration,
-            kind=repository.kind,
-        )
+            "integration": integration,
+        })
         tm.ok(
             u.Cli.yaml_dump(
                 root / c.CONFIG_DIR_NAME / c.Infra.CODEGEN_CONFIG_FILENAME,
@@ -212,7 +211,6 @@ class TestsFlextInfraCodegenLayoutGitignore:
         tm.ok(
             FlextInfraCodegenMakeBootstrap(
                 repository_root=root,
-                kind=repository.kind,
                 apply_changes=True,
             ).execute(),
         )
@@ -226,7 +224,9 @@ class TestsFlextInfraCodegenLayoutGitignore:
         report = FlextInfraCodegenLayout(repository_root=root).check_project(root)
         tm.that(report.project, eq=owner)
         tm.that(
-            tuple(finding for finding in report.findings if finding.rule == "ignore"),
+            tuple(
+                finding for finding in report.findings if finding.rule == "gitignore"
+            ),
             eq=(),
         )
 

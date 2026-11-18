@@ -20,3 +20,7 @@ fix: "model_config: ClassVar[ConfigDict] = ConfigDict($$$ARGS)"
 message: >-
   FLEXT model_config declarations explicitly identify class metadata with
   ClassVar while retaining the directly bound native constructor and type.
+metadata:
+  # Prerequisite of the preset rewrites: they read the ClassVar form this rule
+  # writes, so the theme laws elect it with them (ADR-028 Decision 18 item 2).
+  enforce: [ENFORCE-108, ENFORCE-109]

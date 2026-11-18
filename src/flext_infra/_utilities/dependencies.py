@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableMapping, Sequence
+from collections.abc import Mapping, Sequence
 from json import dumps
 from pathlib import Path
 from types import MappingProxyType
@@ -15,7 +15,6 @@ from urllib.parse import quote
 from flext_cli import u
 from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
-from packaging.version import InvalidVersion, Version
 
 from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (
@@ -23,6 +22,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesDependencyRequirements,
     FlextInfraUtilitiesManagedConflicts,
 )
+from flext_infra._utilities._git import FlextInfraUtilitiesGitMutationScope
 
 
 class FlextInfraUtilitiesDependencies(
@@ -73,12 +73,12 @@ class FlextInfraUtilitiesDependencies(
             used_without_import=(*inputs.invoked_executables, *inputs.loaded_plugins),
         )
         return result_type.ok(
-            m.Infra.RuntimeDependencyPlan(
-                source=scan.source,
-                before=scan.settings,
-                dependencies=tuple(selected),
-                unresolved_modules=tuple(dict.fromkeys(unresolved)),
-                inputs=(
+            m.Infra.RuntimeDependencyPlan.model_validate({
+                "source": (scan.source),
+                "before": (scan.settings),
+                "dependencies": (tuple(selected)),
+                "unresolved_modules": (tuple(dict.fromkeys(unresolved))),
+                "inputs": ((
                     inputs.lock,
                     *inputs.inputs,
                     *(
@@ -88,8 +88,8 @@ class FlextInfraUtilitiesDependencies(
                     ),
                     scan.settings,
                     scan.report_state,
-                ),
-            )
+                )),
+            })
         )
 
     @staticmethod
@@ -243,7 +243,7 @@ class FlextInfraUtilitiesDependencies(
         ]
         unresolved: list[str] = []
         for diagnostic in scan.report.root:
-            if diagnostic.error.code not in {"DEP001", "DEP003", "DEP004"}:
+            if diagnostic.error.code not in c.Infra.DEPTRY_UNDECLARED_IMPORT_CODES:
                 continue
             providers = tuple(
                 (provider, requirement)
@@ -287,7 +287,9 @@ class FlextInfraUtilitiesDependencies(
                 "runtime import requires one authored, installed, locked supplier: "
                 + ", ".join(plan.unresolved_modules),
             )
-        lease = u.Infra.mutation_lock_path(plan.before.path.parent)
+        lease = FlextInfraUtilitiesGitMutationScope.mutation_lock_path(
+            plan.before.path.parent
+        )
         if lease.failure:
             return r[bool].from_failure(lease)
         with u.Cli.file_changes_lock(lease.value):
@@ -410,29 +412,43 @@ class FlextInfraUtilitiesDependencies(
         scaffold: p.Infra.ScaffoldProjectSpec,
         *,
         distribution: str,
-        kind: c.Infra.ProjectKind,
         declared: Sequence[str] = (),
+        standalone: bool = False,
     ) -> Sequence[str]:
         """Compose development policy over the target's own requirement declarations.
 
         Existing requirement spellings, marker variants and sources stay intact.
-        FLEXT suppliers apply only to the declared FLEXT kind and never to their
-        own distribution; installed packages and project names do not elect policy.
+        The fleet codegen/test development suppliers belong to a workspace root
+        (``c.Infra.PKG_ROOT``) or to a standalone checkout that is its own root,
+        and never to a workspace member: a member's own group must not
+        redeclare them beside the workspace's editable sources. Installed
+        packages and project names do not elect any other policy.
 
         Returns:
             Authored requirements followed by missing applicable suppliers.
 
         """
         own = canonicalize_name(distribution)
-        authored = tuple(declared)
-        retained = {Requirement(item) for item in authored}
+        is_root = standalone or own == canonicalize_name(c.Infra.PKG_ROOT)
+        root_suppliers = (
+            set()
+            if is_root
+            else {
+                canonicalize_name(Requirement(item).name)
+                for item in scaffold.required_flext_dev
+            }
+        )
+        authored: list[str] = []
+        retained: set[Requirement] = set()
+        for item in declared:
+            parsed = Requirement(item)
+            if parsed in retained or canonicalize_name(parsed.name) in root_suppliers:
+                continue
+            retained.add(parsed)
+            authored.append(item)
         policy = (
             *scaffold.dev,
-            *(
-                scaffold.required_flext_dev
-                if kind is c.Infra.ProjectKind.INTERNAL_FLEXT
-                else ()
-            ),
+            *(scaffold.required_flext_dev if is_root else ()),
         )
         additions: list[str] = []
         for requirement in policy:
@@ -560,7 +576,7 @@ class FlextInfraUtilitiesDependencies(
             planned_manifests=planned_manifests,
             inputs=workspace.inputs,
         )
-        by_name: Mapping[str, m.Infra.RepositoryRef] = {
+        by_name: Mapping[str, p.Infra.RepositoryRef] = {
             canonicalize_name(repository.distribution): repository
             for repository in repositories
         }
@@ -642,9 +658,9 @@ class FlextInfraUtilitiesDependencies(
     def _workspace_manifest_payload(
         cls,
         project: Path,
-        manifests: Mapping[Path, m.Infra.CodegenFilePlan],
+        manifests: Mapping[Path, p.Infra.CodegenFilePlan],
         *,
-        observations: Mapping[Path, m.Cli.AtomicFileState] | None = None,
+        observations: Mapping[Path, p.Cli.AtomicFileState] | None = None,
     ) -> t.JsonMapping:
         """Read one project's dependency manifest, planned payload first.
 
@@ -695,7 +711,7 @@ class FlextInfraUtilitiesDependencies(
     def _workspace_manifest_unplanned_content(
         path: Path,
         *,
-        observations: Mapping[Path, m.Cli.AtomicFileState] | None,
+        observations: Mapping[Path, p.Cli.AtomicFileState] | None,
     ) -> bytes:
         """Read an unplanned manifest from its captured input or from disk.
 
@@ -730,138 +746,91 @@ class FlextInfraUtilitiesDependencies(
         return content
 
     @staticmethod
-    def constraint_specifier(version: str) -> str:
-        """Return the resolved installed version as an open-ended dependency floor.
-
-        PEP 440 permits a local version label only with ``==`` or ``!=``, so a
-        floor built straight from a locally tagged resolution is rejected by
-        every build backend. The public release is what a floor means, and the
-        local build satisfies it.
-
-        A prerelease resolution is not a floor either: publishing ``>=X.Yb1``
-        forces every downstream consumer onto that beta, which is how the fleet
-        ended up pinned to ``pydantic>=2.14.0b1`` from a single runtime resolution. The
-        empty string means "this resolution cannot serve as a public floor", and
-        every caller keeps the declared constraint instead of rewriting it.
-
-        Returns:
-            The resolved installed version as an open-ended dependency floor.
-
-        """
-        public_version = version.strip().partition("+")[0]
-        if not public_version:
-            return ""
-        try:
-            parsed_version = Version(public_version)
-        except InvalidVersion:
-            return ""
-        if parsed_version.is_prerelease:
-            return ""
-        return f">={public_version}"
-
-    @classmethod
-    def resolved_dependency_versions(cls) -> Mapping[str, str]:
-        """Read registry versions from the provisioned runtime, not release provenance.
-
-        Returns:
-            The resulting ``Mapping[str, str]``.
-
-        Raises:
-            TypeError: If Installed distribution has no Name metadata.
-            ValueError: If No registry packages found in the provisioned runtime; or if
-                Invalid installed distribution name; or if Ambiguous installed version.
-
-        """
-        versions: MutableMapping[str, str] = {}
-        for distribution in u.installed_distributions():
-            if distribution.read_text(c.Infra.DISTRIBUTION_DIRECT_URL_FILE) is not None:
-                continue
-            name = distribution.metadata.get("Name")
-            if name is None:
-                msg = "Installed distribution has no Name metadata"
-                raise TypeError(msg)
-            normalized = cls.dep_name(name)
-            if normalized is None:
-                msg = f"Invalid installed distribution name: {name}"
-                raise ValueError(msg)
-            version = distribution.version
-            if normalized in versions and versions[normalized] != version:
-                msg = f"Ambiguous installed version: {normalized}"
-                raise ValueError(msg)
-            versions[normalized] = version
-        if not versions:
-            msg = "No registry packages found in the provisioned runtime"
-            raise ValueError(msg)
-        return versions
-
-    @classmethod
-    def rewrite_requirement_constraint(
-        cls,
+    def registry_requirement_name(
         requirement: str,
-        *,
-        resolved_versions: Mapping[str, str],
-        internal_names: Sequence[str] = (),
+        sourced: frozenset[str],
     ) -> str | None:
-        """Rewrite one PEP 621 requirement to the resolved runtime floor.
+        """Return the canonical name of one requirement the index resolves.
+
+        A direct reference or a name bound to a ``[tool.uv.sources]`` entry
+        (FLEXT members and forks) resolves outside the index and its cooldown.
 
         Returns:
-            The resulting ``str | None``.
+            The canonical distribution name, or None outside the index.
 
         """
-        guard = cls._rewritable_requirement(requirement, internal_names)
-        if guard is None:
-            return None
-        dependency_name, parsed = guard
-        raw_text = requirement.strip()
-        head = parsed.name
-        if parsed.extras:
-            head = f"{head}[{','.join(sorted(parsed.extras))}]"
-        locked_version = resolved_versions.get(dependency_name)
-        if locked_version is None:
-            return None
-        if not parsed.specifier.contains(
-            locked_version,
-            prereleases=True,
-        ):
-            return None
-        retained = tuple(
-            sorted(
-                str(specifier)
-                for specifier in parsed.specifier
-                if specifier.operator != ">="
+        parsed = Requirement(requirement)
+        name = canonicalize_name(parsed.name)
+        return None if parsed.url is not None or name in sourced else name
+
+    @staticmethod
+    def pinned_requirement(requirement: str) -> bool:
+        """Whether one requirement pins an exact release (``==`` or ``===``).
+
+        Returns:
+            True when any clause of its specifier is an exact match.
+
+        """
+        return any(
+            clause.operator in {"==", "==="}
+            for clause in Requirement(requirement).specifier
+        )
+
+    @staticmethod
+    def bounded_requirement(
+        requirement: str,
+        operator: str,
+        version: str | None,
+    ) -> str:
+        """Set one requirement's upg-owned bound to ``operator version``.
+
+        A floor keeps every authored clause except ``>=``; a pin owns the
+        whole specifier. ``None`` drops the owned bound, so native resolution
+        chooses the release. Extras and the marker are kept.
+
+        Returns:
+            The rewritten requirement line.
+
+        """
+        parsed = Requirement(requirement)
+        extras = f"[{','.join(sorted(parsed.extras))}]" if parsed.extras else ""
+        kept = (
+            ()
+            if operator == c.Infra.UPG_PIN_OPERATOR
+            else sorted(
+                str(clause)
+                for clause in parsed.specifier
+                if clause.operator != operator
             )
         )
-        constraint = cls.constraint_specifier(locked_version)
-        if not constraint:
-            return None
-        if retained:
-            constraint = ",".join((constraint, *retained))
-        rewritten = f"{head}{constraint}"
-        if parsed.marker is not None:
-            rewritten = f"{rewritten}; {parsed.marker}"
-        return rewritten if rewritten != raw_text else None
+        owned = () if version is None else (f"{operator}{version}",)
+        specifier = ",".join((*owned, *kept))
+        marker = f"; {parsed.marker}" if parsed.marker is not None else ""
+        return f"{parsed.name}{extras}{specifier}{marker}"
 
-    @classmethod
-    def _rewritable_requirement(
-        cls,
-        requirement: str,
-        internal_names: Sequence[str],
-    ) -> tuple[str, Requirement] | None:
-        """Parse the complete declaration before deciding whether it is rewritable.
+    @staticmethod
+    def requirement_arrays(
+        payload: t.JsonMapping,
+    ) -> Sequence[tuple[tuple[str, ...], str]]:
+        """Return every requirement array of one pyproject by table path.
 
         Returns:
-            The dependency name and parsed requirement, or None for a direct
-            reference or an internal dependency. Invalid declarations raise
-            the original PEP 508 parsing error.
+            ``(table path, key)`` pairs in declaration order: project
+            dependencies, each extra, each dependency group and the
+            ``[tool.uv]`` constraint dependencies.
 
         """
-        parsed = Requirement(requirement.strip())
-        dependency_name = canonicalize_name(parsed.name)
-        if parsed.url is not None or dependency_name in {
-            canonicalize_name(name) for name in internal_names
-        }:
-            return None
-        return dependency_name, parsed
+        optional = (c.Infra.PROJECT, c.Infra.OPTIONAL_DEPENDENCIES)
+        groups = (c.Infra.DEPENDENCY_GROUPS,)
+        return (
+            ((c.Infra.PROJECT,), c.Infra.DEPENDENCIES),
+            *(
+                (path, key)
+                for path in (optional, groups)
+                for key in u.Cli.toml_mapping_path(payload, path) or {}
+            ),
+            ((c.Infra.TOOL, c.Infra.UV), c.Infra.UV_CONSTRAINT_DEPENDENCIES_KEY),
+        )
 
     @classmethod
     def declared_dependency_names(

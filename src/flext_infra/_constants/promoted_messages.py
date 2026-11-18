@@ -24,8 +24,12 @@ class FlextInfraConstantsPromotedMessages:
     class PromotedMessage(StrEnum):
         """Registry, discovery, and execution diagnostics."""
 
-        MISSING_HEADER = "{path}: missing flext-command header"
+        MISSING_HEADER = (
+            "{path}: missing [tool.flext.command] in a PEP 723 script block"
+        )
         INVALID_HEADER_TOML = "{path}: invalid header TOML"
+        INVALID_HEADER_TABLE = "{path}: [tool.flext.command] must be a table"
+        MULTIPLE_SCRIPT_BLOCKS = "{path}: more than one PEP 723 script block"
         REQUIRED_STRING = "{path}: missing required field: {key}"
         REQUIRED_BOOL = "{path}: missing required boolean field: {key}"
         INVALID_ALIAS = "{path}: invalid alias {alias!r}; use alias or alias=WHAT"
@@ -45,7 +49,6 @@ class FlextInfraConstantsPromotedMessages:
             "duplicate alias: {alias} points to {previous_verb}"
             " WHAT={previous_what} and {verb} WHAT={what}"
         )
-        NO_COMMANDS = "no promoted command found in scripts/<verb>/<WHAT>"
         VERB_DOMAINS = "verb '{verb}' declares more than one domain: {domains}"
         ALIAS_OUTSIDE_ALL = "{path}: aliases may be declared only in WHAT=all"
         ALIAS_COLLIDES_VERB = "alias '{alias}' collides with a promoted verb"
@@ -61,7 +64,7 @@ class FlextInfraConstantsPromotedMessages:
         NESTED_DIR = "{path}: a nested directory is not a public command"
         INVALID_SUFFIX = "{path}: a public file must be .sh or .py"
         VERB_MISMATCH = "{path}: header verb={verb} differs from directory {expected}"
-        WHAT_MISMATCH = "{path}: header what={what} differs from file {expected}"
+        WHAT_MISMATCH = "{path}: header what={what} requires the file stem {expected}"
         PARAMS_NOT_LIST = "{path}: params must be a list of TOML objects"
         PARAMS_NOT_TABLE = "{path}: params must contain TOML objects"
         PARAMS_REQUIRED_TYPE = "{path}: params.required must be a boolean"
@@ -140,7 +143,11 @@ class FlextInfraConstantsPromotedMessages:
             " OPTIONS=Y shows one action."
         ),
         "Mutating commands execute their declared operation directly.",
-        "New commands live in scripts/<verb>/<WHAT>.sh|py with a flext-command header.",
+        (
+            "New commands live in scripts/<verb>/<WHAT>.sh or, with - as _,"
+            " scripts/<verb>/<WHAT>.py with a PEP 723 script block holding"
+            " [tool.flext.command]."
+        ),
     )
 
 

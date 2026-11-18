@@ -148,15 +148,17 @@ class FlextInfraUtilitiesGitignore:
                 return r[str].from_failure(resolved)
             project_patterns = resolved.value.artifacts.Gitignore.patterns
             preserved_blocks = resolved.value.artifacts.Gitignore.preserved_blocks
-        context = m.Infra.GitignoreRenderSpec(
-            gitignore_sections=FlextInfraUtilitiesGitignore.gitignore_sections(
-                codegen,
-                profile=profile,
-                project_name=project_name,
-                workspace=workspace,
-                project_patterns=project_patterns,
-            ),
-        )
+        context = m.Infra.GitignoreRenderSpec.model_validate({
+            "gitignore_sections": (
+                FlextInfraUtilitiesGitignore.gitignore_sections(
+                    codegen,
+                    profile=profile,
+                    project_name=project_name,
+                    workspace=workspace,
+                    project_patterns=project_patterns,
+                )
+            )
+        })
         rendered = u.Cli.template_render(templates_root / entry.source, context)
         if rendered.failure or project_dir is None:
             return rendered
@@ -259,7 +261,9 @@ class FlextInfraUtilitiesGitignore:
             return r[str].fail(str(error), exception=error)
         return u.Cli.template_render(
             FlextInfraUtilitiesGitignore.codegen_templates_root(codegen) / entry.source,
-            m.Infra.GitignoreRenderSpec(gitignore_sections=sections),
+            m.Infra.GitignoreRenderSpec.model_validate({
+                "gitignore_sections": (sections)
+            }),
         )
 
     @staticmethod
@@ -382,6 +386,16 @@ class FlextInfraUtilitiesGitignore:
             The resulting ``tuple[p.Infra.ScaffoldGitignoreSectionSpec, ...],``.
 
         """
+        # The deny-all root policy exists to whitelist governed subprojects. An
+        # attached member renders the workspace profile (cosmos-8fmi7.1.9.5) yet
+        # has no subprojects of its own, so its ignore policy stays standalone;
+        # otherwise every untracked file under its own trees is swallowed.
+        if (
+            profile is c.Infra.MakeProfile.WORKSPACE
+            and workspace is not None
+            and not workspace.subprojects
+        ):
+            profile = c.Infra.MakeProfile.STANDALONE
         sections = [
             section
             for section in codegen.gitignore_sections

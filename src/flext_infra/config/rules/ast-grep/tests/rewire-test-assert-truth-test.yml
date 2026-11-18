@@ -1,6 +1,11 @@
 id: rewire-test-assert-truth
 valid:
-- assert path.is_file()
+- |
+  from other_library import tm
+  assert path.is_file()
+- |
+  def check(tm: object, path: object) -> None:
+      assert path.is_file()
 - |
   from tests import tm
   assert path.is_file(), "missing"
@@ -24,11 +29,15 @@ valid:
   assert (
       left in right
   )
+- |
+  from tests import tm
+  assert verdict() or unexpected()
 invalid:
+- assert path.is_file()
 - |
   from flext_tests import tm
   def check():
-      assert verdict() or unexpected()
+      assert verdict()
 - |
   from tests import tm
   assert path.is_file()

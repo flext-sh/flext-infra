@@ -428,8 +428,11 @@ class FlextInfraUtilitiesGitRepo:
             The resulting ``p.Result[Path]``.
 
         """
+        opened = cls._open_repo(repository_path)
+        if opened.failure:
+            return r[Path].from_failure(opened)
+        repo = opened.value
         try:
-            repo = cls._repo(repository_path)
             common_dir = Path(
                 repo.git.rev_parse(
                     c.Infra.GIT_REV_PARSE_ABSOLUTE_PATHS,

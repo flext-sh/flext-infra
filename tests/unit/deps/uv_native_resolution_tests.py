@@ -54,12 +54,12 @@ class TestsFlextInfraUvNativeResolution:
         toolchain = tm.ok(u.Infra.load_codegen_inputs(tmp_path)).spec.toolchain
         u.Tests.write_native_resolution_project(tmp_path, repository.distribution)
         source = (tmp_path / c.PYPROJECT_FILENAME).read_text(encoding="utf-8")
-        resolution = m.Infra.UvResolutionSpec(
-            link_mode=toolchain.uv_link_mode,
-            constraint_dependencies=tuple(toolchain.uv_constraint_dependencies),
-            override_dependencies=tuple(toolchain.uv_override_dependencies),
-            environments=tuple(toolchain.uv_environments),
-        )
+        resolution = m.Infra.UvResolutionSpec.model_validate({
+            "link_mode": (toolchain.uv_link_mode),
+            "constraint_dependencies": (tuple(toolchain.uv_constraint_dependencies)),
+            "override_dependencies": (tuple(toolchain.uv_override_dependencies)),
+            "environments": (tuple(toolchain.uv_environments)),
+        })
         options = u.Infra.PyprojectConformOptions(
             flext_line=u.Tests.integration().model_copy(
                 update={"base_url": u.Tests.provider().base_url}
@@ -124,6 +124,7 @@ class TestsFlextInfraUvNativeResolution:
                 required_dev_dependencies=(),
                 uv_resolution=m.Infra.UvResolutionSpec(
                     link_mode=toolchain.uv_link_mode,
+                    cooldown_days=toolchain.dependency_cooldown_days,
                     constraint_dependencies=tuple(toolchain.uv_constraint_dependencies),
                     environments=tuple(toolchain.uv_environments),
                 ),

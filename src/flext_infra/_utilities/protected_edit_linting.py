@@ -14,7 +14,7 @@ import os
 import re
 import sys
 from collections import Counter
-from collections.abc import Iterable, Mapping, MutableMapping, Sequence
+from collections.abc import Iterable, Mapping, MutableMapping, MutableSequence, Sequence
 from itertools import islice
 from pathlib import Path
 from typing import ClassVar
@@ -24,6 +24,7 @@ from flext_cli import u
 from flext_infra import c, codegen, config, gates, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesDiscovery,
+    FlextInfraUtilitiesLintRecipes,
     FlextInfraUtilitiesProcess,
     FlextInfraUtilitiesProjectManagedArtifacts,
     FlextInfraUtilitiesResourceLimits,
@@ -33,6 +34,7 @@ from flext_infra._utilities._git import (
     FlextInfraUtilitiesGitSemanticPaths,
     FlextInfraUtilitiesGitStateCheckpoint,
 )
+from flext_infra._utilities._rope import FlextInfraUtilitiesRopeRuntimeModules
 
 
 class FlextInfraUtilitiesProtectedEditLinting:
@@ -46,7 +48,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
         source: str,
         *,
         before_source: str | None = None,
-        settings: Sequence[str] = (),
+        settings: tuple[Sequence[str], int | None] = ((), None),
     ) -> p.Result[str]:
         """Normalize only what a rewrite changed, then format the candidate.
 
@@ -55,9 +57,9 @@ class FlextInfraUtilitiesProtectedEditLinting:
         binding or pre-existing finding is touched; a whole new file receives
         the declared full repair. Formatting follows the same law: a
         generated projection (``c.Infra.AUTOGEN_HEADER``) is always formatted,
-        but an authored module is formatted only when its existing bytes are
-        already formatter-clean. Pending format debt in authored code belongs
-        to ``make fmt``; a rewrite never reformats untouched authored lines.
+        but an authored module with existing format debt receives only native
+        range formatting of changed lines. Ruff owns logical-line expansion;
+        untouched authored format debt remains for ``make fmt``.
         ``settings`` carry the staged pyproject's Ruff table when the same
         plan set rewrites it.
 
@@ -69,38 +71,106 @@ class FlextInfraUtilitiesProtectedEditLinting:
                 candidate is a caller defect, not a repair condition.
 
         """
-        del repository_root
+        arguments, line_limit = settings
         try:
-            ast.parse(source)
-        except SyntaxError as syntax_error:
-            raise syntax_error from None
+            FlextInfraUtilitiesRopeRuntimeModules.build_string_module(None, source)
+        except Exception as syntax_error:  # ruff: ignore[blind-except] - convert any rope parse failure to SyntaxError
+            raise SyntaxError(str(syntax_error)) from None
         if before_source is None:
-            normalized = cls.normalize_python_text(path, source, settings=settings)
+            normalized = cls.normalize_python_text(path, source, settings=arguments)
         else:
             normalized = cls._normalize_edited_source(
-                path, source, before_source, settings=settings
+                path, source, before_source, settings=arguments
             )
         if normalized.failure:
             return normalized
         # A protected edit never publishes bytes the destination's own format
-        # policy rejects: the width is the one constraint the formatter must
-        # satisfy, so an E501 the edit introduces means the policy is
-        # unsatisfiable and the live source stays untouched. An E501 already in
-        # the authored bytes, like every other lint finding the repair set does
-        # not own, belongs to ``make check``.
-        remaining = cls._ruff_stdin_codes(path, normalized.value, settings=settings)
+        # policy rejects: the declared width recipe and formatter must satisfy
+        # an introduced E501, or the live source stays untouched. An E501 already
+        # in authored bytes, like every finding the repair set does not own,
+        # belongs to ``make check``.
+        diagnostics: list[tuple[str, int, str]] = []
+        remaining = cls._ruff_stdin_codes(
+            path, normalized.value, settings=arguments, diagnostics=diagnostics
+        )
         if remaining.failure:
             return r[str].from_failure(remaining)
         width = c.Infra.FORMATTER_UNSATISFIED_CODE
         inherited: frozenset[str] = frozenset()
         if before_source is not None:
-            before = cls._ruff_stdin_codes(path, before_source, settings=settings)
+            before = cls._ruff_stdin_codes(path, before_source, settings=arguments)
             if before.failure:
                 return r[str].from_failure(before)
             inherited = before.value
         if width in remaining.value and width not in inherited:
-            return r[str].fail(f"ruff check failed for {path}: {width}")
+            original = f"ruff check failed for {path}: {width}\n" + "\n".join(
+                detail for _name, _row, detail in diagnostics
+            )
+            tooling = (
+                FlextInfraUtilitiesProjectManagedArtifacts
+                .load_tooling_inputs(repository_root)
+                .unwrap()
+                .document
+            )
+            rows = [
+                row
+                for name, row, _detail in diagnostics
+                if tooling.tools.ruff.lint.fix_recipes.get(name)
+                is c.Infra.LintFixRecipe.WRAP_LONG_LINE
+            ]
+            if not rows or (arguments and line_limit is None):
+                return r[str].fail(original)
+            limit = (
+                line_limit
+                if line_limit is not None
+                else FlextInfraUtilitiesProjectManagedArtifacts.native_tool_setting(
+                    tooling, "ruff", "line-length", int
+                )
+            )
+            repaired = FlextInfraUtilitiesLintRecipes.wrap_long_lines(
+                normalized.value, rows, limit=limit
+            )
+            formatted = (
+                cls._ruff_stdin_pass(
+                    path,
+                    repaired,
+                    (c.Infra.FORMAT, *config.Infra.codegen.make.ruff.format_apply),
+                    settings=arguments,
+                )
+                if before_source is None
+                else cls._format_rewrite(
+                    path, (before_source, repaired), settings=arguments
+                )
+            )
+            return formatted.flat_map(
+                lambda formatted: cls._checked_width_repair(
+                    path, formatted, original, settings=arguments
+                )
+            )
         return normalized
+
+    @classmethod
+    def _checked_width_repair(
+        cls,
+        path: Path,
+        source: str,
+        original: str,
+        *,
+        settings: Sequence[str],
+    ) -> p.Result[str]:
+        """Keep the original width failure unless the native final guard passes.
+
+        Returns:
+            Repaired source or the unchanged original failure.
+
+        """
+        return cls._ruff_stdin_codes(path, source, settings=settings).flat_map(
+            lambda codes: (
+                r[str].fail(original)
+                if c.Infra.FORMATTER_UNSATISFIED_CODE in codes
+                else r[str].ok(source)
+            )
+        )
 
     @classmethod
     def _normalize_edited_source(
@@ -144,9 +214,9 @@ class FlextInfraUtilitiesProtectedEditLinting:
 
         ``rewrite`` pairs the existing bytes with the repaired candidate. A
         generated projection (``c.Infra.AUTOGEN_HEADER``) is formatted in
-        full. An authored module is formatted only when its existing bytes are
-        already formatter-clean; otherwise the repaired candidate is returned
-        unformatted, because its format debt belongs to ``make fmt``.
+        full. An already formatter-clean authored module also receives the
+        full native pass. Otherwise stdlib diff ranges select only changed
+        candidate lines, and Ruff owns their logical-statement expansion.
 
         Returns:
             The candidate, formatted when the law allows, or Ruff's failure.
@@ -156,15 +226,53 @@ class FlextInfraUtilitiesProtectedEditLinting:
         arguments = (c.Infra.FORMAT, *config.Infra.codegen.make.ruff.format_apply)
         if source.startswith(c.Infra.AUTOGEN_HEADER):
             return cls._ruff_stdin_pass(path, source, arguments, settings=settings)
-        return cls._ruff_stdin_pass(
+        formatted = cls._ruff_stdin_pass(
             path, before_source, arguments, settings=settings
-        ).flat_map(
-            lambda formatted: (
-                cls._ruff_stdin_pass(path, source, arguments, settings=settings)
-                if formatted == before_source
-                else r[str].ok(source)
-            )
         )
+        if formatted.failure:
+            return formatted
+        if formatted.value == before_source:
+            return cls._ruff_stdin_pass(path, source, arguments, settings=settings)
+        changes = difflib.SequenceMatcher(
+            a=before_source.splitlines(keepends=True),
+            b=source.splitlines(keepends=True),
+            autojunk=False,
+        ).get_opcodes()
+        pending = [
+            (start, end)
+            for operation, _before_start, _before_end, start, end in changes
+            if operation != "equal" and start < end
+        ]
+        while pending:
+            start, end = pending.pop()
+            formatted = cls._ruff_stdin_pass(
+                path,
+                source,
+                (*arguments, "--range", f"{start + 1}-{end + 1}"),
+                settings=settings,
+            )
+            if formatted.failure:
+                return formatted
+            changes = difflib.SequenceMatcher(
+                a=source.splitlines(keepends=True),
+                b=formatted.value.splitlines(keepends=True),
+                autojunk=False,
+            ).get_opcodes()
+            # Ruff may expand or contract the enclosing logical statement.
+            remapped: list[tuple[int, int]] = []
+            for pending_start, pending_end in pending:
+                for operation, left, right, new_start, _new_end in changes:
+                    if operation != "equal":
+                        continue
+                    lower, upper = max(pending_start, left), min(pending_end, right)
+                    if lower < upper:
+                        remapped.append((
+                            new_start + lower - left,
+                            new_start + upper - left,
+                        ))
+            pending = remapped
+            source = formatted.value
+        return r[str].ok(source)
 
     @classmethod
     def normalized_codegen_changes(
@@ -182,7 +290,8 @@ class FlextInfraUtilitiesProtectedEditLinting:
 
         """
         result_type = r[tuple[p.Cli.FileChange, ...]]
-        staged_settings = cls._staged_ruff_settings(plans)
+        staged_limits: dict[Path, int] = {}
+        staged_settings = cls._staged_ruff_settings(plans, line_limits=staged_limits)
         # A plan that keeps its bytes changed nothing, so it has nothing to
         # normalize; only rewritten or new sources go through ruff. Each file's
         # normalization is independent, so they run concurrently.
@@ -228,7 +337,10 @@ class FlextInfraUtilitiesProtectedEditLinting:
                     plan.path,
                     (plan.desired_content or b"").decode(c.DEFAULT_ENCODING),
                     before_source=before_sources[plan.path],
-                    settings=staged_settings.get(plan.project, ()),
+                    settings=(
+                        staged_settings.get(plan.project, ()),
+                        staged_limits.get(plan.project),
+                    ),
                 ): plan.path
                 for plan in pending
             }
@@ -285,6 +397,8 @@ class FlextInfraUtilitiesProtectedEditLinting:
 
         Generation normalizes once, when it admits the candidate; publishing
         the admitted bytes must not run the formatters a second time.
+        All source observations and destinations are verified under the same
+        publication lock before any effect, including unchanged carriers.
 
         Returns:
             The written or deleted paths, or the first failure.
@@ -306,7 +420,21 @@ class FlextInfraUtilitiesProtectedEditLinting:
             FlextInfraUtilitiesGitStateCheckpoint.state_leases(owners),
             u.Cli.file_changes_lock(lock.value),
         ):
-            published = cls._publish_verified_plans(plans, tuple(changes), lock.value)
+            verified = u.Cli.atomic_verify_binary_file_states(
+                tuple(state for plan in plans for state in (plan.before, *plan.inputs)),
+            )
+            if verified.failure:
+                return result_type.from_failure(verified)
+            published = u.Cli.publish_file_changes(
+                changes,
+                lock_path=lock.value,
+                directory_mode=config.Infra.codegen.modes.directory_generated,
+                nonsecret_source_paths=tuple(
+                    plan.path
+                    for plan in plans
+                    if plan.path.suffix in c.Infra.PYTHON_SOURCE_SUFFIXES
+                ),
+            )
             if published.failure:
                 return published
             completed = cls._retire_published_index_entries(plans).flat_map(
@@ -329,35 +457,6 @@ class FlextInfraUtilitiesProtectedEditLinting:
             return published
 
     @classmethod
-    def _publish_verified_plans(
-        cls,
-        plans: Sequence[p.Infra.CodegenFilePlan],
-        changes: Sequence[p.Cli.FileChange],
-        lock_path: Path,
-    ) -> p.Result[tuple[Path, ...]]:
-        """Verify the captured inputs and publish one normalized change batch.
-
-        Returns:
-            The published paths, or the verification/publication failure.
-
-        """
-        verified = u.Cli.atomic_verify_binary_file_states(
-            tuple(state for plan in plans for state in plan.inputs),
-        )
-        if verified.failure:
-            return r[tuple[Path, ...]].from_failure(verified)
-        return u.Cli.publish_file_changes(
-            changes,
-            lock_path=lock_path,
-            directory_mode=config.Infra.codegen.modes.directory_generated,
-            nonsecret_source_paths=tuple(
-                plan.path
-                for plan in plans
-                if plan.path.suffix in c.Infra.PYTHON_SOURCE_SUFFIXES
-            ),
-        )
-
-    @classmethod
     def _retire_published_index_entries(
         cls,
         plans: Sequence[p.Infra.CodegenFilePlan],
@@ -372,9 +471,10 @@ class FlextInfraUtilitiesProtectedEditLinting:
             if plan.index_before is None:
                 continue
             retired = FlextInfraUtilitiesGitSemanticPaths.git_retire_index_file(
-                m.Infra.GitIndexRetirementRequest(
-                    repo_root=plan.project, entry=plan.index_before
-                ),
+                m.Infra.GitIndexRetirementRequest.model_validate({
+                    "repo_root": (plan.project),
+                    "entry": (plan.index_before),
+                }),
             )
             if retired.failure:
                 return r[bool].from_failure(retired)
@@ -546,8 +646,13 @@ class FlextInfraUtilitiesProtectedEditLinting:
     def _staged_ruff_settings(
         cls,
         plans: Sequence[p.Infra.CodegenFilePlan],
+        *,
+        line_limits: MutableMapping[Path, int],
     ) -> Mapping[Path, Sequence[str]]:
         """Render each staged pyproject's Ruff table as ``--config`` overrides.
+
+        The line limit is retained from that same parsed table for the declared
+        width recipe; it never borrows a global value for a staged project.
 
         A plan set that rewrites a project's ``pyproject.toml`` also rewrites
         its Ruff settings; normalizing that project's Python candidates with
@@ -579,6 +684,10 @@ class FlextInfraUtilitiesProtectedEditLinting:
             ruff = tool.get(c.Infra.RUFF) if isinstance(tool, Mapping) else None
             if not isinstance(ruff, Mapping):
                 continue
+            if "line-length" in ruff:
+                line_limits[plan.project] = u.type_adapter(int).validate_python(
+                    ruff["line-length"], strict=True
+                )
             # `--isolated` makes Ruff ignore every on-disk configuration, so the
             # complete staged table below is the whole configuration: a key the
             # staged file drops is dropped here too, never merged from disk.
@@ -620,7 +729,12 @@ class FlextInfraUtilitiesProtectedEditLinting:
 
     @classmethod
     def _ruff_stdin_codes(
-        cls, path: Path, source: str, *, settings: Sequence[str] = ()
+        cls,
+        path: Path,
+        source: str,
+        *,
+        settings: Sequence[str] = (),
+        diagnostics: MutableSequence[tuple[str, int, str]] | None = None,
     ) -> p.Result[frozenset[str]]:
         """Return the Ruff rule codes one candidate reports on stdin.
 
@@ -647,7 +761,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
         )
         if reported.failure:
             return r[frozenset[str]].from_failure(reported)
-        report = u.Cli.json_parse(reported.value or "[]").unwrap()
+        report = u.Cli.json_loads(reported.value or "[]").unwrap()
         if not isinstance(report, list):
             msg = f"Ruff JSON report is not a list: {type(report).__name__}"
             raise TypeError(msg)
@@ -659,20 +773,57 @@ class FlextInfraUtilitiesProtectedEditLinting:
             code = u.Cli.json_pick_str(entry, "code")
             if code:
                 codes.add(code)
+                if (
+                    diagnostics is not None
+                    and code == c.Infra.FORMATTER_UNSATISFIED_CODE
+                ):
+                    diagnostics.append(
+                        cls._ruff_diagnostic_excerpt(path, source, entry)
+                    )
         return r[frozenset[str]].ok(frozenset(codes))
 
-    @classmethod
-    def _ruff_environment(cls, command_cwd: Path) -> Mapping[str, str]:
-        """Run Ruff with the gate environment and its external project cache.
+    @staticmethod
+    def _ruff_diagnostic_excerpt(
+        path: Path, source: str, finding: t.JsonMapping
+    ) -> tuple[str, int, str]:
+        """Retain Ruff's native location/message and the actual candidate line.
 
         Returns:
-            The lint environment carrying the project's external Ruff cache.
+            The native recipe identity, row, diagnostic and candidate source line.
+
+        Raises:
+            TypeError: The native location or row has an invalid JSON shape.
+            ValueError: Ruff reported a row outside the supplied candidate.
+
+        """
+        location = finding.get("location")
+        if not isinstance(location, Mapping) or not isinstance(
+            row := location.get("row"), int
+        ):
+            message = "Ruff diagnostic has no native integer source row"
+            raise TypeError(message)
+        lines = source.splitlines()
+        if not 1 <= row <= len(lines):
+            message = "Ruff diagnostic row leaves its source candidate"
+            raise ValueError(message)
+        detail = (
+            f"{path}: {u.Cli.json_dumps(dict(finding)).unwrap()}\n"
+            f"{row}: {lines[row - 1]}"
+        )
+        return u.Cli.json_pick_str(finding, "name"), row, detail
+
+    @classmethod
+    def _ruff_environment(cls) -> Mapping[str, str]:
+        """Run Ruff with the gate environment and the shared external cache.
+
+        Returns:
+            The lint environment carrying the shared external Ruff cache.
 
         """
         return {
             **cls._command_env(),
             c.Infra.RUFF_CACHE_ENVIRONMENT_VARIABLE: str(
-                FlextInfraUtilitiesResourceLimits.ruff_cache_directory(command_cwd)
+                FlextInfraUtilitiesResourceLimits.ruff_cache_directory()
             ),
         }
 
@@ -702,10 +853,10 @@ class FlextInfraUtilitiesProtectedEditLinting:
                 ),
                 cwd=project,
                 options=m.Cli.ProcessOptions(
-                    env=cls._ruff_environment(project),
+                    env=cls._ruff_environment(),
                     remove_env_keys=cls._COMMAND_ENV_REMOVE_KEYS,
                 ),
-                timeout=cls._gate_deadline(c.Infra.RUFF),
+                timeout=cls._gate_deadline(),
             )
             if executed.failure:
                 return r[bool].from_failure(executed)
@@ -735,7 +886,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
             f"normalize: ruff {arguments[0]} settings source="
             f"{'staged' if settings else 'none'} project={command_cwd} path={path}"
         ).unwrap()
-        environment = cls._ruff_environment(command_cwd)
+        environment = cls._ruff_environment()
         executed = u.Cli.run_raw(
             (
                 *cls._workspace_tool_command(c.Infra.RUFF),
@@ -751,7 +902,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
                 remove_env_keys=cls._COMMAND_ENV_REMOVE_KEYS,
                 input_data=source,
             ),
-            timeout=cls._gate_deadline(c.Infra.RUFF),
+            timeout=cls._gate_deadline(),
         )
         if executed.failure:
             return r[str].from_failure(executed)
@@ -1048,6 +1199,13 @@ class FlextInfraUtilitiesProtectedEditLinting:
             normalize_unused_import,
             normalized_line,
         )
+        if normalized_without_unused_imports.startswith(
+            f"{c.Infra.FORMATTER_UNSATISFIED_CODE} "
+        ):
+            # The measured width changes when a rewrite shortens a line that
+            # was already too long; identity is the rule occurrence, and the
+            # multiset count still flags a genuinely additional one.
+            return c.Infra.FORMATTER_UNSATISFIED_CODE
         if c.Infra.LINT_SUMMARY_RE.match(normalized_without_unused_imports):
             return ""
         return normalized_without_unused_imports.strip()
@@ -1144,9 +1302,15 @@ class FlextInfraUtilitiesProtectedEditLinting:
         """
         resolved_workspace = workspace.resolve()
         project_root: Path | None = FlextInfraUtilitiesDiscovery.project_root(py_file)
-        if project_root is None:
-            return resolved_workspace
-        return project_root
+        if project_root is not None:
+            return project_root
+        # A planned file may sit in a directory its own plan creates; the
+        # nearest existing ancestor is where Ruff reads the configuration.
+        return next(
+            directory
+            for directory in (resolved_workspace, *resolved_workspace.parents)
+            if directory.is_dir()
+        )
 
     _COMMAND_ENV_REMOVE_KEYS: ClassVar[Sequence[str]] = (
         c.Infra.ORCHESTRATOR_ENV_PYTHONPATH,
@@ -1170,7 +1334,6 @@ class FlextInfraUtilitiesProtectedEditLinting:
     def _lint_command(
         cls,
         py_file: Path,
-        workspace: Path,
         *,
         command_cwd: Path,
         tool_name: str,
@@ -1182,22 +1345,12 @@ class FlextInfraUtilitiesProtectedEditLinting:
             The resulting ``Sequence[str]``.
 
         """
-        if tool_name == c.Infra.MYPY:
-            return FlextInfraUtilitiesResourceLimits.mypy_limited_command(
-                m.Infra.MypyInvocation(
-                    targets=(py_file.resolve(),),
-                    workspace=workspace,
-                    report_json=True,
-                ),
-            )
         command: Sequence[str] = (
             *cls._workspace_tool_command(template[0]),
             *(item.replace("{file}", str(py_file)) for item in template[1:]),
         )
         if tool_name == c.Infra.RUFF:
             command = (*command, "--output-format", c.Infra.OUTPUT_JSON)
-        elif tool_name == c.Infra.PYRIGHT:
-            command = (*command, "--outputjson")
         elif tool_name == c.Infra.PYREFLY:
             command = (
                 *command,
@@ -1234,7 +1387,6 @@ class FlextInfraUtilitiesProtectedEditLinting:
                 entry[0],
                 cls._lint_command(
                     py_file,
-                    workspace,
                     command_cwd=command_cwd,
                     tool_name=entry[0],
                     template=entry[1],
@@ -1265,12 +1417,10 @@ class FlextInfraUtilitiesProtectedEditLinting:
         if not selected_tools:
             return cls._lint_snapshot_from_results(())
 
-        # The pool waits for the slowest DECLARED gate deadline (mypy owns a
-        # resource-limited deadline of its own); a shorter pool budget cut the
-        # gate short and reported the cut as lint errors, reverting valid edits.
-        timeout_budget = (
-            max(cls._gate_deadline(entry[0]) for entry in selected_tools) + 10
-        )
+        # The pool waits for the DECLARED gate deadline; a shorter pool
+        # budget cut the gate short and reported the cut as lint errors,
+        # reverting valid edits.
+        timeout_budget = cls._gate_deadline() + 10
         pool = concurrent.futures.ThreadPoolExecutor(
             max_workers=max(
                 1, min(config.Infra.codegen.lint_snapshot_workers, len(selected_tools))
@@ -1311,15 +1461,13 @@ class FlextInfraUtilitiesProtectedEditLinting:
         return cls._lint_snapshot_from_results(tuple(results))
 
     @staticmethod
-    def _gate_deadline(tool_name: str) -> int:
+    def _gate_deadline() -> int:
         """Return the one declared deadline for a lint gate subprocess.
 
         Returns:
             The one declared deadline for a lint gate subprocess.
 
         """
-        if tool_name == c.Infra.MYPY:
-            return FlextInfraUtilitiesResourceLimits.mypy_runner_timeout()
         return max(5, min(15, c.Infra.TIMEOUT_SHORT))
 
     @classmethod
@@ -1341,7 +1489,6 @@ class FlextInfraUtilitiesProtectedEditLinting:
         command_cwd = cls._command_cwd(py_file, workspace)
         cmd = cls._lint_command(
             py_file,
-            workspace,
             command_cwd=command_cwd,
             tool_name=tool_name,
             template=template,
@@ -1364,11 +1511,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
             )
         environment = dict(cls._command_env())
         if tool_name == c.Infra.RUFF:
-            environment = dict(cls._ruff_environment(command_cwd))
-        elif tool_name == c.Infra.MYPY:
-            environment[c.Infra.MypyCacheEnvironment.CACHE_DIR.value] = str(
-                FlextInfraUtilitiesResourceLimits.mypy_cache_directory(command_cwd)
-            )
+            environment = dict(cls._ruff_environment())
         run_result = u.Cli.run_raw(
             cmd,
             cwd=command_cwd,
@@ -1377,7 +1520,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
                 remove_env_keys=cls._COMMAND_ENV_REMOVE_KEYS,
                 input_data=source,
             ),
-            timeout=cls._gate_deadline(tool_name),
+            timeout=cls._gate_deadline(),
         )
         return cls.lint_gate_result(tool_name, run_result)
 
@@ -1411,14 +1554,9 @@ class FlextInfraUtilitiesProtectedEditLinting:
                 else (c.Cli.EXIT_CODE_FAILURE,)
             ),
         )
-        resource_error = (
-            FlextInfraUtilitiesResourceLimits.mypy_failure_diagnostic(output)
-            if tool_name == c.Infra.MYPY
-            else None
-        )
-        failure = resource_error
+        failure: str | None = None
         if classification is c.Infra.ToolOutcome.ERROR:
-            failure = failure or (
+            failure = (
                 f"{tool_name} execution failed: "
                 f"exit={output.outcome.raw_return_code}, "
                 f"timed_out={output.outcome.timed_out}, "
@@ -1444,10 +1582,6 @@ class FlextInfraUtilitiesProtectedEditLinting:
 
         """
         result = r[Sequence[str]]
-        if tool_name == c.Infra.MYPY:
-            return cls._mypy_report_errors(source)
-        if tool_name == c.Infra.PYRIGHT:
-            return cls._pyright_report_errors(source)
         if tool_name == c.Infra.PYREFLY:
             pyrefly = u.validate_value(
                 m.Infra.PyreflyReport, source, from_json=True, strict=True
@@ -1465,60 +1599,6 @@ class FlextInfraUtilitiesProtectedEditLinting:
         return cls._ruff_report_errors(source)
 
     @staticmethod
-    def _pyright_report_errors(source: str) -> p.Result[Sequence[str]]:
-        """Validate native diagnostics and require actual analyzed sources.
-
-        Returns:
-            Complete findings or the original malformed/empty-analysis failure.
-
-        """
-        result = r[Sequence[str]]
-        report = u.validate_value(
-            m.Infra.PyrightReport, source, from_json=True, strict=True
-        )
-        if report.failure:
-            return result.from_failure(report)
-        observed = report.value
-        if not observed.summary.files_analyzed:
-            return result.fail("pyright analyzed no files for the selected source")
-        return result.ok(
-            tuple(
-                f"{entry.file}:"
-                f"{entry.range.start.line + 1 if entry.range else 0}:"
-                f"{entry.range.start.character + 1 if entry.range else 0}: "
-                f"{entry.severity}: {entry.message} [{entry.rule or ''}]"
-                for entry in observed.general_diagnostics
-                if entry.severity in {"error", "warning"}
-            ),
-        )
-
-    @staticmethod
-    def _mypy_report_errors(source: str) -> p.Result[Sequence[str]]:
-        """Validate every native JSON-lines diagnostic, retaining hints and failures.
-
-        Returns:
-            Complete diagnostic lines, or the original malformed-report failure.
-
-        """
-        result = r[Sequence[str]]
-        lines: list[str] = []
-        for line in filter(str.strip, source.splitlines()):
-            diagnostic = u.validate_value(
-                m.Infra.MypyDiagnostic, line, from_json=True, strict=True
-            )
-            if diagnostic.failure:
-                return result.from_failure(diagnostic)
-            entry = diagnostic.value
-            if entry.severity != "error":
-                continue
-            lines.append(
-                f"{entry.file}:{entry.line}:{entry.column}: "
-                f"{entry.severity}: {entry.message} [{entry.code or ''}]"
-                + (f"\n{entry.hint}" if entry.hint else "")
-            )
-        return result.ok(tuple(lines))
-
-    @staticmethod
     def _ruff_report_errors(source: str) -> p.Result[Sequence[str]]:
         """Validate Ruff's complete native finding list before projecting diagnostics.
 
@@ -1527,7 +1607,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
 
         """
         result = r[Sequence[str]]
-        loaded = u.Cli.json_parse(source)
+        loaded = u.Cli.json_loads(source)
         if loaded.failure or not isinstance(loaded.value, list):
             return (
                 result.from_failure(loaded)

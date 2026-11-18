@@ -6,12 +6,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Annotated, ClassVar, Self
 
 from flext_cli import m
 
-from flext_infra import c, p, t
+from flext_infra import c, t
 from flext_infra._models._config import FlextInfraModelsConfigContract
 
 
@@ -74,25 +73,6 @@ class FlextInfraModelsConfigProvider:
     class BranchPolicySpec(FlextInfraModelsConfigContract.ConfigContract):
         """Global branch policy shared by every provider."""
 
-        lane_remote: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Remote whose live integration tip governs lanes"),
-        ]
-        lane_temporary_roots: Annotated[
-            tuple[Path, ...],
-            m.Field(description="Temporary roots requiring registered ownership"),
-        ]
-        lane_pr_limit: Annotated[
-            int,
-            m.Field(gt=0, description="PR page bound; saturation fails the inventory"),
-        ]
-        lane_governance_file: Annotated[
-            Path | None,
-            m.Field(
-                description="Explicit host coordination SSOT, unavailable when "
-                "undeclared",
-            ),
-        ] = None
         ci_trigger_branches: Annotated[
             tuple[t.NonEmptyStr, ...],
             m.Field(
@@ -222,6 +202,17 @@ class FlextInfraModelsConfigProvider:
             t.NonEmptyStr,
             m.Field(description="Member checkout path below the workspace root"),
         ]
+        submodules: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                min_length=1,
+                description=(
+                    "Declared workspace member paths the authenticated "
+                    "checkout initializes; every other superproject submodule "
+                    "stays untouched"
+                ),
+            ),
+        ]
 
     class CiPrivateSubmodulesSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Per-distribution private submodule init contract for generated CI."""
@@ -247,14 +238,7 @@ class FlextInfraModelsConfigProvider:
         ]
         deploy_keys: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.CiPrivateSubmoduleDeployKeySpec,
-                    t.schema_for_model(
-                        lambda: (
-                            FlextInfraModelsConfigProvider.CiPrivateSubmoduleDeployKeySpec
-                        )
-                    ),
-                ],
+                (FlextInfraModelsConfigProvider.CiPrivateSubmoduleDeployKeySpec),
                 ...,
             ],
             m.Field(min_length=1, description="Ordered deploy-key materializations"),

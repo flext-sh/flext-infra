@@ -20,6 +20,13 @@ if TYPE_CHECKING:
 class FlextInfraConstantsMake(FlextInfraConstantsConfig):
     """One canonical vocabulary shared by generated Make and its services."""
 
+    class HostPressureLevel(StrEnum):
+        """Host memory-pressure level published by the host-budget owner."""
+
+        NORMAL = "normal"
+        HIGH = "high"
+        CRITICAL = "critical"
+
     class PytestExecutionMode(StrEnum):
         """Keep test inventory scope distinct from dependency selection.
 
@@ -61,16 +68,16 @@ class FlextInfraConstantsMake(FlextInfraConstantsConfig):
     VERB_CHECKS: ClassVar[str] = "checks"
     VERB_SONARCLOUD_SYNC: ClassVar[str] = "sonarcloud-sync"
     VERB_SONARCLOUD_ISSUES: ClassVar[str] = "sonarcloud-issues"
+    VERB_SETUP: ClassVar[str] = "setup"
     VERB_CHECK: ClassVar[str] = "check"
     VERB_TEST: ClassVar[str] = "tests"
     VERB_TEST_FULL: ClassVar[str] = "tests-full"
+    VERB_NATIVE_GATE: ClassVar[str] = "native-gate"
     RUFF_UNSAFE_FIXES_FLAG: ClassVar[str] = "--unsafe-fixes"
     RUFF_CACHE_ENVIRONMENT_VARIABLE: ClassVar[str] = "RUFF_CACHE_DIR"
     """Ruff's immutable external cache-directory environment contract."""
-    PYTEST_BASETEMP_ARGUMENT: ClassVar[str] = "--basetemp"
-    """Native pytest option electing its owned temporary tree."""
-    PYTEST_TEMP_ENVIRONMENT_VARIABLES: ClassVar[t.StrTuple] = ("TMPDIR", "TMP", "TEMP")
-    """Native Python and platform temporary-directory environment names."""
+    TEMPORARY_DIRECTORY_VARIABLE: ClassVar[str] = "TMPDIR"
+    """Declared temporary root under which pytest keeps its own basetemp."""
     TEST_SELECTION_DISABLE_PLUGIN_ARGS: ClassVar[t.StrTuple] = (
         "-p",
         "no:pytest-testmon",
@@ -91,15 +98,34 @@ class FlextInfraConstantsMake(FlextInfraConstantsConfig):
     CLI_ROUTE_MAINTENANCE: ClassVar[str] = "maintenance run"
     CLI_GROUP_WORKSPACE: ClassVar[str] = "workspace"
 
-    MYPY_MEMORY_LIMIT_MB_ENV: ClassVar[str] = "MYPY_MEMORY_LIMIT_MB"
-    MYPY_MEMORY_LIMIT_MB_DEFAULT: ClassVar[int] = 6144
-    MYPY_PROFILE_OUTPUT_ENV: ClassVar[str] = "FLEXT_MYPY_PROFILE_OUTPUT"
-    MYPY_TIMEOUT_GRACE_SECONDS: ClassVar[int] = 10
-    MYPY_SUPERVISOR_PS_TIMEOUT: ClassVar[int] = 1
-    MYPY_SUPERVISOR_POLL_SECONDS: ClassVar[float] = 0.1
-    MYPY_SUPERVISOR_SHUTDOWN_POLL_SECONDS: ClassVar[float] = 0.05
-    PRLIMIT_COMMAND: ClassVar[str] = "prlimit"
-    PRLIMIT_ADDRESS_SPACE_OPTION: ClassVar[str] = "--as"
+    # Host-wide heavy-gate admission (FLEXT ADR-032).
+    GATE_ADMISSION_STATE_PARTS: ClassVar[tuple[str, ...]] = ("flext", "gate-admission")
+    GATE_ADMISSION_QUEUE_LOCK: ClassVar[str] = "queue.lock"
+    GATE_ADMISSION_SEQUENCE_FILE: ClassVar[str] = "sequence"
+    GATE_ADMISSION_TICKET_SUFFIX: ClassVar[str] = ".json"
+    GATE_ADMISSION_LIVENESS_SUFFIX: ClassVar[str] = ".lock"
+    GATE_ADMISSION_HEARTBEAT_DIVISOR: ClassVar[int] = 4
+    GATE_ADMISSION_TICKET_ENV: ClassVar[str] = "FLEXT_GATE_ADMISSION_TICKET"
+    GATE_ADMISSION_GENERATION: ClassVar[str] = "gen"
+    GATE_ADMISSION_MODIFICATION: ClassVar[str] = "mod"
+    GATE_ADMISSION_MUTATING_GATES: ClassVar[frozenset[str]] = frozenset({
+        GATE_ADMISSION_GENERATION,
+        GATE_ADMISSION_MODIFICATION,
+    })
+    GATE_ADMISSION_PRESSURE_FILE_ENV: ClassVar[str] = (
+        "FLEXT_GATE_ADMISSION_PRESSURE_FILE"
+    )
+    GATE_ADMISSION_HISTORY_DIR: ClassVar[str] = "history"
+    GATE_ADMISSION_HISTORY_SUFFIX: ClassVar[str] = ".jsonl"
+    GATE_ADMISSION_REFUSED_EXIT_CODE: ClassVar[int] = 75
+    # prek exports the running hook stage; the pre-push hook runs the full
+    # matrix once per push by contract and is never repeat-limited.
+    GATE_REPEAT_HOOK_STAGE_ENV: ClassVar[str] = "PREK_HOOK_STAGE"
+    GATE_REPEAT_EXEMPT_HOOK_STAGE: ClassVar[str] = "pre-push"
+
+    # Memory one concurrent read-only gate may need for a whole-program
+    # analysis; the host's physical memory divided by it caps gate concurrency.
+    GATE_MEMORY_RESERVATION_BYTES: ClassVar[int] = 6 * 1024 * 1024 * 1024
     TIMEOUT_COMMAND: ClassVar[str] = "timeout"
     TIMEOUT_KILL_AFTER_SECONDS: ClassVar[int] = 5
 
@@ -117,7 +143,6 @@ class FlextInfraConstantsMake(FlextInfraConstantsConfig):
         "MISE_SHIMS",
         "MISE_VERBOSE",
         "MFLAGS",
-        "MYPYPATH",
         "PYTHONDONTWRITEBYTECODE",
         "PYTHONPATH",
         "RUNTIME_ROOT",

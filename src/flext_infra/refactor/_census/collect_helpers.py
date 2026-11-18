@@ -6,8 +6,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-from typing import Annotated, ClassVar
+from collections.abc import MutableSequence, Sequence
+from typing import ClassVar
 
 from flext_cli import cli
 
@@ -24,10 +24,7 @@ class FlextInfraRefactorCensusCollectHelpers(FlextInfraRefactorCensusCollect):
 
     model_config: ClassVar[t.ConfigDict] = m.Infra.CensusOptions.model_config
 
-    options: Annotated[
-        p.Infra.CensusOptions,
-        t.schema_for_model(lambda: m.Infra.CensusOptions),
-    ] = m.Field(
+    options: m.Infra.CensusOptions = m.Field(
         default_factory=m.Infra.CensusOptions,
         description="Validated census filters and report destinations",
     )
@@ -89,14 +86,21 @@ class FlextInfraRefactorCensusCollectHelpers(FlextInfraRefactorCensusCollect):
             ),
             include_local_scopes=self.options.include_local_scopes,
         )
-        findings = m.Infra.ScanFindings(project_objects={}, report_projects=set())
+        project_objects: dict[str, MutableSequence[p.Infra.Object]] = {}
+        report_projects: set[str] = set()
         current_project = None
         for module in rope.modules(project_names=self.project_names):
             if self.production_module(module):
                 if current_project != module.project_root:
                     current_project = module.project_root
                     cli.display_text(f"census: scan {current_project}")
-                self._scan_module(rope, module, scan_config, findings=findings)
+                self._scan_module(
+                    rope,
+                    module,
+                    scan_config,
+                    project_objects=project_objects,
+                    report_projects=report_projects,
+                )
         census_kinds = frozenset(
             u.Infra.normalize_sequence_values(self.options.census_kinds) or ()
         ) | frozenset(
@@ -105,7 +109,10 @@ class FlextInfraRefactorCensusCollectHelpers(FlextInfraRefactorCensusCollect):
         return self._assemble_report(
             rope,
             source_preview=source_preview,
-            findings=findings,
+            findings=m.Infra.ScanFindings.model_validate({
+                "project_objects": project_objects,
+                "report_projects": report_projects,
+            }),
             scan_config=scan_config,
             census_kinds=census_kinds or None,
         )

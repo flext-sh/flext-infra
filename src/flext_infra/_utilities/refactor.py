@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import time
 from collections import Counter, defaultdict
 from collections.abc import Generator, Mapping, MutableMapping, Sequence
 from contextlib import ExitStack, contextmanager
@@ -17,11 +18,9 @@ from typing import ClassVar
 
 from flext_cli import u
 
-from flext_infra import c, m, p, r, t
+from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import FlextInfraUtilitiesProtectedEditLinting
-from flext_infra._utilities._git.semantic_identity import (
-    FlextInfraUtilitiesGitSemanticIdentity,
-)
+from flext_infra._utilities._git import FlextInfraUtilitiesGitSemanticIdentity
 
 
 class FlextInfraUtilitiesRefactor:
@@ -176,7 +175,7 @@ class FlextInfraUtilitiesRefactor:
 
     @staticmethod
     def _finding_repository(
-        entry: p.Infra.ModOccurrence | m.Infra.ModTextFinding,
+        entry: p.Infra.ModOccurrence | p.Infra.ModTextFinding,
         repository_root: Path | None,
         topology: Sequence[Path],
     ) -> str:
@@ -215,8 +214,8 @@ class FlextInfraUtilitiesRefactor:
     def _report_occurrence_indexes[FindingT: p.Infra.ModOccurrence](
         cls,
         report: p.Infra.ModOccurrenceReport[FindingT]
-        | m.Infra.ModScanEvidence
-        | m.Infra.ModTextReport,
+        | p.Infra.ModScanEvidence
+        | p.Infra.ModTextReport,
         repository_root: Path | None,
         topology: Sequence[Path],
     ) -> tuple[
@@ -240,7 +239,7 @@ class FlextInfraUtilitiesRefactor:
             tuple[str, str], MutableMapping[tuple[str, str], int]
         ] = defaultdict(Counter)
         positions: MutableMapping[tuple[str, str], list[int]] = defaultdict(list)
-        entries: Sequence[p.Infra.ModOccurrence | m.Infra.ModTextFinding] = (
+        entries: Sequence[p.Infra.ModOccurrence | p.Infra.ModTextFinding] = (
             report.entries
         )
         for index, entry in enumerate(entries):
@@ -303,11 +302,11 @@ class FlextInfraUtilitiesRefactor:
     @staticmethod
     def rule_deltas[FindingT: p.Infra.ModOccurrence](
         before: p.Infra.ModOccurrenceReport[FindingT]
-        | m.Infra.ModScanEvidence
-        | m.Infra.ModTextReport,
+        | p.Infra.ModScanEvidence
+        | p.Infra.ModTextReport,
         after: p.Infra.ModOccurrenceReport[FindingT]
-        | m.Infra.ModScanEvidence
-        | m.Infra.ModTextReport,
+        | p.Infra.ModScanEvidence
+        | p.Infra.ModTextReport,
         *,
         options: p.Infra.RuleDeltaOptions = _EMPTY_RULE_DELTA_OPTIONS,
     ) -> tuple[p.Infra.ViolationsRuleDelta, ...]:
@@ -463,17 +462,17 @@ class FlextInfraUtilitiesRefactor:
                 update={
                     "error": stage.error or "native audit snapshot unavailable",
                     "rule_evaluations": tuple(
-                        m.Infra.ViolationsRuleEvaluation(
-                            repository=project.name,
-                            rule_id=rule.id,
-                            catalog_digest=rule.digest,
-                            provider=rule.provider,
-                            resource=rule.resource,
-                            detection_only=not rule.fixable,
-                            status="NOT_EXECUTED",
-                            delta=None,
-                            error=stage.error or "native audit snapshot unavailable",
-                        )
+                        m.Infra.ViolationsRuleEvaluation.model_validate({
+                            "repository": project.name,
+                            "rule_id": rule.id,
+                            "catalog_digest": rule.digest,
+                            "provider": rule.provider,
+                            "resource": rule.resource,
+                            "detection_only": not rule.fixable,
+                            "status": "NOT_EXECUTED",
+                            "delta": None,
+                            "error": stage.error or "native audit snapshot unavailable",
+                        })
                         for rule in inventory.rules
                     )
                     if inventory is not None
@@ -520,16 +519,18 @@ class FlextInfraUtilitiesRefactor:
         )
         rows = {row.rule_id: row for row in deltas if row.repository == project.name}
         evaluations = tuple(
-            m.Infra.ViolationsRuleEvaluation(
-                repository=project.name,
-                rule_id=rule_id,
-                catalog_digest=catalog[rule_id].digest if rule_id in catalog else None,
-                provider=catalog[rule_id].provider if rule_id in catalog else None,
-                resource=catalog[rule_id].resource if rule_id in catalog else None,
-                detection_only=(
+            m.Infra.ViolationsRuleEvaluation.model_validate({
+                "repository": (project.name),
+                "rule_id": (rule_id),
+                "catalog_digest": (
+                    catalog[rule_id].digest if rule_id in catalog else None
+                ),
+                "provider": (catalog[rule_id].provider if rule_id in catalog else None),
+                "resource": (catalog[rule_id].resource if rule_id in catalog else None),
+                "detection_only": (
                     not catalog[rule_id].fixable if rule_id in catalog else None
                 ),
-                status=(
+                "status": (
                     "NOT_EXECUTED"
                     if elected is None
                     else "failed"
@@ -546,12 +547,12 @@ class FlextInfraUtilitiesRefactor:
                     if rule_id in elected
                     else "not_applicable"
                 ),
-                delta=(
+                "delta": (
                     rows.get(rule_id)
                     if has_sources and elected is not None and rule_id in elected
                     else None
                 ),
-                error=(
+                "error": (
                     "project absent from effective rule plan"
                     if elected is None
                     else "native rule absent from authenticated catalog"
@@ -564,7 +565,7 @@ class FlextInfraUtilitiesRefactor:
                     if rule_id in rows
                     else stage.error or "native AST rule scan NOT_EXECUTED"
                 ),
-            )
+            })
             for rule_id in sorted(set(catalog) | set(rows))
         )
         deltas += (
@@ -583,14 +584,14 @@ class FlextInfraUtilitiesRefactor:
             else ()
         )
         evaluations += tuple(
-            m.Infra.ViolationsRuleEvaluation(
-                repository=row.repository,
-                rule_id=row.rule_id,
-                engine=row.engine,
-                status="observed",
-                delta=row,
-                error=None,
-            )
+            m.Infra.ViolationsRuleEvaluation.model_validate({
+                "repository": row.repository,
+                "rule_id": row.rule_id,
+                "engine": row.engine,
+                "status": "observed",
+                "delta": row,
+                "error": None,
+            })
             for row in deltas
             if row.engine == "text" and row.repository == project.name
         )
@@ -814,7 +815,7 @@ class FlextInfraUtilitiesRefactor:
         """
         return m.Infra.CodemodBindingSnapshot(
             states=tuple(
-                entry.source_state
+                m.Cli.AtomicFileState.model_validate(entry.source_state)
                 for entry in report.entries
                 if entry.source_state is not None
             )
@@ -881,33 +882,33 @@ class FlextInfraUtilitiesRefactor:
                 msg = f"mod evidence finding lacks its native artifact: {entry.file}"
                 raise ValueError(msg)
             references.append(
-                m.Infra.ModScanFindingReference(
-                    rule_file=entry.rule_file,
-                    rule_id=entry.rule_id,
-                    repository=entry.repository,
-                    catalog_digest=entry.catalog_digest,
-                    message=entry.message,
-                    module_absence=entry.module_absence,
-                    file=entry.file,
-                    source_owner=entry.source_owner,
-                    source_state=entry.source_state,
-                    range=entry.range,
-                    text=entry.text,
-                    replacement=entry.replacement,
-                    actionable=entry.actionable,
-                    classification=entry.classification,
-                    replacement_offsets=entry.replacement_offsets,
-                    severity=entry.severity,
-                    origin=entry.origin,
-                    native_record=entry.native_record,
-                    native_receipt=entry.native_receipt,
-                    source_path=(
+                m.Infra.ModScanFindingReference.model_validate({
+                    "rule_file": (entry.rule_file),
+                    "rule_id": (entry.rule_id),
+                    "repository": (entry.repository),
+                    "catalog_digest": (entry.catalog_digest),
+                    "message": (entry.message),
+                    "module_absence": (entry.module_absence),
+                    "file": (entry.file),
+                    "source_owner": (entry.source_owner),
+                    "source_state": (entry.source_state),
+                    "range": (entry.range),
+                    "text": (entry.text),
+                    "replacement": (entry.replacement),
+                    "actionable": (entry.actionable),
+                    "classification": (entry.classification),
+                    "replacement_offsets": (entry.replacement_offsets),
+                    "severity": (entry.severity),
+                    "origin": (entry.origin),
+                    "native_record": (entry.native_record),
+                    "native_receipt": (entry.native_receipt),
+                    "source_path": (
                         entry.source_state.path
                         if entry.source_state is not None
                         else None
                     ),
-                    native_artifact=artifacts[entry.native_receipt.path],
-                )
+                    "native_artifact": (artifacts[entry.native_receipt.path]),
+                })
             )
         return m.Infra.ModScanEvidence.model_validate({
             "schema_version": c.Infra.MOD_SCAN_REPORT_SCHEMA_VERSION,
@@ -950,7 +951,8 @@ class FlextInfraUtilitiesRefactor:
             )
         content = (
             evidence.model_dump_json(
-                indent=2, exclude=set(type(evidence).model_computed_fields)
+                indent=2,
+                exclude=set(getattr(type(evidence), "model_computed_fields", ())),
             )
             + "\n"
         ).encode(c.DEFAULT_ENCODING)
@@ -961,13 +963,48 @@ class FlextInfraUtilitiesRefactor:
         )
         if published.failure:
             return r[p.Infra.ModScanEvidenceReceipt].from_failure(published)
+        FlextInfraUtilitiesRefactor._prune_mod_native_artifacts(root.resolve())
         return r[p.Infra.ModScanEvidenceReceipt].ok(
-            m.Infra.ModScanEvidenceReceipt(
-                path=report_path,
-                sha256=u.Cli.sha256_bytes(content),
-                evidence=evidence,
-            ),
+            m.Infra.ModScanEvidenceReceipt.model_validate({
+                "path": (report_path),
+                "sha256": (u.Cli.sha256_bytes(content)),
+                "evidence": (evidence),
+            }),
         )
+
+    @staticmethod
+    def _prune_mod_native_artifacts(root: Path) -> None:
+        """Remove native artifacts that no published evidence references.
+
+        The referenced set is the union over every declared evidence report.
+        Only artifacts older than the declared retention go:
+        no route that can still publish evidence for them outlives it.
+        """
+        reports = root / c.Infra.MOD_SCAN_REPORT_RELATIVE_PATH.parent
+        store = reports / "native"
+        if not store.is_dir():
+            return
+        referenced: set[Path] = set()
+        for relative in c.Infra.MOD_SCAN_EVIDENCE_RELATIVE_PATHS:
+            evidence = root / relative
+            if not evidence.is_file():
+                continue
+            document = u.Cli.json_as_mapping(
+                u.Cli.json_loads(evidence.read_bytes()).unwrap()
+            )
+            referenced.update(
+                Path(raw)
+                for artifact in u.Cli.json_deep_mapping_list(
+                    document, "native_artifacts"
+                )
+                if (raw := u.Cli.json_pick_str(artifact, "path"))
+            )
+        horizon = (
+            time.time() - config.Infra.mod_evidence.native_artifact_retention_seconds
+        )
+        for artifact in store.iterdir():
+            if artifact not in referenced and artifact.stat().st_mtime < horizon:
+                artifact.unlink(missing_ok=True)
 
     @staticmethod
     def _published_mod_scan_bytes(

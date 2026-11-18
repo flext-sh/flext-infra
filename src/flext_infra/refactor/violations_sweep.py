@@ -94,40 +94,42 @@ class FlextInfraRefactorViolationsSweep(s[p.Infra.ViolationsSweepReport]):
         comparisons = tuple(
             u.Infra.violations_audit_comparison(
                 project,
-                m.Infra.ViolationsSweepStage(
-                    repository_root=root.resolve(),
-                    cwd=root.resolve(),
-                    command=(),
-                    verb="comparison",
-                    duration=0,
-                    invoked=False,
-                    outcome=None,
-                    error=str(after_scan.error) if after_scan.failure else None,
-                    audit_before=initial,
-                    audit_after=after_scan.value[2] if after_scan.success else None,
-                ),
+                m.Infra.ViolationsSweepStage.model_validate({
+                    "repository_root": (root.resolve()),
+                    "cwd": (root.resolve()),
+                    "command": (()),
+                    "verb": ("comparison"),
+                    "duration": (0),
+                    "invoked": (False),
+                    "outcome": (None),
+                    "error": (str(after_scan.error) if after_scan.failure else None),
+                    "audit_before": (initial),
+                    "audit_after": (
+                        after_scan.value[2] if after_scan.success else None
+                    ),
+                }),
                 initial.plan if initial is not None else None,
             )
             for project in projects
         )
-        report = m.Infra.ViolationsSweepReport(
-            schema_version=c.Infra.VIOLATIONS_SWEEP_REPORT_SCHEMA_VERSION,
-            repository_root=root.resolve(),
-            repair_verbs=tuple(verbs),
-            focused_rule_ids=rule_ids or (),
-            repository_roots=projects,
-            stages=tuple(repairs[1]),
-            before=(
+        report = m.Infra.ViolationsSweepReport.model_validate({
+            "schema_version": (c.Infra.VIOLATIONS_SWEEP_REPORT_SCHEMA_VERSION),
+            "repository_root": (root.resolve()),
+            "repair_verbs": (tuple(verbs)),
+            "focused_rule_ids": (rule_ids or ()),
+            "repository_roots": (projects),
+            "stages": (tuple(repairs[1])),
+            "before": (
                 u.Infra.violations_totals(before_scan.value[0])
                 if before_scan.success
                 else None
             ),
-            after=(
+            "after": (
                 u.Infra.violations_totals(after_scan.value[0])
                 if after_scan.success
                 else None
             ),
-            rule_deltas=(
+            "rule_deltas": (
                 tuple(
                     row.delta
                     for stage in comparisons
@@ -135,26 +137,28 @@ class FlextInfraRefactorViolationsSweep(s[p.Infra.ViolationsSweepReport]):
                     if row.delta is not None
                 )
             ),
-            rule_evaluations=tuple(
-                row for stage in comparisons for row in stage.rule_evaluations
+            "rule_evaluations": (
+                tuple(row for stage in comparisons for row in stage.rule_evaluations)
             ),
-            engine_coverage=tuple(
-                row for stage in comparisons for row in stage.engine_coverage
+            "engine_coverage": (
+                tuple(row for stage in comparisons for row in stage.engine_coverage)
             ),
-            completed_verbs=tuple(repairs[0]),
-            failed_verb=repairs[2],
-            repair_error=str(repairs[3].error) if repairs[3] is not None else None,
-            after_scan_error=str(after_scan.error) if after_scan.failure else None,
-            before_scan_error=str(before_scan.error) if before_scan.failure else None,
-            before_evidence=before_scan.value[1] if before_scan.success else None,
-            after_evidence=after_scan.value[1] if after_scan.success else None,
-            before_plan=initial.plan if initial is not None else None,
-            after_plan=after_scan.value[2].plan if after_scan.success else None,
-            before_source_sha256=initial.sha256 if initial is not None else None,
-            after_source_sha256=after_scan.value[2].sha256
-            if after_scan.success
-            else None,
-        )
+            "completed_verbs": (tuple(repairs[0])),
+            "failed_verb": (repairs[2]),
+            "repair_error": (str(repairs[3].error) if repairs[3] is not None else None),
+            "after_scan_error": (str(after_scan.error) if after_scan.failure else None),
+            "before_scan_error": (
+                str(before_scan.error) if before_scan.failure else None
+            ),
+            "before_evidence": (before_scan.value[1] if before_scan.success else None),
+            "after_evidence": (after_scan.value[1] if after_scan.success else None),
+            "before_plan": (initial.plan if initial is not None else None),
+            "after_plan": (after_scan.value[2].plan if after_scan.success else None),
+            "before_source_sha256": (initial.sha256 if initial is not None else None),
+            "after_source_sha256": (
+                after_scan.value[2].sha256 if after_scan.success else None
+            ),
+        })
         published = u.Infra.publish_refactor_report_evidence(
             root,
             report,
@@ -393,14 +397,14 @@ class FlextInfraRefactorViolationsSweep(s[p.Infra.ViolationsSweepReport]):
             observe=True,
             previous=before.value if before.success else None,
         )
-        stage = m.Infra.ViolationsSweepStage(
-            repository_root=project.resolve(),
-            cwd=root.resolve(),
-            command=command,
-            verb=verb,
-            duration=duration,
-            invoked=before.success and not before.value.observation_errors,
-            outcome=(
+        stage = m.Infra.ViolationsSweepStage.model_validate({
+            "repository_root": (project.resolve()),
+            "cwd": (root.resolve()),
+            "command": (command),
+            "verb": (verb),
+            "duration": (duration),
+            "invoked": (before.success and not before.value.observation_errors),
+            "outcome": (
                 m.Cli.ProcessOutcome(
                     raw_return_code=output.outcome.raw_return_code,
                     timed_out=output.outcome.timed_out,
@@ -409,16 +413,16 @@ class FlextInfraRefactorViolationsSweep(s[p.Infra.ViolationsSweepReport]):
                 if output is not None
                 else None
             ),
-            error=(
+            "error": (
                 str(verdict.error)
                 if verdict.failure
                 else str(after.error)
                 if after.failure
                 else None
             ),
-            audit_before=before.value if before.success else None,
-            audit_after=after.value if after.success else None,
-        )
+            "audit_before": (before.value if before.success else None),
+            "audit_after": (after.value if after.success else None),
+        })
         stage = u.Infra.violations_audit_comparison(
             project,
             stage,
@@ -555,19 +559,19 @@ class FlextInfraRefactorViolationsSweep(s[p.Infra.ViolationsSweepReport]):
                     "violations sweep project topology changed during observation",
                 )
             )
-        snapshot = m.Infra.ViolationsSweepSources(
-            source_verified=not observe,
-            plan=plan,
-            scope=targets,
-            states=captured.value,
-            repository_roots=projects,
-            observation_errors=inventory_errors,
-            sha256={
+        snapshot = m.Infra.ViolationsSweepSources.model_validate({
+            "source_verified": (not observe),
+            "plan": (plan),
+            "scope": (targets),
+            "states": (captured.value),
+            "repository_roots": (projects),
+            "observation_errors": (inventory_errors),
+            "sha256": ({
                 str(state.path): u.Cli.sha256_bytes(state.content)
                 for state in captured.value
                 if state.content is not None
-            },
-        )
+            }),
+        })
         return r[p.Infra.ViolationsSweepSources].ok(
             cls._observed_snapshot(root, snapshot, previous) if observe else snapshot,
         )
@@ -695,28 +699,30 @@ class FlextInfraRefactorViolationsSweep(s[p.Infra.ViolationsSweepReport]):
             snapshot.states,
             snapshot.plan,
         )
-        return m.Infra.ViolationsSweepSources(
-            source_verified=validated.success,
-            plan=snapshot.plan,
-            scope=snapshot.scope,
-            states=snapshot.states,
-            repository_roots=snapshot.repository_roots,
-            sha256=snapshot.sha256,
-            ast_report=ast_scan.value if ast_scan.success else None,
-            text_report=text_scan.value if text_scan.success else None,
-            lint={str(path): findings for path, findings in lint.items()},
-            observation_errors=tuple(snapshot.observation_errors)
-            + tuple(
-                f"{path}: {error}"
-                for path, receipt in lint.items()
-                for error in u.Infra.lint_execution_errors(receipt)
-            )
-            + tuple(
-                str(result.error)
-                for result in (ast_scan, text_scan, validated)
-                if result.failure
+        return m.Infra.ViolationsSweepSources.model_validate({
+            "source_verified": (validated.success),
+            "plan": (snapshot.plan),
+            "scope": (snapshot.scope),
+            "states": (snapshot.states),
+            "repository_roots": (snapshot.repository_roots),
+            "sha256": (snapshot.sha256),
+            "ast_report": (ast_scan.value if ast_scan.success else None),
+            "text_report": (text_scan.value if text_scan.success else None),
+            "lint": ({str(path): findings for path, findings in lint.items()}),
+            "observation_errors": (
+                tuple(snapshot.observation_errors)
+                + tuple(
+                    f"{path}: {error}"
+                    for path, receipt in lint.items()
+                    for error in u.Infra.lint_execution_errors(receipt)
+                )
+                + tuple(
+                    str(result.error)
+                    for result in (ast_scan, text_scan, validated)
+                    if result.failure
+                )
             ),
-        )
+        })
 
     def _run_rule_audit(
         self,
@@ -743,18 +749,23 @@ class FlextInfraRefactorViolationsSweep(s[p.Infra.ViolationsSweepReport]):
             if failure is not None
             else (*before.value.observation_errors, *after.value.observation_errors)
         )
-        stage = m.Infra.ViolationsSweepStage(
-            repository_root=project.resolve(),
-            cwd=self.repository_root.resolve(),
-            command=("flext-infra", "refactor", "violations-sweep", "--audit-rules"),
-            verb="audit-rules",
-            duration=monotonic() - started,
-            invoked=True,
-            outcome=None,
-            error="; ".join(errors) if errors else None,
-            audit_before=before.value if before.success else None,
-            audit_after=after.value if after.success else None,
-        )
+        stage = m.Infra.ViolationsSweepStage.model_validate({
+            "repository_root": (project.resolve()),
+            "cwd": (self.repository_root.resolve()),
+            "command": ((
+                "flext-infra",
+                "refactor",
+                "violations-sweep",
+                "--audit-rules",
+            )),
+            "verb": ("audit-rules"),
+            "duration": (monotonic() - started),
+            "invoked": (True),
+            "outcome": (None),
+            "error": ("; ".join(errors) if errors else None),
+            "audit_before": (before.value if before.success else None),
+            "audit_after": (after.value if after.success else None),
+        })
         stage = u.Infra.violations_audit_comparison(project, stage, inventory)
         return stage, (
             r[bool].from_failure(failure)

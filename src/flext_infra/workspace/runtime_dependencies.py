@@ -115,15 +115,17 @@ class FlextInfraRuntimeDependencyCollector:
         if invoked.failure:
             return result.from_failure(invoked)
         return result.ok(
-            m.Infra.RuntimeDependencyInputs(
-                target_root=project_root,
-                python=self._python,
-                lock=lock,
-                providers=providers.value,
-                development_only=self._development_only,
-                invoked_executables=invoked.value,
-                loaded_plugins=self.pytest_plugin_distributions(unused_distributions),
-                inputs=(
+            m.Infra.RuntimeDependencyInputs.model_validate({
+                "target_root": (project_root),
+                "python": (self._python),
+                "lock": (lock),
+                "providers": (providers.value),
+                "development_only": (self._development_only),
+                "invoked_executables": (invoked.value),
+                "loaded_plugins": (
+                    self.pytest_plugin_distributions(unused_distributions)
+                ),
+                "inputs": ((
                     scan.settings,
                     u.Cli.atomic_read_binary_file_state(
                         context.pyproject_path,
@@ -133,8 +135,8 @@ class FlextInfraRuntimeDependencyCollector:
                         context.runtime_root / c.Infra.GITMODULES,
                         required=False,
                     ).unwrap(),
-                ),
-            ),
+                )),
+            }),
         )
 
     @staticmethod
@@ -237,7 +239,7 @@ class FlextInfraRuntimeDependencyCollector:
         workspace = FlextInfraWorkspaceDetector.load_workspace_spec(
             context.runtime_root,
         ).unwrap()
-        repositories: Mapping[str, m.Infra.RepositoryRef] = {
+        repositories: Mapping[str, p.Infra.RepositoryRef] = {
             u.Infra.distribution_identity(repository.distribution): repository
             for repository in (workspace.repository, *workspace.subprojects)
         }
@@ -257,8 +259,6 @@ class FlextInfraRuntimeDependencyCollector:
             if name is None:
                 return selected.fail("installed dependency metadata lacks its Name")
             identity = u.Infra.distribution_identity(name)
-            if identity not in authored:
-                return selected.ok(())
             receipt = (
                 m.Infra.DirectUrlReceipt.model_validate_json(states[-1].content)
                 if states[-1].content is not None
@@ -291,13 +291,23 @@ class FlextInfraRuntimeDependencyCollector:
             )
             if extra_inputs.failure:
                 return selected.from_failure(extra_inputs)
+            requirement = authored.get(identity)
+            if requirement is None:
+                # An import only reachable through a sibling's edge is still a
+                # direct import of this project: elect its unique installed and
+                # locked supplier so the planner can declare it. A source that
+                # is not the package registry has no authored source to
+                # preserve, so it stays unresolved instead of being invented.
+                if package.value.source.registry is None:
+                    return selected.ok(())
+                requirement = package.value.name
             return selected.ok((
-                m.Infra.RuntimeDependencyProvider(
-                    modules=supplied,
-                    package=package.value,
-                    requirement=authored[identity],
-                    inputs=(*states, *extra_inputs.value),
-                ),
+                m.Infra.RuntimeDependencyProvider.model_validate({
+                    "modules": (supplied),
+                    "package": (package.value),
+                    "requirement": (requirement),
+                    "inputs": ((*states, *extra_inputs.value)),
+                }),
             ))
 
         providers: list[p.Infra.RuntimeDependencyProvider] = []

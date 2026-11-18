@@ -49,6 +49,14 @@ through the canonical semantic-phase enum; constant-consumers consumes its own
 rows through the same typed catalog and native planner. Unknown phases fail
 configuration validation. Python matches and replacements use native Rope
 `SimilarFinder`, identity-constrained `Restructure` patterns and ChangeSets.
+An empty `goal` delegates statement deletion to native Rope; it is not replaced
+with a compatibility statement.
+The native model-envelope operation admits only constructor arguments diagnosed by
+the existing Pyrefly gate on the complete staged candidate. Source-derived model
+and protocol bindings authenticate the diagnostic's concrete/protocol pair; native
+Rope authenticates the constructor. The replacement creates the new boundary with
+`model_validate` and the original value references. Valid constructors and unrelated
+diagnostics retain their original behavior.
 The phase shares the existing semantic fixed point and publication transaction;
 it has no independent repair loop or CST, AST or regular-expression parser.
 

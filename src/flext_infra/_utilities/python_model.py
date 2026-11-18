@@ -13,13 +13,14 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-from collections.abc import Iterator, Mapping, MutableMapping, Sequence
+from collections.abc import Hashable, Iterator, Mapping, MutableMapping, Sequence
 from pathlib import Path
 
 from flext_infra import c, m, p, t
-from flext_infra._utilities._rope import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities._rope.runtime_modules import (
+from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntimeModules,
+    FlextInfraUtilitiesRopeSourceBindingCollector,
 )
 
 
@@ -31,10 +32,7 @@ class FlextInfraUtilitiesPythonModel:
         source_project: p.Infra.RopeProject,
         module_files: Mapping[str, Path],
         *,
-        module_facts: MutableMapping[
-            t.Infra.RopeNativeParsedModule, m.Infra.PythonModuleFacts
-        ]
-        | None = None,
+        module_facts: MutableMapping[Hashable, p.Infra.PythonModuleFacts] | None = None,
     ) -> p.Infra.PythonModelRun:
         """Open one static model run with empty fact caches.
 
@@ -97,6 +95,8 @@ class FlextInfraUtilitiesPythonModel:
             imports={},
             classes={},
             class_exports={},
+            class_members={},
+            class_standin_defects={},
             values={},
         )
         for node, parent in cls._python_model_statements(tree):
@@ -110,6 +110,12 @@ class FlextInfraUtilitiesPythonModel:
                     draft.classes[node.name] = tuple(map(ast.unparse, node.bases))
                     draft.class_exports[node.name] = cls._python_model_class_exports(
                         node
+                    )
+                    draft.class_members[node.name] = cls._python_model_class_members(
+                        node
+                    )
+                    draft.class_standin_defects[node.name] = (
+                        cls._python_model_standin_defects(node)
                     )
                 case ast.FunctionDef() | ast.AsyncFunctionDef():
                     cls._python_model_bind(draft, node.name, "function")
@@ -139,7 +145,11 @@ class FlextInfraUtilitiesPythonModel:
             exports=cls._python_model_literal(draft.exports),
             classes=draft.classes,
             class_exports=draft.class_exports,
+            class_members=draft.class_members,
+            class_standin_defects=draft.class_standin_defects,
             values=draft.values,
+            runtime_imports=cls._python_model_runtime_imports(tree.body),
+            runtime_names=cls._python_model_runtime_names(tree.body),
         )
 
     @staticmethod
@@ -152,6 +162,8 @@ class FlextInfraUtilitiesPythonModel:
         draft.members[member] = kind
         draft.classes.pop(member, None)
         draft.class_exports.pop(member, None)
+        draft.class_members.pop(member, None)
+        draft.class_standin_defects.pop(member, None)
         draft.values.pop(member, None)
 
     @classmethod
@@ -251,19 +263,32 @@ class FlextInfraUtilitiesPythonModel:
 
     @staticmethod
     def _python_model_assigned(node: ast.Assign | ast.AnnAssign) -> Sequence[str]:
-        """Return the plain names one assignment binds.
+        """Return the plain names one assignment binds at class creation.
 
-        An unpacking or subscript target binds no static name, so the whole
-        assignment binds none; attribute targets bind no module name.
+        A name target binds itself; a tuple or list target binds every plain
+        name it contains, in target order, including a starred element;
+        attribute and subscript targets bind no plain name. This mirrors the
+        names the class body actually binds at runtime.
 
         Returns:
             The bound names in target order.
 
         """
         targets = node.targets if isinstance(node, ast.Assign) else [node.target]
-        if not all(isinstance(target, (ast.Name, ast.Attribute)) for target in targets):
-            return ()
-        return tuple(target.id for target in targets if isinstance(target, ast.Name))
+        names: list[str] = []
+
+        def bind(target: ast.expr) -> None:
+            if isinstance(target, ast.Name):
+                names.append(target.id)
+            elif isinstance(target, (ast.Tuple, ast.List)):
+                for element in target.elts:
+                    bind(element)
+            elif isinstance(target, ast.Starred):
+                bind(target.value)
+
+        for target in targets:
+            bind(target)
+        return tuple(names)
 
     @classmethod
     def _python_model_class_exports(cls, node: ast.ClassDef) -> Sequence[str] | None:
@@ -290,6 +315,228 @@ class FlextInfraUtilitiesPythonModel:
             ):
                 bound.add(statement.name)
         return cls._python_model_literal(exports)
+
+    @classmethod
+    def _python_model_class_members(cls, node: ast.ClassDef) -> Sequence[str]:
+        """Return the names one class body binds at class creation.
+
+        An annotation without a value binds no class attribute, and a
+        declaration under ``if TYPE_CHECKING:`` never binds one at runtime.
+
+        Returns:
+            The bound names in declaration order.
+
+        """
+        type_only = {
+            inner
+            for statement in node.body
+            if isinstance(statement, ast.If)
+            and cls._python_model_head(statement.test) == "TYPE_CHECKING"
+            for inner, _ in cls._python_model_statements(statement)
+        }
+        bound: dict[str, None] = {}
+        for statement, _ in cls._python_model_statements(node):
+            if statement in type_only:
+                continue
+            if isinstance(
+                statement, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
+            ):
+                bound[statement.name] = None
+            elif isinstance(statement, ast.TypeAlias) and isinstance(
+                statement.name, ast.Name
+            ):
+                bound[statement.name.id] = None
+            elif isinstance(statement, ast.Assign) or (
+                isinstance(statement, ast.AnnAssign) and statement.value is not None
+            ):
+                bound.update(dict.fromkeys(cls._python_model_assigned(statement)))
+        return tuple(bound)
+
+    @classmethod
+    def _python_model_standin_defects(cls, node: ast.ClassDef) -> Sequence[str]:
+        """Return each construct of one class a stand-in cannot represent.
+
+        A stand-in carries no dunder of its class and is not the real class in
+        the facade's MRO (root ADR-018 stand-in composition law, rule 5).
+
+        Returns:
+            One description per construct, in source order.
+
+        """
+        lazy = c.Infra
+        defects = [
+            f"base {ast.unparse(base)} makes it a Protocol namespace"
+            for base in node.bases
+            if cls._python_model_head(base) == "Protocol"
+        ]
+        defects.extend(
+            f"metaclass {ast.unparse(keyword.value)}"
+            for keyword in node.keywords
+            if keyword.arg == "metaclass"
+            and not (isinstance(keyword.value, ast.Name) and keyword.value.id == "type")
+        )
+        type_only = {
+            inner
+            for statement in node.body
+            if isinstance(statement, ast.If)
+            and cls._python_model_head(statement.test) == "TYPE_CHECKING"
+            for inner, _ in cls._python_model_statements(statement)
+        }
+        for statement, _ in cls._python_model_statements(node):
+            if statement in type_only:
+                continue
+            match statement:
+                case ast.FunctionDef() | ast.AsyncFunctionDef():
+                    name = statement.name
+                    if name.startswith("__") and name.endswith("__"):
+                        defects.append(f"dunder {name}")
+                    decorators = map(cls._python_model_head, statement.decorator_list)
+                    defects.extend(
+                        f"decorator {decorator} on {name}"
+                        for decorator in decorators
+                        if decorator in lazy.LAZY_INIT_STANDIN_FIELD_DECORATORS
+                    )
+                    defects.extend(
+                        f"{call} in {name}"
+                        for call in cls._python_model_self_bound_calls(
+                            statement, node.name
+                        )
+                    )
+                case ast.AnnAssign(target=ast.Name(id=name)) if (
+                    not name.startswith("_")
+                    and cls._python_model_head(statement.annotation)
+                    != lazy.LAZY_INIT_STANDIN_CLASS_ANNOTATION
+                ):
+                    defects.append(f"field-like annotated attribute {name}")
+                case ast.Assign() | ast.AnnAssign() if "__slots__" in (
+                    cls._python_model_assigned(statement)
+                ):
+                    defects.append("dunder __slots__")
+                case _:
+                    pass
+        return tuple(defects)
+
+    @staticmethod
+    def _python_model_head(node: ast.expr) -> str:
+        """Return the last dotted name of an expression, through calls and subscripts.
+
+        Returns:
+            ``Protocol`` for ``typing.Protocol[T]``, ``computed_field`` for
+            ``computed_field(repr=False)``; empty for another expression.
+
+        """
+        while isinstance(node, (ast.Call, ast.Subscript)):
+            node = node.func if isinstance(node, ast.Call) else node.value
+        match node:
+            case ast.Name(id=name) | ast.Attribute(attr=name):
+                return name
+            case _:
+                return ""
+
+    @staticmethod
+    def _python_model_self_bound_calls(
+        method: ast.FunctionDef | ast.AsyncFunctionDef, owner: str
+    ) -> Sequence[str]:
+        """Return each call of one method that binds to the real part class.
+
+        A zero-argument ``super()`` and an ``isinstance`` against the part's own
+        class resolve against the class itself, never the facade composing it.
+
+        Returns:
+            ``super()`` or ``isinstance(..., <owner>)`` per offending call.
+
+        """
+        found: list[str] = []
+        for call in ast.walk(method):
+            match call:
+                case ast.Call(func=ast.Name(id="super"), args=[]):
+                    found.append("zero-argument super()")
+                case ast.Call(func=ast.Name(id="isinstance"), args=[_, kinds]):
+                    names = kinds.elts if isinstance(kinds, ast.Tuple) else [kinds]
+                    if any(isinstance(n, ast.Name) and n.id == owner for n in names):
+                        found.append(f"isinstance(..., {owner})")
+                case _:
+                    pass
+        return tuple(found)
+
+    @classmethod
+    def _python_model_runtime_import_nodes(
+        cls, body: Sequence[ast.stmt]
+    ) -> Iterator[ast.Import | ast.ImportFrom]:
+        """Yield the import statements a scope executes at module import.
+
+        A type-checking guard's body never executes; its ``else`` branch does.
+        Function and class bodies are separate scopes and are not entered.
+
+        Yields:
+            Each runtime import statement.
+
+        """
+        guard = FlextInfraUtilitiesRopeSourceBindingCollector.type_checking_test
+        for statement in body:
+            match statement:
+                case ast.Import() | ast.ImportFrom():
+                    yield statement
+                case ast.If() if guard(statement.test):
+                    yield from cls._python_model_runtime_import_nodes(statement.orelse)
+                case ast.FunctionDef() | ast.AsyncFunctionDef() | ast.ClassDef():
+                    pass
+                case _:
+                    yield from cls._python_model_runtime_import_nodes(
+                        cls._python_model_nested_statements(statement)
+                    )
+
+    @classmethod
+    def _python_model_runtime_imports(cls, body: Sequence[ast.stmt]) -> frozenset[str]:
+        """Return the absolute top-level packages a scope imports at runtime.
+
+        Returns:
+            The imported top-level package names.
+
+        """
+        roots: set[str] = set()
+        for statement in cls._python_model_runtime_import_nodes(body):
+            if isinstance(statement, ast.Import):
+                roots.update(alias.name.split(".")[0] for alias in statement.names)
+            elif statement.level == 0 and statement.module:
+                roots.add(statement.module.split(".")[0])
+        return frozenset(roots)
+
+    @classmethod
+    def _python_model_runtime_names(cls, body: Sequence[ast.stmt]) -> frozenset[str]:
+        """Return the local names a module binds by ``from`` imports at runtime.
+
+        Returns:
+            The bound names; their targets are the module's ``imports``.
+
+        """
+        return frozenset(
+            alias.asname or alias.name
+            for statement in cls._python_model_runtime_import_nodes(body)
+            if isinstance(statement, ast.ImportFrom)
+            for alias in statement.names
+            if alias.name != "*"
+        )
+
+    @staticmethod
+    def _python_model_nested_statements(node: ast.stmt) -> Sequence[ast.stmt]:
+        """Return the statements directly nested in one compound statement.
+
+        Returns:
+            The child statements of its bodies, handlers and match cases.
+
+        """
+        nested: list[ast.stmt] = []
+        for child in ast.iter_child_nodes(node):
+            if isinstance(child, ast.stmt):
+                nested.append(child)
+            elif isinstance(child, (ast.excepthandler, ast.match_case)):
+                nested.extend(
+                    grandchild
+                    for grandchild in ast.iter_child_nodes(child)
+                    if isinstance(grandchild, ast.stmt)
+                )
+        return tuple(nested)
 
     @classmethod
     def _python_model_all(cls, value: ast.expr | None) -> list[str | None]:
@@ -382,6 +629,41 @@ class FlextInfraUtilitiesPythonModel:
         """
         path = run.module_files.get(name)
         return None if path is None else cls.python_model_module_at(run, path, name)
+
+    @classmethod
+    def python_model_namespace_bases(
+        cls, run: p.Infra.PythonModelRun, name: str, owner: str
+    ) -> Sequence[str]:
+        """Return the base expressions of every class nested in a top-level class.
+
+        A facade composes its namespace mixins through the nested namespace
+        classes its body declares, which the module facts do not record.
+
+        Returns:
+            The unparsed base expressions in source order.
+
+        Raises:
+            TypeError: If the parsed module carries no module syntax tree.
+
+        """
+        project = run.source_project
+        parsed = project.get_pymodule(
+            FlextInfraUtilitiesRopeRuntimeModules.file_resource_at(
+                project, run.module_files[name]
+            )
+        )
+        tree = parsed.get_ast()
+        if not isinstance(tree, ast.Module):
+            msg = f"parsed source carries no module syntax tree: {name}"
+            raise TypeError(msg)
+        return tuple(
+            ast.unparse(base)
+            for outer in tree.body
+            if isinstance(outer, ast.ClassDef) and outer.name == owner
+            for nested in ast.walk(outer)
+            if isinstance(nested, ast.ClassDef) and nested is not outer
+            for base in nested.bases
+        )
 
     @staticmethod
     def python_model_exports(

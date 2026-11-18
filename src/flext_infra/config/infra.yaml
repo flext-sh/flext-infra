@@ -49,13 +49,54 @@ Infra:
         hashes:
           - 0a9ebc8d4e2f3e8a22848c5258033035bec17a3012ac3fea16dbaa764489eb71
           - 8b1ff4f9c191b1040b71c37f1e445ab99732911e3cd91de52838453a854d7a17
-  # No operation holds a tree-wide lock: concurrent sessions run gen/mod/check
-  # on the same tree at once, and only one atomic file effect is leased at a
-  # time. A destination another writer changed between plan and publication is
-  # reconciled by replanning over the new state (rule fix-forward-collaboration),
-  # up to reconcile_attempts.
-  mutation_lock:
-    reconcile_attempts: 3
+  # Heavy gates (check, tests, tests-full, gen, gen-scope, mod and ai-hub's
+  # post-edit pyrefly/pytest) share one per-host FIFO queue (ADR-032):
+  # two at normal host pressure, one when the host-budget owner publishes
+  # high or critical pressure. A dead holder frees its slot at once; a live
+  # holder is never reclaimed, because its liveness lock, not its heartbeat,
+  # proves the slot is still owned.
+  gate_admission:
+    capacity_normal: 2
+    capacity_high: 1
+    heartbeat_seconds: 10
+    poll_seconds: 2
+    # Each route arms its budget only after it is admitted. Generation keeps a
+    # 30 s reserve so its profile checkpoint survives a budget kill; check
+    # derives its budget from the gates it runs, tests from tools.pytest. The
+    # 32-member workspace generation plans every repository in one run; the
+    # budget must exceed that work or every run ends in timeout(1) exit 124.
+    generation:
+      budget_seconds: 1800
+      grace_seconds: 30
+    modification:
+      # The mod census scans the complete catalog over every first-class root;
+      # a full 686-rule scan costs roughly 200 s before fixes begin, so the
+      # budget must exceed the census or every run ends in timeout(1) exit 124.
+      budget_seconds: 900
+      grace_seconds: 10
+    # A full-weight run that succeeded in a checkout is refused before it
+    # queues while its window is open (exit 75, naming the lighter form).
+    # Failures never count; CI runners and the pre-push hook are not limited.
+    repeat:
+      check:
+        window_seconds: 1800
+        lighter: CHECK_PHASE=primary make check
+      tests_full:
+        window_seconds: 3600
+        lighter: make tests (incremental Testmon selection)
+      mod_full:
+        window_seconds: 7200
+        lighter: make mod LAWS=<law ids> or make mod RULES=<rule ids>
+      mod_selection:
+        window_seconds: 300
+        lighter: make mod with a different LAWS or RULES selection
+  # Mod evidence references exact native scan bytes kept in
+  # .reports/refactor/native/<sha256>. After each evidence publication, an
+  # artifact that no published evidence references and that is older than
+  # this retention is removed: no live route outlasts it, so no in-flight
+  # scan loses bytes it has not published yet.
+  mod_evidence:
+    native_artifact_retention_seconds: 86400
   source_scan:
     # tests/ and examples/ are first-class code under the same gates as src/;
     # leaving them out of the scan blinds every analyzer to half the
@@ -65,6 +106,8 @@ Infra:
       - scripts
       - tests
       - examples
+  rope:
+    preferred_import_style: from-global
     # NOTE (flext-jnm1.1 / flext-jnm1.4): ignored_resources was removed; the names
     # now derive from the codegen artifact SSOT (config/codegen.yaml artifacts
     # with source_scan_ignore=true) via CodegenConfigSpec.source_scan_ignored.
@@ -80,4 +123,5 @@ Infra:
   # reaches all consumers. A campaign is declared only once every `new` name
   # already exists in the released definer.
   refactor_csv_campaigns:
+    rewire_directory: config/rewires
     campaigns: []

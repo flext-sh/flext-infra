@@ -15,7 +15,7 @@ from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING
 
 from flext_infra import FlextInfraCli, config
-from flext_infra.gates.pyright import FlextInfraGatesPyright
+from flext_infra.gates import FlextInfraGatesPyrefly
 from tests import c, m, t, tm, u
 
 if TYPE_CHECKING:
@@ -38,6 +38,8 @@ class TestsFlextInfraCheckReportContract:
             '"""Fixture module."""\n\nimport os\n',
             encoding="utf-8",
         )
+        # `check run` elects its runtime owner from the Git top level.
+        u.Tests.initialize_git_repo(project)
         return project
 
     @staticmethod
@@ -137,28 +139,28 @@ class TestsFlextInfraCheckReportContract:
         tmp_path: Path,
         capsys: t.Tests.CaptureFixture[str],
     ) -> None:
-        """Real Pyright findings produce readable SARIF, not a validation crash."""
+        """Real Pyrefly findings produce readable SARIF, not a validation crash."""
         project = u.Tests.mk_project(
             tmp_path,
             "diagnostic-levels",
             pyproject=(
                 '[project]\nname = "diagnostic-levels"\nversion = "0.1.0"\n'
-                '[tool.pyright]\ntypeCheckingMode = "strict"\n'
-                'reportUnusedVariable = "warning"\n'
+                '[tool.pyrefly]\nproject-includes = ["src/**/*.py*"]\n'
+                '[tool.pyrefly.errors]\nbad-assignment = "warn"\n'
             ),
             with_src=True,
         )
+        u.Tests.initialize_git_repo(project)
         source = project / "src" / "diagnostics.py"
         source.write_text(
             "def diagnose() -> None:\n"
-            "    unused = 1\n"
             '    value: int = "not an integer"\n'
-            "    reveal_type(value)\n",
+            "    len(value, value)\n",
             encoding=c.DEFAULT_ENCODING,
         )
         before = u.Cli.sha256_bytes(source.read_bytes())
         reports = tmp_path / "reports"
-        native = FlextInfraGatesPyright(repository_root=project).check(
+        native = FlextInfraGatesPyrefly(repository_root=project).check(
             project,
             m.Infra.GateContext.model_validate({
                 "repository_root": project,
@@ -170,7 +172,7 @@ class TestsFlextInfraCheckReportContract:
             TestsFlextInfraCheckReportContract._check_run(
                 project,
                 reports,
-                gate="pyright",
+                gate="pyrefly",
             ),
             eq=1,
         )
@@ -187,13 +189,13 @@ class TestsFlextInfraCheckReportContract:
         )
         summary = tm.not_none(report.properties)
         project_result = summary.results[0]
-        execution = project_result.gates["pyright"]
+        execution = project_result.gates["pyrefly"]
         tm.fail(project_result.passed)
         tm.that(execution.outcome, eq=native.outcome)
         tm.that(execution.issues, eq=native.issues)
         tm.that(
             {issue.severity for issue in execution.issues},
-            eq={"error", "warning", "information"},
+            eq={"error", "warn"},
         )
         findings = tm.ok(
             u.Infra.check_report_findings(project, reports_dir=report_path.parent),
@@ -201,11 +203,11 @@ class TestsFlextInfraCheckReportContract:
         tm.that(len(findings), eq=execution.finding_count)
         tm.that(project_result.total_findings, eq=len(findings))
         for issue, finding in zip(execution.issues, findings, strict=True):
-            tm.that(finding.rule_id, eq=issue.code or "pyright")
+            tm.that(finding.rule_id, eq=issue.code or "pyrefly")
             tm.that(finding.message, eq=issue.message)
             tm.that(
                 finding.level,
-                eq="note" if issue.severity == "information" else issue.severity,
+                eq="warning" if issue.severity == "warn" else issue.severity,
             )
             tm.that(finding.locations[0].uri, eq=issue.file)
             tm.that(finding.locations[0].start_line, eq=issue.line)
@@ -394,6 +396,7 @@ class TestsFlextInfraCheckReportContract:
             ),
             with_src=True,
         )
+        u.Tests.initialize_git_repo(root)
         member = self._project(root)
         pyproject = member / c.PYPROJECT_FILENAME
         pyproject.write_text(
@@ -428,7 +431,6 @@ class TestsFlextInfraCheckReportContract:
         [
             ("--apply",),
             ("--ruff-args", "--exit-zero"),
-            ("--pyright-args", "."),
             ("--projects", "other"),
         ],
     )

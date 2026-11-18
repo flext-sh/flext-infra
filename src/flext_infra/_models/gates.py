@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, ClassVar, Literal, Self
@@ -43,10 +43,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             alias="Name", min_length=1, strict=True, description="Scanner language name"
         )
         files: tuple[
-            Annotated[
-                p.Infra.SccFile,
-                t.schema_for_model(lambda: FlextInfraModelsGates.SccFile),
-            ],
+            FlextInfraModelsGates.SccFile,
             ...,
         ] = m.Field(alias="Files", description="Every scanned file in this language")
 
@@ -89,10 +86,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         """Required deptry JSON record, never a partially recognized mapping."""
 
         error: Annotated[
-            Annotated[
-                p.Infra.DeptryError,
-                t.schema_for_model(lambda: FlextInfraModelsGates.DeptryError),
-            ],
+            FlextInfraModelsGates.DeptryError,
             m.Field(description="Deptry rule and diagnostic message"),
         ]
         module: Annotated[
@@ -102,10 +96,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             ),
         ]
         location: Annotated[
-            Annotated[
-                p.Infra.DeptryLocation,
-                t.schema_for_model(lambda: FlextInfraModelsGates.DeptryLocation),
-            ],
+            FlextInfraModelsGates.DeptryLocation,
             m.Field(description="Diagnostic file and nullable source positions"),
         ]
 
@@ -132,21 +123,15 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             ),
         ]
         native: Annotated[
-            Annotated[
-                p.Cli.CommandOutput, t.schema_for_model(lambda: m.Cli.CommandOutput)
-            ],
+            m.Cli.CommandOutput,
             m.Field(description="Native deptry process completion and raw output"),
         ]
         settings: Annotated[
-            Annotated[
-                p.Cli.AtomicFileState, t.schema_for_model(lambda: m.Cli.AtomicFileState)
-            ],
+            m.Cli.AtomicFileState,
             m.Field(description="Consumed pyproject state"),
         ]
         report_state: Annotated[
-            Annotated[
-                p.Cli.AtomicFileState, t.schema_for_model(lambda: m.Cli.AtomicFileState)
-            ],
+            m.Cli.AtomicFileState,
             m.Field(description="Fresh native report state"),
         ]
         report_sha256: Annotated[
@@ -188,13 +173,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             m.Field(description="Never write files even when fix mode is requested"),
         ] = False
         runtime_dependency_inputs: Annotated[
-            Annotated[
-                p.Infra.RuntimeDependencyInputs,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsDeps.RuntimeDependencyInputs
-                ),
-            ]
-            | None,
+            FlextInfraModelsDeps.RuntimeDependencyInputs | None,
             m.Field(
                 description="Target-runtime dependency proof injected at composition"
             ),
@@ -222,10 +201,6 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         ruff_args: Annotated[
             Sequence[str],
             m.Field(description="Extra arguments for Ruff"),
-        ] = ()
-        pyright_args: Annotated[
-            Sequence[str],
-            m.Field(description="Extra arguments for Pyright"),
         ] = ()
         selected_files: Annotated[
             tuple[Path, ...],
@@ -263,132 +238,6 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             ):
                 msg = "dependency provenance has competing providers"
                 raise ValueError(msg)
-            return self
-
-    class MypyDiagnostic(m.ContractModel):
-        """One complete record from Mypy's native JSON formatter."""
-
-        file: Annotated[str, m.Field(description="Diagnostic source file path")]
-        line: Annotated[int, m.Field(description="Diagnostic start line")]
-        column: Annotated[int, m.Field(description="Diagnostic start column")]
-        end_line: Annotated[int | None, m.Field(description="Diagnostic end line")] = (
-            None
-        )
-        end_column: Annotated[
-            int | None, m.Field(description="Diagnostic end column")
-        ] = None
-        message: Annotated[t.NonEmptyStr, m.Field(description="Diagnostic message")]
-        hint: Annotated[str | None, m.Field(description="Diagnostic hint")] = None
-        code: Annotated[str | None, m.Field(description="Mypy diagnostic code")] = None
-        severity: Annotated[
-            Literal["error", "note"],
-            m.Field(description="Mypy diagnostic severity"),
-        ]
-
-    class PyrightPosition(m.ContractModel):
-        """Zero-based native diagnostic position."""
-
-        line: Annotated[t.NonNegativeInt, m.Field(description="Zero-based line index")]
-        character: Annotated[
-            t.NonNegativeInt,
-            m.Field(description="Zero-based character index"),
-        ]
-
-    class PyrightRange(m.ContractModel):
-        """Native diagnostic source range."""
-
-        start: Annotated[
-            Annotated[
-                p.Infra.PyrightPosition,
-                t.schema_for_model(lambda: FlextInfraModelsGates.PyrightPosition),
-            ],
-            m.Field(description="Diagnostic range start position"),
-        ]
-        end: Annotated[
-            Annotated[
-                p.Infra.PyrightPosition,
-                t.schema_for_model(lambda: FlextInfraModelsGates.PyrightPosition),
-            ],
-            m.Field(description="Diagnostic range end position"),
-        ]
-
-    class PyrightDiagnostic(m.ContractModel):
-        """Pyright's documented JSON diagnostic, including optional location."""
-
-        file: Annotated[str, m.Field(description="Diagnostic source file path")]
-        severity: Annotated[
-            Literal["error", "warning", "information"],
-            m.Field(description="Pyright diagnostic severity"),
-        ]
-        message: Annotated[t.NonEmptyStr, m.Field(description="Diagnostic message")]
-        range: Annotated[
-            Annotated[
-                p.Infra.PyrightRange,
-                t.schema_for_model(lambda: FlextInfraModelsGates.PyrightRange),
-            ]
-            | None,
-            m.Field(description="Diagnostic source range when available"),
-        ] = None
-        rule: Annotated[
-            str | None,
-            m.Field(description="Pyright diagnostic rule when available"),
-        ] = None
-
-    class PyrightSummary(m.ContractModel):
-        """Native completed-analysis counters.
-
-        The model accepts ``filesAnalyzed=0``; the gate layer decides that an
-        empty analysis of a project with Python targets is a failure.
-        """
-
-        files_analyzed: t.NonNegativeInt = m.Field(
-            alias="filesAnalyzed", description="Number of analyzed files"
-        )
-        error_count: t.NonNegativeInt = m.Field(
-            alias="errorCount", description="Number of error diagnostics"
-        )
-        warning_count: t.NonNegativeInt = m.Field(
-            alias="warningCount", description="Number of warning diagnostics"
-        )
-        information_count: t.NonNegativeInt = m.Field(
-            alias="informationCount", description="Number of informational diagnostics"
-        )
-        time_in_sec: float = m.Field(
-            alias="timeInSec", ge=0, description="Analysis duration in seconds"
-        )
-
-    class PyrightReport(m.ContractModel):
-        """Complete native Pyright report with reconciled diagnostic counts."""
-
-        version: Annotated[t.NonEmptyStr, m.Field(description="Pyright version")]
-        time: Annotated[t.NonEmptyStr, m.Field(description="Report timestamp")]
-        general_diagnostics: Sequence[
-            Annotated[
-                p.Infra.PyrightDiagnostic,
-                t.schema_for_model(lambda: FlextInfraModelsGates.PyrightDiagnostic),
-            ]
-        ] = m.Field(alias="generalDiagnostics", description="Pyright diagnostics")
-        summary: Annotated[
-            Annotated[
-                p.Infra.PyrightSummary,
-                t.schema_for_model(lambda: FlextInfraModelsGates.PyrightSummary),
-            ],
-            m.Field(description="Completed analysis summary"),
-        ]
-
-        @m.model_validator(mode="after")
-        def _validate_counts(self) -> Self:
-            for severity, count in (
-                ("error", self.summary.error_count),
-                ("warning", self.summary.warning_count),
-                ("information", self.summary.information_count),
-            ):
-                if (
-                    sum(item.severity == severity for item in self.general_diagnostics)
-                    != count
-                ):
-                    msg = f"Pyright {severity} count does not match its diagnostics"
-                    raise ValueError(msg)
             return self
 
     class PyreflyDiagnostic(m.ContractModel):
@@ -430,12 +279,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         """Required native Pyrefly JSON envelope, including a clean empty list."""
 
         errors: Annotated[
-            Sequence[
-                Annotated[
-                    p.Infra.PyreflyDiagnostic,
-                    t.schema_for_model(lambda: FlextInfraModelsGates.PyreflyDiagnostic),
-                ]
-            ],
+            Sequence[FlextInfraModelsGates.PyreflyDiagnostic],
             m.Field(description="Native Pyrefly diagnostics"),
         ]
 
@@ -506,11 +350,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             t.StrTuple, m.Field(description="Requested native checker gates")
         ] = ()
         test_selection: Annotated[
-            Annotated[
-                p.Infra.GateTestIntent,
-                t.schema_for_model(lambda: FlextInfraModelsGates.GateTestIntent),
-            ]
-            | None,
+            FlextInfraModelsGates.GateTestIntent | None,
             m.Field(description="Original test selection; absent for checker"),
         ] = None
 
@@ -557,8 +397,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             ),
         ]
         process: Annotated[
-            p.Cli.ProcessOutcome,
-            t.schema_for_model(lambda: m.Cli.ProcessOutcome),
+            m.Cli.ProcessOutcome,
             m.Field(description="Original Make process outcome, without normalization"),
         ]
         native_outcome: Annotated[
@@ -566,10 +405,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             m.Field(description="Original producer's native report classification"),
         ]
         intent: Annotated[
-            Annotated[
-                p.Infra.GateExecutionIntent,
-                t.schema_for_model(lambda: FlextInfraModelsGates.GateExecutionIntent),
-            ],
+            FlextInfraModelsGates.GateExecutionIntent,
             m.Field(description="Portable original operation and selection"),
         ]
         policy: Annotated[
@@ -594,12 +430,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         ]
         reports: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.GateReportEvidence,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsGates.GateReportEvidence
-                    ),
-                ],
+                FlextInfraModelsGates.GateReportEvidence,
                 ...,
             ],
             m.Field(
@@ -667,10 +498,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             t.StrTuple, m.Field(min_length=1, description="Exact original process argv")
         ]
         intent: Annotated[
-            Annotated[
-                p.Infra.GateExecutionIntent,
-                t.schema_for_model(lambda: FlextInfraModelsGates.GateExecutionIntent),
-            ],
+            FlextInfraModelsGates.GateExecutionIntent,
             m.Field(description="Portable original operation and selection"),
         ]
         runtime_identity: Annotated[
@@ -685,10 +513,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         repository_root: Annotated[Path, m.Field(description="Actual execution root")]
         gate: Annotated[t.NonEmptyStr, m.Field(description="Canonical stage identity")]
         intent: Annotated[
-            Annotated[
-                p.Infra.GateExecutionIntent,
-                t.schema_for_model(lambda: FlextInfraModelsGates.GateExecutionIntent),
-            ],
+            FlextInfraModelsGates.GateExecutionIntent,
             m.Field(description="Portable original operation and selection"),
         ]
         command: Annotated[
@@ -745,25 +570,16 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         """Reaped producer facts and publication context for one original capture."""
 
         started: Annotated[
-            Annotated[
-                p.Infra.GateCaptureStart,
-                t.schema_for_model(lambda: FlextInfraModelsGates.GateCaptureStart),
-            ],
+            FlextInfraModelsGates.GateCaptureStart,
             m.Field(description="Original pre-execution candidate checkpoint"),
         ]
         process: Annotated[
-            p.Cli.ProcessOutcome,
-            t.schema_for_model(lambda: m.Cli.ProcessOutcome),
+            m.Cli.ProcessOutcome,
             m.Field(description="Reaped original producer outcome"),
         ]
         reports: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.GateReportEvidence,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsGates.GateReportEvidence
-                    ),
-                ],
+                FlextInfraModelsGates.GateReportEvidence,
                 ...,
             ],
             m.Field(description="Original producer report byte bindings"),
@@ -779,8 +595,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         """Original process and publication outcome, independent of acceptance."""
 
         process: Annotated[
-            p.Cli.ProcessOutcome,
-            t.schema_for_model(lambda: m.Cli.ProcessOutcome),
+            m.Cli.ProcessOutcome,
             m.Field(description="Reaped original producer outcome"),
         ]
         receipt: Annotated[
@@ -788,10 +603,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         ]
         issues: Annotated[
             tuple[
-                Annotated[
-                    FlextInfraProtocolsCheck.Issue,
-                    t.schema_for_model(lambda: FlextInfraModelsCheck.Issue),
-                ],
+                FlextInfraModelsCheck.Issue,
                 ...,
             ],
             m.Field(description="Actual capture or candidate eligibility failures"),
@@ -832,10 +644,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             ),
         ]
         receipt: Annotated[
-            Annotated[
-                p.Infra.GateReportEvidence,
-                t.schema_for_model(lambda: FlextInfraModelsGates.GateReportEvidence),
-            ],
+            FlextInfraModelsGates.GateReportEvidence,
             m.Field(
                 description="Original private producer receipt identity and digest"
             ),
@@ -848,12 +657,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         ]
         commands: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.GateCommandEvidence,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsGates.GateCommandEvidence
-                    ),
-                ],
+                FlextInfraModelsGates.GateCommandEvidence,
                 ...,
             ],
             m.Field(
@@ -993,6 +797,158 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         reused: Annotated[
             bool, m.Field(description="Existing immutable proof was reused")
         ] = False
+
+    class GateCandidateIdentity(m.ContractModel):
+        """Exact Git candidate identity for admission decisions."""
+
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
+            extra="forbid", frozen=True, strict=False, use_enum_values=False
+        )
+
+        repository: Annotated[
+            t.NonEmptyStr, m.Field(description="Observed origin remote URL")
+        ]
+        head_oid: Annotated[
+            str,
+            m.Field(pattern=r"^[a-f0-9]{40}$", description="Candidate HEAD commit"),
+        ]
+        base_oid: Annotated[
+            str | None,
+            m.Field(
+                pattern=r"^[a-f0-9]{40}$",
+                description="Optional base commit for PR checks",
+            ),
+        ] = None
+        tree_oid: Annotated[
+            str,
+            m.Field(pattern=r"^[a-f0-9]{40}$", description="Candidate commit tree"),
+        ]
+        merge_oid: Annotated[
+            str | None,
+            m.Field(
+                pattern=r"^[a-f0-9]{40}$",
+                description="Optional synthetic merge commit for PR checks",
+            ),
+        ] = None
+        dirty: Annotated[bool, m.Field(description="Candidate has uncommitted WIP")]
+        changed_paths_digest: Annotated[
+            str | None,
+            m.Field(
+                pattern=r"^sha256:[a-f0-9]{64}$",
+                description="Digest of changed paths when dirty",
+            ),
+        ] = None
+
+    class GateCandidateAdmissionRequest(m.ContractModel):
+        """Request to admit a candidate against an attested proof."""
+
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(use_enum_values=False)
+
+        workspace: Annotated[str, m.Field(description="Git repository root")] = "."
+        candidate: Annotated[
+            FlextInfraModelsGates.GateCandidateIdentity,
+            m.Field(description="Exact candidate identity as a JSON object"),
+        ]
+        allowed_signers: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="OpenSSH allowed_signers file"),
+        ]
+        expected_gates: Annotated[
+            Sequence[str],
+            m.Field(min_length=1, max_length=1, description="Required original stage"),
+        ]
+        context_digest: Annotated[
+            str,
+            m.Field(
+                pattern=r"^sha256:[a-f0-9]{64}$",
+                description="Expected execution context",
+            ),
+        ]
+        policy: Annotated[
+            c.Infra.GateAcceptancePolicy,
+            m.Field(description="Required policy for stage reuse"),
+        ]
+        policy_digest: Annotated[
+            str,
+            m.Field(
+                pattern=r"^sha256:[a-f0-9]{64}$", description="Required recorded policy"
+            ),
+        ]
+        receipt: Annotated[
+            Path, m.Field(description="Exact original workspace receipt")
+        ]
+        require_clean: Annotated[
+            bool,
+            m.Field(
+                description="Require native_outcome CLEAN (not just complete_execution)"
+            ),
+        ] = True
+        merge_check: Annotated[
+            bool,
+            m.Field(description="Admit for PR merge (requires clean candidate)"),
+        ] = False
+        ttl_seconds: Annotated[
+            int,
+            m.Field(ge=0, description="Maximum attestation age in seconds"),
+        ] = 86400
+
+        @m.model_validator(mode="before")
+        @classmethod
+        def _parse_candidate_json(cls, values: object) -> object:
+            if not isinstance(values, Mapping):
+                return values
+            candidate = values.get("candidate")
+            if not isinstance(candidate, str):
+                return values
+            return {
+                **values,
+                "candidate": (
+                    FlextInfraModelsGates.GateCandidateIdentity.model_validate_json(
+                        candidate
+                    )
+                ),
+            }
+
+        @m.model_validator(mode="after")
+        def _validate_expected_gates(self) -> Self:
+            if len(self.expected_gates) != len(set(self.expected_gates)):
+                msg = "expected admission gates must be unique"
+                raise ValueError(msg)
+            return self
+
+    class GateCandidateAdmissionReport(m.ContractModel):
+        """Result of a candidate admission decision."""
+
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
+            extra="forbid", frozen=True, strict=False, use_enum_values=False
+        )
+
+        eligible: Annotated[bool, m.Field(description="Candidate is eligible")]
+        reasons: Annotated[
+            tuple[str, ...],
+            m.Field(description="Human-readable admission reasons"),
+        ] = ()
+        attestation: (
+            Annotated[
+                FlextInfraModelsGates.GateAttestationReport,
+                m.Field(description="Verified attestation if eligible"),
+            ]
+            | None
+        ) = None
+        candidate_head: Annotated[
+            str | None,
+            m.Field(
+                pattern=r"^[a-f0-9]{40}$",
+                description="Candidate head that was evaluated",
+            ),
+        ] = None
+        attested_head: Annotated[
+            str | None,
+            m.Field(
+                pattern=r"^[a-f0-9]{40}$",
+                description="Attested head from the proof",
+            ),
+        ] = None
 
 
 __all__: list[str] = ["FlextInfraModelsGates"]

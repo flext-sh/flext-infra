@@ -218,7 +218,7 @@ class FlextInfraCodegenVscode:
             The validated editor document.
 
         """
-        parsed = u.Cli.json_parse(cls._normalize_jsonc(content))
+        parsed = u.Cli.json_loads(cls._normalize_jsonc(content))
         if parsed.failure:
             return r[t.JsonMapping].from_failure(parsed)
         if not isinstance(parsed.value, Mapping):
@@ -371,7 +371,7 @@ class FlextInfraCodegenVscode:
         # merge semantics.
         artifacts_changed = cls._replace_artifact_maps(settings, codegen)
         # Stripped keys are owned canonically elsewhere (pyproject.toml
-        # [tool.pyright]; .rumdl.toml for Markdown, read by rvben.rumdl).
+        # [tool.pyrefly]; .rumdl.toml for Markdown, read by rvben.rumdl).
         # Keeping them in settings.json makes the editor warn or lint with a
         # second, diverging policy. Actively delete every retired key so
         # existing files converge to a warning-free projection.

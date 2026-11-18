@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tests import c, m, p, r, tm, u
+from tests import c, p, r, tm, u
 
 pytestmark = [c.Tests.MARK.slow, c.Tests.MARK.remote]
 
@@ -20,7 +20,7 @@ class TestsFlextInfraCodegenUpgWorkspace:
     def _declared_member_checkout(
         root: Path,
         tmp_path: Path,
-    ) -> tuple[str, Path, m.Infra.RepositoryRef]:
+    ) -> tuple[str, Path, p.Infra.RepositoryRef]:
         """Attach a governed origin member and capture its indexed gitlink.
 
         Args:

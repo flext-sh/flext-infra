@@ -10,17 +10,66 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import infra
+from flext_infra import infra, u
 from flext_infra.deps import FlextInfraConfigFixer
 from tests import c, m, p, tm
 from tests.utilities_fixture_tooling import TestsFlextInfraUtilitiesToolingFixture
+from tests.utilities_git import TestsFlextInfraUtilitiesGit
+from tests.utilities_hermetic_git import TestsFlextInfraUtilitiesHermeticGit
 
 if TYPE_CHECKING:
-    from flext_infra.gates.base_gate import FlextInfraGates
+    from flext_infra.gates import FlextInfraGates
 
 
 class TestsFlextInfraUtilitiesGates:
     """Typed quality-gate execution and enforcement fixture helpers."""
+
+    @staticmethod
+    def scanner_contract_project(
+        tmp_path: Path,
+        installed_dependency_path: Path,
+        session_runtime: p.Tests.SessionRuntime,
+        *,
+        severity: str = "error",
+    ) -> Path:
+        """Provision a governed project whose catalog holds two contract rules.
+
+        ``contract-first`` and ``contract-second`` match ``first(...)`` and
+        ``second(...)`` calls at ``severity``; the package itself is clean, so
+        only each case's own sources produce findings.
+
+        Returns:
+            The provisioned project root.
+
+        """
+        TestsFlextInfraUtilitiesToolingFixture.copy_tracked_mise_seeds(tmp_path)
+        tm.ok(u.Cli.run_checked(["mise", "trust", str(tmp_path / ".mise.toml")]))
+        project = installed_dependency_path / "scanner_contract"
+        TestsFlextInfraUtilitiesHermeticGit.write_native_resolution_project(
+            project, "scanner-contract"
+        )
+        (project / "src" / "scanner_contract" / c.Infra.INIT_PY).write_text(
+            "", encoding=c.DEFAULT_ENCODING
+        )
+        TestsFlextInfraUtilitiesToolingFixture.declare_rules(
+            project,
+            {
+                name: (
+                    f"id: contract-{name}\nlanguage: Python\nseverity: {severity}\n"
+                    f"message: Observed {name}\nrule:\n  pattern: {name}($VALUE)\n"
+                )
+                for name in ("first", "second")
+            },
+        )
+        # The rule plan reads the target checkout's own runtime, never the
+        # invoking interpreter, so the scanned project owns a provisioned one.
+        TestsFlextInfraUtilitiesGit.initialize_git_repo(project)
+        tm.ok(
+            TestsFlextInfraUtilitiesToolingFixture.provision_scan_workspace(
+                project, session_runtime=session_runtime
+            )
+        )
+        return project
 
     @staticmethod
     def reject_inaccessible_config_project(tmp_path: Path) -> None:
@@ -68,10 +117,11 @@ class TestsFlextInfraUtilitiesGates:
             The resulting ``m.Infra.GateExecution``.
 
         """
-        gate = gate_class(tmp_path)
-        result = gate.check(
+        result = TestsFlextInfraUtilitiesGates.run_gate_check(
+            gate_class,
+            tmp_path,
             project_dir,
-            TestsFlextInfraUtilitiesGates.gate_context(tmp_path),
+            ctx=TestsFlextInfraUtilitiesGates.gate_context(tmp_path),
         )
         tm.that(result.result.passed, eq=passed)
         tm.that(len(result.issues), eq=issues_len)
@@ -84,7 +134,7 @@ class TestsFlextInfraUtilitiesGates:
         *,
         passed: bool = True,
         issues: Sequence[p.Infra.Issue] | None = None,
-    ) -> p.Infra.GateExecution:
+    ) -> m.Infra.GateExecution:
         """Create a typed quality-gate execution fixture.
 
         The native outcome follows the findings, as a completed tool run
@@ -138,7 +188,7 @@ class TestsFlextInfraUtilitiesGates:
     @staticmethod
     def make_project(
         name: str = "p",
-        gates: Mapping[str, m.Infra.GateExecution] | None = None,
+        gates: Mapping[str, p.Infra.GateExecution] | None = None,
     ) -> p.Infra.ProjectResult:
         """Create a typed project-result fixture.
 
@@ -146,7 +196,7 @@ class TestsFlextInfraUtilitiesGates:
             The resulting ``m.Infra.ProjectResult``.
 
         """
-        resolved_gates: Mapping[str, m.Infra.GateExecution] = (
+        resolved_gates: Mapping[str, p.Infra.GateExecution] = (
             gates
             if gates is not None
             else {"lint": TestsFlextInfraUtilitiesGates.create_gate_execution()}
@@ -189,6 +239,9 @@ class TestsFlextInfraUtilitiesGates:
             The resulting ``m.Infra.GateExecution``.
 
         """
+        # Gates read a checkout's tracked files: the case's authored files join it.
+        if (project_dir / c.Infra.GIT_DIR).exists():
+            TestsFlextInfraUtilitiesGit.git_bootstrap(project_dir, ("add", "-A"))
         gate = gate_class(repository_root)
         return gate.check(
             project_dir,
@@ -214,12 +267,17 @@ class TestsFlextInfraUtilitiesGates:
 
         """
         resolved = m.Infra.CensusInput() if options is None else options
-        values = resolved.model_dump(round_trip=True)
-        values.update(repository_root=workspace, rules=rules)
+        update: dict[str, object] = {"repository_root": workspace, "rules": rules}
         if kinds is not None:
-            values["kinds"] = kinds
+            update["kinds"] = kinds
         TestsFlextInfraUtilitiesToolingFixture.provision_checkout(workspace)
-        return tm.ok(infra.census(m.Infra.CensusInput.model_validate(values)))
+        return tm.ok(
+            infra.census(
+                m.Infra.CensusInput.model_validate(
+                    {**resolved.model_dump(round_trip=True), **update},
+                ),
+            ),
+        )
 
     @staticmethod
     def census_violations(report: p.Infra.WorkspaceReport) -> list[p.Infra.Violation]:

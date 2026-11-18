@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
+    from flext_infra.deps.cooldown_admission import FlextInfraCooldownAdmission
     from flext_infra.deps.detection import FlextInfraDependencyDetectionService
     from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector
     from flext_infra.deps.detector_runtime import FlextInfraDependencyDetectorRuntime
@@ -24,6 +25,7 @@ if TYPE_CHECKING:
 
 __all__: tuple[str, ...] = (
     "FlextInfraConfigFixer",
+    "FlextInfraCooldownAdmission",
     "FlextInfraDependencyDetectionService",
     "FlextInfraDependencyDetectorRuntime",
     "FlextInfraDepsPyrefly",
@@ -38,6 +40,7 @@ install_lazy_exports(
     globals(),
     {
         "FlextInfraConfigFixer": ".fix_pyrefly_config",
+        "FlextInfraCooldownAdmission": ".cooldown_admission",
         "FlextInfraDependencyDetectionService": ".detection",
         "FlextInfraDependencyDetectorRuntime": ".detector_runtime",
         "FlextInfraDepsPyrefly": ".pyrefly",

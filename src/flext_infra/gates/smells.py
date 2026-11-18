@@ -79,18 +79,18 @@ class FlextInfraGatesSmells(FlextInfraGates):
         scan = self._scan(project_dir, ctx)
         issues = self._scanned_issues(scan, project_dir)
         return self._build_gate_execution(
-            m.Infra.GateExecutionParams(
-                project_dir=project_dir,
-                verdict=not issues,
-                outcome=(
+            m.Infra.GateExecutionParams.model_validate({
+                "project_dir": (project_dir),
+                "verdict": (not issues),
+                "outcome": (
                     c.Infra.ToolOutcome.FINDINGS
                     if issues
                     else c.Infra.ToolOutcome.CLEAN
                 ),
-                issues=tuple(issues),
-                raw_output=self._raw_output(scan),
-                started=started,
-            ),
+                "issues": (tuple(issues)),
+                "raw_output": (self._raw_output(scan)),
+                "started": (started),
+            }),
             ctx=ctx,
         )
 
@@ -257,7 +257,7 @@ class FlextInfraGatesSmells(FlextInfraGates):
         """
         if not sarif_json.strip():
             return r[tuple[p.Infra.Issue, ...]].fail("qlty returned empty SARIF output")
-        parsed = u.Cli.json_parse(sarif_json)
+        parsed = u.Cli.json_loads(sarif_json)
         if parsed.failure:
             return r[tuple[p.Infra.Issue, ...]].from_failure(parsed)
         data = u.Cli.json_as_mapping(parsed.value)

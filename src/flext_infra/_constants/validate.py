@@ -82,19 +82,6 @@ class FlextInfraConstantsSharedInfra:
     MISSING_IMPORT_RE: ClassVar[t.RegexPattern] = re.compile(
         r"Cannot find module `([^`]+)` \[missing-import\]",
     )
-    MYPY_HINT_RE: ClassVar[t.RegexPattern] = re.compile(
-        r'note:\s+(?:hint|note):\s+(?:["`].*?\bpip\s+install\s+|install\s+stub\s+package\s+["`]?)'
-        r'([A-Za-z0-9][A-Za-z0-9_.-]*)["`]?',
-        re.IGNORECASE,
-    )
-    MYPY_BUILD_SOURCE_MARKER: ClassVar[str] = "Found source:"
-    "Mypy verbose trace marker of one selected build source."
-    MYPY_BUILD_SOURCE_RE: ClassVar[t.RegexPattern] = re.compile(
-        r"Found source:\s+BuildSource\(path=(.+?), module=",
-    )
-    "Mypy verbose build source entry, capturing the path's Python literal."
-    MYPY_BUILD_FINISHED_MARKER: ClassVar[str] = "Build finished in "
-    "Mypy verbose trace marker proving the build completed."
     INTERNAL_PREFIXES: ClassVar[tuple[str, ...]] = ("flext_", "flext-")
 
     # --- File names (was: class Files) ---
@@ -159,6 +146,8 @@ class FlextInfraConstantsSharedInfra:
     GIT_ORIGIN: ClassVar[str] = "origin"
     GIT_MAIN: ClassVar[str] = "main"
     GIT_HEAD: ClassVar[str] = "HEAD"
+    SOURCE_PREVIEW_PREFIX: ClassVar[str] = "flext-source-preview-"
+    "Directory prefix of the staged source preview beside the mutation lock."
 
     # --- Package name prefixes (was: class Packages) ---
     PKG_CORE: ClassVar[str] = "flext-core"
@@ -177,6 +166,7 @@ class FlextInfraConstantsSharedInfra:
 
     # --- File extensions (was: class Extensions) ---
     EXT_PYTHON: ClassVar[str] = ".py"
+    EXT_SHELL: ClassVar[str] = ".sh"
     EXT_PYTHON_GLOB: ClassVar[str] = "*.py"
     EXT_PYTHON_STUB: ClassVar[str] = ".pyi"
     PYTHON_SOURCE_SUFFIXES: ClassVar[tuple[str, ...]] = (
@@ -202,10 +192,6 @@ class FlextInfraConstantsSharedInfra:
     TIMEOUT_MEDIUM: ClassVar[int] = 120
     TIMEOUT_LONG: ClassVar[int] = 600
     TIMEOUT_CI: ClassVar[int] = 900
-    # Whole-workspace whole-program runs measured 2026-11-05: the umbrella
-    # pyright analyzed 4829 files in 744s wall clock, exceeding TIMEOUT_LONG,
-    # so its gate needs the next ladder rung with headroom.
-    TIMEOUT_UMBRELLA: ClassVar[int] = 1200
 
     # --- Path constants (was: class Paths) ---
     DEFAULT_SRC_DIR: ClassVar[str] = "src"

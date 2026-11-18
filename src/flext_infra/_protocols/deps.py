@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 from flext_cli import FlextCliProtocols
 
 from flext_infra import t
+from flext_infra._protocols._config import FlextInfraProtocolsConfigArtifact
 from flext_infra._protocols.mixins import FlextInfraProtocolsMixins
 
 if TYPE_CHECKING:
@@ -22,11 +23,9 @@ if TYPE_CHECKING:
         FlextInfraProtocolsGates,
         FlextInfraProtocolsWorkspace,
     )
-    from flext_infra._protocols._config import FlextInfraProtocolsConfigArtifact
 
 
-@runtime_checkable
-class FlextInfraProtocolsDeps(Protocol):
+class FlextInfraProtocolsDeps:
     """Dependency-analysis protocols exposed through ``p.Infra``."""
 
     @runtime_checkable
@@ -43,22 +42,42 @@ class FlextInfraProtocolsDeps(Protocol):
             ...
 
     @runtime_checkable
-    class TypeCheckerPathRules(Protocol):
-        """Path-rule fields every type-checker configuration declares."""
-
-        @property
-        def source_dir(self) -> str:
-            """Import root the generated search paths order first."""
-            ...
-
-        @property
-        def project_root(self) -> str:
-            """Project-root entry the generated search paths order last."""
-            ...
-
-    @runtime_checkable
-    class DetectCommand(FlextInfraProtocolsMixins.WriteMixin, Protocol):
+    class DetectCommand(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
+
+        @property
+        def repository_root(self) -> Path:
+            """Repository root."""
+            ...
+
+        @property
+        def projects(self) -> Sequence[str] | None:
+            """Projects to process; repeat --projects NAME as needed."""
+            ...
+
+        @property
+        def verbose(self) -> bool:
+            """Verbose output."""
+            ...
+
+        @property
+        def apply(self) -> bool:
+            """Apply changes instead of running in dry-run mode."""
+            ...
+
+        @property
+        def gates(self) -> Sequence[str]:
+            """Structural member projected from the owning model.
+
+            Gate names for post-transform validation; empty resolves the requested
+            gate set from the typed Make spec at runtime.
+            """
+            ...
+
+        @property
+        def dry_run(self) -> bool:
+            """Whether writes are disabled (inverse of apply)."""
+            ...
 
         @property
         def output_format(self) -> str:
@@ -285,12 +304,12 @@ class FlextInfraProtocolsDeps(Protocol):
     class ProjectMetadataState(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        source: p.Cli.AtomicFileState
-
         @property
-        def metadata(self) -> p.ProjectMetadata:
-            """Original canonical PEP 621 and FLEXT metadata."""
+        def source(self) -> p.Cli.AtomicFileState:
+            """Original TOML observation parsed here."""
             ...
+
+        metadata: p.ProjectMetadata
 
         @property
         def packaging(self) -> FlextInfraProtocolsDeps.ProjectPackagingDeclaration:
@@ -473,15 +492,16 @@ class FlextInfraProtocolsDeps(Protocol):
         """Structural data contract projected from the owning model."""
 
         pyproject_path: Path
-        before: p.Cli.AtomicFileState | None
+
+        @property
+        def before(self) -> p.Cli.AtomicFileState | None:
+            """Original physical read; absent for pure source rendering."""
+            ...
+
         original_rendered: str
         rendered: str
         payload: t.MutableJsonMapping
-
-        @property
-        def document(self) -> t.Cli.TomlDocument | None:
-            """Original parsed TOML tree retaining authored layout and comments."""
-            ...
+        document: t.Cli.TomlDocument | None
 
     @runtime_checkable
     class PipCheckReport(FlextCliProtocols.BaseModel, Protocol):
@@ -543,7 +563,7 @@ class FlextInfraProtocolsDeps(Protocol):
         environment_dir: Path
         planned_sources: Mapping[Path, str]
         project_name: t.NonEmptyStr
-        package_name: t.NonEmptyStr
+        package_name: t.NonEmptyStr | None
         path: Path
 
         @property
@@ -558,6 +578,20 @@ class FlextInfraProtocolsDeps(Protocol):
 
         runtime_dependency_overlay: Sequence[str]
         declared_project_dependencies: Sequence[str]
+
+    @runtime_checkable
+    class UpgBounds(FlextCliProtocols.BaseModel, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def floors(self) -> Sequence[t.NonEmptyStr]:
+            """Distributions whose >= floor upg writes."""
+            ...
+
+        @property
+        def pins(self) -> Sequence[t.NonEmptyStr]:
+            """Distributions whose == pin upg writes."""
+            ...
 
 
 __all__: list[str] = ["FlextInfraProtocolsDeps"]

@@ -9,7 +9,7 @@ from __future__ import annotations
 import hashlib
 from pathlib import Path
 
-from flext_infra.gates.markdown_format import FlextInfraGatesMarkdownFormat
+from flext_infra.gates import FlextInfraGatesMarkdownFormat
 from flext_infra.release import FlextInfraReleaseRelease
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, m, p, tm, u
@@ -41,6 +41,57 @@ class TestsFlextInfraReleaseHelpers:
             tm.that(notes, has="- root")
             tm.that(notes, has="- flext-a")
             tm.that(notes, has=c.Tests.RELEASE_NOTES_CHANGE_LINE)
+
+        @staticmethod
+        def test_generate_notes_collapses_untrusted_whitespace(
+            tmp_path: Path,
+        ) -> None:
+            """A commit subject with repeated spaces cannot fail the markdown gate."""
+            notes_path = tmp_path / "release" / c.Infra.RELEASE_NOTES_FILENAME
+            project = u.Tests.create_project_info(tmp_path / "flext-a", name="flext-a")
+            subject = "fix(release): fleet closure lanes  core regen  flext core (#515)"
+
+            result = u.Infra.generate_notes(
+                c.Tests.RELEASE_VERSION_TARGET,
+                c.Tests.RELEASE_TAG_TARGET,
+                [project],
+                subject,
+                notes_path,
+            )
+
+            notes = notes_path.read_text(encoding="utf-8")
+            tm.ok(result)
+            tm.that(
+                notes,
+                has="- fix(release): fleet closure lanes core regen flext core (#515)",
+            )
+            tm.fail(
+                any(
+                    "  " in line for line in notes.splitlines() if line.startswith("- ")
+                ),
+            )
+
+        @staticmethod
+        def test_generate_notes_lists_only_conventional_subjects(
+            tmp_path: Path,
+        ) -> None:
+            """A merge subject without a Conventional title never reaches the notes."""
+            notes_path = tmp_path / "release" / c.Infra.RELEASE_NOTES_FILENAME
+            kept = "feat(cli): add a flag (#2)"
+            dropped = "Wip/sweep preserve/some-lane updated at 20261108 416ea732 (#1)"
+
+            result = u.Infra.generate_notes(
+                c.Tests.RELEASE_VERSION_TARGET,
+                c.Tests.RELEASE_TAG_TARGET,
+                [],
+                f"{dropped}\n{kept}",
+                notes_path,
+            )
+
+            notes = notes_path.read_text(encoding="utf-8")
+            tm.ok(result)
+            tm.that(notes, has=f"- {kept}")
+            tm.that(notes, lacks="some-lane")
 
         @staticmethod
         def test_generate_notes_is_formatter_stable(tmp_path: Path) -> None:
@@ -84,6 +135,71 @@ class TestsFlextInfraReleaseHelpers:
             )
             tm.ok(checked.result.passed)
             tm.that(len(checked.issues), eq=0)
+
+        @staticmethod
+        def test_pull_request_body_summarizes_any_release_range(
+            tmp_path: Path,
+        ) -> None:
+            """The body stays under GitHub's ceiling while the notes keep every PR."""
+            release_dir = tmp_path / "release"
+            subject = f"{c.Tests.RELEASE_NOTES_CHANGE_LINE} " + "x" * 60
+            merged = c.Infra.GH_PULL_REQUEST_BODY_MAX_CHARS // len(subject) + 1
+            changes = "\n".join([subject] * merged)
+            notes_path = release_dir / c.Infra.RELEASE_NOTES_FILENAME
+            body_path = release_dir / c.Infra.RELEASE_PULL_REQUEST_BODY_FILENAME
+
+            tm.ok(
+                u.Infra.generate_notes(
+                    c.Tests.RELEASE_VERSION_TARGET,
+                    c.Tests.RELEASE_TAG_TARGET,
+                    [],
+                    changes,
+                    notes_path,
+                )
+            )
+            tm.ok(
+                u.Infra.generate_pull_request_body(
+                    c.Tests.RELEASE_VERSION_TARGET,
+                    c.Tests.RELEASE_TAG_TARGET,
+                    [],
+                    merged,
+                    body_path,
+                )
+            )
+
+            notes = notes_path.read_text(encoding="utf-8")
+            body = body_path.read_text(encoding="utf-8")
+            tm.that(len(notes), gt=c.Infra.GH_PULL_REQUEST_BODY_MAX_CHARS)
+            tm.that(notes.count("\n- fix: release flow"), eq=merged)
+            tm.that(len(body), lt=c.Infra.GH_PULL_REQUEST_BODY_MAX_CHARS)
+            tm.that(
+                body,
+                has=[
+                    f"{merged} pull requests",
+                    f"docs/releases/{c.Tests.RELEASE_TAG_TARGET}.md",
+                ],
+            )
+
+        @staticmethod
+        def test_notes_beyond_github_release_ceiling_fail_loud(
+            tmp_path: Path,
+        ) -> None:
+            """Notes GitHub would refuse as the release body fail at generation."""
+            notes_path = tmp_path / "release" / c.Infra.RELEASE_NOTES_FILENAME
+            subject = f"{c.Tests.RELEASE_NOTES_CHANGE_LINE} " + "x" * 60
+            merged = c.Infra.GH_RELEASE_BODY_MAX_CHARS // len(subject) + 1
+
+            result = u.Infra.generate_notes(
+                c.Tests.RELEASE_VERSION_TARGET,
+                c.Tests.RELEASE_TAG_TARGET,
+                [],
+                "\n".join([subject] * merged),
+                notes_path,
+            )
+
+            tm.fail(result)
+            tm.that(result.error or "", has=str(c.Infra.GH_RELEASE_BODY_MAX_CHARS))
+            tm.fail(u.Infra.release_body_admitted(notes_path))
 
         @staticmethod
         def test_generate_notes_failure_returns_result_error(tmp_path: Path) -> None:
@@ -373,6 +489,37 @@ class TestsFlextInfraReleaseHelpers:
             tm.that(staged_metadata, has=f"flext-tests~={c.Tests.RELEASE_VERSION_BASE}")
             tm.that(staged_metadata, lacks="git+")
             tm.that(staged_metadata, lacks="[tool.uv")
+
+        @staticmethod
+        def test_repository_namespace_package_builds_into_wheel_and_sdist(
+            tmp_path: Path,
+        ) -> None:
+            """Admit a declared repository namespace package in the built wheel."""
+            project_name = "flext-a"
+            workspace = u.Tests.release_internal_workspace(tmp_path, project_name)
+            project = workspace / project_name
+            pyproject = project / c.PYPROJECT_FILENAME
+            pyproject.write_text(
+                pyproject
+                .read_text(encoding="utf-8")
+                .replace(
+                    'only-include = ["src/flext_a"]',
+                    'only-include = ["infra", "src/flext_a"]',
+                )
+                .replace(
+                    '"src/flext_a" = "flext_a"',
+                    '"infra" = "infra"\n"src/flext_a" = "flext_a"',
+                ),
+                encoding="utf-8",
+            )
+            infra_dir = project / "infra"
+            infra_dir.mkdir(parents=True, exist_ok=True)
+            (infra_dir / "__init__.py").write_text("", encoding="utf-8")
+            u.Tests.commit_git_changes(project, "declare infra namespace package")
+
+            result = u.Tests.run_release_build(workspace, project_name)
+
+            tm.that(result, eq=0)
 
     class TestsStrictModels:
         """Release report model boundary behavior."""

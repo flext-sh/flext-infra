@@ -55,7 +55,7 @@ class FlextInfraDuplicationReport:
                 f"for project {project_dir.name}",
             )
         data = u.Cli.json_as_mapping(report.model_dump(mode="json", by_alias=True))
-        issues: dict[str, m.Infra.Issue] = {}
+        issues: dict[str, p.Infra.Issue] = {}
         for duplicate in u.Cli.json_deep_mapping_list(data, "duplicates"):
             owned = cls._owned_clone_issue(duplicate, project_dir)
             if owned is not None:
@@ -67,7 +67,7 @@ class FlextInfraDuplicationReport:
         cls,
         duplicate: t.JsonMapping,
         project_dir: Path,
-    ) -> tuple[str, m.Infra.Issue] | None:
+    ) -> tuple[str, p.Infra.Issue] | None:
         """Map one reported clone to its owned side, keyed by its span pair.
 
         The two sides of a clone are the same span only when the same
@@ -89,11 +89,36 @@ class FlextInfraDuplicationReport:
             return None
         first_owned = Path(cls.report_file_name(first)).is_relative_to(project_dir)
         own, other = (first, second) if first_owned else (second, first)
-        if not Path(cls.report_file_name(own)).is_relative_to(project_dir):
+        own_name = cls.report_file_name(own)
+        other_name = cls.report_file_name(other)
+        if not Path(own_name).is_relative_to(project_dir):
+            return None
+        if cls._is_generated_source(Path(own_name)) or cls._is_generated_source(
+            Path(other_name)
+        ):
             return None
         return "|".join(sorted(spans)), cls._issue_from_duplicate(
-            duplicate, own, cls.report_file_name(other), project_dir
+            duplicate, own, other_name, project_dir
         )
+
+    @staticmethod
+    def _is_generated_source(path: Path) -> bool:
+        """Return whether ``path`` is a generated projection.
+
+        Generated projections are owned by their generator and validated by
+        regeneration, never by clone analysis; the first-line marker is the
+        same one the generator publishes.
+
+        Returns:
+            ``True`` when the first line carries the generated marker.
+
+        """
+        try:
+            with path.open(encoding="utf-8") as handle:
+                first_line = handle.readline()
+        except OSError:
+            return False
+        return "AUTO-GENERATED FILE" in first_line
 
     @staticmethod
     def report_file_name(side: t.JsonMapping) -> str:

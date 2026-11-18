@@ -28,10 +28,7 @@ class FlextInfraModelsCodegenTransaction:
 
         inputs: Annotated[
             tuple[
-                Annotated[
-                    p.Cli.AtomicFileState,
-                    t.schema_for_model(lambda: m.Cli.AtomicFileState),
-                ],
+                m.Cli.AtomicFileState,
                 ...,
             ],
             m.Field(
@@ -126,18 +123,11 @@ class FlextInfraModelsCodegenTransaction:
             default=None, description="Declared source modes preserved during staging"
         )
         declared_files: tuple[
-            Annotated[
-                p.Infra.CodegenFilePlan,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsCodegenTransaction.CodegenFilePlan
-                ),
-            ],
+            FlextInfraModelsCodegenTransaction.CodegenFilePlan,
             ...,
         ] = m.Field(default=(), description="Authenticated candidate file declarations")
         inputs: tuple[
-            Annotated[
-                p.Cli.AtomicFileState, t.schema_for_model(lambda: m.Cli.AtomicFileState)
-            ],
+            m.Cli.AtomicFileState,
             ...,
         ] = m.Field(
             default=(),
@@ -175,7 +165,7 @@ class FlextInfraModelsCodegenTransaction:
                     has no original source witness.
 
             """
-            observed: dict[Path, m.Cli.AtomicFileState] = {}
+            observed: dict[Path, p.Cli.AtomicFileState] = {}
             for state in self.inputs:
                 previous = observed.setdefault(state.path, state)
                 if previous != state:
@@ -198,9 +188,7 @@ class FlextInfraModelsCodegenTransaction:
             description="Discovered project roots covering the pinned source closure"
         )
         inputs: tuple[
-            Annotated[
-                p.Cli.AtomicFileState, t.schema_for_model(lambda: m.Cli.AtomicFileState)
-            ],
+            m.Cli.AtomicFileState,
             ...,
         ] = m.Field(description="Exact source and configuration observations")
         updates: Mapping[Path, str | None] = m.Field(
@@ -213,12 +201,7 @@ class FlextInfraModelsCodegenTransaction:
             description="Desired file-effect modes derived from original move sources",
         )
         declared_files: tuple[
-            Annotated[
-                p.Infra.CodegenFilePlan,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsCodegenTransaction.CodegenFilePlan
-                ),
-            ],
+            FlextInfraModelsCodegenTransaction.CodegenFilePlan,
             ...,
         ] = m.Field(
             default=(),
@@ -227,12 +210,7 @@ class FlextInfraModelsCodegenTransaction:
             ),
         )
         layouts: tuple[
-            Annotated[
-                p.Infra.RopeProjectLayout,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsCodegenLazyInit.RopeProjectLayout
-                ),
-            ],
+            FlextInfraModelsCodegenLazyInit.RopeProjectLayout,
             ...,
         ] = m.Field(
             description="Original project layouts in the desired import closure",
@@ -241,12 +219,7 @@ class FlextInfraModelsCodegenTransaction:
             description="Original elected workspace namespaces",
         )
         candidate_layouts: tuple[
-            Annotated[
-                p.Infra.RopeProjectLayout,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsCodegenLazyInit.RopeProjectLayout
-                ),
-            ],
+            FlextInfraModelsCodegenLazyInit.RopeProjectLayout,
             ...,
         ] = m.Field(
             description="Prospective import closure of the authenticated declarations",
@@ -258,12 +231,7 @@ class FlextInfraModelsCodegenTransaction:
     class SemanticSourcePlan(m.ImmutableValueModel):
         """Authenticated source campaign independent of explicit rename intent."""
 
-        candidate: Annotated[
-            p.Infra.StageSourcePlan,
-            t.schema_for_model(
-                lambda: FlextInfraModelsCodegenTransaction.StageSourcePlan
-            ),
-        ] = m.Field(
+        candidate: FlextInfraModelsCodegenTransaction.StageSourcePlan = m.Field(
             description="Authenticated complete source and runtime candidate closure",
         )
         consumer_roots: tuple[Path, ...] = m.Field(

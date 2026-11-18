@@ -9,19 +9,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from pathlib import Path
 
-from flext_infra import (
-    FlextInfraGitService,
-    c,
-    check,
-    docs,
-    infra,
-    m,
-    p,
-    r,
-    t,
-    u,
-    workspace,
-)
+from flext_infra import c, check, config, docs, infra, m, p, r, t, u, workspace
 
 
 class FlextInfraWorkspaceRoutes:
@@ -47,6 +35,61 @@ class FlextInfraWorkspaceRoutes:
         return r[int].ok(len(selected.value))
 
     @staticmethod
+    def _git_identity(
+        request: p.Infra.GitRepoRequest,
+    ) -> p.Cli.ErasedCommandResult:
+        """Publish the canonical Git checkout identity as its owning model.
+
+        Returns:
+            The checkout identity or the original resolution failure.
+
+        """
+        return u.Infra.git_identity(request).map(
+            m.Infra.GitIdentityReport.model_validate
+        )
+
+    @staticmethod
+    def _native_gate(params: p.Infra.NativeGateRequest) -> p.Cli.ErasedCommandResult:
+        """Run the native gate under the existing admission and supervisor.
+
+        Returns:
+            The native result, preserving its exit outcome.
+
+        """
+        budget = m.Infra.RouteBudgetSpec(
+            budget_seconds=params.budget_seconds,
+            grace_seconds=min(
+                c.Infra.TIMEOUT_KILL_AFTER_SECONDS, params.budget_seconds // 2
+            ),
+        )
+        with u.Infra.gate_admitted(
+            c.Infra.VERB_NATIVE_GATE, params.repository_root, budget
+        ):
+            result = u.Cli.run_raw(
+                params.argv, cwd=params.repository_root, capture=False
+            )
+        if result.failure:
+            return r[int].from_failure(result)
+        outcome = result.value.outcome
+        status, classification = outcome.raw_return_code, "failure"
+        if outcome.timed_out:
+            status, classification = c.Infra.PROCESS_TIMEOUT_EXIT_CODE, "timeout"
+        elif status < 0:
+            status, classification = (
+                c.Infra.PROCESS_SIGNAL_EXIT_OFFSET - status,
+                "signal",
+            )
+        if status:
+            return r[int].fail(
+                f"Native gate exited with code {status}",
+                error_code=c.Infra.PROCESS_EXIT_ERROR_CODE,
+                error_data=m.Infra.ProcessExit(
+                    exit_code=status, classification=classification
+                ).model_dump(),
+            )
+        return r[int].ok(0)
+
+    @staticmethod
     def _tests(
         params: p.Infra.WorkspaceTestsRequest,
         *,
@@ -60,11 +103,22 @@ class FlextInfraWorkspaceRoutes:
             The successful native test result or its unchanged failure.
 
         """
-        completed = infra.workspace_tests(params, execution_mode=execution_mode)
+        full = execution_mode is c.Infra.PytestExecutionMode.FULL
+        gate = c.Infra.VERB_TEST_FULL if full else c.Infra.VERB_TEST
+        if full:
+            u.Infra.gate_repeat_refuse(
+                gate,
+                params.repository_root,
+                config.Infra.gate_admission.repeat.tests_full,
+            )
+        with u.Infra.gate_admitted(gate, params.repository_root, None) as ticket:
+            completed = infra.workspace_tests(params, execution_mode=execution_mode)
         if completed.failure:
             return r[int].from_failure(completed)
         if completed.value:
             u.Cli.framework_exit(completed.value)
+        if full:
+            u.Infra.gate_repeat_record(ticket)
         return completed
 
     @classmethod
@@ -111,10 +165,19 @@ class FlextInfraWorkspaceRoutes:
         cls,
         params: p.Infra.GateCaptureRequest,
     ) -> p.Cli.ErasedCommandResult:
-        """Retain the original checker process and return its unchanged status."""
+        """Retain the original checker process and return its unchanged status.
+
+        Returns:
+            The input or capture failure; a captured status exits with itself.
+
+        """
         root = params.repository_root.expanduser().resolve()
-        inputs = u.Infra.load_codegen_inputs(root).unwrap()
-        u.Cli.framework_exit(cls._captured_gate_status(params, inputs))
+        status = u.Infra.load_codegen_inputs(root).flat_map(
+            lambda inputs: cls._captured_gate_status(params, inputs)
+        )
+        if status.success:
+            u.Cli.framework_exit(status.value)
+        return r[bool].from_failure(status)
 
     @classmethod
     def _check(
@@ -124,44 +187,99 @@ class FlextInfraWorkspaceRoutes:
         """Run every read-only validation of the check verb in one process.
 
         The captured checker completes its declared global prerequisites before
-        other gates. The projection verdict, lane census (outside CI), and
-        documentation follow; a dirty or changing tree is never a check
-        condition. The commit hook token selects only commit-stage gates. The
-        first failure stops the verb with its original status or cause.
+        other gates. The projection verdict and documentation follow; a dirty
+        or changing tree is never a check condition. The commit hook token
+        selects only commit-stage gates. The
+        first failure stops the verb with its original status or cause. The
+        verb joins the host queue first and arms the largest declared gate
+        budget only once admitted; a complete check that succeeded in this
+        checkout inside its repeat window is refused before it queues
+        (ADR-032).
 
         Returns:
             True once every validation passed, or the first failure.
 
         """
         root = params.repository_root.expanduser().resolve()
-        inputs = u.Infra.load_codegen_inputs(root).unwrap()
+        loaded = u.Infra.load_codegen_inputs(root)
+        if loaded.failure:
+            return r[bool].from_failure(loaded)
+        inputs = loaded.value
         make = inputs.spec.make
-        token = u.Infra.env_value(make.ci.variable)
+        spec = workspace.FlextInfraWorkspaceDetector.load_workspace_spec(
+            root, inputs=inputs
+        )
+        if spec.failure:
+            return r[bool].from_failure(spec)
+        members = spec.value.subprojects
+        grace = c.Infra.TIMEOUT_KILL_AFTER_SECONDS
         complete = (
             params.phase == c.Infra.CheckPhase.COMPLETE
-            and token != make.ci.pre_commit_value
+            and u.Infra.env_value(make.ci.variable) != make.ci.pre_commit_value
+        )
+        # The gate registry bounds the captured gate phase, gate by gate. A
+        # complete run then composes conform and documentation phases
+        # whose owners carry their own native limits, so the route must not
+        # inherit the largest single-gate budget as a total deadline: doing so
+        # truncates a healthy complete run after the gates already passed.
+        budget = (
+            None
+            if complete
+            else m.Infra.RouteBudgetSpec(
+                budget_seconds=check.FlextInfraGateRegistry(
+                    project_gates=make.project_check_gates
+                ).check_budget_seconds(
+                    make.check_gates_default,
+                    (root, *(root / member.path for member in members)),
+                )
+                + 2 * grace,
+                grace_seconds=grace,
+            )
+        )
+        if complete:
+            u.Infra.gate_repeat_refuse(
+                c.Infra.VERB_CHECK, root, config.Infra.gate_admission.repeat.check
+            )
+        with u.Infra.gate_admitted(c.Infra.VERB_CHECK, root, budget) as ticket:
+            result = cls._check_admitted(params, root, inputs)
+        if complete and result.success:
+            u.Infra.gate_repeat_record(ticket)
+        return result
+
+    @classmethod
+    def _check_admitted(
+        cls,
+        params: p.Infra.GateCaptureRequest,
+        root: Path,
+        inputs: p.Infra.CodegenInputs,
+    ) -> p.Cli.ErasedCommandResult:
+        """Run the admitted check validations under the armed budget.
+
+        Returns:
+            True once every validation passed, or the first failure.
+
+        """
+        make = inputs.spec.make
+        complete = (
+            params.phase == c.Infra.CheckPhase.COMPLETE
+            and u.Infra.env_value(make.ci.variable) != make.ci.pre_commit_value
         )
         status = cls._captured_gate_status(params, inputs)
-        if status:
-            u.Cli.framework_exit(status)
-        if complete:
-            conformed = infra.codegen_conform(
-                m.Infra.CodegenConformRequest(
-                    root=root,
-                    scope=c.Infra.CodegenConformScope.SELF,
-                    mode=c.Infra.CodegenConformMode.CHECK,
-                )
-            )
-            if conformed.failure:
-                return r[bool].from_failure(conformed)
+        if status.failure:
+            return r[bool].from_failure(status)
+        if status.value:
+            u.Cli.framework_exit(status.value)
         if not complete:
             return r[bool].ok(value=True)
-        if token != make.ci.value:
-            lanes = FlextInfraGitService.verify_lanes(
-                m.Infra.GitLaneVerificationRequest(repo_root=root)
+        conformed = infra.codegen_conform(
+            m.Infra.CodegenConformRequest(
+                root=root,
+                scope=c.Infra.CodegenConformScope.SELF,
+                mode=c.Infra.CodegenConformMode.CHECK,
             )
-            if lanes.failure:
-                return r[bool].from_failure(lanes)
+        )
+        if conformed.failure:
+            return r[bool].from_failure(conformed)
         for service in (docs.FlextInfraDocValidator, docs.FlextInfraDocAuditor):
             documented = service(
                 repository_root=root,
@@ -176,11 +294,11 @@ class FlextInfraWorkspaceRoutes:
     def _captured_gate_status(
         params: p.Infra.GateCaptureRequest,
         inputs: p.Infra.CodegenInputs,
-    ) -> int:
+    ) -> p.Result[int]:
         """Capture the original checker once and return its unchanged status.
 
         Returns:
-            The checker process's raw return code.
+            The checker process's raw return code, or the capture failure.
 
         """
         report_output = u.Infra.env_value(
@@ -202,13 +320,74 @@ class FlextInfraWorkspaceRoutes:
                 ),
             )
 
-        captured = u.Infra.git_capture_gate(
+        return u.Infra.git_capture_gate(
             request,
             inputs=inputs,
             load_inputs=u.Infra.load_codegen_inputs,
             read_runtime_identity=runtime_identity,
-        ).unwrap()
-        return captured.process.raw_return_code
+        ).map(lambda captured: captured.process.raw_return_code)
+
+    @staticmethod
+    def _attestation_context(
+        workspace_path: str,
+    ) -> p.Result[p.Infra.WorkspaceRuntimeContext]:
+        """Elect the runtime context for one attestation request.
+
+        Returns:
+            The elected runtime context or its first election failure.
+
+        """
+        return workspace.FlextInfraWorkspaceDetector.resolution_context(
+            Path(workspace_path).expanduser().resolve()
+        )
+
+    @classmethod
+    def _create_gate_attestation(
+        cls,
+        params: p.Infra.GateAttestationCreateRequest,
+    ) -> p.Result[p.Infra.GateAttestationReport]:
+        """Sign one original receipt without publishing repository state.
+
+        Returns:
+            The signed stage proof or the original verification failure.
+
+        """
+        context = cls._attestation_context(params.workspace)
+        if context.failure:
+            return r[p.Infra.GateAttestationReport].from_failure(context)
+        return u.Infra.git_create_gate_attestation(params, context.value)
+
+    @classmethod
+    def _verify_gate_attestation(
+        cls,
+        params: p.Infra.GateAttestationVerifyRequest,
+    ) -> p.Result[p.Infra.GateAttestationReport]:
+        """Verify one signed stage proof against the elected live runtime.
+
+        Returns:
+            The verified stage proof or the original verification failure.
+
+        """
+        context = cls._attestation_context(params.workspace)
+        if context.failure:
+            return r[p.Infra.GateAttestationReport].from_failure(context)
+        return u.Infra.git_verify_gate_attestation(params, context.value)
+
+    @classmethod
+    def _admit_gate_candidate(
+        cls,
+        params: p.Infra.GateCandidateAdmissionRequest,
+    ) -> p.Result[p.Infra.GateCandidateAdmissionReport]:
+        """Admit one exact candidate against a signed stage proof.
+
+        Returns:
+            The admission decision or the original verification failure.
+
+        """
+        context = cls._attestation_context(params.workspace)
+        if context.failure:
+            return r[p.Infra.GateCandidateAdmissionReport].from_failure(context)
+        return u.Infra.git_admit_gate_candidate(params, context.value)
 
     @staticmethod
     def release_routes() -> tuple[p.Cli.ResultCommandRoute, ...]:
@@ -248,17 +427,24 @@ class FlextInfraWorkspaceRoutes:
                 success_formatter=cls._payload_json_formatter,
             ),
             m.Cli.ResultCommandRoute(
-                name="verify-lanes",
-                help_text="Read-only lane inventory, ownership census, and refusals",
-                model_cls=m.Infra.GitLaneVerificationRequest,
-                handler=FlextInfraGitService.verify_lanes,
+                name="create-gate-attestation",
+                help_text="Sign one original receipt as an immutable stage proof",
+                model_cls=m.Infra.GateAttestationCreateRequest,
+                handler=cls._create_gate_attestation,
                 success_formatter=cls._payload_json_formatter,
             ),
             m.Cli.ResultCommandRoute(
-                name="lane-ownership",
-                help_text="Authenticate a retained and integrated Git checkpoint",
-                model_cls=m.Infra.GitLaneOwnershipRequest,
-                handler=FlextInfraGitService.lane_ownership,
+                name="verify-gate-attestation",
+                help_text="Verify one signed stage proof against the live runtime",
+                model_cls=m.Infra.GateAttestationVerifyRequest,
+                handler=cls._verify_gate_attestation,
+                success_formatter=cls._payload_json_formatter,
+            ),
+            m.Cli.ResultCommandRoute(
+                name="admit-gate-candidate",
+                help_text="Admit an exact candidate against a signed stage proof",
+                model_cls=m.Infra.GateCandidateAdmissionRequest,
+                handler=cls._admit_gate_candidate,
                 success_formatter=cls._payload_json_formatter,
             ),
             m.Cli.ResultCommandRoute(
@@ -275,14 +461,14 @@ class FlextInfraWorkspaceRoutes:
             *u.Infra.result_routes((
                 (
                     c.Infra.VERB_TEST,
-                    "Run persistent incremental tests after global source admission",
+                    "Run native persistent incremental tests",
                     m.Infra.WorkspaceTestsRequest,
                     cls._tests,
                     None,
                 ),
                 (
                     c.Infra.VERB_TEST_FULL,
-                    "Run incremental then full tests with the same persistent database",
+                    "Run the complete selected tests once without Testmon",
                     m.Infra.WorkspaceTestsRequest,
                     cls._tests_full,
                     None,
@@ -295,6 +481,13 @@ class FlextInfraWorkspaceRoutes:
                     None,
                 ),
                 (
+                    c.Infra.VERB_NATIVE_GATE,
+                    "Run one native command under the admitted gate budget",
+                    m.Infra.NativeGateRequest,
+                    cls._native_gate,
+                    None,
+                ),
+                (
                     c.Infra.VERB_CHECK,
                     "Run every read-only validation of the check verb in one process",
                     m.Infra.GateCaptureRequest,
@@ -302,20 +495,10 @@ class FlextInfraWorkspaceRoutes:
                     "check verb validations passed",
                 ),
                 (
-                    "verify-lane",
-                    (
-                        "Verify stash absence and declared live integration ancestry "
-                        "without effects"
-                    ),
-                    m.Infra.GitLaneVerificationRequest,
-                    FlextInfraGitService.verify_lane,
-                    "lane stash and live integration ancestry verified",
-                ),
-                (
                     "identity",
                     "Report canonical Git checkout identity",
                     m.Infra.GitRepoRequest,
-                    u.Infra.git_identity,
+                    cls._git_identity,
                     "workspace Git identity resolved",
                 ),
                 (

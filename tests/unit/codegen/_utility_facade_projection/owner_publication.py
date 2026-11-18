@@ -18,6 +18,7 @@ from tests import c, m, p, tm, u
 class UtilityFacadeOwnerPublication:
     """Exercise public facade publication and native contract identities."""
 
+    @c.Tests.MARK.slow
     @c.Tests.MARK.parametrize(
         "binding", ["canonical", "foreign", "renamed", "duplicate", "annotation"]
     )
@@ -67,15 +68,21 @@ class UtilityFacadeOwnerPublication:
         )
         if binding != "canonical":
             # Authored source bodies are retained verbatim; only class
-            # publications are projected.
+            # publications are projected (duplicate model_config is deduplicated).
+            expected = (
+                "    model_config = Owner.model_config\n    Cli = Owner\n"
+                if binding == "duplicate"
+                else metadata
+            )
             tm.that(
                 tm.ok(tm.not_none(u.Infra.render_utility_facade(package))),
-                has=metadata,
+                has=expected,
             )
             return
         rendered = tm.ok(tm.not_none(u.Infra.render_utility_facade(package)))
-        # The bare class binding is published as the PEP 613 alias mypy types.
-        tm.that(rendered, has="Cli: TypeAlias = Owner")
+        # An authored class binding stays verbatim; nothing rewrites it.
+        tm.that(rendered, has="    Cli = Owner\n")
+        tm.that(rendered, lacks="TypeAlias")
         self._write(facade, rendered)
         tm.ok(tm.not_none(u.Infra.render_utility_facade(package)), eq=rendered)
         native_consumer(
@@ -91,6 +98,7 @@ class UtilityFacadeOwnerPublication:
     def test_initializer_retires_exports_moved_into_class_owners(
         self,
         tmp_path: Path,
+        native_consumer: p.Tests.NativeConsumer,
     ) -> None:
         """Generated barrels follow live owners, not their obsolete export map."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
@@ -113,22 +121,14 @@ class UtilityFacadeOwnerPublication:
         tm.that("build_plan" in rendered, eq=False)
         tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
         tm.that((child / "__init__.py").read_text(encoding="utf-8"), eq=rendered)
-        result = tm.ok(
-            u.Cli.run_raw(
-                (
-                    sys.executable,
-                    "-c",
-                    (
-                        f"from {package.name}.services import Engine; "
-                        "assert Engine.build_plan() == 7"
-                    ),
-                ),
-                cwd=root,
-                options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
-            )
+        native_consumer(
+            f"sys.path.insert(0, {str(package.parent)!r})\n"
+            f"from {package.name}.services import Engine\n"
+            "assert Engine.build_plan() == 7\n",
+            cwd=root,
         )
-        tm.that(u.Cli.process_succeeded(result.outcome), eq=True, msg=result.stderr)
 
+    @c.Tests.MARK.slow
     @c.Tests.MARK.parametrize("family", tuple(u.Infra.facade_families()))
     @c.Tests.MARK.parametrize("nested", [False, True])
     @c.Tests.MARK.parametrize(
@@ -138,7 +138,14 @@ class UtilityFacadeOwnerPublication:
             for origin in ("leaf", "barrel")
             for source_root in (
                 None,
-                *config.Infra.tooling.tools.pyright.path_rules.test_like_dirs,
+                *(
+                    directory
+                    for directory in (
+                        config.Infra.tooling.tools.pyrefly.path_rules.env_dirs
+                    )
+                    if directory
+                    != config.Infra.tooling.tools.pyrefly.path_rules.source_dir
+                ),
                 "auxiliary",
             )
         ],
@@ -208,15 +215,14 @@ class UtilityFacadeOwnerPublication:
                 )
             )
         plan = tm.ok(
-            FlextInfraCodegenConform.Generate(
-                state=m.Infra.CodegenConformState(repository_root=root),
-            ).plan(
+            u.Tests.conform_plan_result(
+                root,
                 u.Tests.conform_request(
                     root,
                     what=c.Infra.CodegenConformSurface.ALL,
                     scope=c.Infra.CodegenConformScope.SELF,
                     mode=c.Infra.CodegenConformMode.CHECK,
-                )
+                ),
             )
         )
         tm.that(
@@ -314,7 +320,13 @@ class UtilityFacadeOwnerPublication:
         rendered = tm.ok(
             tm.not_none(u.Infra.render_utility_facade(package, family=family))
         )
-        tm.that(rendered, has="Contracts: TypeAlias = SampleFacadeContracts")
+        tm.that(
+            rendered,
+            has=(
+                "Contracts: ClassVar[type[SampleFacadeContracts]] = "
+                "SampleFacadeContracts"
+            ),
+        )
         self._write(facade, rendered)
         tm.ok(
             tm.not_none(u.Infra.render_utility_facade(package, family=family)),
@@ -626,7 +638,6 @@ class UtilityFacadeOwnerPublication:
                     root,
                     what=c.Infra.CodegenConformSurface.FACADES,
                     scope=c.Infra.CodegenConformScope.SELF,
-                    module=f"{package.name}.protocols",
                     mode=c.Infra.CodegenConformMode.CHECK,
                 )
             )
@@ -809,24 +820,28 @@ class UtilityFacadeOwnerPublication:
             f"value: {owner} = {owner}()\n"
             f"owner: type[{owner}] = {owner}\n",
         )
-        for checker in ("mypy", "pyright"):
-            result = tm.ok(
-                u.Cli.run_raw(
-                    (
-                        sys.executable,
-                        "-m",
-                        checker,
-                        str(consumer_path),
-                    ),
-                    cwd=root,
-                    options=m.Cli.ProcessOptions(env=environment),
+        result = tm.ok(
+            u.Cli.run_raw(
+                (
+                    sys.executable,
+                    "-m",
+                    c.Infra.PYREFLY,
+                    c.Infra.CHECK,
+                    "--search-path",
+                    str(package.parent),
+                    "--python-interpreter-path",
+                    sys.executable,
+                    str(consumer_path),
                 ),
-            )
-            tm.that(
-                u.Cli.process_succeeded(result.outcome),
-                eq=True,
-                msg=result.stdout + result.stderr,
-            )
+                cwd=root,
+                options=m.Cli.ProcessOptions(env=environment),
+            ),
+        )
+        tm.that(
+            u.Cli.process_succeeded(result.outcome),
+            eq=True,
+            msg=result.stdout + result.stderr,
+        )
 
     @staticmethod
     def _write(path: Path, source: str) -> None:

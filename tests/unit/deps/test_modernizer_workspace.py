@@ -10,10 +10,11 @@ from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 import pytest
+from typing_extensions import TypeForm
 
 from flext_infra import FlextInfraCli, config
 from flext_infra.deps import FlextInfraPyprojectModernizer
-from tests import c, m, t, tm, u
+from tests import c, m, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -196,7 +197,7 @@ class TestsFlextInfraDepsModernizerWorkspace:
                 config.Infra.tooling,
                 "tomlsort",
                 "sort_first",
-                t.TypeForm(Sequence[str]),
+                TypeForm(Sequence[str]),
             )
             if sort_first is None
             else sort_first
@@ -346,7 +347,6 @@ class TestsFlextInfraDepsModernizerWorkspace:
             apply_changes=False,
             skip_check=True,
             skip_comments=True,
-            rewrite_constraints=False,
         )
 
         tm.that(modernizer.run(), eq=0)

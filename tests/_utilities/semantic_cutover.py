@@ -43,7 +43,7 @@ class TestsFlextInfraUtilitiesSemanticCutover:
         return cls.semantic_cutover_render(scenario)
 
     @staticmethod
-    def semantic_cutover_render(scenario: p.Tests.SemanticCutoverScenario) -> str:
+    def semantic_cutover_render(scenario: m.Tests.SemanticCutoverScenario) -> str:
         """Render one scenario through the flext-cli J2 engine.
 
         Returns:
@@ -101,7 +101,7 @@ class TestsFlextInfraUtilitiesSemanticCutover:
 
         """
         repository_root.joinpath("pyproject.toml").write_text(
-            "[project]\nname = 'demo'\nversion = '0.1.0'\n",
+            c.Tests.SEMANTIC_CUTOVER_PYPROJECT,
             encoding=c.DEFAULT_ENCODING,
         )
         module_path = repository_root / relative

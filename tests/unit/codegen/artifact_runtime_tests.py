@@ -36,8 +36,6 @@ distribution = importlib.metadata.distribution(distribution_name)
 package = importlib.import_module(package_name)
 for facade in json.loads(facade_json):
     assert getattr(package, facade) is not None, facade
-if "main" in json.loads(facade_json):
-    assert package.main(["--help"]) == 0
 for entry in distribution.entry_points:
     if entry.group == "console_scripts":
         assert callable(entry.load()), entry
@@ -47,7 +45,7 @@ for entry in distribution.entry_points:
         )
 core = importlib.import_module("flext_core")
 assert core.r[str].ok("runtime").map(str.upper).value == "RUNTIME"
-tm.fail(core.r[str].fail("expected-runtime-failure"))
+assert core.r[str].fail("expected-runtime-failure").failure
 installed = {
     entry.metadata["Name"].lower().replace("_", "-").replace(".", "-")
     for entry in importlib.metadata.distributions()
@@ -105,7 +103,9 @@ class TestsArtifactRuntime:
                 producer,
                 config.Infra.codegen.infra_repository.distribution,
                 (u.Tests.repository_ref("flext-tests").distribution,),
-                ("c", "t", "p", "m", "u", "infra", "main"),
+                # The CLI is reached through its console scripts, which the
+                # probe runs; the package root publishes no ``main``.
+                ("c", "t", "p", "m", "u", "infra"),
             )
         provider = u.Tests.repository_ref("flext-core")
         sources = tuple(
@@ -267,7 +267,7 @@ class TestsArtifactRuntime:
         uv: str,
         wheel: Path,
         distribution: str,
-    ) -> tuple[Path, Path, m.Cli.ProcessOptions]:
+    ) -> tuple[Path, Path, p.Cli.ProcessOptions]:
         """Sync one isolated consumer runtime from the built wheel.
 
         Args:

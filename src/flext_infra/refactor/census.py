@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from pathlib import Path
+from typing import override
 
 from flext_infra import m, p, r, t
 from flext_infra.refactor._census import (
@@ -59,6 +60,7 @@ class FlextInfraRefactorCensus(
         with self.workspace_factory(self.repository_root, None) as rope:
             return self._collect_report(rope, source_preview=self.source_preview)
 
+    @override
     def execute(self) -> p.Result[p.Infra.WorkspaceReport]:
         """Run the census and return the report through the result boundary.
 

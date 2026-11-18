@@ -11,9 +11,13 @@ import sys
 from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 
+from typing_extensions import TypeForm
+
 from flext_infra import FlextInfraCli
-from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
-from flext_infra.codemod.snapshot_reconciler import FlextInfraCodemodSnapshotReconciler
+from flext_infra.codemod import (
+    FlextInfraCodemodSnapshotReconciler,
+    FlextInfraModGateEngine,
+)
 from tests import c, m, t, tm, u
 
 
@@ -132,7 +136,7 @@ class TestsFlextInfraModRuleFixtureSnapshots:
                 for finding in report.entries:
                     tm.that(elected, has=finding.rule_id)
                     tm.that(finding.file, eq=sample.relative_to(tmp_path))
-                    mapping = u.type_adapter(t.TypeForm(t.JsonMapping))
+                    mapping = u.type_adapter(TypeForm(t.JsonMapping))
                     native = u.Infra.mod_native_payload(finding, readers)
                     captures = mapping.validate_python(native["metaVariables"])
                     single = mapping.validate_python(captures["single"])
@@ -186,7 +190,7 @@ class TestsFlextInfraModRuleFixtureSnapshots:
             for finding in report.entries:
                 tm.that(elected, has=finding.rule_id)
                 tm.that(finding.file, eq=sample.relative_to(root))
-                mapping = u.type_adapter(t.TypeForm(t.JsonMapping))
+                mapping = u.type_adapter(TypeForm(t.JsonMapping))
                 native = u.Infra.mod_native_payload(finding, readers)
                 captures = mapping.validate_python(native["metaVariables"])
                 single = mapping.validate_python(captures["single"])
@@ -234,6 +238,7 @@ class TestsFlextInfraModRuleFixtureSnapshots:
         "rule_id",
         [
             "rewire-test-assert-truth",
+            "rewire-test-assert-truth-branch",
             "rewire-test-assert-falsity",
             "rewire-test-assert-not-none-message",
             "rewire-test-assert-instance-message",
@@ -430,7 +435,11 @@ class TestsFlextInfraModRuleFixtureSnapshots:
         *,
         verdict: bool,
     ) -> None:
-        """Native apply preserves non-complementary operators and lazy messages."""
+        """Native apply preserves the operator, one truth check, and the message.
+
+        The rewrite is one tm.that expression, so the message is evaluated once,
+        before the truth check, and reaches the AssertionError unchanged.
+        """
         u.Tests.WorktreeFixture.write_python_project(tmp_path, "assertion-fixture")
         self._owner(tmp_path)
         u.Tests.provision_checkout(tmp_path)
@@ -461,10 +470,10 @@ class TestsFlextInfraModRuleFixtureSnapshots:
             ),
         )
         fixed = sample.read_text(encoding=c.DEFAULT_ENCODING)
-        expected_events = ["left", "right", operator, "truth"]
-        if not verdict:
-            expected_events.append("message")
-        for candidate in (original, fixed):
+        tm.that(fixed, lacks="assert ")
+        lazy = ["left", "right", operator, "truth"] + ([] if verdict else ["message"])
+        eager = ["left", "right", operator, "message", "truth"]
+        for candidate, expected_events in ((original, lazy), (fixed, eager)):
             source = (
                 "try:\n"
                 + "".join(f"    {line}\n" for line in candidate.splitlines())
@@ -686,7 +695,7 @@ class TestsFlextInfraModRuleFixtureSnapshots:
             pyproject.read_text(encoding=c.DEFAULT_ENCODING), "project"
         )
         version = tm.instance(project["version"], str)
-        dependencies = u.type_adapter(t.TypeForm(Sequence[str])).validate_python(
+        dependencies = u.type_adapter(TypeForm(Sequence[str])).validate_python(
             project["dependencies"],
         )
         tm.ok(u.Cli.atomic_write_text_file(package / "__init__.py", ""))

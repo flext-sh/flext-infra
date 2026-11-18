@@ -124,12 +124,54 @@ class FlextInfraUtilitiesDocsScopePolicy(FlextInfraUtilitiesDocsScopeState):
             Whether the docs-relative path is excluded by the typed copy policy.
 
         """
+        return relative_path in (
+            FlextInfraUtilitiesDocsScopePolicy.excluded_doc_paths(
+                project_root,
+                (relative_path,),
+            )
+        )
+
+    @staticmethod
+    def excluded_doc_paths(
+        project_root: Path,
+        relative_paths: Sequence[Path],
+    ) -> frozenset[Path]:
+        """Return the docs-relative paths codegen excludes from physical copy.
+
+        The typed codegen policy is loaded once for the complete candidate set;
+        reloading it per path revalidates the whole configuration for every
+        Markdown file in the scope.
+
+        Returns:
+            The excluded subset of ``relative_paths``.
+
+        """
         codegen = (
             FlextInfraUtilitiesProjectManagedArtifacts
             .load_codegen_inputs(project_root)
             .unwrap()
             .spec
         )
+        return frozenset(
+            relative_path
+            for relative_path in relative_paths
+            if FlextInfraUtilitiesDocsScopePolicy._docs_copy_excluded(
+                codegen,
+                relative_path,
+            )
+        )
+
+    @staticmethod
+    def _docs_copy_excluded(
+        codegen: p.Infra.CodegenConfigSpec,
+        relative_path: Path,
+    ) -> bool:
+        """Apply the typed docs-copy policy to one docs-relative path.
+
+        Returns:
+            Whether the path is excluded by the typed copy policy.
+
+        """
         candidate = Path(c.Infra.DIR_DOCS) / relative_path
         return any(
             path.full_match(pattern)

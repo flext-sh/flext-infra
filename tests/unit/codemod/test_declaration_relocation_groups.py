@@ -182,14 +182,14 @@ class TestsFlextInfraDeclarationRelocationGroups:
             if not accepted and edit.file_path == target:
                 source = source.replace("Field(default=3)", "Field(default=7)")
             plans.append(
-                m.Infra.SemanticFilePlan(
-                    project=root,
-                    path=edit.file_path,
-                    before=before,
-                    desired_content=source.encode("utf-8"),
-                    desired_mode=before.mode,
-                    changes=("declaration relocation",),
-                )
+                m.Infra.SemanticFilePlan.model_validate({
+                    "project": (root),
+                    "path": (edit.file_path),
+                    "before": (before),
+                    "desired_content": (source.encode("utf-8")),
+                    "desired_mode": (before.mode),
+                    "changes": (("declaration relocation",)),
+                })
             )
 
         def consume(candidate_root: Path) -> p.Result[bool]:
@@ -274,9 +274,9 @@ class TestsFlextInfraDeclarationRelocationGroups:
         root, sources = TestsFlextInfraDeclarationRelocationSupport.seed(tmp_path)
         preflight = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
         phase = c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION
-        rule_id = c.Infra.SEMANTIC_CUTOVER_RULE_IDS[phase]
+        rule_ids = c.Infra.SEMANTIC_CUTOVER_RULE_IDS[phase]
         tm.that(
-            any(finding.rule_id == rule_id for finding in preflight.entries),
+            any(finding.rule_id in rule_ids for finding in preflight.entries),
             eq=True,
         )
         with infra.rope_workspace(root) as rope:

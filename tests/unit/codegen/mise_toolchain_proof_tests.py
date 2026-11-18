@@ -141,6 +141,53 @@ class TestsFlextInfraMiseToolchainProof:
         )
 
     @classmethod
+    def test_public_proof_uses_the_owner_under_an_inherited_ceiling(
+        cls, tmp_path: Path
+    ) -> None:
+        """A caller ceiling cannot hide the selected owner's native tools."""
+        root = cls._repository_root()
+        reader = tm.ok(u.Infra.managed_mise_self(root))
+        binary = tm.ok(u.Infra.managed_mise_binary(c.Infra.UV, root))
+        process = tm.ok(
+            u.Cli.run_raw(
+                (
+                    str(reader),
+                    "-C",
+                    str(root),
+                    "exec",
+                    "--",
+                    "env",
+                    f"{c.Infra.MISE_CEILING_PATHS}={root}",
+                    str(u.Infra.runtime_python(root)),
+                    "-m",
+                    c.Infra.PACKAGE_IMPORT_NAME,
+                    "codegen",
+                    "mise-proof",
+                    "--repository-root",
+                    str(root),
+                    "--uv-executable",
+                    str(binary),
+                ),
+                cwd=root,
+                timeout=c.Infra.TIMEOUT_DEFAULT,
+                options=m.Cli.ProcessOptions(
+                    env={
+                        "MISE_LOCKED": c.ParserBooleanToken.ONE,
+                        c.Infra.MISE_CEILING_PATHS: str(root.parent),
+                        "MISE_CONFIG_DIR": str(tmp_path),
+                        "MISE_SYSTEM_CONFIG_DIR": str(tmp_path),
+                        "MISE_GLOBAL_CONFIG_FILE": str(tmp_path / "config.toml"),
+                    }
+                ),
+            ),
+        )
+        tm.that(
+            u.Cli.process_succeeded(process.outcome),
+            eq=True,
+            msg=process.stdout + process.stderr,
+        )
+
+    @classmethod
     def _entry(cls) -> p.Infra.MiseToolEntry:
         """Bind the scenario identity to the real configured UV probe.
 

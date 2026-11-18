@@ -1,0 +1,34 @@
+# Python bytecode caching stays enabled in every FLEXT process.
+#
+# OPERATOR RULING 2026-11-12: exterminate PYTHONDONTWRITEBYTECODE everywhere and
+# forbid its return. Measured: with bytecode disabled every process recompiled the
+# editable sources (about 1589 modules, 6.8 s of a 15.6 s import), multiplied by
+# every subprocess a suite or gate spawns. Bytecode is a declared disposable
+# artifact (`__pycache__` in .gitignore); an inherited value is stripped by the
+# generated Makefile (`make.native_environment_unset`), never re-set by code.
+id: ban-bytecode-disable
+language: python
+severity: error
+files:
+  - "**/*.py"
+rule:
+  any:
+    - pattern: $ENV["PYTHONDONTWRITEBYTECODE"] = $VALUE
+    - pattern: $ENV.setdefault("PYTHONDONTWRITEBYTECODE", $$$REST)
+    - pattern: os.putenv("PYTHONDONTWRITEBYTECODE", $VALUE)
+    - pattern: sys.dont_write_bytecode = $VALUE
+    - kind: pair
+      has:
+        field: key
+        regex: ^["']PYTHONDONTWRITEBYTECODE["']$
+    - kind: keyword_argument
+      has:
+        field: name
+        regex: ^PYTHONDONTWRITEBYTECODE$
+message: >-
+  Disabling Python bytecode is banned: every process would recompile its sources.
+  Keep bytecode enabled (`__pycache__` is declared disposable in .gitignore) and
+  strip an inherited PYTHONDONTWRITEBYTECODE at the process owner instead of
+  setting it.
+metadata:
+  enforce: [ENFORCE-128]

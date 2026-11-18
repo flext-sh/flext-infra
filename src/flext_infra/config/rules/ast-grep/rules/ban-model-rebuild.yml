@@ -7,7 +7,7 @@
 # its body runs), and a subclass in another module then re-resolves it in its
 # own namespace. A bare sibling name is no cure: static checkers report it as
 # undefined. The cure is the deferred schema owner of ADR-018 (amendment
-# 2026-11-03): type by the protocol, ``t.schema_for_model(lambda: Outer.Name)``.
+# 2026-11-03): type by the protocol, ``Outer.Name``.
 # The fleet had zero real calls when the rule was re-enabled.
 id: ban-model-rebuild
 language: python
@@ -21,7 +21,7 @@ rule:
   pattern: $$$TARGET.model_rebuild($$$ARGS)
 message: >-
   `model_rebuild()` is a declaration defect: type model fields by their protocol
-  and defer the schema owner (`Annotated[p.X, t.schema_for_model(lambda: ...)]`),
+  and defer the schema owner (`Annotated[...]`),
   export the symbol through its facade, break the import cycle at its owner, or
   hoist the model out of the function scope. A strict fleet never calls
   `model_rebuild`.

@@ -86,13 +86,13 @@ class FlextInfraGatesDirenv(FlextInfraGates):
                 severity="ERROR",
             )
             return self._build_gate_execution(
-                m.Infra.GateExecutionParams(
-                    project_dir=project_dir,
-                    verdict=False,
-                    issues=(issue,),
-                    raw_output=issue.message,
-                    started=started,
-                ),
+                m.Infra.GateExecutionParams.model_validate({
+                    "project_dir": project_dir,
+                    "verdict": False,
+                    "issues": (issue,),
+                    "raw_output": issue.message,
+                    "started": started,
+                }),
                 ctx,
             )
         violations = self._contract_boundary().envrc_contract_violations(
@@ -135,13 +135,13 @@ class FlextInfraGatesDirenv(FlextInfraGates):
                 )
         if issues:
             return self._build_gate_execution(
-                m.Infra.GateExecutionParams(
-                    project_dir=project_dir,
-                    verdict=False,
-                    issues=tuple(issues),
-                    raw_output="\n".join(issue.message for issue in issues),
-                    started=started,
-                ),
+                m.Infra.GateExecutionParams.model_validate({
+                    "project_dir": project_dir,
+                    "verdict": False,
+                    "issues": tuple(issues),
+                    "raw_output": "\n".join(issue.message for issue in issues),
+                    "started": started,
+                }),
                 ctx,
             )
         return super().check(project_dir, ctx)

@@ -1,0 +1,157 @@
+id: remove-identity-model-schema-hook
+snapshots:
+  "from typing import Annotated\nfrom flext_infra import m\nitem: Annotated[m.ConfigDocument, m.GetPydanticSchema(lambda _source, handler: handler.generate_schema(m.ConfigDocument))]\n":
+    fixed: |
+      from typing import Annotated
+      from flext_infra import m
+      item: m.ConfigDocument
+    labels:
+    - source: "Annotated[m.ConfigDocument, m.GetPydanticSchema(lambda _source, handler: handler.generate_schema(m.ConfigDocument))]"
+      style: primary
+      start: 61
+      end: 177
+    - source: Annotated
+      style: secondary
+      start: 61
+      end: 70
+    - source: Annotated
+      style: secondary
+      start: 19
+      end: 28
+    - source: typing
+      style: secondary
+      start: 5
+      end: 11
+    - source: from typing import Annotated
+      style: secondary
+      start: 0
+      end: 28
+    - source: |
+        from typing import Annotated
+        from flext_infra import m
+        item: Annotated[m.ConfigDocument, m.GetPydanticSchema(lambda _source, handler: handler.generate_schema(m.ConfigDocument))]
+      style: secondary
+      start: 0
+      end: 178
+    - source: from flext_infra import m
+      style: secondary
+      start: 29
+      end: 54
+    - source: |
+        from typing import Annotated
+        from flext_infra import m
+        item: Annotated[m.ConfigDocument, m.GetPydanticSchema(lambda _source, handler: handler.generate_schema(m.ConfigDocument))]
+      style: secondary
+      start: 0
+      end: 178
+  "from typing import Annotated\nfrom tests import m\nclass Payload(m.ContractModel):\n    item: Annotated[\n        m.Tests.PublicPayload,\n        m.GetPydanticSchema(\n            lambda _source, handler: handler.generate_schema(m.Tests.PublicPayload),\n        ),\n    ]\n":
+    fixed: |
+      from typing import Annotated
+      from tests import m
+      class Payload(m.ContractModel):
+          item: m.Tests.PublicPayload
+    labels:
+    - source: |-
+        Annotated[
+                m.Tests.PublicPayload,
+                m.GetPydanticSchema(
+                    lambda _source, handler: handler.generate_schema(m.Tests.PublicPayload),
+                ),
+            ]
+      style: primary
+      start: 91
+      end: 263
+    - source: Annotated
+      style: secondary
+      start: 91
+      end: 100
+    - source: Annotated
+      style: secondary
+      start: 19
+      end: 28
+    - source: typing
+      style: secondary
+      start: 5
+      end: 11
+    - source: from typing import Annotated
+      style: secondary
+      start: 0
+      end: 28
+    - source: |
+        from typing import Annotated
+        from tests import m
+        class Payload(m.ContractModel):
+            item: Annotated[
+                m.Tests.PublicPayload,
+                m.GetPydanticSchema(
+                    lambda _source, handler: handler.generate_schema(m.Tests.PublicPayload),
+                ),
+            ]
+      style: secondary
+      start: 0
+      end: 264
+    - source: from tests import m
+      style: secondary
+      start: 29
+      end: 48
+    - source: |
+        from typing import Annotated
+        from tests import m
+        class Payload(m.ContractModel):
+            item: Annotated[
+                m.Tests.PublicPayload,
+                m.GetPydanticSchema(
+                    lambda _source, handler: handler.generate_schema(m.Tests.PublicPayload),
+                ),
+            ]
+      style: secondary
+      start: 0
+      end: 264
+  "import typing\nfrom flext_infra import m\nitem: typing.Annotated[m.Infra.Outer.Inner, m.GetPydanticSchema(lambda source, owner: owner.generate_schema(m.Infra.Outer.Inner))]\n":
+    fixed: |
+      import typing
+      from flext_infra import m
+      item: m.Infra.Outer.Inner
+    labels:
+    - source: "typing.Annotated[m.Infra.Outer.Inner, m.GetPydanticSchema(lambda source, owner: owner.generate_schema(m.Infra.Outer.Inner))]"
+      style: primary
+      start: 46
+      end: 170
+    - source: typing
+      style: secondary
+      start: 7
+      end: 13
+    - source: import typing
+      style: secondary
+      start: 0
+      end: 13
+    - source: |
+        import typing
+        from flext_infra import m
+        item: typing.Annotated[m.Infra.Outer.Inner, m.GetPydanticSchema(lambda source, owner: owner.generate_schema(m.Infra.Outer.Inner))]
+      style: secondary
+      start: 0
+      end: 171
+    - source: typing
+      style: secondary
+      start: 46
+      end: 52
+    - source: Annotated
+      style: secondary
+      start: 53
+      end: 62
+    - source: typing.Annotated
+      style: secondary
+      start: 46
+      end: 62
+    - source: from flext_infra import m
+      style: secondary
+      start: 14
+      end: 39
+    - source: |
+        import typing
+        from flext_infra import m
+        item: typing.Annotated[m.Infra.Outer.Inner, m.GetPydanticSchema(lambda source, owner: owner.generate_schema(m.Infra.Outer.Inner))]
+      style: secondary
+      start: 0
+      end: 171

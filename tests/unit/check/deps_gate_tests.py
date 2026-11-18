@@ -102,11 +102,13 @@ class TestsFlextInfraDepsGate:
             ),
             encoding="utf-8",
         )
-        return m.Infra.RuntimeDependencyInputs(
-            target_root=root,
-            python=Path(sys.executable).absolute(),
-            lock=u.Cli.atomic_read_binary_file_state(lock_path, required=True).unwrap(),
-            providers=(
+        return m.Infra.RuntimeDependencyInputs.model_validate({
+            "target_root": (root),
+            "python": (Path(sys.executable).absolute()),
+            "lock": (
+                u.Cli.atomic_read_binary_file_state(lock_path, required=True).unwrap()
+            ),
+            "providers": ((
                 m.Infra.RuntimeDependencyProvider(
                     modules=tuple(
                         sorted({
@@ -123,17 +125,17 @@ class TestsFlextInfraDepsGate:
                         ).unwrap(),
                     ),
                 ),
-            ),
-            development_only=(),
-            invoked_executables=(),
-            loaded_plugins=(),
-            inputs=(
+            )),
+            "development_only": (()),
+            "invoked_executables": (()),
+            "loaded_plugins": (()),
+            "inputs": ((
                 u.Cli.atomic_read_binary_file_state(
                     root / "src" / "fixturepkg" / "__init__.py",
                     required=True,
                 ).unwrap(),
-            ),
-        )
+            )),
+        })
 
     @staticmethod
     def test_undeclared_import_blocks_at_check_time(tmp_path: Path) -> None:
@@ -366,12 +368,12 @@ class TestsFlextInfraDepsGate:
         before = pyproject.read_bytes()
         before_lock = inputs.lock.path.read_bytes()
         gate = tm.not_none(FlextInfraGateRegistry.default().create(c.Infra.DEPS, root))
-        context = m.Infra.GateContext(
-            repository_root=root,
-            reports_dir=tmp_path / "reports",
-            apply_fixes=True,
-            runtime_dependency_inputs=inputs,
-        )
+        context = m.Infra.GateContext.model_validate({
+            "repository_root": root,
+            "reports_dir": tmp_path / "reports",
+            "apply_fixes": True,
+            "runtime_dependency_inputs": inputs,
+        })
 
         with u.Tests.raises(
             RuntimeError,
@@ -412,12 +414,12 @@ class TestsFlextInfraDepsGate:
         )
         before_lock = inputs.lock.path.read_bytes()
         gate = tm.not_none(FlextInfraGateRegistry.default().create(c.Infra.DEPS, root))
-        context = m.Infra.GateContext(
-            repository_root=root,
-            reports_dir=tmp_path / "reports",
-            apply_fixes=True,
-            runtime_dependency_inputs=inputs,
-        )
+        context = m.Infra.GateContext.model_validate({
+            "repository_root": root,
+            "reports_dir": tmp_path / "reports",
+            "apply_fixes": True,
+            "runtime_dependency_inputs": inputs,
+        })
 
         repaired = gate.fix(root, context)
         after = pyproject.read_bytes()
@@ -527,8 +529,7 @@ class TestsFlextInfraDepsGate:
         )
         (root / "config").mkdir()
         (root / "config" / "codegen.yaml").write_text(
-            "Infra:\n  codegen:\n    repository:\n"
-            f"      kind: {c.Infra.ProjectKind.INTERNAL_FLEXT.value}\n{policy}",
+            f"Infra:\n  codegen:\n{policy}" if policy else "Infra:\n  codegen: {}\n",
             encoding="utf-8",
         )
         flext_line = (
@@ -550,11 +551,20 @@ class TestsFlextInfraDepsGate:
 
         The manifest keeps the Git URL and moves only its reference onto the
         FLEXT line the checkout consumes; the lock alone pins exact commits.
+        A native UV Git source shadows its requirement's URL, so a source on
+        another branch follows the line as well.
         """
         source = "https://github.com/fixture-org/flext-fixture.git"
         pinned = f"flext-fixture @ git+{source}@{'a' * 40}"
         root, integration = TestsFlextInfraDepsGate._flext_line_project(
             tmp_path, pinned
+        )
+        pyproject = root / c.PYPROJECT_FILENAME
+        pyproject.write_text(
+            pyproject.read_text(encoding="utf-8")
+            + f'\n[tool.uv.sources.flext-fixture]\ngit = "{source}"\n'
+            f'branch = "{integration}-retired"\n',
+            encoding="utf-8",
         )
         infra_source = TestsFlextInfraDepsGate._INFRA_SOURCE
         gate = tm.not_none(FlextInfraGateRegistry.default().create(c.Infra.DEPS, root))
@@ -588,6 +598,11 @@ class TestsFlextInfraDepsGate:
                 f"flext-infra @ git+{infra_source}@{integration}",
             ),
         )
+        native = u.Cli.toml_mapping_path(
+            u.Cli.toml_read_json(pyproject).unwrap(),
+            ("tool", "uv", "sources", "flext-fixture"),
+        )
+        tm.that(dict(tm.not_none(native)), eq={"git": source, "branch": integration})
 
     @staticmethod
     def test_consumer_branch_never_becomes_the_flext_line(tmp_path: Path) -> None:
@@ -647,13 +662,13 @@ class TestsFlextInfraDepsGate:
     @staticmethod
     @c.Tests.MARK.parametrize(
         "change",
-        ["ambiguous", "source", "shipped-source", "wrong-lock"],
+        ["ambiguous", "source", "shipped-source", "wrong-lock", "bytecode"],
     )
-    def test_dependency_plan_refuses_unevidenced_repair(
+    def test_dependency_plan_authenticates_publication_inputs(
         tmp_path: Path,
         change: str,
     ) -> None:
-        """Missing identity proof and changed inputs cannot publish a requirement."""
+        """Source changes block publication; derived Python caches do not."""
         root = TestsFlextInfraDepsGate._project(tmp_path, "", "import requests\n")
         if change == "shipped-source":
             TestsFlextInfraDepsGate._ship_second_root(
@@ -686,6 +701,18 @@ class TestsFlextInfraDepsGate:
                 ),
             )
             tm.that(inputs.lock.path.read_bytes(), eq=before_lock)
+        elif change == "bytecode":
+            plan = u.Infra.runtime_dependency_plan(scan, inputs).unwrap()
+            tm.ok(
+                u.Cli.capture(
+                    [sys.executable, "-m", "compileall", "-q", c.Infra.DEFAULT_SRC_DIR],
+                    cwd=root,
+                )
+            )
+            tm.that(
+                bool(tuple((root / c.Infra.DEFAULT_SRC_DIR).rglob("*.pyc"))), eq=True
+            )
+            tm.that(u.Infra.publish_runtime_dependency_plan(plan).unwrap(), eq=True)
         elif change in {"source", "shipped-source"}:
             plan = u.Infra.runtime_dependency_plan(scan, inputs).unwrap()
             changed = "infra" if change == "shipped-source" else "src"

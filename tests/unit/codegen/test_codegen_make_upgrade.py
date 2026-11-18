@@ -74,6 +74,56 @@ class TestsFlextInfraCodegenMakeUpgrade:
         tm.that(lifecycle[:synced], lacks="$(PROJECT_FLEXT_INFRA)")
 
     @staticmethod
+    def test_lock_resolves_a_new_requirement_without_moving_pins(
+        generated_make_template: tuple[c.Infra.MakeProfile, Path],
+    ) -> None:
+        """``lock`` runs the upgrade's resolution without ``--upgrade``.
+
+        A newly declared requirement resolves into the locks while every pin the
+        locks hold stays; only ``upg`` moves a pin. Both lifecycles render the
+        one resolution recipe, and the frozen installation follows it.
+        """
+        _profile, project_root = generated_make_template
+        makefile = (project_root / c.Infra.MAKEFILE_FILENAME).read_text(
+            encoding="utf-8",
+        )
+        locking = makefile.split("\n_lock_lifecycle:\n", 1)[1].split("\n\n", 1)[0]
+        upgrading = makefile.split("\n_upg_lifecycle:\n", 1)[1].split("\n\n", 1)[0]
+        tm.that(locking, has='$(UV) lock --project "$(PROJECT_ROOT)"')
+        tm.that(locking, lacks="--upgrade")
+        tm.ok(locking.index("$(UV) lock") < locking.index("$(INSTALL_RUNTIME_RECIPE)"))
+        tm.that(upgrading, has='$(UV) lock --upgrade --project "$(PROJECT_ROOT)"')
+        tm.that(
+            locking.partition("$(INSTALL_RUNTIME_RECIPE)")[0],
+            eq=upgrading.partition("$(INSTALL_RUNTIME_RECIPE)")[0].replace(
+                "lock --upgrade", "lock"
+            ),
+        )
+
+    @staticmethod
+    def test_no_generated_verb_prunes_host_wide_mise_tools(
+        generated_make_template: tuple[c.Infra.MakeProfile, Path],
+    ) -> None:
+        """A project verb never retires Mise tool installs of the whole host.
+
+        ``mise prune`` decides from every configuration tracked on the host, so
+        a project ``make upg`` deleted the ccs and otelcol-contrib installs that
+        running host units executed (flext-tprlj; ai-hub aihub-kdrjg.2.2). Host
+        tool retirement belongs to the host-runtime owner that knows its units.
+        """
+        _profile, project_root = generated_make_template
+        makefile = (project_root / c.Infra.MAKEFILE_FILENAME).read_text(
+            encoding="utf-8",
+        )
+        mise_lines = [
+            line
+            for line in makefile.splitlines()
+            if "mise_bin" in line or "MISE)" in line
+        ]
+        tm.that(mise_lines, empty=False)
+        tm.that([line for line in mise_lines if " prune" in line], empty=True)
+
+    @staticmethod
     def test_environment_prerequisites_resolve_without_running_recipes(
         generated_make_template: tuple[c.Infra.MakeProfile, Path],
     ) -> None:

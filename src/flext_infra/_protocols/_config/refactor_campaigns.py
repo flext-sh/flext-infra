@@ -117,6 +117,11 @@ class FlextInfraProtocolsConfigRefactorCampaigns:
         """Structural data contract projected from the owning model."""
 
         @property
+        def rewire_directory(self) -> Path:
+            """Repository-relative immutable native rewire artifacts."""
+            ...
+
+        @property
         def campaigns(
             self,
         ) -> tuple[FlextInfraProtocolsConfigRefactorCampaigns.RenameCampaignSpec, ...]:

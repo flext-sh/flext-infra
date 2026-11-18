@@ -14,18 +14,19 @@ from typing import Annotated, ClassVar
 from flext_cli import u
 from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
+from typing_extensions import TypeForm
 
 from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesDependencies,
-    FlextInfraUtilitiesGit,
     FlextInfraUtilitiesManagedConflicts,
-    FlextInfraUtilitiesProjectManagedArtifacts,
 )
+from flext_infra._utilities._git import FlextInfraUtilitiesGitWorktreeRoots
 from flext_infra._utilities._pyproject import (
     FlextInfraUtilitiesPyprojectOverlay,
     FlextInfraUtilitiesPyprojectUvSources,
 )
+from flext_infra._utilities.native_tooling import FlextInfraUtilitiesNativeTooling
 
 
 class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources):
@@ -236,8 +237,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             One mapping validated by the shared TOML ingress.
 
         Raises:
-            RuntimeError: If failed to read pyproject payload at; or if pyproject
-                payload at.
+            RuntimeError: If the live pyproject cannot be read.
 
         """
         if not (
@@ -260,27 +260,21 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         # process that rewrites a manifest (gen, mod, a test) reads its new
         # content on the next call instead of a stale parse.
         return FlextInfraUtilitiesPyprojectDocument._parsed_pyproject_payload(
-            pyproject_path,
-            live.value,
+            live.value
         )
 
     @staticmethod
     @cache
-    def _parsed_pyproject_payload(pyproject_path: Path, text: str) -> t.JsonMapping:
+    def _parsed_pyproject_payload(text: str) -> t.JsonMapping:
         """Parse and validate one manifest text (memoized per exact content).
+
+        Invalid TOML propagates its original decoder exception unchanged.
 
         Returns:
             The validated mapping of ``text``.
 
-        Raises:
-            RuntimeError: If ``text`` is not valid TOML.
-
         """
-        payload = u.Cli.toml_mapping_from_text(text)
-        if payload is None:
-            msg = f"pyproject payload at {pyproject_path} is not valid TOML"
-            raise RuntimeError(msg)
-        return payload
+        return u.Cli.toml_mapping_from_text_result(text).unwrap()
 
     @staticmethod
     def normalized_toml_payload(document: t.Cli.TomlDocument) -> t.JsonMapping:
@@ -531,7 +525,9 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         """
         if not (repository_root / c.Infra.GITMODULES).exists(follow_symlinks=False):
             return ()
-        declared = FlextInfraUtilitiesGit.git_submodule_declarations(repository_root)
+        declared = FlextInfraUtilitiesGitWorktreeRoots.git_submodule_declarations(
+            repository_root
+        )
         if declared.failure:
             msg = declared.error or f"invalid workspace topology: {repository_root}"
             raise ValueError(msg)
@@ -562,13 +558,13 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             ValueError: If the topology root or the declarations are invalid.
 
         """
-        topology = FlextInfraUtilitiesGit.git_repository_root(
+        topology = FlextInfraUtilitiesGitWorktreeRoots.git_repository_root(
             m.Infra.GitRepoRequest(repo_root=project_root),
         )
         if topology.failure:
             msg = topology.error or f"invalid repository topology: {project_root}"
             raise ValueError(msg)
-        declared = FlextInfraUtilitiesGit.git_submodule_declarations(
+        declared = FlextInfraUtilitiesGitWorktreeRoots.git_submodule_declarations(
             topology.value.repository_root,
         )
         if declared.failure:
@@ -587,24 +583,20 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         return (frozenset(domain), frozenset(platform))
 
     type _CustomGroupsPair = tuple[
-        Sequence[str | m.Infra.DependencyGroupInclude],
-        Sequence[str | m.Infra.DependencyGroupInclude],
+        Sequence[str | p.Infra.DependencyGroupInclude],
+        Sequence[str | p.Infra.DependencyGroupInclude],
     ]
     type _ConformedProvenance = tuple[
         t.Cli.TomlDocument,
         str,
-        m.Infra.RequirementsProvenance,
+        p.Infra.RequirementsProvenance,
     ]
 
     class PyprojectConformOptions(m.ImmutableValueModel):
         """Detected integration provenance for internal requirements and dev floors."""
 
         flext_line: Annotated[
-            Annotated[
-                p.Infra.WorkspaceIntegrationSpec,
-                t.schema_for_model(lambda: m.Infra.WorkspaceIntegrationSpec),
-            ]
-            | None,
+            m.Infra.WorkspaceIntegrationSpec | None,
             m.Field(
                 description="Detected provider and branch for internal requirements",
             ),
@@ -694,6 +686,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         requirement_sources = cls._normalized_requirement_sources(
             source,
             source_context,
+            workspace=(workspace.repository.role is c.Infra.MakeProfile.WORKSPACE),
         )
         if requirement_sources.failure:
             return r[str].from_failure(requirement_sources)
@@ -742,10 +735,24 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             return result.from_failure(parsed)
         source, project_name = parsed.value[0], parsed.value[1]
         provenance = options if options is not None else cls.PyprojectConformOptions()
+        document_requirements = tuple(
+            line
+            for path, key in FlextInfraUtilitiesDependencies.requirement_arrays(
+                parsed.value[2]
+            )
+            for raw in (
+                (u.Cli.toml_mapping_path(parsed.value[2], path) or {}).get(key),
+            )
+            for line in (raw if isinstance(raw, list) else ())
+            if isinstance(line, str)
+        )
         origins = cls._declared_requirement_sources(
             project_name=project_name,
             workspace=workspace,
-            required_dev_dependencies=required_dev_dependencies,
+            required_dev_dependencies=(
+                *document_requirements,
+                *required_dev_dependencies,
+            ),
             flext_line=provenance.flext_line,
         )
         if origins.failure:
@@ -809,6 +816,8 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         cls,
         source: t.Cli.TomlDocument,
         provenance: p.Infra.RequirementsProvenance,
+        *,
+        workspace: bool = False,
     ) -> p.Result[tuple[Sequence[str], Mapping[str, str], Mapping[str, str]]]:
         """Validate composed declarations before applying the one source context.
 
@@ -831,7 +840,9 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
                 "candidate dependencies are not declared requirements: "
                 + ", ".join(unused_candidates),
             )
-        normalized = cls._normalize_requirements(source, provenance=provenance)
+        normalized = cls._normalize_requirements(
+            source, provenance=provenance, workspace=workspace
+        )
         if normalized.failure:
             return result_type.from_failure(
                 normalized,
@@ -860,7 +871,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             )
         groups = u.Cli.toml_ensure_table(source, c.Infra.DEPENDENCY_GROUPS)
         retained: MutableMapping[
-            str, Sequence[str | m.Infra.DependencyGroupInclude]
+            str, Sequence[str | p.Infra.DependencyGroupInclude]
         ] = {}
         for group in (str(c.Infra.DEV), c.Infra.DependencyGroup.CODEGEN):
             authored_name = cls.dependency_group_name(groups, str(group))
@@ -900,7 +911,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             strict=True,
         ):
             normalized_custom: MutableSequence[
-                str | m.Infra.DependencyGroupInclude
+                str | p.Infra.DependencyGroupInclude
             ] = []
             for value in custom:
                 if not isinstance(value, str):
@@ -1071,11 +1082,11 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             [
                 group
                 for group in (
-                    FlextInfraUtilitiesProjectManagedArtifacts.native_tool_setting(
+                    FlextInfraUtilitiesNativeTooling.native_tool_setting(
                         config.Infra.tooling,
                         c.Infra.DEPTRY,
                         "optional_dependencies_dev_groups",
-                        t.TypeForm(Sequence[str]),
+                        TypeForm(Sequence[str]),
                     )
                 )
                 if optional is not None and group in optional
@@ -1213,8 +1224,8 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
     def _sync_typecheck_paths(document: t.Cli.TomlDocument) -> p.Result[bool]:
         """Remove checkout-absolute type checker interpreter pins.
 
-        Search paths belong to the analyzer phase. Preserve its member-local
-        execution environments and their order through full generation.
+        Search paths belong to the analyzer phase; environment selection is
+        owned by Make and the opened editor folder.
 
         Returns:
             The resulting ``p.Result[bool]``.
@@ -1226,35 +1237,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         pyrefly = u.Cli.toml_table_child(tool, c.Infra.PYREFLY)
         if pyrefly is not None:
             u.Cli.toml_remove_key_if_present(pyrefly, "python-interpreter-path")
-
-        pyright = u.Cli.toml_table_child(tool, c.Infra.PYRIGHT)
-        if pyright is None:
-            return r[bool].ok(value=True)
-
-        # Environment selection is owned by Make and the opened editor folder.
-        interpreter_keys = ("pythonPath", "pythonInterpreterPath")
-        for key in interpreter_keys:
-            u.Cli.toml_remove_key_if_present(pyright, key)
-        raw_environments = u.Cli.json_as_sequence(
-            u.Cli.toml_value(pyright, "executionEnvironments"),
-        )
-        normalized_environments: list[t.JsonValue] = []
-        for index, environment in enumerate(raw_environments):
-            if not isinstance(environment, Mapping):
-                return r[bool].fail(
-                    f"tool.pyright.executionEnvironments[{index}] must be a mapping",
-                )
-            mapping = u.json_mapping_adapter().validate_python(environment)
-            normalized: t.JsonDict = dict(mapping)
-            for key in ("venv", "venvPath", "pythonPath", "pythonInterpreterPath"):
-                normalized.pop(key, None)
-            normalized_environments.append(normalized)
-        if raw_environments:
-            u.Cli.toml_sync_value(
-                pyright,
-                "executionEnvironments",
-                normalized_environments,
-            )
+            u.Cli.toml_remove_key_if_present(pyrefly, "python")
         return r[bool].ok(value=True)
 
 

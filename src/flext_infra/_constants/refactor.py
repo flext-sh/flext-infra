@@ -85,6 +85,11 @@ class FlextInfraConstantsRefactor:
         / "violations-sweep.json"
     )
     "Canonical single-file receipt for the latest violations sweep."
+    MOD_SCAN_EVIDENCE_RELATIVE_PATHS: ClassVar[tuple[Path, ...]] = (
+        MOD_SCAN_REPORT_RELATIVE_PATH,
+        VIOLATIONS_SWEEP_REPORT_RELATIVE_PATH,
+    )
+    "Every published evidence report whose entries reference the native store."
     VIOLATIONS_SWEEP_REPORT_SCHEMA_VERSION: ClassVar[Literal[1]] = 1
     "Exact structured violations-sweep report schema version."
     LINT_REPORT_COUNT_LINE: ClassVar[t.RegexPattern] = re.compile(
@@ -312,8 +317,9 @@ class FlextInfraConstantsRefactor:
 
         RESTRUCTURE = "restructure"
         MATERIALIZE_DELEGATIONS = "materialize-delegations"
-        RETIRE_GENERIC_TYPING_WRAPPERS = "retire-generic-typing-wrappers"
         NORMALIZE_EXHAUSTIVE_ENUM = "normalize-exhaustive-enum"
+        NORMALIZE_MODEL_ENVELOPES = "normalize-model-envelopes"
+        NORMALIZE_OPAQUE_MUTABLE_PORTS = "normalize-opaque-mutable-ports"
 
     @unique
     class SemanticCutoverPhase(StrEnum):
@@ -389,6 +395,14 @@ class FlextInfraConstantsRefactor:
     RK_ALLOW_TARGET_SUFFIXES: ClassVar[str] = "allow_target_suffixes"
     CODEMOD_RULE_SUFFIX: ClassVar[str] = ".yml"
     CODEMOD_NATIVE_RULE_BUNDLE_FILENAME: ClassVar[str] = "rules.yml"
+    # Exact ast-grep diagnostic for a projected rule it refuses to load (for
+    # example a matcher left without a positive anchor). Staging converts it
+    # into a typed failure naming the ruleset instead of failing a consumer's
+    # scan with no rule attribution.
+    CODEMOD_RULESET_PARSE_ERRORS: ClassVar[t.StrTuple] = (
+        "not a valid ast-grep rule",
+        "missing required id",
+    )
     CODEMOD_NATIVE_DOCUMENT_SEPARATOR: ClassVar[str] = "\n---\n"
     # Native ast-grep language of every generated utility rule.
     CODEMOD_PYTHON_LANGUAGE: ClassVar[str] = "Python"
@@ -477,6 +491,12 @@ class FlextInfraConstantsRefactor:
     # Generated rule shape that inserts the canonical package import of names
     # a module uses bare without binding them: 'import-header--<package>'.
     CODEMOD_IMPORT_HEADER_SHAPE: ClassVar[str] = "import-header"
+    # Nodes whose bodies open a scope of their own: a binding search of an
+    # enclosing scope stops at them (generated import-header receivers).
+    CODEMOD_OWN_SCOPE_BOUNDARY_KINDS: ClassVar[t.StrTuple] = (
+        "function_definition",
+        "class_definition",
+    )
     # Generated rule shape that reaches a member through its package import
     # instead of a module object: 'module-member--<package>'.
     CODEMOD_MODULE_MEMBER_SHAPE: ClassVar[str] = "module-member"
@@ -546,6 +566,8 @@ class FlextInfraConstantsRefactor:
     CODEMOD_FACADE_MODULE_SCOPE: ClassVar[str] = "facade-module"
     CODEMOD_FAMILY_SCOPE_PREFIX: ClassVar[str] = "facade-family-"
     CODEMOD_PRIVATE_FAMILY_SCOPE_PREFIX: ClassVar[str] = "private-family-"
+    CODEMOD_TOP_PACKAGE_SCOPE_PREFIX: ClassVar[str] = "top-package-"
+    "File scope: the modules whose dotted name starts with that top-level package."
     CODEMOD_LACKS_LAYER_SCOPE_PREFIX: ClassVar[str] = "lacks-layer-"
     CODEMOD_FAMILY_WITHOUT_BASE_SCOPE: ClassVar[str] = "family-without-base"
     CODEMOD_FAMILY_BASE_SCOPE: ClassVar[str] = "family-base-file"
@@ -630,6 +652,14 @@ class FlextInfraConstantsRefactor:
     CODEMOD_TEXT_KEY_FLAGS: ClassVar[str] = "flags"
     CODEMOD_TEXT_KEY_EXPECTED: ClassVar[str] = "expected"
     CODEMOD_TEXT_KEY_CAPTURE_EQUALS: ClassVar[str] = "capture_equals"
+    CODEMOD_TEXT_KEY_RENDER: ClassVar[str] = "render"
+
+    @unique
+    class ModTextRender(StrEnum):
+        """Closed renderers a text rule names instead of a replace template."""
+
+        PROMOTED_COMMAND_HEADER = "promoted-command-header"
+
     # ast-grep rejects unknown top-level keys, so an ast-grep rule declares
     # its finding-count receipt under the `metadata` mapping it does accept.
     CODEMOD_RULE_METADATA_KEY: ClassVar[str] = "metadata"
@@ -707,8 +737,6 @@ class FlextInfraConstantsRefactor:
         "FlextDbt",
     )
     "Class name prefixes that identify integration projects."
-    MIN_PATH_DEPTH: int = 2
-    "Minimum relative path depth for module prefix detection."
 
     TYPING_FACTORY_ASSIGN_RE: ClassVar[t.RegexPattern] = re.compile(
         r"^(\w+)\s*=\s*(?:(?:\w+\.)*)?"

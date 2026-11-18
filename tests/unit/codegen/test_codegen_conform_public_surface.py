@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import difflib
+import os
 import shutil
 import stat
 from pathlib import Path
@@ -14,7 +15,7 @@ from pathlib import Path
 from flext_infra import FlextInfraConfig, config, infra
 from flext_infra.codegen import FlextInfraCodegenConform, FlextInfraCodegenMakeBootstrap
 from flext_infra.services import FlextInfraCodegenRoutes
-from tests import c, m, tm, u
+from tests import c, m, p, tm, u
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
 pytestmark = [c.Tests.MARK.slow]
@@ -22,6 +23,18 @@ pytestmark = [c.Tests.MARK.slow]
 
 class TestsFlextInfraCodegenConformPublicSurface:
     """The conform public surface: docs bootstrap, CLI routing, dependency scope."""
+
+    @staticmethod
+    def test_all_surfaces_plan_the_workspace_root_envrc(tmp_path: Path) -> None:
+        """A workspace ALL plan never drops the root repository's envrc surface."""
+        plan = u.Tests.scaffold_plan(tmp_path, members=("member-a",))
+        root_envrc = (tmp_path / c.Infra.ENVRC_FILENAME).resolve()
+        planned = tuple(file.path.resolve() for file in plan.files)
+        tm.that(
+            root_envrc in planned,
+            eq=True,
+            msg=f"root envrc missing from the ALL plan: {root_envrc}",
+        )
 
     @staticmethod
     def test_complete_bootstrap_plans_initializers_without_removed_owners(
@@ -56,7 +69,7 @@ class TestsFlextInfraCodegenConformPublicSurface:
             scope=c.Infra.CodegenConformScope.SELF,
         )
         plan = tm.ok(
-            FlextInfraCodegenConform.Generate(repository_root=root).plan(request),
+            u.Tests.conform_plan_result(root, request),
         )
         projected = next(file for file in plan.files if file.path == initializer)
         tm.that(projected.before, eq=before)
@@ -128,45 +141,33 @@ class TestsFlextInfraCodegenConformPublicSurface:
                 )
 
     @staticmethod
-    def test_bootstrap_kind_belongs_only_to_the_requested_target(
+    def test_bootstrap_uses_detected_kind_without_authoring_a_declaration(
         infra_git_repo: Path,
     ) -> None:
-        """Native bootstrap publishes its own declaration and preserves other owners."""
+        """Native bootstrap consumes project facts and preserves other owners."""
         root = infra_git_repo
         TestsFlextInfraConformSupport.seed_infra_package_tree(root)
-        kind = c.Infra.ProjectKind.INTERNAL_FLEXT
         _library, own, _local = FlextInfraConfig.config_layer_paths_for_repository(
             root,
             filename=c.Infra.CODEGEN_CONFIG_FILENAME,
         )
-        if own.is_file():
-            payload = tm.ok(u.Cli.yaml_safe_load(own))
-            declared = u.Cli.json_walk_path(payload, ("Infra", "codegen", "repository"))
-            if isinstance(declared, dict):
-                declared.pop("kind", None)
-            tm.ok(u.Cli.yaml_dump(own, payload))
         sibling = root.parent / "unselected-config.yaml"
         sibling.write_text("OtherOwner:\n  enabled: true\n", encoding="utf-8")
         sibling_before = sibling.read_bytes()
 
-        tm.ok(FlextInfraCodegenMakeBootstrap(repository_root=root, kind=kind).execute())
+        before = tm.ok(u.Cli.atomic_read_binary_file_state(own, required=False))
+        tm.ok(FlextInfraCodegenMakeBootstrap(repository_root=root).execute())
 
         declaration = tm.ok(u.Infra.load_repository_declaration_inputs(root))
-        tm.that(declaration.spec.kind, eq=kind)
-        tm.that(declaration.spec.model_fields_set, has="kind")
-        tm.that(sibling.read_bytes(), eq=sibling_before)
-        before = own.read_bytes()
-        tm.ok(FlextInfraCodegenMakeBootstrap(repository_root=root, kind=kind).execute())
-        tm.that(own.read_bytes(), eq=before)
-        conflicting = next(
-            candidate for candidate in c.Infra.ProjectKind if candidate != kind
+        tm.that(declaration.kind, eq=u.Infra.detected_project_kind(root))
+        tm.that(
+            tm.ok(u.Cli.atomic_read_binary_file_state(own, required=False)), eq=before
         )
-        result = FlextInfraCodegenMakeBootstrap(
-            repository_root=root,
-            kind=conflicting,
-        ).execute()
-        tm.ok(result.failure)
-        tm.that(own.read_bytes(), eq=before)
+        tm.that(sibling.read_bytes(), eq=sibling_before)
+        tm.ok(FlextInfraCodegenMakeBootstrap(repository_root=root).execute())
+        tm.that(
+            tm.ok(u.Cli.atomic_read_binary_file_state(own, required=False)), eq=before
+        )
 
     @staticmethod
     def test_make_bootstrap_check_is_repeatable_and_read_only(
@@ -281,6 +282,34 @@ class TestsFlextInfraCodegenConformPublicSurface:
         tm.that(tm.ok(infra.codegen_conform(request)).written_files, eq=())
 
     @staticmethod
+    def test_envrc_publication_authorizes_through_the_locked_direnv(
+        infra_git_repo: Path,
+        tmp_path: Path,
+    ) -> None:
+        """Publishing activation never selects a direnv from the host PATH."""
+        root = infra_git_repo
+        TestsFlextInfraConformSupport.seed_infra_package_tree(root)
+        destination = root / c.Infra.ENVRC_FILENAME
+        tm.ok(u.Cli.atomic_write_text_file(destination, "# stale activation\n"))
+        host_bin = tmp_path / "host-bin"
+        u.Tests.write_executable(
+            host_bin / "direnv",
+            "#!/bin/sh\nprintf 'host-direnv-selected\\n' >&2\nexit 97\n",
+        )
+        request = u.Tests.conform_request(
+            root,
+            what=c.Infra.CodegenConformSurface.ENVRC,
+            scope=c.Infra.CodegenConformScope.SELF,
+            mode=c.Infra.CodegenConformMode.APPLY,
+        )
+        with u.Tests.env_vars_context({
+            "PATH": os.pathsep.join((str(host_bin), os.environ["PATH"])),
+            config.Infra.codegen.make.ci.variable: "",
+        }):
+            result = infra.codegen_conform(request)
+        tm.that(tm.ok(result).written_files, eq=(destination,))
+
+    @staticmethod
     @c.Tests.MARK.parametrize(
         "scope",
         [c.Infra.CodegenConformScope.DECLARED, c.Infra.CodegenConformScope.ALL],
@@ -355,7 +384,7 @@ class TestsFlextInfraCodegenConformPublicSurface:
         tm.that(stat.S_IMODE(destination.stat().st_mode), eq=desired_mode)
 
     @staticmethod
-    def _workspace_fixture(tmp_path: Path) -> tuple[Path, m.Infra.WorkspaceSpec]:
+    def _workspace_fixture(tmp_path: Path) -> tuple[Path, p.Infra.WorkspaceSpec]:
         """Scaffold the governed workspace fixture.
 
         Returns:
@@ -411,8 +440,8 @@ class TestsFlextInfraCodegenConformPublicSurface:
         package = (
             root
             / member.path
-            / config.Infra.tooling.tools.pyright.path_rules.source_dir
-            / u.Tests.project_spec(member.distribution).package_name
+            / config.Infra.tooling.tools.pyrefly.path_rules.source_dir
+            / tm.not_none(u.Tests.project_spec(member.distribution).package_name)
         )
         (package / c.Infra.INIT_PY).unlink()
         u.Tests.commit_git_changes(root / member.path, "remove declared package")

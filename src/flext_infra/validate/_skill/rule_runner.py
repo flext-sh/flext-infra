@@ -145,7 +145,7 @@ class FlextInfraValidateSkillRuleRunner:
         count = 0
         for raw_line in stdout.splitlines():
             line = raw_line.strip()
-            if line and u.Cli.json_parse(line).success:
+            if line and u.Cli.json_loads(line).success:
                 count += 1
         return count
 
@@ -162,7 +162,7 @@ class FlextInfraValidateSkillRuleRunner:
             line = raw_line.strip()
             if not line:
                 continue
-            payload_result = u.Cli.json_parse(line)
+            payload_result = u.Cli.json_loads(line)
             if payload_result.success and isinstance(payload_result.value, Mapping):
                 payload = payload_result.value
                 maybe = payload.get(

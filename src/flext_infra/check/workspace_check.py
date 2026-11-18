@@ -19,10 +19,7 @@ from flext_infra.check import (
     FlextInfraGateRegistry,
     FlextInfraWorkspaceCheckGates,
 )
-from flext_infra.workspace import (
-    FlextInfraRuntimeDependencyCollector,
-    FlextInfraWorkspaceDetector,
-)
+from flext_infra.workspace import FlextInfraRuntimeDependencyCollector
 
 
 class FlextInfraWorkspaceChecker(
@@ -53,9 +50,9 @@ class FlextInfraWorkspaceChecker(
         u.Cli.info("check: registry initialization start")
         self._registry = FlextInfraGateRegistry(
             project_gates=u.Infra
-            .load_codegen_inputs(self.repository_root)
+            .load_codegen_policy(self.repository_root)
             .unwrap()
-            .spec.make.project_check_gates
+            .make.project_check_gates
         )
         self._default_reports_dir = u.Cli.resolve_report_dir(
             self._repository_root,
@@ -128,7 +125,7 @@ class FlextInfraWorkspaceChecker(
             Success flag of the integrity check execution.
 
         """
-        policy = u.Infra.load_codegen_inputs(params.repository_root).unwrap().spec.make
+        policy = u.Infra.load_codegen_policy(params.repository_root).unwrap().make
         gates = (
             c.Infra.RUNTIME_INTEGRITY,
             *(gate.name for gate in policy.project_check_gates if gate.integrity),
@@ -197,7 +194,12 @@ class FlextInfraWorkspaceChecker(
                 f"file-gate: source={selected_files[0]} gates={gates} "
                 "selection=CLI:check run --gates"
             )
-        runtime_root = u.Infra.runtime_owner_root(params.repository_root).unwrap()
+        # The runtime owner is elected from Git; a target outside a checkout
+        # is a typed failure the route reports, never a raised exception.
+        runtime = u.Infra.runtime_owner_root(params.repository_root)
+        if runtime.failure:
+            return r[p.Infra.CheckReportSummary].from_failure(runtime)
+        runtime_root = runtime.value
         gate_ctx = m.Infra.GateContext(
             repository_root=params.repository_root,
             runtime_root=runtime_root,
@@ -206,7 +208,6 @@ class FlextInfraWorkspaceChecker(
             check_only=params.check_only,
             fail_fast=params.fail_fast,
             ruff_args=tuple(self.parse_tool_args(params.ruff_args)),
-            pyright_args=tuple(self.parse_tool_args(params.pyright_args)),
             selected_files=selected_files,
             runtime_dependency_collector=FlextInfraRuntimeDependencyCollector(
                 python=u.Infra.runtime_python(
@@ -236,11 +237,8 @@ class FlextInfraWorkspaceChecker(
             The declared inventory or the first invalid phase selection.
 
         """
-        gates = u.Infra.selected_check_gates(
-            u.Infra.load_codegen_inputs(params.repository_root).unwrap().spec.make,
-            params.gate_set,
-            phase=phase,
-        )
+        make = u.Infra.load_codegen_policy(params.repository_root).unwrap().make
+        gates = u.Infra.selected_check_gates(make, params.gate_set, phase=phase)
         if phase == c.Infra.CheckPhase.PRIMARY:
             if any((
                 params.file is not None,
@@ -250,7 +248,6 @@ class FlextInfraWorkspaceChecker(
                 params.apply,
                 params.check_only,
                 params.ruff_args is not None,
-                params.pyright_args is not None,
             )):
                 return r[Sequence[str]].fail(
                     "primary check requires unfiltered read-only global check scope"
@@ -304,7 +301,6 @@ class FlextInfraWorkspaceChecker(
         if (
             params.apply
             or params.ruff_args is not None
-            or params.pyright_args is not None
             or (requested and tuple(requested) != (".",))
         ):
             return r[tuple[Path, ...]].fail(
@@ -455,18 +451,17 @@ class FlextInfraWorkspaceChecker(
             return result_type.fail(
                 f"check run accepts scope self or all, not {scope.value}",
             )
-        return FlextInfraWorkspaceDetector.load_workspace_spec(
+        return u.Infra.repository_operation_targets(
             params.repository_root,
+            scope,
         ).map(
-            lambda workspace: (
-                root_target,
-                *(
-                    m.Infra.CheckProjectTarget(
-                        name=member.name,
-                        path=params.repository_root / member.path,
-                    )
-                    for member in u.Infra.mutable_flext_members(workspace)
-                ),
+            lambda targets: tuple(
+                m.Infra.CheckProjectTarget(
+                    name=target.root.name,
+                    path=target.root,
+                )
+                for target in targets
+                if target.managed is not False
             ),
         )
 
@@ -602,7 +597,6 @@ class FlextInfraWorkspaceChecker(
         unfiltered = not any((
             effective_ctx.selected_files,
             effective_ctx.ruff_args,
-            effective_ctx.pyright_args,
             effective_ctx.apply_fixes,
             effective_ctx.check_only,
         ))
@@ -617,23 +611,23 @@ class FlextInfraWorkspaceChecker(
         prerequisites = tuple(
             gate
             for gate in u.Infra
-            .load_codegen_inputs(self._repository_root)
+            .load_codegen_policy(self._repository_root)
             .unwrap()
-            .spec.make.check_prerequisite_gates
+            .make.check_prerequisite_gates
             if gate in gates and not effective_ctx.apply_fixes
         )
         admission_gates = prerequisites or gates
         pending_gates = tuple(gate for gate in gates if gate not in admission_gates)
         targets = self._targets_for_gates(targets, admission_gates, effective_ctx)
-        reached: dict[Path, m.Infra.ProjectResult] = {}
-        current_summary = m.Infra.CheckReportSummary(
-            phase=phase,
-            requested_gates=gates,
-            pending_gates=pending_gates,
-            targets=targets,
-            results=(),
-            selected_files=tuple(effective_ctx.selected_files),
-        )
+        reached: dict[Path, p.Infra.ProjectResult] = {}
+        current_summary = m.Infra.CheckReportSummary.model_validate({
+            "phase": (phase),
+            "requested_gates": (gates),
+            "pending_gates": (pending_gates),
+            "targets": (targets),
+            "results": (()),
+            "selected_files": (tuple(effective_ctx.selected_files)),
+        })
 
         def publish_summary(summary: p.Infra.CheckReportSummary) -> None:
             """Retain this invocation's current facts through the existing writers."""
@@ -653,18 +647,20 @@ class FlextInfraWorkspaceChecker(
         def publish_progress(project_dir: Path, project: p.Infra.ProjectResult) -> None:
             reached[project_dir.resolve()] = project
             publish_summary(
-                m.Infra.CheckReportSummary(
-                    phase=phase,
-                    requested_gates=gates,
-                    pending_gates=pending_gates,
-                    targets=targets,
-                    results=tuple(
-                        reached[target.path]
-                        for target in targets
-                        if target.path in reached
+                m.Infra.CheckReportSummary.model_validate({
+                    "phase": (phase),
+                    "requested_gates": (gates),
+                    "pending_gates": (pending_gates),
+                    "targets": (targets),
+                    "results": (
+                        tuple(
+                            reached[target.path]
+                            for target in targets
+                            if target.path in reached
+                        )
                     ),
-                    selected_files=tuple(effective_ctx.selected_files),
-                ),
+                    "selected_files": (tuple(effective_ctx.selected_files)),
+                }),
             )
 
         effective_ctx = effective_ctx.model_copy(
@@ -682,42 +678,24 @@ class FlextInfraWorkspaceChecker(
                 fail_fast=effective_ctx.fail_fast,
             )
         )
-        if (
-            pending_gates
-            and (not outcome.failed or not effective_ctx.fail_fast)
-            and len(outcome.results) == len(targets)
-            and not any(
-                execution.interrupted
-                for project in outcome.results
-                for execution in project.gates.values()
-            )
-        ):
-            targets = self._targets_for_gates(targets, gates, effective_ctx)
-            admission_gates = pending_gates
-            pending_gates = ()
-            outcome = self._run_project_phase(
-                targets,
-                admission_gates,
-                effective_ctx,
-                fail_fast=effective_ctx.fail_fast,
-                previous=outcome,
-            )
+        outcome, targets, pending_gates = self._run_cost_phases(
+            targets, (gates, pending_gates), effective_ctx, outcome
+        )
         global_targets: tuple[p.Infra.CheckProjectTarget, ...] | None = None
         if not pending_gates and unfiltered:
             global_plan = self.plan_global_targets(gates, effective_ctx)
             if global_plan.failure:
                 return r[p.Infra.CheckReportSummary].from_failure(global_plan)
             global_targets = global_plan.value
-        summary = m.Infra.CheckReportSummary(
-            phase=phase,
-            requested_gates=gates,
-            pending_gates=pending_gates,
-            targets=targets,
-            results=tuple(outcome.results),
-            # A file-scoped run never claims whole-project quality.
-            selected_files=tuple(effective_ctx.selected_files),
-            global_targets=global_targets,
-        )
+        summary = m.Infra.CheckReportSummary.model_validate({
+            "phase": (phase),
+            "requested_gates": (gates),
+            "pending_gates": (pending_gates),
+            "targets": (targets),
+            "results": (tuple(outcome.results)),
+            "selected_files": (tuple(effective_ctx.selected_files)),
+            "global_targets": (global_targets),
+        })
         # Preserve a changed returned result without repeating an identical
         # last-gate or zero-applicable-gate publication.
         if summary != current_summary:
@@ -725,13 +703,69 @@ class FlextInfraWorkspaceChecker(
         self._print_summary(effective_ctx.reports_dir, outcome, summary)
         return r[p.Infra.CheckReportSummary].ok(summary)
 
+    def _run_cost_phases(
+        self,
+        targets: tuple[p.Infra.CheckProjectTarget, ...],
+        selection: tuple[Sequence[str], tuple[str, ...]],
+        ctx: p.Infra.GateContext,
+        outcome: p.Infra.LoopOutcome,
+    ) -> tuple[
+        p.Infra.LoopOutcome, tuple[p.Infra.CheckProjectTarget, ...], tuple[str, ...]
+    ]:
+        """Run the pending gates in phases ordered by declared check budget.
+
+        Cheapest evidence first (ADR-032 "Fail early"): gates sharing one
+        declared budget form a phase, phases run from the smallest budget up,
+        so the long gates start only after every faster gate passed. A failed,
+        incomplete or interrupted phase ends the verb before the next one,
+        and the gates it never reached stay pending.
+
+        Returns:
+            The last outcome, the elected targets and the gates not executed.
+
+        """
+        gates, pending_gates = selection
+        projects = tuple(target.path for target in targets)
+        budgets = {
+            gate: self._registry.check_budget_seconds((gate,), projects)
+            for gate in pending_gates
+        }
+        phases = tuple(
+            tuple(gate for gate in pending_gates if budgets[gate] == budget)
+            for budget in sorted(set(budgets.values()))
+        )
+        if phases:
+            targets = self._targets_for_gates(targets, gates, ctx)
+        for phase_gates in phases:
+            if (
+                outcome.failed
+                or len(outcome.results) != len(targets)
+                or any(
+                    execution.interrupted
+                    for project in outcome.results
+                    for execution in project.gates.values()
+                )
+            ):
+                break
+            pending_gates = tuple(
+                gate for gate in pending_gates if gate not in phase_gates
+            )
+            outcome = self._run_project_phase(
+                targets,
+                phase_gates,
+                ctx,
+                fail_fast=ctx.fail_fast,
+                previous=outcome,
+            )
+        return outcome, targets, pending_gates
+
     @staticmethod
     def _prepare_report_invocation(
         targets: tuple[p.Infra.CheckProjectTarget, ...],
         ctx: p.Infra.GateContext,
         *,
         capture_identity: bool,
-    ) -> p.Result[tuple[tuple[p.Infra.CheckProjectTarget, ...], m.Infra.GateContext]]:
+    ) -> p.Result[tuple[tuple[p.Infra.CheckProjectTarget, ...], p.Infra.GateContext]]:
         """Capture ordered pre-gate identities before reserving the report leaf.
 
         Independent native reads share the existing check worker bound. Every
@@ -839,12 +873,12 @@ class FlextInfraWorkspaceChecker(
 
         """
         return tuple(
-            project
-            if isinstance(project, m.Infra.CheckProjectTarget)
-            else m.Infra.CheckProjectTarget(
+            m.Infra.CheckProjectTarget(
                 name=project,
                 path=self._repository_root / project,
             )
+            if isinstance(project, str)
+            else project
             for project in projects
         )
 

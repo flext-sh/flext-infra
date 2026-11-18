@@ -288,8 +288,7 @@ class FlextInfraPytestProfileChild:
             The complete ``python -c`` payload text.
 
         """
-        package = __name__.rpartition(".")[0]
-        filename = f"{__name__.rpartition('.')[2]}.py"
+        package, *relative = __name__.split(".")
         return (
             "import sys\n"
             "from pathlib import Path\n"
@@ -298,7 +297,8 @@ class FlextInfraPytestProfileChild:
             f"package = find_spec({package!r})\n"
             "if package is None or package.origin is None:\n"
             f"    raise ModuleNotFoundError({__name__!r})\n"
-            f"child_path = Path(package.origin).with_name({filename!r})\n"
+            f"child_path = Path(package.origin).parent.joinpath(*{tuple(relative)!r})"
+            ".with_suffix('.py')\n"
             f"spec = spec_from_file_location({__name__!r}, child_path)\n"
             "if spec is None or spec.loader is None:\n"
             f"    raise ImportError({__name__!r})\n"

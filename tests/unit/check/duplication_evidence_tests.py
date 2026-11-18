@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra.gates.duplication_evidence import FlextInfraDuplicationEvidence
+from flext_infra.gates import FlextInfraDuplicationEvidence
 from tests import c, m, p, tm, u
 
 

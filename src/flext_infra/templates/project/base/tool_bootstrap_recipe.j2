@@ -1,30 +1,19 @@
-{#- The official installer owns initial acquisition, including platform and
-    checksum handling. Mise then reads its own lock and provisions the explicit
-    declared tools; neither Make nor CI interprets lock or release formats. -#}
+{#- The official installer owns acquisition, platform and checksum handling, and
+    places Mise at its default $(BOOTSTRAP_MISE), shared by every checkout. It
+    runs only when that executable is absent; the committed min_version makes
+    Mise itself refuse an older one. Native `mise install` then provisions the
+    pinned self-managed release, which execution resolves through `mise which`. -#}
 {% macro mise_acquisition(project_root, toolchain) -%}
 	bootstrap_stage=acquisition; \
-	mkdir -p "{{ project_root }}/.bin"; \
-	export MISE_INSTALL_FROM_GITHUB=1 MISE_INSTALL_SKIP_IF_EXISTS=1 MISE_INSTALL_HELP=0; \
+	if [ ! -x "$(BOOTSTRAP_MISE)" ]; then \
+	export MISE_INSTALL_FROM_GITHUB=1 MISE_INSTALL_HELP=0; \
 {% if toolchain.mise_version == "latest" %}	unset MISE_VERSION; \
-	mise_acquired=false; \
 {% else %}	export MISE_VERSION="{{ toolchain.mise_version }}"; \
-	{#- The declared version is the gate: a present binary reporting exactly
-	    it needs no installer download, so a no-op setup needs no network. #}
-	mise_acquired=false; \
-	if [ -x "$(BOOTSTRAP_MISE)" ]; then \
-		mise_present="$$("$(BOOTSTRAP_MISE)" --version)"; \
-		if [ "$${mise_present%% *}" = "$${MISE_VERSION}" ]; then mise_acquired=true; fi; \
-	fi; \
-{% endif %}	if [ "$${mise_acquired}" = true ]; then \
-		printf 'setup: mise %s already acquired at %s\n' "$${MISE_VERSION}" "$(BOOTSTRAP_MISE)"; \
-	else \
-	case "$${OS:-}" in \
+{% endif %}	case "$${OS:-}" in \
 		(Windows_NT) \
-			export MISE_INSTALL_PATH="$$(cygpath --windows "$(BOOTSTRAP_MISE)")"; \
 			powershell.exe -NoProfile -Command '$$ErrorActionPreference = "Stop"; Invoke-RestMethod https://mise.run/powershell | Invoke-Expression' ;; \
 		(*) \
-			export MISE_INSTALL_PATH="$(BOOTSTRAP_MISE)"; \
-			mise_stage="$$(mktemp -d "{{ project_root }}/.bin/.mise-install.XXXXXXXX")"; \
+			mise_stage="$$(mktemp -d)"; \
 			curl --proto '=https' --tlsv1.2 -fsSL -o "$${mise_stage}/install.sh" https://mise.run; \
 			sh "$${mise_stage}/install.sh" ;; \
 	esac; \
@@ -55,25 +44,56 @@
 	fi;
 {%- endmacro %}
 
-{#- Locked installation of the declared toolchain: mise's native locked mode
-    installs exactly what mise.lock pins, resolving no backend and fetching no
-    provenance artifact. It exports MISE_LOCKED for the rest of its shell, so a
-    caller that later writes a lock runs it in a subshell. -#}
-{% macro mise_locked_install(project_root, install_tools) -%}
-	export MISE_SHIMS_DIR="{{ project_root }}/.bin/shims"; \
-	{#- Setup installs the committed mise.lock as it is: mise's native locked
-	    mode resolves no backend and fetches no provenance artifact; `make upg`
-	    stays the only lock writer. #}
-	export MISE_LOCKED=1; \
+{#- One lock resolution per project (ADR-030): each governed member forms its
+    own uv.lock, then this project, whose lock is their composition. Only
+    ``upgrade`` moves the pins a lock already holds; without it a changed
+    declaration resolves and every existing pin stays. -#}
+{% macro uv_lock_resolution(upgrade) -%}
+	{{ mise_network_admission() }} \
+	mise_bin="$(MISE)"; \
+	$(RESOLVE_DESIRED_PYTHON); \
+	{% if upgrade -%}
+	upg_pkg_flags=""; \
+	for pkg in $(UPG_PACKAGES); do upg_pkg_flags="$$upg_pkg_flags --upgrade-package $$pkg"; done; \
+	if [ -z "$$upg_pkg_flags" ]; then upg_pkg_flags=" --upgrade"; fi; \
+	{% endif -%}
+	set -f; \
+	$(GOVERNED_CHECKOUTS); \
+	for checkout in $$checkouts; do \
+		case "$$checkout" in .) continue ;; esac; \
+		[ ! -f "$$root/$$checkout/pyproject.toml" ] || \
+			$(UV) lock{% if upgrade %}$$upg_pkg_flags{% endif %} --project "$$root/$$checkout" --python "$$desired_python" --no-python-downloads; \
+	done; \
+	set +f; \
+	$(UV) lock{% if upgrade %}$$upg_pkg_flags{% endif %} --project "$(PROJECT_ROOT)" --python "$$desired_python" --no-python-downloads;
+{%- endmacro %}
+
+{#- Authorize direnv on every governed checkout that ships an .envrc so
+    submodules and worktrees never trip ".envrc is blocked". -#}
+{% macro direnv_allow_governed() -%}
+	set -f; \
+	$(GOVERNED_CHECKOUTS); \
+	for checkout in $$checkouts; do \
+		if [ "$$checkout" = . ]; then allow_root="$$root"; else allow_root="$$root/$$checkout"; fi; \
+		[ ! -f "$$allow_root/.envrc" ] || $(DIRENV) allow "$$allow_root"; \
+	done; \
+	set +f
+{%- endmacro %}
+
+{#- Native installation preserves valid pins. Setup fills absent lock entries;
+    upgrade installs the exact pins its preceding resolution published. -#}
+{% macro mise_install(project_root, install_tools, bin_dir, locked=true) -%}
+	export MISE_SHIMS_DIR="{{ project_root }}/{{ bin_dir }}/shims"; \
+	export MISE_LOCKED={{ "1" if locked else "0" }}; \
 	bootstrap_stage=tool-install; \
 	"$(BOOTSTRAP_MISE)" -C "{{ project_root }}" install --yes{% for tool in install_tools %} "{{ tool }}"{% endfor %};
 {%- endmacro %}
 
-{#- One provisioning owner for setup and upg: acquire the pinned Mise through
-    the official installer, then install the locked toolchain. -#}
-{% macro mise_toolchain_provision(project_root, toolchain, install_tools) -%}
+{#- Setup acquires the declared Mise and lets its native installer complete
+    incomplete lock inputs before the runtime reader consumes them. -#}
+{% macro mise_toolchain_provision(project_root, toolchain, install_tools, bin_dir) -%}
 {{ mise_acquisition(project_root, toolchain) }} \
-	{{ mise_locked_install(project_root, install_tools) }}
+	{{ mise_install(project_root, install_tools, bin_dir, locked=false) }}
 {%- endmacro %}
 
 {#- Syntax preflight of one committed TOML lock (a projection never
@@ -130,13 +150,13 @@ if [ "$$("{{ mise }}" -C {{ lock_root }} lock --bump --dry-run --json)" = "[]" ]
 {% set mise_selector = toolchain.mise_selector -%}
 .PHONY: {{ target }}
 
+# The lifecycle invokes recursive make through mise, so preserve jobserver FDs.
 {{ target }}:
-	# The lifecycle invokes recursive make through mise, so preserve jobserver FDs.
 	+@set -eu; \
 	bootstrap_stage=source-identity; bootstrap_completed=false; bootstrap_sha=null; bootstrap_git_status=null; mise_stage=; \
 	bootstrap_report="{{ project_root }}/{{ report_relative_path }}"; \
 	bootstrap_publish_report() { \
-		if mkdir -p "$$(dirname "$${bootstrap_report}")"; then :; else return $$?; fi; \
+		if [ -d "$$(dirname "$${bootstrap_report}")" ]; then :; else mkdir -p "$$(dirname "$${bootstrap_report}")" 2>/dev/null || true; fi; \
 		if printf '%s\n' {{ report_literal }} | sed \
 			-e "s/@@SHA@@/$${bootstrap_sha}/" \
 			-e "s/@@GIT_EXIT@@/$${bootstrap_git_status}/" \
@@ -153,6 +173,7 @@ if [ "$$("{{ mise }}" -C {{ lock_root }} lock --bump --dry-run --json)" = "[]" ]
 			if [ "$${bootstrap_status}" -eq 0 ]; then bootstrap_status=$${bootstrap_report_status}; fi; \
 		fi; \
 		exit "$${bootstrap_status}"' EXIT; \
+	trap 'exit 129' HUP; trap 'exit 130' INT; trap 'exit 143' TERM; \
 	if bootstrap_candidate="$$(git -C "{{ project_root }}" rev-parse --verify HEAD)"; then \
 		bootstrap_git_status=0; \
 		case "$${bootstrap_candidate}" in \
@@ -164,13 +185,17 @@ if [ "$$("{{ mise }}" -C {{ lock_root }} lock --bump --dry-run --json)" = "[]" ]
 		esac; \
 	else bootstrap_git_status=$$?; fi; \
 	{{ mise_network_admission() }} \
-	{{ mise_toolchain_provision(project_root, toolchain, install_tools) }} \
+	{{ mise_toolchain_provision(project_root, toolchain, install_tools, make.bootstrap_bin_dir) }} \
 	mise_active="$$("$(BOOTSTRAP_MISE)" -C "{{ project_root }}" tool "{{ mise_selector }}" --active)"; \
 	mise_binary="$$("$(BOOTSTRAP_MISE)" -C "{{ project_root }}" which mise)"; \
 	if [ "$${OS:-}" = Windows_NT ]; then mise_binary="$$(cygpath --unix "$${mise_binary}")"; fi; \
-	bootstrap_stage=shims; \
-	"$${mise_binary}" -C "{{ project_root }}" reshim; \
-	if [ -n "$${GITHUB_PATH:-}" ]; then printf '%s\n' "$$(dirname "$${mise_binary}")" "$${MISE_SHIMS_DIR}" >> "$${GITHUB_PATH}"; fi; \
+	{#- A hosted runner hands later steps only the GITHUB_PATH entries. They are
+	    the installed tool directories, as the local activation (.envrc) puts
+	    them on PATH; a shim resolves its version from the caller's working
+	    directory, so a tool run outside the checkout found none (flext-cli CI
+	    run 42473521346: "No version is set for shim: taplo"). #}
+	bootstrap_stage=tool-paths; \
+	if [ -n "$${GITHUB_PATH:-}" ]; then "$${mise_binary}" -C "{{ project_root }}" bin-paths >> "$${GITHUB_PATH}"; fi; \
 	printf 'setup: mise %s provisioning complete\n' "$${mise_active}"; \
 	printf 'setup: entering lifecycle (submodules, environment, hooks) make=%s\n' "$(SELF_MAKE_EXECUTABLE)"; \
 	bootstrap_stage=lifecycle; \

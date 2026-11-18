@@ -48,6 +48,19 @@ class FlextInfraModelsDepsToolConfig(
             m.Field(description="Ruff rule codes the ruff stage repairs"),
         ] = ()
 
+        @m.field_validator("shapes", "select", mode="before")
+        @classmethod
+        def _freeze_yaml_selection(
+            cls, value: t.Infra.SettingsContainerInput
+        ) -> t.Infra.SettingsContainerInput:
+            """Freeze YAML arrays while retaining strict element validation.
+
+            Returns:
+                The array as a tuple, or the original non-array input.
+
+            """
+            return tuple(value) if isinstance(value, list) else value
+
         @m.model_validator(mode="after")
         def _validate_kind_fields(self) -> Self:
             """Keep each stage's fields to its kind.
@@ -88,12 +101,7 @@ class FlextInfraModelsDepsToolConfig(
         )
         stages: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.ModStageConfig,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsDepsToolConfig.ModStageConfig
-                    ),
-                ],
+                FlextInfraModelsDepsToolConfig.ModStageConfig,
                 ...,
             ],
             m.Field(
@@ -144,12 +152,16 @@ class FlextInfraModelsDepsToolConfig(
     class ModConfig(m.ArbitraryTypesModel):
         """Declarative policy for the unified modernize verb ``mod``."""
 
-        phases: Annotated[
-            p.Infra.ModPhasesConfig,
-            t.schema_for_model(lambda: FlextInfraModelsDepsToolConfig.ModPhasesConfig),
-        ] = m.Field(
+        phases: FlextInfraModelsDepsToolConfig.ModPhasesConfig = m.Field(
             description="Phase toggles read from config/tooling.yaml.",
         )
+        scan_threads: Annotated[
+            t.PositiveInt,
+            m.Field(
+                default=4,
+                description="Bounded thread budget for ast-grep scan execution.",
+            ),
+        ] = 4
 
     class PytestWorkerCeiling(m.ArbitraryTypesModel):
         """Tagged per-project pytest worker ceiling: absolute or CPU fraction.
@@ -194,7 +206,7 @@ class FlextInfraModelsDepsToolConfig(
         @m.model_validator(mode="after")
         def _require_exactly_one_form(
             self,
-        ) -> FlextInfraModelsDepsToolConfig.PytestWorkerCeiling:
+        ) -> Self:
             """Reject ambiguous (both or neither) ceiling forms.
 
             Returns:
@@ -217,26 +229,36 @@ class FlextInfraModelsDepsToolConfig(
         """Pytest baseline settings loaded from YAML."""
 
         # Every rendered pytest value is validated config data.
+        ordinary_timeout_seconds: int = m.Field(
+            alias="ordinary-timeout-seconds",
+            gt=0,
+            le=2,
+            description="Hard maximum runtime for one ordinary item.",
+        )
         slow_timeout_seconds: int = m.Field(
             alias="slow-timeout-seconds",
             gt=0,
+            le=1800,
             description="Hard maximum runtime for one explicitly slow item.",
         )
         slow_marker: t.NonEmptyStr = m.Field(
             alias="slow-marker",
             description="Native pytest marker whose items run in their own phase.",
         )
+        item_deadline_call_only: bool = m.Field(
+            default=False,
+            alias="item-deadline-call-only",
+            description=(
+                "Native pytest-timeout func_only: an item deadline measures the "
+                "test call only, leaving fixture teardown and plugin bookkeeping "
+                "to the suite deadline instead of a test budget."
+            ),
+        )
         run_timeout_seconds: int = m.Field(
             alias="run-timeout-seconds",
             gt=0,
             le=1800,
-            description=(
-                "Fleet-default wall-clock maximum for one testmon runner operation. "
-                "Repositories whose session prepares a real local runtime (for example "
-                "the Docker OUD stack) may declare a higher budget; the previous 120s "
-                "fleet ceiling predates in-session real-runtime preparation and is "
-                "recorded in the fleet policy notes."
-            ),
+            description="Aggregate wall-clock maximum for one pytest operation.",
         )
         termination_grace_seconds: int = m.Field(
             alias="termination-grace-seconds",
@@ -307,14 +329,9 @@ class FlextInfraModelsDepsToolConfig(
         )
         parallel_worker_overrides: Mapping[
             str,
-            Annotated[
-                p.Infra.PytestWorkerCeiling,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsDepsToolConfig.PytestWorkerCeiling
-                ),
-            ],
+            FlextInfraModelsDepsToolConfig.PytestWorkerCeiling,
         ] = m.Field(
-            {},
+            default_factory=dict,
             alias="parallel-worker-overrides",
             description=(
                 "Per declared-project worker ceilings (``[project].name`` → absolute "
@@ -362,6 +379,14 @@ class FlextInfraModelsDepsToolConfig(
             description=(
                 "Markers of external-token gates deselected by offline verification and"
                 " reported as NOT EXECUTED; each must be declared in standard-markers."
+            ),
+        )
+        harness_gate_markers: tuple[str, ...] = m.Field(
+            alias="harness-gate-markers",
+            strict=False,
+            description=(
+                "External gate markers whose suites run only under their own harness:"
+                " every incremental scope deselects them, local or CI."
             ),
         )
 
@@ -443,11 +468,12 @@ class FlextInfraModelsDepsToolConfig(
             if self.slow_timeout_seconds >= self.run_timeout_seconds:
                 msg = "pytest slow timeout must be less than run timeout"
                 raise ValueError(msg)
-            # Only the slow phase has a bounded item drain. Ordinary items are
-            # stopped by the aggregate process wall, not a synthetic item cap.
             reserve = self.slow_suite_stop_reserve_seconds
             if self.run_timeout_seconds <= reserve:
                 msg = "pytest run timeout must exceed the suite stop reserve"
+                raise ValueError(msg)
+            if self.slow_marker in self.ci_excluded_markers:
+                msg = "pytest slow marker must not be excluded from CI"
                 raise ValueError(msg)
             if "--verbose" not in self.progress_args:
                 msg = "pytest progress args must expose verbose item progress"
@@ -485,6 +511,9 @@ class FlextInfraModelsDepsToolConfig(
                     "pytest external-gate-markers must be a non-empty subset of"
                     f" standard-markers; undeclared: {undeclared}"
                 )
+                raise ValueError(msg)
+            if not set(self.harness_gate_markers) <= set(self.external_gate_markers):
+                msg = "pytest harness-gate-markers must be external-gate-markers"
                 raise ValueError(msg)
             runner_owned_prefixes = (
                 "-k",
@@ -536,13 +565,10 @@ class FlextInfraModelsDepsToolConfig(
             ),
         ]
         semantic: Annotated[
-            Annotated[
-                p.Infra.JscpdSemantic,
-                t.schema_for_model(lambda: FlextInfraModelsDuplication.JscpdSemantic),
-            ],
+            FlextInfraModelsDuplication.JscpdSemantic,
             m.Field(description="Embedding pass host (--semantic)."),
         ]
-        ignore_patterns: t.StrTuple = m.Field(
+        ignore_patterns: Sequence[str] = m.Field(
             alias="ignore-patterns",
             description=(
                 "Operator-authorized code-level regexes jscpd skips (--ignore-pattern)."
@@ -558,6 +584,13 @@ class FlextInfraModelsDepsToolConfig(
                 ),
             ),
         ] = ()
+
+    class BanditToolConfig(m.ArbitraryTypesModel):
+        """Bandit test ids the security gate skips (``--skip``)."""
+
+        skips: Sequence[str] = m.Field(
+            description="Bandit test ids the security gate does not report.",
+        )
 
     class MarkdownProjectedBlock(m.ArbitraryTypesModel):
         """One foreign writer's projected block that Markdown gates do not lint.
@@ -587,12 +620,7 @@ class FlextInfraModelsDepsToolConfig(
         """Markdown rules; artifact and exclusion declarations own file scope."""
 
         projected_blocks: tuple[
-            Annotated[
-                p.Infra.MarkdownProjectedBlock,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsDepsToolConfig.MarkdownProjectedBlock
-                ),
-            ],
+            FlextInfraModelsDepsToolConfig.MarkdownProjectedBlock,
             ...,
         ] = m.Field(
             alias="projected-blocks",
@@ -618,11 +646,11 @@ class FlextInfraModelsDepsToolConfig(
             m.BeforeValidator(
                 lambda value: tuple(value) if isinstance(value, list) else value
             ),
-            m.Field(
-                alias="extend-enable",
-                description="Opt-in rules activated on top of the default set.",
-            ),
-        ] = ()
+        ] = m.Field(
+            (),
+            alias="extend-enable",
+            description="Opt-in rules activated on top of the default set.",
+        )
         rules: Annotated[
             t.Infra.SettingsPairs,
             m.Field(description="Ordered rumdl rules and their options."),
@@ -677,61 +705,26 @@ class FlextInfraModelsDepsToolConfig(
     class ToolConfigTools(m.ArbitraryTypesModel):
         """Tool map loaded from YAML."""
 
-        markdown: Annotated[
-            p.Infra.MarkdownConfig,
-            t.schema_for_model(lambda: FlextInfraModelsDepsToolConfig.MarkdownConfig),
-        ] = m.Field(
+        markdown: FlextInfraModelsDepsToolConfig.MarkdownConfig = m.Field(
             description="Markdown lint settings",
         )
-        ruff: Annotated[
-            p.Infra.RuffConfig,
-            t.schema_for_model(
-                lambda: FlextInfraModelsDepsToolConfigLinters.RuffConfig
-            ),
-        ] = m.Field(
+        ruff: FlextInfraModelsDepsToolConfigLinters.RuffConfig = m.Field(
             description="Ruff settings",
         )
-        mypy: Annotated[
-            p.Infra.MypyConfig,
-            t.schema_for_model(
-                lambda: FlextInfraModelsDepsToolConfigLinters.MypyConfig
-            ),
-        ] = m.Field(
-            description="Mypy settings",
-        )
-        pyright: Annotated[
-            p.Infra.PyrightConfig,
-            t.schema_for_model(
-                lambda: FlextInfraModelsDepsToolConfigTypeCheckers.PyrightConfig
-            ),
-        ] = m.Field(
-            description="Pyright settings",
-        )
-        pyrefly: Annotated[
-            p.Infra.PyreflyConfig,
-            t.schema_for_model(
-                lambda: FlextInfraModelsDepsToolConfigTypeCheckers.PyreflyConfig
-            ),
-        ] = m.Field(
+        pyrefly: FlextInfraModelsDepsToolConfigTypeCheckers.PyreflyConfig = m.Field(
             description="Pyrefly settings",
         )
-        pytest: Annotated[
-            p.Infra.PytestConfig,
-            t.schema_for_model(lambda: FlextInfraModelsDepsToolConfig.PytestConfig),
-        ] = m.Field(
+        pytest: FlextInfraModelsDepsToolConfig.PytestConfig = m.Field(
             description="Pytest settings",
         )
-        tomlsort: Annotated[
-            p.Infra.TomlsortConfig,
-            t.schema_for_model(lambda: FlextInfraModelsDepsToolConfig.TomlsortConfig),
-        ] = m.Field(
+        tomlsort: FlextInfraModelsDepsToolConfig.TomlsortConfig = m.Field(
             description="Tomlsort settings",
         )
-        jscpd: Annotated[
-            p.Infra.JscpdToolConfig,
-            t.schema_for_model(lambda: FlextInfraModelsDepsToolConfig.JscpdToolConfig),
-        ] = m.Field(
+        jscpd: FlextInfraModelsDepsToolConfig.JscpdToolConfig = m.Field(
             description="jscpd clone-semantics passes",
+        )
+        bandit: FlextInfraModelsDepsToolConfig.BanditToolConfig = m.Field(
+            description="Bandit security gate skipped test ids",
         )
 
     class LazyInitConfig(m.ArbitraryTypesModel):
@@ -921,48 +914,26 @@ class FlextInfraModelsDepsToolConfig(
             pattern="^\\.[A-Za-z0-9_.-]+$",
             description="Filename suffix for verbatim native check receipts.",
         )
-        tools: Annotated[
-            p.Infra.ToolConfigTools,
-            t.schema_for_model(lambda: FlextInfraModelsDepsToolConfig.ToolConfigTools),
-        ] = m.Field(
+        tools: FlextInfraModelsDepsToolConfig.ToolConfigTools = m.Field(
             description="Tools",
         )
-        lazy_init: Annotated[
-            p.Infra.LazyInitConfig,
-            t.schema_for_model(lambda: FlextInfraModelsDepsToolConfig.LazyInitConfig),
-        ] = m.Field(
+        lazy_init: FlextInfraModelsDepsToolConfig.LazyInitConfig = m.Field(
             alias="lazy-init",
             description="Declarative lazy-init generation policy.",
         )
-        facade_members: Annotated[
-            p.Infra.FacadeMembersConfig,
-            t.schema_for_model(
-                lambda: FlextInfraModelsDepsToolConfig.FacadeMembersConfig
-            ),
-        ] = m.Field(
+        facade_members: FlextInfraModelsDepsToolConfig.FacadeMembersConfig = m.Field(
             alias="facade-members",
             description="Declarative single-owner policy for facade members.",
         )
-        smells: Annotated[
-            p.Infra.SmellsConfig,
-            t.schema_for_model(lambda: FlextInfraModelsDepsToolConfig.SmellsConfig),
-        ] = m.Field(
+        smells: FlextInfraModelsDepsToolConfig.SmellsConfig = m.Field(
             description="Repair guidance for qlty smell findings.",
         )
-        accessor_policy: Annotated[
-            p.Infra.AccessorPolicyConfig,
-            t.schema_for_model(
-                lambda: FlextInfraModelsDepsToolConfig.AccessorPolicyConfig
-            ),
-        ] = m.Field(
+        accessor_policy: FlextInfraModelsDepsToolConfig.AccessorPolicyConfig = m.Field(
             alias="accessor-policy",
             description="Accessor naming policy of the accessor migration.",
         )
 
-        mod: Annotated[
-            p.Infra.ModConfig,
-            t.schema_for_model(lambda: FlextInfraModelsDepsToolConfig.ModConfig),
-        ] = m.Field(
+        mod: FlextInfraModelsDepsToolConfig.ModConfig = m.Field(
             description="Declarative make-mod phase policy.",
         )
 
@@ -1010,79 +981,6 @@ class FlextInfraModelsDepsToolConfig(
                         f"{', '.join(collision)}"
                     )
                     raise ValueError(msg)
-            return self
-
-        @m.model_validator(mode="after")
-        def validate_mypy_overrides(self) -> Self:
-            """Keep native override pairs within the diagnostic policy.
-
-            Returns:
-                The unchanged declaration.
-
-            Raises:
-                ValueError: If an override hides diagnostics or changes owned keys.
-
-            """
-            for override in self.tools.mypy.overrides:
-                override_options = dict(override.settings)
-                ignored = override_options.get("ignore_errors")
-                if ignored is not None and ignored is not False:
-                    msg = "Mypy overrides cannot ignore diagnostics"
-                    raise ValueError(msg)
-                if override_options.keys() & set(self.derived_settings.get("mypy", ())):
-                    msg = "Mypy override cannot shadow policy-owned options"
-                    raise ValueError(msg)
-                if any(
-                    not key.isascii() or not key.isidentifier()
-                    for key in override_options
-                ):
-                    msg = "Mypy override requires plain option names"
-                    raise ValueError(msg)
-            return self
-
-        @m.model_validator(mode="after")
-        def validate_mypy_options(self) -> Self:
-            """Preserve Mypy ownership and mandatory Pydantic integration.
-
-            Returns:
-                Native options without changing their values.
-
-            Raises:
-                ValueError: If an option bypasses its policy owner.
-
-            """
-            if "mypy" not in self.settings:
-                msg = "Native Mypy settings must be declared"
-                raise ValueError(msg)
-            options = dict(self.settings["mypy"])
-            if any(not key.isascii() or not key.isidentifier() for key in options):
-                msg = "Mypy policy requires plain option names, not TOML syntax"
-                raise ValueError(msg)
-            error_codes = options.get("enable_error_code")
-            if error_codes is not None and not (
-                isinstance(error_codes, str)
-                or (
-                    isinstance(error_codes, list)
-                    and all(isinstance(code, str) for code in error_codes)
-                )
-            ):
-                msg = "Mypy enabled error codes must be a string or string array"
-                raise ValueError(msg)
-            if (
-                options.get("ignore_errors") is not None
-                and options["ignore_errors"] is not False
-            ):
-                msg = "Mypy policy cannot ignore diagnostics"
-                raise ValueError(msg)
-            plugins = options.get("plugins")
-            if (
-                not isinstance(plugins, list)
-                or any(not isinstance(plugin, str) for plugin in plugins)
-                or "pydantic.mypy" not in plugins
-                or "pydantic.v1.mypy" in plugins
-            ):
-                msg = "Mypy requires pydantic.mypy and forbids pydantic.v1.mypy"
-                raise ValueError(msg)
             return self
 
         @m.model_validator(mode="after")
@@ -1182,11 +1080,6 @@ class FlextInfraModelsDepsToolConfig(
             pending: list[tuple[str, t.JsonValue]] = [
                 (key, value) for pairs in self.settings.values() for key, value in pairs
             ]
-            pending.extend(
-                (key, value)
-                for override in self.tools.mypy.overrides
-                for key, value in override.settings
-            )
             while pending:
                 key, value = pending.pop()
                 option = (
@@ -1199,22 +1092,6 @@ class FlextInfraModelsDepsToolConfig(
                     pending.extend(value.items())
                 elif isinstance(value, list):
                     pending.extend((key, item) for item in value)
-
-        @m.model_validator(mode="after")
-        def validate_pyright_options(self) -> Self:
-            """Require strict checking in the elected native configuration.
-
-            Returns:
-                The configuration with strict diagnostics preserved.
-
-            Raises:
-                ValueError: If the elected checking mode weakens diagnostics.
-
-            """
-            if dict(self.settings["pyright"]).get("typeCheckingMode") != "strict":
-                msg = "Pyright typeCheckingMode must remain strict"
-                raise ValueError(msg)
-            return self
 
         @m.model_validator(mode="after")
         def validate_pyrefly_options(self) -> Self:
@@ -1245,12 +1122,7 @@ class FlextInfraModelsDepsToolConfig(
         """One elected tooling document and its publication preimages."""
 
         document: Annotated[
-            Annotated[
-                p.Infra.ToolConfigDocument,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsDepsToolConfig.ToolConfigDocument
-                ),
-            ],
+            FlextInfraModelsDepsToolConfig.ToolConfigDocument,
             m.Field(description="Validated project-specific tooling configuration."),
         ]
         sources: Annotated[
@@ -1261,15 +1133,7 @@ class FlextInfraModelsDepsToolConfig(
     class ToolingRuntimeContext(m.ArbitraryTypesModel):
         """Resolved topology and native tool tables consumed by every template."""
 
-        document: (
-            Annotated[
-                p.Infra.ToolConfigDocument,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsDepsToolConfig.ToolConfigDocument
-                ),
-            ]
-            | None
-        ) = m.Field(
+        document: FlextInfraModelsDepsToolConfig.ToolConfigDocument | None = m.Field(
             None,
             exclude=True,
             description="The elected tooling policy shared by every render context.",

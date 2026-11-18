@@ -25,7 +25,7 @@ class TestsFlextInfraPyprojectDependencyGroups:
         self,
         variant: str,
     ) -> None:
-        """Authored occurrences and distinct policy obligations survive composition."""
+        """Distinct authored obligations survive and exact duplicates collapse."""
         own = self._workspace(c.Infra.MakeProfile.STANDALONE).repository.distribution
         floor = "composition-floor>=1.0,<3.0"
         parsed = Requirement(floor)
@@ -51,13 +51,12 @@ class TestsFlextInfraPyprojectDependencyGroups:
         composed = u.Infra.project_development_requirements(
             policy,
             distribution=own,
-            kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
             declared=declared,
         )
 
-        tm.that(composed[: len(declared)], eq=declared)
+        tm.that(composed[:2], eq=(authored, f"{own}[feature]"))
         tm.that(
-            composed[len(declared) :],
+            composed[2:],
             eq=() if Requirement(authored) == Requirement(floor) else (floor,),
         )
         source = self._source(
@@ -80,7 +79,7 @@ class TestsFlextInfraPyprojectDependencyGroups:
         )
         actual_requirements = set(actual_entries)
         tm.ok(Requirement(authored) in actual_requirements)
-        tm.that(actual_entries.count(Requirement(authored)), eq=2)
+        tm.that(actual_entries.count(Requirement(authored)), eq=1)
         tm.ok(Requirement(floor) in actual_requirements)
         tm.ok(Requirement(f"{own}[feature]") in actual_requirements)
         tm.that(groups["examples"], eq=[{"include-group": "dev"}])
@@ -119,6 +118,7 @@ class TestsFlextInfraPyprojectDependencyGroups:
             required_dev_dependencies=required_dev_dependencies,
             uv_resolution=m.Infra.UvResolutionSpec(
                 link_mode=toolchain.uv_link_mode,
+                cooldown_days=toolchain.dependency_cooldown_days,
                 constraint_dependencies=tuple(toolchain.uv_constraint_dependencies),
                 environments=tuple(toolchain.uv_environments),
             ),
@@ -150,7 +150,7 @@ class TestsFlextInfraPyprojectDependencyGroups:
         self,
         role: c.Infra.MakeProfile,
     ) -> None:
-        """Native tables retain position, repeated occurrences and Git provenance."""
+        """Native tables retain position, authored order and Git provenance."""
         development = u.Tests.flext_source("flext-tests")
         codegen = u.Tests.flext_source("flext-infra")
         marked = "group-only[feature]>=1.0,<2.0; python_version >= '3.13'"
@@ -158,7 +158,7 @@ class TestsFlextInfraPyprojectDependencyGroups:
         groups = (
             f"dev = [{tm.ok(u.Cli.json_dumps(development))}, "
             '{include-group = "codegen"}, '
-            f"{tm.ok(u.Cli.json_dumps(marked))}, {tm.ok(u.Cli.json_dumps(marked))}]\n"
+            f"{tm.ok(u.Cli.json_dumps(marked))}]\n"
             f"codegen = [{tm.ok(u.Cli.json_dumps(codegen))}]\n"
             'examples = ["example-only>=1.0", {include-group = "dev"}, '
             '"example-tail<3.0"]\n'
@@ -319,8 +319,8 @@ class TestsFlextInfraPyprojectDependencyGroups:
             f"{authored_name} = [{tm.ok(u.Cli.json_dumps(authored_bound))}, "
             f"{tm.ok(u.Cli.json_dumps(marked))}, "
             '{include-group = "base"}, '
-            f"{tm.ok(u.Cli.json_dumps(extra))}, {tm.ok(u.Cli.json_dumps(direct))}, "
-            f"{tm.ok(u.Cli.json_dumps(marked))}]\n"
+            f"{tm.ok(u.Cli.json_dumps(extra))}, "
+            f"{tm.ok(u.Cli.json_dumps(direct))}]\n"
             f"{codegen} = []\n"
             "base = []\n"
             f'examples = [{{include-group = "{authored_name}"}}]',
@@ -352,7 +352,6 @@ class TestsFlextInfraPyprojectDependencyGroups:
             {"include-group": "base"},
             extra,
             direct,
-            marked,
         ]
         tm.that(
             u.Tests.toml_list(groups[authored_name]),
@@ -447,8 +446,7 @@ class TestsFlextInfraPyprojectDependencyGroups:
         source = self._source(
             f"{name} = [{tm.ok(u.Cli.json_dumps(group_first))}, "
             '{include-group = "shared"}, '
-            f"{tm.ok(u.Cli.json_dumps(group_last))}, "
-            f"{tm.ok(u.Cli.json_dumps(group_first))}]\n"
+            f"{tm.ok(u.Cli.json_dumps(group_last))}]\n"
             f"{other} = []\n"
             "shared = []\n"
             f'examples = [{{include-group = "{name}"}}]',
@@ -554,3 +552,30 @@ class TestsFlextInfraPyprojectDependencyGroups:
             actual["dependency-groups"],
             eq=expected["dependency-groups"],
         )
+
+    @staticmethod
+    def test_fleet_dev_suppliers_apply_only_to_the_workspace_root() -> None:
+        """A member drops a redeclared fleet dev supplier; the root keeps it."""
+        policy = config.Infra.codegen.scaffold.project
+        supplier = (
+            "flext-infra @ git+https://github.com/flext-sh/flext-infra.git@0.12.0-dev"
+        )
+        member = u.Infra.project_development_requirements(
+            policy,
+            distribution="flext-cli",
+            declared=(supplier,),
+        )
+        tm.that(any("flext-infra" in item for item in member), truth=False)
+        root = u.Infra.project_development_requirements(
+            policy,
+            distribution=c.Infra.PKG_ROOT,
+            declared=(),
+        )
+        tm.that(any("flext-infra" in item for item in root), truth=True)
+        standalone = u.Infra.project_development_requirements(
+            policy,
+            distribution="consumer",
+            declared=(),
+            standalone=True,
+        )
+        tm.that(any("flext-infra" in item for item in standalone), truth=True)

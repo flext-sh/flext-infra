@@ -6,9 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import configparser
 import threading
 from collections.abc import MutableMapping, Sequence
 from pathlib import Path
+
+from git import GitCommandError, Repo, Submodule
 
 from flext_infra import c, m
 from flext_infra._utilities._git import (
@@ -100,6 +103,121 @@ class FlextInfraUtilitiesGitScope(FlextInfraUtilitiesGitRepo):
             msg = f"opened Git repository has no worktree: {scope_root}"
             raise RuntimeError(msg)
         return str(Path(working_tree_dir).resolve())
+
+    @classmethod
+    def git_binding_issues(cls, workspace_root: Path) -> tuple[m.Infra.Issue, ...]:
+        """Report gitlink and member-head inconsistencies of a superproject.
+
+        Returns:
+            One issue per inconsistent or stale binding edge, in declaration order.
+
+        Raises:
+            OSError: The superproject repository cannot be opened.
+
+        """
+        descriptors = workspace_root / c.Infra.GITMODULES_FILENAME
+        if not descriptors.is_file():
+            return ()
+        declared = configparser.ConfigParser()
+        declared.read(descriptors, encoding="utf-8")
+        members = tuple(
+            path
+            for section in declared.sections()
+            if (path := declared.get(section, "path", fallback=""))
+        )
+        if not members:
+            return ()
+        opened = cls._open_repo(workspace_root)
+        if opened.failure:
+            raise OSError(opened.error or "failed to open the superproject")
+        repository = opened.value
+        if not repository.head.is_valid():
+            return ()
+        branch = None if repository.head.is_detached else repository.active_branch.name
+        pinned_tree = repository.head.commit.tree
+        issues: list[m.Infra.Issue] = []
+        for member in members:
+            entry = pinned_tree[member]
+            if not isinstance(entry, Submodule):
+                issues.append(
+                    cls._binding_issue(
+                        member,
+                        "unresolved",
+                        "the recorded gitlink is absent from HEAD",
+                    )
+                )
+                continue
+            member_open = cls._open_repo(workspace_root / member)
+            if member_open.failure:
+                issues.append(
+                    cls._binding_issue(
+                        member,
+                        "unresolved",
+                        "the member repository cannot be opened",
+                    )
+                )
+                continue
+            state, detail, severity = cls._binding_state(
+                member_open.value, entry.hexsha, branch
+            )
+            if state == "consistent":
+                continue
+            issues.append(cls._binding_issue(member, state, detail, severity))
+        return tuple(issues)
+
+    @staticmethod
+    def _binding_state(
+        member: Repo,
+        pinned: str,
+        branch: str | None,
+    ) -> tuple[str, str, str]:
+        """Classify one binding edge into its repair state, detail and severity.
+
+        Returns:
+            The state name, the SHA detail and the severity owning its repair.
+
+        """
+        observed = member.head.commit.hexsha if member.head.is_valid() else ""
+        name = f"origin/{branch}" if branch else ""
+        tip = (
+            member.refs[name].commit.hexsha
+            if name and name in member.refs
+            else "unavailable"
+        )
+        detail = f"gitlink {pinned} member {observed or 'unavailable'} tip {tip}"
+        if observed and observed != pinned:
+            try:
+                member.git.merge_base("--is-ancestor", pinned, observed)
+            except GitCommandError:
+                return "member-behind", detail, c.Infra.GateSeverity.ERROR
+            return "member-ahead", detail, c.Infra.GateSeverity.ERROR
+        if tip not in {"unavailable", pinned}:
+            return "pin-stale", detail, c.Infra.GateSeverity.WARNING
+        if member.index.diff(None) or member.untracked_files:
+            return "dirty-unpinned", detail, c.Infra.GateSeverity.WARNING
+        return "consistent", detail, c.Infra.GateSeverity.WARNING
+
+    @staticmethod
+    def _binding_issue(
+        member: str,
+        state: str,
+        detail: str,
+        severity: str = c.Infra.GateSeverity.ERROR,
+    ) -> m.Infra.Issue:
+        """Build the issue that names one binding edge and its repair route.
+
+        Returns:
+            The typed issue carrying the exact SHAs.
+
+        """
+        return m.Infra.Issue(
+            file=member,
+            line=0,
+            column=0,
+            code=state,
+            message=detail,
+            severity=severity,
+        )
 
     @classmethod
     def git_tracked_repo_relative_paths(cls, repo_root: str) -> Sequence[str]:

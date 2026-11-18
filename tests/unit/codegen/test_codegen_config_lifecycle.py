@@ -11,7 +11,7 @@ from pathlib import Path
 
 from flext_infra import config, infra, settings
 from flext_infra.gates import FlextInfraGatesRuffFormat, FlextInfraGatesRuffLint
-from tests import c, m, tm, u
+from tests import c, m, p, tm, u
 from tests.unit.codegen import test_codegen_ci_matrix
 
 pytestmark = c.Tests.MARK.slow
@@ -26,7 +26,7 @@ class TestsFlextInfraCodegenConfigLifecycle:
     ) -> None:
         """The real generated package loads typed YAML and freezes only config."""
         root = test_codegen_ci_matrix.TestsFlextInfraCodegenCiMatrix.render_project(
-            installed_artifact_consumer,
+            installed_artifact_consumer.with_name("generated-contract"),
         )
         test_paths = tuple(
             sorted({
@@ -372,6 +372,7 @@ print(
     @c.Tests.MARK.parametrize("target_exists", [False, True])
     def test_directed_initializer_uses_literal_mapping_when_proxy_is_banned(
         tmp_path: Path,
+        session_runtime: p.Tests.SessionRuntime,
         *,
         target_exists: bool,
     ) -> None:
@@ -411,6 +412,13 @@ print(
             what=c.Infra.CodegenConformSurface.LAZY_INIT,
             scope=c.Infra.CodegenConformScope.SELF,
             mode=c.Infra.CodegenConformMode.APPLY,
+        )
+        tm.ok(
+            u.Tests.create_python_environment(
+                root,
+                dependency_projects=u.Tests.python_dependency_projects(root),
+                session_runtime=session_runtime,
+            )
         )
         tm.ok(infra.codegen_conform(request))
         generated = destination.read_text(encoding=c.DEFAULT_ENCODING)

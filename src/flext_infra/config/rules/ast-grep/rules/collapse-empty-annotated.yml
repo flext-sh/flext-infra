@@ -1,0 +1,22 @@
+# Removing the final schema marker leaves the original type, not an invalid
+# Annotated with no metadata. Keep every annotation that still has metadata.
+id: collapse-empty-annotated
+language: python
+severity: error
+files:
+  - "**/*.py"
+rule:
+  all:
+    - matches: typing-annotated-form
+    - any:
+        - pattern: $FORM[$TYPE,]
+        - pattern: $FORM[$TYPE]
+        - pattern:
+            context: "value: $FORM[$TYPE,]"
+            selector: generic_type
+        - pattern:
+            context: "value: $FORM[$TYPE]"
+            selector: generic_type
+fix: $TYPE
+message: >-
+  Annotated requires metadata. Keep the original type when no metadata remains.

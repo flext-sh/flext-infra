@@ -56,8 +56,18 @@ class FlextInfraProtocolsConfigRoot:
             ...
 
         @property
-        def mutation_lock(self) -> FlextInfraProtocolsConfigStatic.MutationLockSpec:
-            """Bounded wait for a mutation scope lock."""
+        def rope(self) -> FlextInfraProtocolsConfigStatic.RopePreferencesSpec:
+            """Native source-engine preference policy."""
+            ...
+
+        @property
+        def gate_admission(self) -> FlextInfraProtocolsConfigStatic.GateAdmissionSpec:
+            """Host-wide FIFO admission for heavy gates."""
+            ...
+
+        @property
+        def mod_evidence(self) -> FlextInfraProtocolsConfigStatic.ModEvidenceSpec:
+            """Native scan artifact retention for mod evidence."""
             ...
 
         @property

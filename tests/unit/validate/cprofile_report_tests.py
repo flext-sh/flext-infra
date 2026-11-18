@@ -19,12 +19,50 @@ class TestsFlextInfraCProfileReport:
     """Prove real pstats artifacts render through the typed owner."""
 
     @staticmethod
+    def test_capture_refuses_a_changed_resolver_lock(tmp_path: Path) -> None:
+        """Refuse a receipt if the resolver lock changed during execution."""
+        root, _ = u.Tests.create_lazy_init_workspace(tmp_path)
+        lock = root / c.Infra.UV_LOCK_FILENAME
+        lock.write_text("version = 1\n", encoding=c.DEFAULT_ENCODING)
+        command = (sys.executable, "-c", "pass")
+        started = u.Infra.git_begin_gate_capture(
+            m.Infra.GateCaptureBeginRequest(
+                repository_root=root,
+                gate=c.Infra.VERB_CHECK,
+                command=command,
+                runtime_identity=sys.executable,
+                intent=m.Infra.GateExecutionIntent(requested_gates=("lint",)),
+            ),
+            inputs=u.Infra.load_codegen_inputs(root).unwrap(),
+        )
+        outcome = u.Cli.run_raw(command, cwd=root).unwrap().outcome
+        lock.write_text("version = 1\nrevision = 2\n", encoding=c.DEFAULT_ENCODING)
+        report = u.Infra.git_finish_gate_capture(
+            m.Infra.GateCaptureFinishRequest.model_validate({
+                "started": started,
+                "process": outcome,
+                "reports": (),
+                "report_root": root,
+                "runtime_identity": sys.executable,
+            }),
+            inputs=u.Infra.load_codegen_inputs(root),
+        ).unwrap()
+        tm.that(report.receipt, eq=None)
+        tm.that(
+            report.issues[0].message,
+            eq="original gate configuration or native runtime changed during execution",
+        )
+
+    @staticmethod
+    @c.Tests.MARK.parametrize("selected_file", [None, False, True])
     @c.Tests.MARK.parametrize("suite_state", ["absent", "published", "stale"])
     def test_interrupted_suite_reports_native_outcome_before_artifacts(
         tmp_path: Path,
         native_cprofile: Path,
         capsys: t.Tests.CaptureFixture[str],
         suite_state: str,
+        *,
+        selected_file: bool | None,
     ) -> None:
         """Keep missing snapshots incomplete and require present ones to match."""
         directory = tmp_path / c.Infra.REPORTS_DIR_NAME / "interrupted"
@@ -32,11 +70,19 @@ class TestsFlextInfraCProfileReport:
         policy = config.Infra.tooling.tools.pytest
         profile = native_cprofile
         selection = directory / c.Infra.PYTEST_SELECTION_PROFILE_FILENAME
-        selection.write_bytes(profile.read_bytes())
+        command = (
+            sys.executable,
+            "-c",
+            "import os, signal; os.kill(os.getpid(), signal.SIGTERM)",
+        )
         context = m.Infra.PytestRunContext(
-            execution_mode=c.Infra.PytestExecutionMode.INCREMENTAL,
-            testmon_db=tmp_path / "testmon",
-            testmon_lease_acquired=True,
+            execution_mode=(
+                c.Infra.PytestExecutionMode.INCREMENTAL
+                if selected_file is None
+                else c.Infra.PytestExecutionMode.FULL
+            ),
+            testmon_db=tmp_path / "testmon" if selected_file is None else None,
+            testmon_lease_acquired=True if selected_file is None else None,
             deadline_monotonic=monotonic() + policy.run_timeout_seconds,
             report_directory=directory,
         )
@@ -46,29 +92,50 @@ class TestsFlextInfraCProfileReport:
         receipt = context.model_copy(
             update={"profile_sha256": u.Cli.sha256_bytes(profile.read_bytes())}
         )
-        for artifact in (profile, selection):
+        if selected_file is None:
+            selection.write_bytes(profile.read_bytes())
+            plan = m.Infra.PytestSelectionPlan(
+                manifest_path=selection.with_suffix(".json"),
+                node_ids=("tests/test_workload.py::test_workload",),
+                whole_target=True,
+                inventory_collected=False,
+            )
+            (directory / "selection-plan.json").write_text(
+                plan.model_dump_json(), encoding=c.DEFAULT_ENCODING
+            )
+        else:
+            u.Tests.create_lazy_init_workspace(
+                tmp_path.parent, project_name=tmp_path.name
+            )
+            capture = u.Infra.git_begin_gate_capture(
+                m.Infra.GateCaptureBeginRequest(
+                    repository_root=tmp_path,
+                    gate=c.Infra.VERB_TEST,
+                    command=command,
+                    runtime_identity=sys.executable,
+                    intent=m.Infra.GateExecutionIntent(
+                        test_selection=m.Infra.GateTestIntent(
+                            execution_mode=context.execution_mode,
+                            target=Path("tests"),
+                            target_file=Path("profile_workload.py")
+                            if selected_file
+                            else None,
+                            ci_context=False,
+                            slow_phase=False,
+                            profile_enabled=True,
+                        )
+                    ),
+                ),
+                inputs=u.Infra.load_codegen_inputs(tmp_path).unwrap(),
+            )
+            (directory / c.Infra.GATE_CAPTURE_START_FILENAME).write_text(
+                capture.model_dump_json(), encoding=c.DEFAULT_ENCODING
+            )
+        for artifact in (profile, selection) if selected_file is None else (profile,):
             artifact.with_suffix(".pstats.json").write_text(
                 receipt.model_dump_json(), encoding=c.DEFAULT_ENCODING
             )
-        plan = m.Infra.PytestSelectionPlan(
-            manifest_path=selection.with_suffix(".json"),
-            node_ids=("tests/test_workload.py::test_workload",),
-            whole_target=True,
-            inventory_collected=False,
-        )
-        (directory / "selection-plan.json").write_text(
-            plan.model_dump_json(), encoding=c.DEFAULT_ENCODING
-        )
-        terminated = tm.ok(
-            u.Cli.run_raw(
-                (
-                    sys.executable,
-                    "-c",
-                    "import os, signal; os.kill(os.getpid(), signal.SIGTERM)",
-                ),
-                cwd=tmp_path,
-            )
-        )
+        terminated = tm.ok(u.Cli.run_raw(command, cwd=tmp_path))
         tm.that(terminated.outcome.raw_return_code, eq=-signal.SIGTERM)
         (directory / "suite-outcome.json").write_text(
             terminated.outcome.model_dump_json(), encoding=c.DEFAULT_ENCODING
@@ -101,7 +168,13 @@ class TestsFlextInfraCProfileReport:
             tm.that(result.error, has="stale or mismatched")
         else:
             tm.ok(result)
-            tm.that(output.read_text(encoding=c.DEFAULT_ENCODING), has=str(selection))
+            tm.that(
+                output.read_text(encoding=c.DEFAULT_ENCODING),
+                has=str(selection if selected_file is None else profile),
+            )
+        tm.that(
+            (directory / c.Infra.PYTEST_INVENTORY_PROFILE_FILENAME).exists(), eq=False
+        )
 
     @staticmethod
     @c.Tests.MARK.parametrize("execution_artifact", [False, True])

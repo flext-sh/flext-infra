@@ -1,0 +1,9 @@
+id: require-field-description-annotated-default
+valid:
+- |
+  class Order(m.FrozenModel):
+      label: Annotated[str, m.Field(min_length=1, description="Label")] = "x"
+invalid:
+- |
+  class Order(m.FrozenModel):
+      label: Annotated[str, m.Field(min_length=1)] = "x"

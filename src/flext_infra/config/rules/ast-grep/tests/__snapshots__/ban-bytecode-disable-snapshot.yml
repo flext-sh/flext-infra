@@ -1,0 +1,52 @@
+id: ban-bytecode-disable
+snapshots:
+  "env = dict(os.environ, PYTHONDONTWRITEBYTECODE=\"1\")\n":
+    labels:
+    - source: PYTHONDONTWRITEBYTECODE="1"
+      style: primary
+      start: 23
+      end: 50
+    - source: PYTHONDONTWRITEBYTECODE
+      style: secondary
+      start: 23
+      end: 46
+  "env = {\"PYTHONDONTWRITEBYTECODE\": \"1\", \"PATH\": path}\n":
+    labels:
+    - source: "\"PYTHONDONTWRITEBYTECODE\": \"1\""
+      style: primary
+      start: 7
+      end: 37
+    - source: "\"PYTHONDONTWRITEBYTECODE\""
+      style: secondary
+      start: 7
+      end: 32
+  "env[\"PYTHONDONTWRITEBYTECODE\"] = \"1\"":
+    labels:
+    - source: env["PYTHONDONTWRITEBYTECODE"] = "1"
+      style: primary
+      start: 0
+      end: 36
+  "environment.setdefault(\"PYTHONDONTWRITEBYTECODE\", \"1\")":
+    labels:
+    - source: environment.setdefault("PYTHONDONTWRITEBYTECODE", "1")
+      style: primary
+      start: 0
+      end: 54
+  "os.environ[\"PYTHONDONTWRITEBYTECODE\"] = \"1\"":
+    labels:
+    - source: os.environ["PYTHONDONTWRITEBYTECODE"] = "1"
+      style: primary
+      start: 0
+      end: 43
+  "os.putenv(\"PYTHONDONTWRITEBYTECODE\", \"1\")":
+    labels:
+    - source: os.putenv("PYTHONDONTWRITEBYTECODE", "1")
+      style: primary
+      start: 0
+      end: 41
+  sys.dont_write_bytecode = True:
+    labels:
+    - source: sys.dont_write_bytecode = True
+      style: primary
+      start: 0
+      end: 30

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra.docs.fixer import FlextInfraDocFixer
+from flext_infra.docs import FlextInfraDocFixer
 from tests import c, tm, u
 
 if TYPE_CHECKING:

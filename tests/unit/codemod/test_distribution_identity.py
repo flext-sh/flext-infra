@@ -101,3 +101,12 @@ class TestsFlextInfraDistributionIdentity:
             u.Infra.codemod_workspace_snapshot(tmp_path) as snapshot,
         ):
             u.Infra.codemod_rule_plan(snapshot)
+
+    @staticmethod
+    def test_root_without_manifest_fails_as_a_typed_result(tmp_path: Path) -> None:
+        """A repository with no ``pyproject.toml`` fails typed before rendering."""
+        root = u.Tests.git_repository(tmp_path)
+        (root / "module.py").write_text("VALUE = 1\n", encoding="utf-8")
+        with u.Infra.codemod_workspace_snapshot(root) as snapshot:
+            planned = u.Infra.codemod_rule_plan(snapshot)
+        tm.fail(planned, has=str(root / c.PYPROJECT_FILENAME))

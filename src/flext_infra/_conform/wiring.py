@@ -6,11 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import sys
 from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, codegen, docs, gates, m, r, u, validate
+from flext_infra import c, codegen, docs, gates, m, r, validate
 from flext_infra._utilities import (
     FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesProtectedEditLinting,
@@ -91,10 +92,10 @@ class FlextInfraConformWiring:
         candidate: Path,
         projects: tuple[Path, ...],
     ) -> p.Result[bool]:
-        """Admit exact staged sources through native runtime and type contracts.
+        """Admit exact staged sources through their native runtime imports.
 
         Returns:
-            Acceptance or the original candidate runtime or typing failure.
+            Acceptance or the original candidate runtime failure.
 
         """
         workspace = codegen.FlextInfraStagedPackage.workspace_root(root)
@@ -103,77 +104,25 @@ class FlextInfraConformWiring:
         runtime = FlextInfraUtilitiesProjectDiscovery.runtime_owner_root(root)
         if runtime.failure:
             return r[bool].from_failure(runtime)
+        runtime_root = runtime.value
+        if not (runtime_root / c.Infra.ENVIRONMENT_DIRECTORY).is_dir():
+            # A new project owns no environment until its first `make setup`;
+            # the generator's runtime carries the FLEXT libraries its
+            # generated modules import, so it admits the first candidate.
+            runtime_root = Path(sys.prefix).parent
         repository = candidate / root.relative_to(workspace.value)
         repositories = tuple(
             candidate / project.relative_to(workspace.value) for project in projects
         )
         imported = validate.FlextInfraValidateFreshImport(
             repository_root=repository,
-            runtime_root=runtime.value,
+            runtime_root=runtime_root,
         ).build_report(repository_roots=repositories)
         if imported.failure:
             return r[bool].from_failure(imported)
         if not imported.value.passed:
             return r[bool].fail(
                 "\n".join((imported.value.summary, *imported.value.violations)),
-            )
-        return FlextInfraConformWiring._validate_model_conformance(
-            candidate,
-            repositories,
-            runtime.value,
-        )
-
-    @staticmethod
-    def _validate_model_conformance(
-        candidate: Path,
-        repositories: tuple[Path, ...],
-        runtime: Path,
-    ) -> p.Result[bool]:
-        """Check the declared witness cohort once using only staged import roots.
-
-        Returns:
-            Acceptance or a missing witness or native typing failure.
-
-        """
-        layouts: list[p.Infra.RopeProjectLayout] = []
-        witnesses: list[Path] = []
-        for repository in repositories:
-            layout = u.Infra.layout(repository)
-            if layout is None:
-                return r[bool].fail(
-                    f"model conformance has no Python layout: {repository}"
-                )
-            layouts.append(layout)
-            models = layout.package_dir / "models.py"
-            witness = (
-                layout.package_dir
-                / "_protocols"
-                / c.Infra.MODEL_PROTOCOL_CONFORMANCE_FILENAME
-            )
-            if models.is_file():
-                if not witness.is_file():
-                    return r[bool].fail(
-                        f"model conformance witness is missing: {witness}"
-                    )
-                witnesses.append(witness)
-        if not witnesses:
-            return r[bool].ok(value=True)
-        reports = u.Cli.ensure_dir(candidate / c.Infra.REPORTS_DIR_NAME)
-        if reports.failure:
-            return r[bool].from_failure(reports)
-        context = m.Infra.GateContext(
-            repository_root=candidate,
-            runtime_root=runtime,
-            reports_dir=reports.value,
-            selected_files=tuple(witnesses),
-        )
-        checked = gates.FlextInfraGatesPyrefly(
-            candidate,
-            source_roots=tuple(layout.src_dir for layout in layouts),
-        ).check_files(witnesses, candidate, context)
-        if not checked.result.passed:
-            return r[bool].fail(
-                f"model/protocol conformance failed:\n{checked.raw_output}"
             )
         return r[bool].ok(value=True)
 

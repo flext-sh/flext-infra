@@ -2,7 +2,7 @@
 
 <!-- TOC START -->
 
-- [Lane admission](#lane-admission)
+- [Git primitives and lane publication](#git-primitives-and-lane-publication)
 - [Recovery Branches](#recovery-branches)
 
 <!-- TOC END -->
@@ -11,6 +11,10 @@
 `m.Infra.GitWorktreeStateRequest`; directories include their tracked and nonignored
 untracked descendants. An empty path tuple captures nothing. Nested repositories retain
 independent capture ownership.
+
+`git_is_inside_work_tree` asks native `rev-parse --is-inside-work-tree` at the
+requested directory. Discovering its repository does not make Git control storage
+or a staged preview beneath that storage part of the working tree.
 
 `git_snapshot_worktree_state` measures the original HEAD, index entries, raw working
 bytes, symlink text and permissions without modifying the source index. Unmerged,
@@ -69,40 +73,39 @@ transactions: it preflights a pristine sibling at the same HEAD and applies sepa
 worktree and index patches. WIP uses durable scoped checkpoints to avoid capturing live
 files that appeared after its ownership snapshot.
 
-## Lane admission
+## Git primitives and lane publication
 
-`flext-infra workspace verify-lane --repo-root <checkout>` calls the same
-`u.Infra.git_verify_lane` preflight used by branch creation, worktree creation,
-branch publication, automated lane publication, branch retirement, and worktree removal.
-It does not fetch, write refs,
-refresh the index, create a lane, or retire one. No verb requires a clean or
-unchanged tree.
+Branch, worktree, reference and remote-branch operations run the native Git
+operation and fail as Git fails. None inspects stash state, lane ownership or the
+integration tip. Each keeps the rule its own operation needs:
 
-The preflight rejects any stash entries or retained `refs/stash`, requires the
-integration branch that the composing superproject's `.gitmodules` declares for the
-checkout's primary worktree (a checkout without a superproject, an undeclared member,
-or a member that follows its superproject with `.` fails closed), compares the
-cached integration OID to its live remote advertisement, and proves ancestry before
-checking the remote advertisement again. `--expected-tip <oid>` binds a later
-verification to a prior observation; a changed tip is a refusal, never a retry.
-Fetch and merge-forward recovery remain separate existing operations. Ordinary
-`git_push_upstream` publication also requires absorbed live integration ancestry;
-the durable checkpoint publisher remains its separate preservation owner and does
-not acquire this admission gate.
+- `git_push_upstream` is a plain, never-forced push: a diverged remote branch
+  rejects it.
+- `git_create_branch` refuses a branch that already exists.
+- `git_delete_ref` is a compare-and-swap on the expected object ID.
+- `git_delete_remote_branch` requires the observed object ID and deletes on that
+  lease only.
+- `git_remove_clean_worktree` refuses an unregistered, locked or dirty worktree and
+  a dirty nested submodule; it never forces removal or prunes other registrations.
 
-The current native requests cannot authenticate Beads lane ownership, the previous
-owned lane's integration, or retirement's published preservation and active-session
-proofs. Consequently `--operation create` and `--operation retire` fail closed even
-when the measured Git boundary is valid. No branch-name heuristic, caller boolean,
-correlation row, or foreign-lane count substitutes for those proofs. Creation checks
-run before directory creation; removal checks retain dirty, nested-submodule, and
-lock protection and do not force removal or prune other registrations.
+Automated lane publication (`u.Infra.git_publish_lane`, used by `make
+release-version` and `make propagate`) owns one deterministic protocol branch
+(`release/next`, the propagation lane). It starts only from a clean checkout on the
+declared integration branch and continues that branch when it already exists
+locally or on the remote.
 
-This boundary does not claim verified runtime stability, PR approval, authorized
-retirement, or enforcement over arbitrary external Git commands. Checkpoint capture,
-publication, and merge-forward remain available to consolidate existing work without
-stash. Reopening admission requires the existing canonical ownership and preservation
-protocols to reach the native mutation boundary, not another ledger or approval flag.
+Continuing the lane merges the base in with `git merge --no-ff`. A full generated
+projection is declared `-merge linguist-generated` in `.gitattributes`, so Git
+never combines two renderings of it and the lane's earlier rendering always
+conflicts with the base's (Git reports "Cannot merge binary files"). When every
+conflicted path carries both attributes, the merge concludes with the base's
+rendering and the producing step regenerates it from the merged sources; any other
+conflict keeps the merge state and fails with the original error.
+
+The lane then refreshes its pull request, resolved by head, base and `open` state.
+A merged or closed pull request on the same head, such as the previous release, is
+history and is never edited: with none open, the lane opens a new one. Several open
+pull requests on one lane fail loud.
 
 ## Recovery Branches
 
@@ -111,7 +114,6 @@ alias of an actual checkpoint only after revalidating its live independent remot
 retention and original scoped index/working bytes. It never switches HEAD, creates
 a worktree, accepts a caller-selected start, or carries uncaptured WIP. Creation is
 CAS-protected against an existing branch and uses the same writer lease as capture.
-Managed `git_create_branch` remains fail-closed for unproven lane ownership.
 
 `git_publish_checkpoint_branch` publishes only that exact captured commit without
 force and verifies its live advertisement. `git_delete_checkpoint_branch` removes

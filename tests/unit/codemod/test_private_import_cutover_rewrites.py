@@ -665,14 +665,12 @@ class TestsFlextInfraPrivateImportCutoverRewrites(
         tmp_path: Path,
     ) -> None:
         """Delete the long public alias while wiring the canonical facade."""
+        naming = TestsFlextInfraFacadeNaming.from_family(
+            "models", "pydantic", "Pydantic", "m"
+        )
         consumer_path, private_import, sources = self._facade_case(
             tmp_path,
-            TestsFlextInfraFacadeNaming.from_family(
-                "models",
-                "pydantic",
-                "Pydantic",
-                "m",
-            ),
+            naming,
             import_alias="mp",
         )
         sources[consumer_path] = (
@@ -680,7 +678,7 @@ class TestsFlextInfraPrivateImportCutoverRewrites(
             f"{private_import}\n\n"
             "from typing import TYPE_CHECKING\n\n"
             "if TYPE_CHECKING:\n"
-            "    from flext_sample import FlextModelsSample as m\n\n"
+            f"    from flext_sample import {naming.root_class} as m\n\n"
             "value: p.Metadata\n"
             "model: mp.BaseModel\n"
         )
@@ -688,9 +686,9 @@ class TestsFlextInfraPrivateImportCutoverRewrites(
         updated = self._updated_source(tmp_path, sources, consumer_path, private_import)
 
         tm.that(updated.count("from flext_sample import m"), eq=1)
-        tm.that(updated, lacks="FlextModelsSample as m")
+        tm.that(updated, lacks=f"{naming.root_class} as m")
         tm.that(updated, lacks=private_import)
-        tm.that(updated, has="model: p.Pydantic.BaseModel")
+        tm.that(updated, has=f"model: {naming.alias}.{naming.nested_class}.BaseModel")
 
     def test_preserves_valid_relative_private_import(self, tmp_path: Path) -> None:
         """Leave an already-relative same-owner import outside the finding set."""

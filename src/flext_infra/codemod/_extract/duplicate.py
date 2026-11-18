@@ -104,7 +104,7 @@ class FlextInfraCodemodExtractDuplicate:
         )
         if not report_path.is_file():
             return r[tuple[p.Infra.SemanticMigrationEdit, ...]].ok(())
-        loaded = u.Cli.json_parse(report_path.read_text(encoding=c.DEFAULT_ENCODING))
+        loaded = u.Cli.json_loads(report_path.read_text(encoding=c.DEFAULT_ENCODING))
         if loaded.failure:
             return r[tuple[p.Infra.SemanticMigrationEdit, ...]].from_failure(
                 loaded,

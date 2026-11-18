@@ -870,11 +870,6 @@ class FlextInfraProtocolsConfigArtifact:
             """Read-only check or atomic apply."""
             ...
 
-        @property
-        def declaration_kind(self) -> c.Infra.ProjectKind | None:
-            """Explicit self-owned kind supplied by native bootstrap."""
-            ...
-
     @runtime_checkable
     class ArtifactRenderRoute(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""

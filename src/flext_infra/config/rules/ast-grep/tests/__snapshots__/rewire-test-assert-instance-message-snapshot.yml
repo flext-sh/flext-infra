@@ -1,59 +1,40 @@
 id: rewire-test-assert-instance-message
 snapshots:
+  "assert isinstance(value, Entry), \"An entry is required\"":
+    fixed: |-
+      if not isinstance(value, Entry):
+          tm.reject("An entry is required")
+    labels:
+    - source: assert isinstance(value, Entry), "An entry is required"
+      style: primary
+      start: 0
+      end: 55
   "from flext_tests import tm\nvalue = 1\ndef check():\n    assert isinstance(value, int), explain()\n":
     fixed: |
       from flext_tests import tm
       value = 1
       def check():
-          if isinstance(value, int):
-              pass
-          else:
+          if not isinstance(value, int):
               tm.reject(explain())
     labels:
     - source: assert isinstance(value, int), explain()
       style: primary
       start: 54
       end: 94
-    - source: from flext_tests import tm
-      style: secondary
-      start: 0
-      end: 26
-    - source: |
-        from flext_tests import tm
-        value = 1
-        def check():
-            assert isinstance(value, int), explain()
-      style: secondary
-      start: 0
-      end: 95
   "from tests import tm\nassert isinstance(value, Entry), \"An entry is required\"\n":
     fixed: |
       from tests import tm
-      if isinstance(value, Entry):
-          pass
-      else:
+      if not isinstance(value, Entry):
           tm.reject("An entry is required")
     labels:
     - source: assert isinstance(value, Entry), "An entry is required"
       style: primary
       start: 21
       end: 76
-    - source: from tests import tm
-      style: secondary
-      start: 0
-      end: 20
-    - source: |
-        from tests import tm
-        assert isinstance(value, Entry), "An entry is required"
-      style: secondary
-      start: 0
-      end: 77
   "from tests import tm\nif not (isinstance(value, Entry)):\n    raise AssertionError(report)\n":
     fixed: |
       from tests import tm
-      if isinstance(value, Entry):
-          pass
-      else:
+      if not isinstance(value, Entry):
           tm.reject(report)
     labels:
     - source: |-
@@ -62,14 +43,3 @@ snapshots:
       style: primary
       start: 21
       end: 88
-    - source: from tests import tm
-      style: secondary
-      start: 0
-      end: 20
-    - source: |
-        from tests import tm
-        if not (isinstance(value, Entry)):
-            raise AssertionError(report)
-      style: secondary
-      start: 0
-      end: 89

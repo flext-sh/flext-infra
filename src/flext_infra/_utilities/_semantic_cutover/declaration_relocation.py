@@ -11,6 +11,7 @@ import keyword
 from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 from textwrap import dedent, indent
+from typing import cast
 
 from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (
@@ -22,10 +23,8 @@ from flext_infra._utilities._codemod import FlextInfraUtilitiesCodemodProject
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeImports,
-    FlextInfraUtilitiesRopeStructure,
-)
-from flext_infra._utilities._rope.runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
+    FlextInfraUtilitiesRopeStructure,
 )
 from flext_infra._utilities._rope.runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
@@ -184,7 +183,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                         project,
                         working,
                         (path, candidate[1], candidate[2]),
-                        resolved,
+                        cast(tuple[Path, str, str], resolved),
                     )
                     # Subsequent candidates bind to the proposed graph and coordinates.
                     project.close()
@@ -597,7 +596,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         project: p.Infra.RopeProject,
         sources: Mapping[Path, str],
         declaration: tuple[Path, str],
-    ) -> tuple[Path, str, str] | m.Infra.DeclarationRelocationFinding:
+    ) -> tuple[Path, str, str] | p.Infra.DeclarationRelocationFinding:
         origin, name = declaration
         root = Path(project.root.real_path)
         packages = tuple(
@@ -860,6 +859,9 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
     ) -> str:
         """Remove only native imports whose last proven use this cutover removed.
 
+        Rope's module query supplies lexical and exported names once; quoted
+        type references retain their native lexical-scope identity checks.
+
         Args:
             project: The Rope project owning the cutover sources.
             resource: Source resource of the rewritten module.
@@ -924,23 +926,11 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             for information in imports
             for name, alias in information.names_and_aliases
         }
-        used: set[str] = set()
-        for name in names:
-            binding = module.get_scope().get_names().get(name)
-            if binding is None:
-                continue
-            finder = FlextInfraUtilitiesRopeRuntimeRefactors.create_occurrence_finder(
-                project,
-                name,
-                binding,
-                imports=False,
-                in_hierarchy=False,
-            )
-            if any(
-                not occurrence.is_defined()
-                for occurrence in finder.find_occurrences(pymodule=module)
-            ):
-                used.add(name)
+        used = names & (
+            FlextInfraUtilitiesRopeRuntimeModules.module_imports_for_pymodule(
+                project, module
+            ).get_used_names(module)
+        )
         types = FlextInfraUtilitiesSemanticFamilyTypeReferences
         for _begin, _end, literal, scope in types.quoted_type_regions(
             module.source_code,
@@ -948,28 +938,6 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             module,
         ):
             used.update(cls._quoted_dependency_names(project, scope, literal) & names)
-        exported = tuple(
-            statement
-            for statement in FlextInfraUtilitiesRopeStructure.logical_statements(
-                module.source_code
-            )
-            if FlextInfraUtilitiesRopeStructure.target_name(statement) == "__all__"
-        )
-        for (
-            start,
-            stop,
-            _metadata,
-        ) in FlextInfraUtilitiesRopeRuntimeRefactors.ignored_regions(
-            module.source_code
-        ):
-            if module.source_code[start] == "#" or not any(
-                statement.start_offset <= start < stop <= statement.end_offset
-                for statement in exported
-            ):
-                continue
-            literal = types.string_constant(module.source_code[start:stop])
-            if literal in names:
-                used.add(literal)
         return used
 
     @classmethod

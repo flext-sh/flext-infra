@@ -20,6 +20,102 @@ from flext_infra.codegen import FlextInfraCodegenExecution
 class FlextInfraCodegenScaffolder(FlextInfraCodegenExecution[str]):
     """Generates missing base modules in src/ and tests/ directories."""
 
+    @staticmethod
+    def plan_stems(
+        root: Path,
+        project: p.Infra.ProjectSpec,
+        policy: p.Infra.ScaffoldSpec,
+        planned: Sequence[p.Infra.CodegenFilePlan],
+    ) -> tuple[p.Infra.CodegenFilePlan, ...]:
+        """Plan missing family stems and auxiliary facades over authored sources.
+
+        Returns:
+            Only absent seeds, preserving existing modules and planned templates.
+
+        """
+        occupied = {plan.path for plan in planned}
+        package = project.package_name
+        # A repository without a package composes its test facades from the
+        # public facades of the distribution it consumes.
+        facade_module = project.upstream if package is None else package
+        namespaces = (
+            *(
+                ()
+                if package is None
+                else (
+                    (
+                        root / c.Infra.DEFAULT_SRC_DIR / package,
+                        "",
+                        policy.source_stems,
+                    ),
+                )
+            ),
+            *(
+                (root / tier, u.derive_class_stem(tier), policy.auxiliary_stems)
+                for tier in config.Infra.source_scan.roots
+                if tier != c.Infra.DEFAULT_SRC_DIR and (root / tier).is_dir()
+            ),
+        )
+        seeds: list[p.Infra.CodegenFilePlan] = []
+        for directory, prefix, stems in namespaces:
+            renderings: dict[Path, str] = {}
+            if prefix and package is not None:
+                name = f"{prefix}{project.class_stem}Service"
+                renderings[directory / "base.py"] = u.Infra.generate_module_skeleton(
+                    context=m.Infra.ModuleSkeletonRenderContext(
+                        class_name=name,
+                        base_class=f"{project.class_stem}Service",
+                        base_module=package,
+                        docstring=name,
+                    )
+                ).unwrap()
+            for family in u.Infra.facade_families().values():
+                if prefix:
+                    name = f"{prefix}{project.class_stem}{family.suffix}"
+                    renderings[directory / f"{family.module}.py"] = (
+                        u.Infra.generate_test_module_skeleton(
+                            context=m.Infra.TestModuleSkeletonRenderContext(
+                                class_name=name,
+                                base_class=f"FlextTests{family.suffix}",
+                                project_module=facade_module,
+                                alias=family.letter,
+                                namespace="Tests",
+                                project_namespace=project.namespace,
+                                docstring=name,
+                            )
+                        )
+                    )
+                for stem in stems:
+                    path = directory / f"_{family.module}" / f"{stem}.py"
+                    name = (
+                        f"{prefix}{project.class_stem}{family.suffix}"
+                        f"{u.derive_class_stem(stem)}"
+                    )
+                    renderings[path] = u.Infra.generate_module_skeleton(
+                        context=m.Infra.ModuleSkeletonRenderContext(
+                            class_name=name,
+                            base_class=None,
+                            base_module=None,
+                            docstring=name,
+                        )
+                    ).unwrap()
+            for path, source in renderings.items():
+                if path in occupied or path.is_file():
+                    continue
+                before = u.Cli.atomic_read_binary_file_state(
+                    path, required=False
+                ).unwrap()
+                seeds.append(
+                    m.Infra.CodegenFilePlan(
+                        project=root,
+                        path=path,
+                        before=before,
+                        desired_content=source.encode(c.DEFAULT_ENCODING),
+                        desired_mode=config.Infra.codegen.modes.file_default,
+                    )
+                )
+        return tuple(seeds)
+
     @override
     def execute(self) -> p.Result[str]:
         """Execute scaffolding directly from the validated CLI model.
@@ -72,10 +168,49 @@ class FlextInfraCodegenScaffolder(FlextInfraCodegenExecution[str]):
             if discovered.failure:
                 return r[Sequence[p.Infra.ScaffoldResult]].from_failure(discovered)
             selected_projects = tuple(discovered.value)
-        return r.traverse(
+        scaffolded = r.traverse(
             selected_projects,
             lambda project: self._scaffold_project(project, dry_run=dry_run),
         )
+        if scaffolded.failure or projects is not None:
+            return scaffolded
+        return self._scaffold_consumer(dry_run=dry_run).map(
+            lambda consumer: (*scaffolded.value, *consumer)
+        )
+
+    def _scaffold_consumer(
+        self, *, dry_run: bool
+    ) -> p.Result[Sequence[p.Infra.ScaffoldResult]]:
+        """Seed the test facades of a consumer repository from its upstream.
+
+        A consumer owns no package, so project discovery never selects it; its
+        own declaration names the upstream whose facades its tests compose.
+
+        Returns:
+            One result for a declared consumer repository, none otherwise.
+
+        """
+        root = self.repository_root
+        declaration = root / c.CONFIG_DIR_NAME / c.Infra.CODEGEN_CONFIG_FILENAME
+        if not declaration.is_file():
+            return r[Sequence[p.Infra.ScaffoldResult]].ok(())
+        inputs = u.Infra.load_codegen_inputs(root)
+        if inputs.failure:
+            return r[Sequence[p.Infra.ScaffoldResult]].from_failure(inputs)
+        repository = inputs.value.spec.repository
+        project = repository.project
+        if project is None or project.package_name is not None:
+            return r[Sequence[p.Infra.ScaffoldResult]].ok(())
+        created: MutableSequence[str] = []
+        for seed in self.plan_stems(root, project, inputs.value.spec.scaffold, ()):
+            if not dry_run:
+                published = self._publish_seed(seed)
+                if published.failure:
+                    return r[Sequence[p.Infra.ScaffoldResult]].from_failure(published)
+            created.append(str(seed.path))
+        return r[Sequence[p.Infra.ScaffoldResult]].ok((
+            m.Infra.ScaffoldResult(project=root.name, files_created=created),
+        ))
 
     def _scaffold_project(
         self,
@@ -188,6 +323,20 @@ class FlextInfraCodegenScaffolder(FlextInfraCodegenExecution[str]):
         )
 
     @staticmethod
+    def _publish_seed(planned: p.Infra.CodegenFilePlan) -> p.Result[bool]:
+        """Publish one seed inside its repository under the shared file lease.
+
+        Returns:
+            Whether the seed was written, or the first publication failure.
+
+        """
+        u.Infra.contained_write_targets(planned.project, (planned.path,))
+        lock = u.Infra.mutation_lock_path(planned.project)
+        if lock.failure:
+            return r[bool].from_failure(lock)
+        return u.Cli.publish_file_changes((planned,), lock_path=lock.value).map(bool)
+
+    @staticmethod
     def _scaffold_dir(
         request: p.Infra.ScaffoldDirRequest,
     ) -> p.Result[tuple[MutableSequence[str], MutableSequence[str]]]:
@@ -252,21 +401,12 @@ class FlextInfraCodegenScaffolder(FlextInfraCodegenExecution[str]):
                 desired_mode=config.Infra.codegen.modes.file_default,
                 owner="codegen",
             )
-            u.Infra.contained_write_targets(planned.project, (planned.path,))
-            lock = u.Infra.mutation_lock_path(planned.project)
-            if lock.failure:
+            published = FlextInfraCodegenScaffolder._publish_seed(planned)
+            if published.failure:
                 return r[
                     tuple[MutableSequence[str], MutableSequence[str]]
-                ].from_failure(lock)
-            written = u.Cli.publish_file_changes((planned,), lock_path=lock.value)
-            if written.failure:
-                return r[
-                    tuple[MutableSequence[str], MutableSequence[str]]
-                ].from_failure(written)
-            if not written.value:
-                files_skipped.append(str(filepath))
-                continue
-            files_created.append(str(filepath))
+                ].from_failure(published)
+            (files_created if published.value else files_skipped).append(str(filepath))
         return r[tuple[MutableSequence[str], MutableSequence[str]]].ok((
             files_created,
             files_skipped,

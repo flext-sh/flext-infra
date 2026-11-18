@@ -184,7 +184,12 @@ class TestsFlextInfraGitFacetWorktreeStatus:
 
     @staticmethod
     def test_missing_git_binary_fails_closed(tmp_path: Path) -> None:
-        """Missing git on PATH must Result.fail without raising."""
+        """A Git binary that leaves PATH after first use must Result.fail.
+
+        The facet is used once first, so the scenario does not depend on which
+        test happens to load the Git library first in its worker.
+        """
+        tm.ok(u.Infra.refresh_binary())
         empty_path = tmp_path / "empty-path"
         empty_path.mkdir()
         with tm.scope(env={"PATH": str(empty_path)}):
@@ -199,10 +204,11 @@ class TestsFlextInfraGitFacetWorktreeStatus:
         tm.ok(refreshed)
         tm.ok(refreshed.value)
 
-    def test_remove_clean_worktree_refuses_missing_lifecycle_proof(
+    def test_remove_clean_worktree_keeps_a_lane_that_holds_submodules(
         self,
         tmp_path: Path,
     ) -> None:
+        """Git itself refuses to remove a working tree that contains submodules."""
         repository = u.Tests.git_repository(tmp_path)
         source = u.Tests.git_repository(tmp_path, "member-source")
         self._add_submodule(repository, source, "member")
@@ -222,11 +228,9 @@ class TestsFlextInfraGitFacetWorktreeStatus:
             ),
         )
 
-        u.Tests.git_run(repository, "fetch", "--quiet", "origin")
-
         tm.fail(
             u.Infra.git_remove_clean_worktree(repository, lane),
-            has="retirement refused",
+            has="containing submodules",
         )
 
         tm.that(lane.is_dir(), truth=True)
@@ -286,6 +290,60 @@ class TestsFlextInfraGitFacetWorktreeStatus:
 
         tm.fail(result, has="locked worktree")
         tm.that(lane.is_dir(), truth=True)
+
+    @staticmethod
+    def test_remove_clean_worktree_removes_a_clean_registered_lane(
+        tmp_path: Path,
+    ) -> None:
+        """A registered, unlocked, clean lane is removed; its branch stays."""
+        repository = u.Tests.git_repository(tmp_path)
+        lane = u.Tests.git_linked_lane(tmp_path, repository, "clean-lane")
+
+        tm.ok(u.Infra.git_remove_clean_worktree(repository, lane))
+
+        tm.that(lane.exists(), truth=False)
+        tm.that(u.Tests.git_ref_exists(repository, "refs/heads/clean-lane"), eq=True)
+        tm.that(
+            tm.ok(
+                u.Infra.git_list_worktrees(
+                    m.Infra.GitRepoRequest(repo_root=repository),
+                ),
+            ).porcelain.count("worktree "),
+            eq=1,
+        )
+
+    @staticmethod
+    @c.Tests.MARK.parametrize("layer", ["untracked", "staged"])
+    def test_remove_clean_worktree_refuses_dirty_worktree(
+        tmp_path: Path,
+        layer: str,
+    ) -> None:
+        """Uncommitted bytes in any layer keep the lane and its content."""
+        repository = u.Tests.git_repository(tmp_path)
+        lane = u.Tests.git_linked_lane(tmp_path, repository, "dirty-lane")
+        retained = lane / "retained.txt"
+        retained.write_text("retained WIP\n", encoding="utf-8")
+        if layer == "staged":
+            _ = u.Tests.git_run(lane, "add", "--", retained.name)
+
+        result = u.Infra.git_remove_clean_worktree(repository, lane)
+
+        tm.fail(result, has="dirty worktree")
+        tm.that(retained.read_text(encoding="utf-8"), eq="retained WIP\n")
+
+    @staticmethod
+    def test_remove_clean_worktree_refuses_unregistered_directory(
+        tmp_path: Path,
+    ) -> None:
+        """A directory Git does not register as a worktree is never removed."""
+        repository = u.Tests.git_repository(tmp_path)
+        plain = tmp_path / "plain-directory"
+        plain.mkdir()
+
+        result = u.Infra.git_remove_clean_worktree(repository, plain)
+
+        tm.fail(result, has="unregistered worktree")
+        tm.that(plain.is_dir(), truth=True)
 
     @staticmethod
     def test_is_ancestor_proves_any_pair_and_defaults_to_head(

@@ -1,6 +1,11 @@
 id: rewire-test-assert-falsity
 valid:
-- assert not path.exists()
+- |
+  from other_library import tm
+  assert not path.exists()
+- |
+  def check(tm: object) -> None:
+      assert not path.exists()
 - |
   from tests import tm
   assert path.exists()
@@ -11,6 +16,7 @@ valid:
   from tests import tm
   assert not isinstance(value, Entry)
 invalid:
+- assert not path.exists()
 - |
   from flext_tests import tm
   def check():

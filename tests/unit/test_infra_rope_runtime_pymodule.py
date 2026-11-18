@@ -165,6 +165,64 @@ class TestsFlextInfraRopeRuntimePymodule:
         tm.that(output.stdout, eq=f"{expected_value} foreign\n")
 
     @staticmethod
+    @c.Tests.MARK.parametrize(
+        "value",
+        [
+            '(\n        "first"\n        " second"\n    )',
+            '(\n        "only"\n    )',
+            "call(\n        1,\n    )",
+        ],
+    )
+    def test_contract_restructuring_keeps_multiline_values_parseable(
+        tmp_path: Path,
+        value: str,
+    ) -> None:
+        """A wildcard whose source spans lines keeps the brackets it relied on."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        consumer = package / "consumer.py"
+        source = (
+            "from typing import Final\n\n"
+            "def call(item: int) -> str:\n    return str(item)\n\n"
+            f"class Owner:\n    VALUE: Final[str] = {value}\n"
+        )
+        consumer.write_text(source, encoding=c.DEFAULT_ENCODING)
+        rule = m.Infra.RopeContractRule(
+            id="final-to-classvar",
+            pattern="${name}: ${final}[${contract}] = ${value}",
+            goal="${name}: ClassVar[${contract}] = ${value}",
+            arguments={"final": "name=typing.Final"},
+            imports={"ClassVar": "from typing import ClassVar"},
+        )
+        with infra.rope_workspace(root) as workspace:
+            edits = tm.ok(
+                u.Infra.plan_contract_rules(workspace, {consumer: source}, (rule,))
+            )
+        tm.that(len(edits), eq=1)
+        updated = edits[0].updated_source
+        tm.that(updated, contains="VALUE: ClassVar[str] = ")
+        values: list[str] = []
+        for text in (source, updated):
+            consumer.write_text(text, encoding=c.DEFAULT_ENCODING)
+            output = tm.ok(
+                u.Cli.run(
+                    (
+                        sys.executable,
+                        "-c",
+                        (
+                            f"from {package.name}.consumer import Owner; "
+                            f"print(Owner.VALUE)"
+                        ),
+                    ),
+                    cwd=root,
+                    options=m.Cli.ProcessOptions(
+                        env={"PYTHONPATH": str(package.parent)}
+                    ),
+                )
+            )
+            values.append(output.stdout)
+        tm.that(values[1], eq=values[0])
+
+    @staticmethod
     @c.Tests.MARK.parametrize("package", [False, True])
     def test_selected_source_resource_preserves_native_public_scope(
         tmp_path: Path,
@@ -280,7 +338,6 @@ class TestsFlextInfraRopeRuntimePymodule:
             closing(
                 u.Infra.new_project(
                     str(tmp_path),
-                    ropefolder="",
                     save_objectdb=False,
                     filter_lists=((), tuple(root.name for root in roots)),
                 )
@@ -336,7 +393,6 @@ class TestsFlextInfraRopeRuntimePymodule:
             closing(
                 u.Infra.new_project(
                     str(tmp_path),
-                    ropefolder="",
                     save_objectdb=False,
                     filter_lists=((), (package.name,)),
                 ),
@@ -456,12 +512,21 @@ class TestsFlextInfraRopeRuntimePymodule:
                 u.Infra.require_parsed_module(project.get_module("builtins"))
 
     @staticmethod
-    @c.Tests.MARK.parametrize("ambiguous", [False, True])
+    @c.Tests.MARK.parametrize(
+        ("source", "symbol", "ambiguous"),
+        [
+            ("value = 1\n", "value", False),
+            ("value = 1; print(value)\n", "value", False),
+            ("value = 1; value = 2\n", "value", True),
+            ("def example(value): value = value\n", "value", True),
+            ('name = "display name"  # name\n', "name", False),
+            ("árvore = 1; print(árvore)\n", "árvore", False),
+        ],
+    )
     def test_native_definition_token_identity(
-        tmp_path: Path, *, ambiguous: bool
+        tmp_path: Path, source: str, symbol: str, *, ambiguous: bool
     ) -> None:
-        """A unique definition resolves; two same-line uses remain ambiguous."""
-        source = "value = 1; print(value)\n" if ambiguous else "value = 1\n"
+        """One write resolves despite reads; multiple writes remain ambiguous."""
         path = tmp_path / "consumer.py"
         path.write_text(source, encoding=c.DEFAULT_ENCODING)
         with (
@@ -469,13 +534,20 @@ class TestsFlextInfraRopeRuntimePymodule:
             closing(u.Infra.snapshot_project(original, {path: source})) as project,
         ):
             module = u.Infra.resolve_pymodule(project, project.get_resource(path.name))
-            binding = module.get_attribute("value")
+            binding = (
+                module
+                .get_scope()
+                .get_inner_scope_for_offset(source.index("value"))
+                .get_names()["value"]
+                if source.startswith("def ")
+                else module.get_attribute(symbol)
+            )
             if ambiguous:
                 with u.Tests.raises(RuntimeError, match="definition binding token"):
                     u.Infra.find_identifier_offset_in_lines(
                         source.splitlines(keepends=True),
                         line=1,
-                        symbol="value",
+                        symbol=symbol,
                         pyname=binding,
                     )
             else:
@@ -483,8 +555,14 @@ class TestsFlextInfraRopeRuntimePymodule:
                     u.Infra.find_identifier_offset_in_lines(
                         source.splitlines(keepends=True),
                         line=1,
-                        symbol="value",
+                        symbol=symbol,
                         pyname=binding,
                     ),
-                    eq=source.index("value"),
+                    eq=source.index(symbol),
+                )
+                tm.that(
+                    u.Infra.find_identifier_offset_in_lines(
+                        source.splitlines(keepends=True), line=1, symbol=symbol
+                    ),
+                    eq=source.index(symbol),
                 )

@@ -28,6 +28,42 @@ class FlextInfraCodegenRoutes:
         )
 
     @staticmethod
+    def execute_cooldown_admission(
+        request: p.Infra.WorkspaceRequest,
+    ) -> p.Result[bool]:
+        """Compose the cooldown admission with the shared native command runner.
+
+        Returns:
+            Success once every requirement is inside the window, or every refusal.
+
+        """
+        return deps.FlextInfraCooldownAdmission.admit(request, u.Cli)
+
+    @staticmethod
+    def execute_upg_bounds(
+        request: p.Infra.WorkspaceRequest,
+    ) -> p.Result[bool]:
+        """Write the upg-owned bounds from each governed project's resolved lock.
+
+        Returns:
+            Success once every owned bound equals its locked version.
+
+        """
+        return deps.FlextInfraCooldownAdmission.record_bounds(request)
+
+    @staticmethod
+    def execute_verify_pin_convergence(
+        request: p.Infra.WorkspaceRequest,
+    ) -> p.Result[bool]:
+        """Verify all governed ``uv.lock`` files agree on shared Git SHAs.
+
+        Returns:
+            Success when every governed lock converges, or the drift report.
+
+        """
+        return deps.FlextInfraLockIntegrityVerifier.verify_pin_convergence(request)
+
+    @staticmethod
     def check_routes() -> tuple[p.Cli.ResultCommandRoute, ...]:
         """Build the check group's native model and handler bindings.
 
@@ -69,9 +105,6 @@ class FlextInfraCodegenRoutes:
             The ordered codegen command routes.
 
         """
-        primary = infra.codegen_routes(provide=lambda: infra)
-        if command is not None and any(route.name == command for route in primary):
-            return primary
         bootstrap = FlextInfraUtilitiesBase.result_routes((
             (
                 "candidate-bootstrap",
@@ -173,11 +206,10 @@ class FlextInfraCodegenRoutes:
                 "version-file generation complete",
             ),
         ))
-        return (
-            *bootstrap,
-            *primary,
-            *remaining,
-        )
+        secondary = (*bootstrap, *remaining)
+        if command is not None and any(route.name == command for route in secondary):
+            return secondary
+        return (*bootstrap, *infra.codegen_routes(provide=lambda: infra), *remaining)
 
     @staticmethod
     def deps_routes() -> tuple[p.Cli.ResultCommandRoute, ...]:
@@ -196,17 +228,24 @@ class FlextInfraCodegenRoutes:
                 "native Mise platform repair completed",
             ),
             (
+                "cooldown-admission",
+                "Lower upg-owned bounds into the uv cooldown; report every refusal",
+                m.Infra.WorkspaceRequest,
+                FlextInfraCodegenRoutes.execute_cooldown_admission,
+                "every declared requirement is inside the cooldown",
+            ),
+            (
+                "upg-bounds",
+                "Write the upg-owned floors and pins from the resolved locks",
+                m.Infra.WorkspaceRequest,
+                FlextInfraCodegenRoutes.execute_upg_bounds,
+                "upg-owned bounds match the resolved locks",
+            ),
+            (
                 "detect",
                 "Detect runtime vs dev dependencies",
                 m.Infra.DetectCommand,
                 deps.FlextInfraRuntimeDevDependencyDetector.execute,
-                None,
-            ),
-            (
-                "extra-paths",
-                "Synchronize pyright/mypy extraPaths",
-                deps.FlextInfraExtraPathsManager,
-                deps.FlextInfraExtraPathsManager.execute,
                 None,
             ),
             (
@@ -222,6 +261,13 @@ class FlextInfraCodegenRoutes:
                 deps.FlextInfraLockIntegrityVerifier,
                 deps.FlextInfraLockIntegrityVerifier.execute,
                 None,
+            ),
+            (
+                "verify-pin-convergence",
+                "Verify governed uv.lock files converge on shared Git dependency SHAs",
+                m.Infra.WorkspaceRequest,
+                FlextInfraCodegenRoutes.execute_verify_pin_convergence,
+                "every governed uv.lock agrees on shared Git dependency SHAs",
             ),
         ))
 

@@ -1,0 +1,12 @@
+id: require-field-description-field-call
+valid:
+- |
+  class Order(m.FrozenModel):
+      label: str = m.Field(default="", description="Display label")
+invalid:
+- |
+  class Order(m.FrozenModel):
+      label: str = m.Field(default="")
+- |
+  class Order(m.FrozenModel):
+      items: list[str] = m.Field(default_factory=list)

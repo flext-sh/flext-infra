@@ -151,7 +151,7 @@ class FlextInfraCheckWorkspaceCheckReports:
             The resulting ``m.Infra.SarifReport``.
 
         """
-        rules_by_id: MutableMapping[str, m.Infra.SarifRule] = {}
+        rules_by_id: MutableMapping[str, p.Infra.SarifRule] = {}
         sarif_results: list[p.Infra.SarifResult] = []
         for project in results:
             for gate in gates:
@@ -251,7 +251,7 @@ class FlextInfraCheckWorkspaceCheckReports:
     def _print_summary(
         cls,
         report_base: Path,
-        outcome: p.Infra.WorkspaceLoopOutcome,
+        outcome: p.Infra.LoopOutcome,
         summary: p.Infra.CheckReportSummary,
     ) -> None:
         """Print the terminal summary once, without republishing unchanged reports."""
@@ -278,6 +278,10 @@ class FlextInfraCheckWorkspaceCheckReports:
                 "Execution INCOMPLETE: "
                 f"{len(results)}/{len(summary.targets)} projects reached; "
                 "see the requested gate inventory in the reports",
+            )
+        if summary.pending_gates:
+            u.Cli.info(
+                "NOT EXECUTED: " + ", ".join(summary.pending_gates),
             )
         u.Cli.info(f"Reports: {report_base / c.Infra.CHECK_REPORT_MARKDOWN_FILENAME}")
         u.Cli.info(f"         {report_base / c.Infra.CHECK_REPORT_SARIF_FILENAME}")

@@ -19,6 +19,9 @@ class TestsFlextInfraExtendedCliEntry:
     def _workspace(tmp_path: Path) -> Path:
         workspace = tmp_path / "workspace"
         workspace.mkdir(parents=True, exist_ok=True)
+        # The check elects its runtime from Git: the workspace is a checkout
+        # and its member a registered submodule, as in a real workspace.
+        u.Tests.initialize_git_repo(workspace)
         _ = u.Tests.mk_project(
             workspace,
             "p1",
@@ -29,7 +32,17 @@ class TestsFlextInfraExtendedCliEntry:
             '"""Test package."""\n',
             encoding="utf-8",
         )
-        u.Tests.declare_workspace_projects(workspace, ("p1",))
+        member = workspace / "p1"
+        u.Tests.initialize_git_repo(
+            member,
+            origin_url=u.Tests.WorktreeFixture.governed_repository_url("p1"),
+        )
+        u.Tests.WorktreeFixture.attach_submodule(
+            workspace,
+            member,
+            distribution="p1",
+            relative_path="p1",
+        )
         return workspace
 
     @staticmethod
@@ -43,23 +56,6 @@ class TestsFlextInfraExtendedCliEntry:
                 str(tmp_path),
             ]),
             eq=1,
-        )
-
-    def test_run_accepts_explicit_scope(self, tmp_path: Path) -> None:
-        """Test run accepts explicit scope."""
-        workspace = self._workspace(tmp_path)
-        tm.that(
-            FlextInfraCli.infra_main([
-                "check",
-                "run",
-                "--repository-root",
-                str(workspace),
-                "--projects",
-                "p1",
-                "--gates",
-                "lint",
-            ]),
-            eq=0,
         )
 
     def test_run_without_projects_evaluates_only_the_repository(
@@ -95,8 +91,9 @@ class TestsFlextInfraExtendedCliEntry:
             eq=0,
         )
 
+    @c.Tests.MARK.slow
     def test_with_projects_success(self, tmp_path: Path) -> None:
-        """Test with projects success."""
+        """A real lint run succeeds for the explicitly selected workspace member."""
         workspace = self._workspace(tmp_path)
         tm.that(
             FlextInfraCli.infra_main([

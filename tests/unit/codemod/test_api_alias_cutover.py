@@ -67,7 +67,7 @@ class TestsFlextInfraApiAliasCutover:
             (
                 "import sample_pkg.foundation",
                 "sample_pkg.foundation.s",
-                "sample_pkg.foundation.FlextSampleService",
+                "sample_pkg.FlextSampleService",
             ),
         ],
     )

@@ -8,7 +8,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra.deps.lock_integrity import FlextInfraLockIntegrityVerifier
+from flext_infra import m
+from flext_infra.deps import FlextInfraLockIntegrityVerifier
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, tm, u
 
@@ -102,4 +103,57 @@ class TestsFlextInfraDepsLockIntegrity:
 
         tm.fail(
             self._verifier(tmp_path).execute(), has="missing committed generated lock"
+        )
+
+    def test_verify_pin_convergence_passes_on_single_repo(self, tmp_path: Path) -> None:
+        """A single repository with valid Git pins in uv.lock passes convergence."""
+        sha_a = "a" * 40
+        repo = "https://github.com/flext-sh/flext-core.git?rev=0.12.0-dev"
+        self._write_uv_lock(
+            tmp_path,
+            f'[[package]]\nname = "flext-core"\nsource = '
+            f'{{ git = "{repo}#{sha_a}" }}\n',
+        )
+        tm.ok(
+            FlextInfraLockIntegrityVerifier.verify_pin_convergence(
+                m.Infra.WorkspaceRequest(repository_root=tmp_path),
+            ),
+        )
+
+    @staticmethod
+    def test_verify_pin_convergence_fails_on_divergent_shas(tmp_path: Path) -> None:
+        """Divergent Git SHAs across two governed uv.lock files fail loudly."""
+        sha_a = "a" * 40
+        sha_b = "b" * 40
+        repo = "https://github.com/flext-sh/flext-core.git?rev=0.12.0-dev"
+        member_a = tmp_path / "pkg-a"
+        member_b = tmp_path / "pkg-b"
+        for member in (member_a, member_b):
+            member.mkdir()
+            u.Tests.initialize_git_repo(member)
+            (member / c.Infra.MAKEFILE_FILENAME).write_text("all:\n", encoding="utf-8")
+            (member / c.Infra.PYPROJECT_FILENAME).write_text(
+                f'[project]\nname = "{member.name}"\nversion = "0.1.0"\n',
+                encoding="utf-8",
+            )
+        (tmp_path / ".gitmodules").write_text(
+            '[submodule "pkg-a"]\n\tpath = pkg-a\n\turl = https://example.com/pkg-a.git\n'
+            '[submodule "pkg-b"]\n\tpath = pkg-b\n\turl = https://example.com/pkg-b.git\n',
+            encoding="utf-8",
+        )
+        (member_a / c.Infra.UV_LOCK_FILENAME).write_text(
+            f'[[package]]\nname = "flext-core"\nsource = '
+            f'{{ git = "{repo}#{sha_a}" }}\n',
+            encoding="utf-8",
+        )
+        (member_b / c.Infra.UV_LOCK_FILENAME).write_text(
+            f'[[package]]\nname = "flext-core"\nsource = '
+            f'{{ git = "{repo}#{sha_b}" }}\n',
+            encoding="utf-8",
+        )
+        tm.fail(
+            FlextInfraLockIntegrityVerifier.verify_pin_convergence(
+                m.Infra.WorkspaceRequest(repository_root=tmp_path),
+            ),
+            has="git pin divergence",
         )

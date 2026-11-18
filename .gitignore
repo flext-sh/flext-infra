@@ -37,6 +37,7 @@
 .claude/*.agents-governance.json
 .gemini/*.agents-governance.json
 .claude/settings.local.json
+.claude/scheduled_tasks.lock
 
 # Private local config layers
 /config/*.local.yaml
@@ -118,7 +119,6 @@ fix-report.json
 *.rej
 
 # Python caches inside allowed directories
-**/.mypy_cache/
 **/.ruff_cache/
 **/.pytest_cache/
 **/.hypothesis/
@@ -301,7 +301,6 @@ __pyrefly_virtual__/
 .doltcfg/
 .hypothesis/
 .mimosa/
-.mypy_cache/
 .omo/
 .pylance_cache/
 .pytest_cache/
@@ -336,7 +335,7 @@ skill-create-output/
 .debug-journal.md
 .mcp.json
 CLAUDE.local.md
-/.flext/executor/
+/.flext/
 
 # Tracked managed artifacts
 !requirements-infra.txt

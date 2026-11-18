@@ -6,12 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
 from collections.abc import Mapping
 from pathlib import Path
 
 from flext_infra import p
 from flext_infra._utilities import FlextInfraUtilitiesQualifiedNames
+from flext_infra._utilities._rope import FlextInfraUtilitiesRopeRuntimeModules
 
 
 class FlextInfraUtilitiesPrivateImportValidation:
@@ -35,26 +35,26 @@ class FlextInfraUtilitiesPrivateImportValidation:
                 or if public facade import.
 
         """
-        tree = ast.parse(source, filename=str(file_path))
-        for module, symbols in removals.items():
+        module = FlextInfraUtilitiesRopeRuntimeModules.build_string_module(None, source)
+        layouts = module.get_source_binding_index().import_layouts()
+        for module_name, symbols in removals.items():
             if any(
-                isinstance(node, ast.ImportFrom)
-                and node.module == module
-                and any(imported.name in symbols for imported in node.names)
-                for node in ast.walk(tree)
+                layout.module_name == module_name
+                and any(alias[0] in symbols for alias in layout.aliases)
+                for layout in layouts
             ):
-                msg = f"private import residue from {module} in {file_path}"
+                msg = f"private import residue from {module_name} in {file_path}"
                 raise ValueError(msg)
         for alias, package in plan.public_imports.items():
-            if not any(
-                isinstance(node, ast.ImportFrom)
-                and node.module == package
+            present = any(
+                layout.module_name == package
                 and any(
-                    imported.name == alias and imported.asname is None
-                    for imported in node.names
+                    imported[0] == alias and imported[1] is None
+                    for imported in layout.aliases
                 )
-                for node in ast.walk(tree)
-            ):
+                for layout in layouts
+            )
+            if not present:
                 msg = f"public facade import {package}.{alias} missing in {file_path}"
                 raise ValueError(msg)
         residue = FlextInfraUtilitiesQualifiedNames.qualified_name_residue(

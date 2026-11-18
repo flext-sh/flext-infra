@@ -59,10 +59,6 @@ class FlextInfraPytestRunnerBase(s[int]):
             description="Repository-elected graceful stop reserve inside the deadline.",
         ),
     ]
-    scratch_root: Annotated[
-        Path | None,
-        m.Field(description="External repository-owned native pytest scratch root."),
-    ] = None
     ci_context: Annotated[
         bool,
         m.Field(description="CI/pre-commit selection captured at the Make boundary."),
@@ -116,6 +112,7 @@ class FlextInfraPytestRunnerBase(s[int]):
         context: p.Infra.WorkspaceProjectContext,
         *,
         started_at_monotonic: float,
+        target_file: Path | None = None,
         execution_mode: c.Infra.PytestExecutionMode = (
             c.Infra.PytestExecutionMode.GLOBAL_INCREMENTAL
         ),
@@ -136,14 +133,15 @@ class FlextInfraPytestRunnerBase(s[int]):
         ):
             msg = f"pytest requires a governed project context: {context.cwd}"
             raise ValueError(msg)
-        root = context.identity.repo_root
+        # The suite runs on the submitted project, the root `make check` wrote
+        # its receipt under; the Git toplevel is an ancestor when the project
+        # is a subdirectory of its checkout (CI checks out into <repo>/<repo>).
+        root = context.cwd
+        # Pytest keeps its own basetemp under the declared temporary root; an
+        # undeclared one would fall back to the system /tmp (storage law).
+        settings.env_required(c.Infra.TEMPORARY_DIRECTORY_VARIABLE)
         make = u.Infra.load_codegen_inputs(root).unwrap().spec.make
         cache = make.testmon_cache
-        scratch = make.pytest_scratch
-        home = Path(settings.env_required(scratch.user_home_environment_variable))
-        if not home.is_absolute():
-            msg = "pytest home anchor must be absolute"
-            raise ValueError(msg)
         database: Path | None = None
         if execution_mode.is_incremental:
             cache_home_value = u.Infra.env_value(cache.data_home_environment_variable)
@@ -162,34 +160,21 @@ class FlextInfraPytestRunnerBase(s[int]):
                 / context.target.canonical_project_name
                 / cache.database_filename
             )
-        scratch_base = (
-            home / scratch.home_relative_directory / scratch.state_directory_name
-        )
-        scratch_root = (
-            Path(f"{scratch_base}{root}") / scratch.namespace / u.generate_id()
-        )
-        if scratch_root.resolve().is_relative_to(
-            context.runtime.runtime_root.resolve()
-        ):
-            msg = f"pytest scratch must be outside the runtime checkout: {scratch_root}"
-            raise ValueError(msg)
         run_timeout_seconds, termination_grace_seconds = cls._elected_pytest_deadline(
             root
         )
-        runner = cls(
+        return cls(
             repository_root=root,
             started_at_monotonic=started_at_monotonic,
             run_timeout_seconds=run_timeout_seconds,
             termination_grace_seconds=termination_grace_seconds,
             target=cache.target_directory,
+            target_file=target_file,
             reports=cache.reports_directory,
             testmon_db=database,
-            scratch_root=scratch_root,
             ci_context=u.Infra.env_value(make.ci.variable) == make.ci.value,
             profile_enabled=settings.Infra.profile,
         )
-        scratch_root.mkdir(parents=True, exist_ok=False)
-        return runner
 
     @classmethod
     def _elected_pytest_deadline(
@@ -371,26 +356,36 @@ class FlextInfraPytestRunnerBase(s[int]):
             return None
         return u.Infra.project_name_from_payload(pyproject_path, payload)
 
-    def _declared_worker_ceiling(
-        self,
-        policy: p.Infra.PytestConfig,
-    ) -> int | m.Infra.PytestWorkerCeiling:
+    def _declared_worker_ceiling(self) -> int | p.Infra.PytestWorkerCeiling:
         """Resolve the declared project's ceiling over the fleet default.
+
+        The ceiling is elected from the same governed YAML layers as the suite
+        deadline, so a project declares ``Infra.tooling.tools.pytest.
+        parallel-workers`` in its own ``config/tooling.yaml`` overlay and the
+        fleet config never has to name it.
 
         Returns:
             The resulting ``int | m.Infra.PytestWorkerCeiling``.
 
+        Raises:
+            ValueError: If the repository tooling election fails.
+
         """
-        if not policy.parallel_worker_overrides:
-            return policy.parallel_workers
+        tooling = FlextInfraUtilitiesProjectManagedArtifacts.load_tooling_inputs(
+            self.repository_root,
+        )
+        if tooling.failure:
+            msg = f"repository pytest tooling election failed: {tooling.error}"
+            raise ValueError(msg)
+        elected = tooling.value.document.tools.pytest
         name = self._declared_project_name()
         if name is None:
-            return policy.parallel_workers
-        return policy.parallel_worker_overrides.get(name, policy.parallel_workers)
+            return elected.parallel_workers
+        return elected.parallel_worker_overrides.get(name, elected.parallel_workers)
 
     @staticmethod
     def resolve_worker_ceiling(
-        ceiling: int | m.Infra.PytestWorkerCeiling,
+        ceiling: int | p.Infra.PytestWorkerCeiling,
         cpu_count: int,
     ) -> int:
         """Resolve a declared ceiling against the process CPU count.
@@ -414,9 +409,9 @@ class FlextInfraPytestRunnerBase(s[int]):
     def parallel_worker_budget(self, policy: p.Infra.PytestConfig) -> int:
         """Bound xdist by configuration, CPU, and physical memory.
 
-        The per-project override map (``[project].name`` → absolute workers or
-        CPU fraction) is where a consumer whose measured suite cannot fit the
-        single-worker process boundary declares its ceiling; the fleet-wide
+        A project declares its measured ceiling in its own tooling overlay
+        (``parallel-workers``); FLEXT members may sit in the fleet override map
+        (``[project].name`` → absolute workers or CPU fraction); the fleet-wide
         default stays one worker so ``max-failures: 1`` remains exact
         everywhere else. CPU capacity is the process-scoped count (the cgroup
         affinity the runner actually gets), not the host-wide count.
@@ -429,7 +424,7 @@ class FlextInfraPytestRunnerBase(s[int]):
                 support one pytest worker.
 
         """
-        ceiling = self._declared_worker_ceiling(policy)
+        ceiling = self._declared_worker_ceiling()
         cpu_count = os.process_cpu_count()
         if cpu_count <= 0:
             msg = "CPU capacity is unavailable"

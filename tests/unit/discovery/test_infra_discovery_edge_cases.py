@@ -7,18 +7,20 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-import io
 import os
-import re
-from cProfile import Profile
 from pathlib import Path
-from pstats import Stats
 
-from tests import c, tm, u
+from tests import c, t, tm, u
 
 
 class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
     """Edge-case tests for project discovery."""
+
+    @u.Tests.fixture(autouse=True)
+    @staticmethod
+    def _git_checkout(tmp_path: Path) -> None:
+        """Every discovery scenario is a real checkout, like every project."""
+        u.Tests.git_bootstrap(tmp_path, ("init", "--quiet"))
 
     @staticmethod
     @c.Tests.MARK.parametrize(
@@ -48,8 +50,10 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
     @staticmethod
     def test_publication_policy_reuses_unchanged_syntax(
         tmp_path: Path,
+        monkeypatch: t.Tests.MonkeyPatch,
     ) -> None:
         """An unchanged declaration parses once across repeated policy reads."""
+        u.Tests.git_bootstrap(tmp_path, ("init", "--quiet"))
         package = tmp_path / c.Infra.DEFAULT_SRC_DIR / "package"
         nested = package / "nested"
         nested.mkdir(parents=True)
@@ -64,19 +68,23 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
             "class Component:\n    pass\n\n__all__ = ['Component']\n",
             encoding=c.DEFAULT_ENCODING,
         )
-        profile = Profile()
+        u.Tests.git_bootstrap(tmp_path, ("add", "-A"))
+        parsed: list[str] = []
+        native_parse = ast.parse
+
+        def record(source: str, filename: str = "<unknown>") -> ast.Module:
+            parsed.append(source)
+            return native_parse(source, filename)
+
         with u.Infra.facade_source_project(tmp_path) as (project, _):
             original = u.Infra.publication_policy(source, rope_project=project)
+            monkeypatch.setattr(ast, "parse", record)
             repeated = original
-            profile.enable()
             for _ in range(3):
                 repeated = u.Infra.publication_policy(source, rope_project=project)
-            profile.disable()
             tm.ok(repeated == original)
-        output = io.StringIO()
-        parser = f"{ast.__file__}:{ast.parse.__code__.co_firstlineno}(parse)"
-        Stats(profile, stream=output).print_stats(re.escape(parser))
-        tm.that(output.getvalue(), lacks=parser)
+        component_parses = [text for text in parsed if "class Component" in text]
+        tm.that(component_parses, eq=[])
 
     @staticmethod
     def test_publication_exports_follow_content_with_an_unchanged_timestamp(
@@ -195,6 +203,17 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
         result = service.discover_projects(repository_root)
         tm.ok(result)
         tm.that(result.value, empty=True)
+
+    @staticmethod
+    def test_missing_source_root_yields_no_files(tmp_path: Path) -> None:
+        """An absent declared root owns no sources and is no Git failure."""
+        tm.that(
+            u.Infra.discover_python_files(
+                tmp_path / "tests",
+                workspace_excluded_top_dirs=frozenset(),
+            ),
+            eq=(),
+        )
 
     @staticmethod
     def test_find_all_pyproject_files_with_nonexistent_path() -> None:

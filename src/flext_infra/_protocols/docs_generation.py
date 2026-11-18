@@ -137,6 +137,13 @@ class FlextInfraProtocolsDocsGeneration:
             ...
 
         @property
+        def metadata_projection(
+            self,
+        ) -> FlextInfraProtocolsCodegenTransaction.CodegenFilePlan | None:
+            """Planned pyproject.toml the run publishes for this scope."""
+            ...
+
+        @property
         def name(self) -> t.NonEmptyStr:
             """Scope name."""
             ...

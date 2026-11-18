@@ -23,12 +23,10 @@ from flext_infra._models._config.make_docs import FlextInfraModelsConfigMakeDocs
 from flext_infra.make_contract import FlextInfraConfigMakeContract
 
 
-def _effective_custom_handler_policies(
-    base: FlextInfraModelsConfigMake.CustomHandlerPolicy,
-    overrides: tuple[
-        tuple[str, FlextInfraModelsConfigMake.CustomHandlerPolicyOverride], ...
-    ],
-) -> Mapping[str, FlextInfraModelsConfigMake.CustomHandlerPolicy]:
+def _effective_custom_handler_policies[PolicyT: p.Infra.CustomHandlerPolicy](
+    base: PolicyT,
+    overrides: tuple[tuple[str, p.Infra.CustomHandlerPolicyOverride], ...],
+) -> Mapping[str, PolicyT]:
     """Derive the effective per-profile policy from frozen policy inputs.
 
     Pure function of frozen models: the returned mapping is read-only.
@@ -38,8 +36,7 @@ def _effective_custom_handler_policies(
         overrides: Sorted ``(profile, relaxed policy)`` declaration pairs.
 
     Returns:
-        The resulting ``Mapping[str,
-            FlextInfraModelsConfigMake.CustomHandlerPolicy]``.
+        Effective policies retaining the supplied model type.
 
     """
     # Keys are normalised to the profile's string value: MakeProfile is a
@@ -104,14 +101,14 @@ class FlextInfraModelsConfigMake(
         data_home_environment_variable: Annotated[
             str,
             m.Field(min_length=1, description="XDG persistent cache-home variable"),
-        ] = FlextInfraConstantsConfig.MypyCacheEnvironment.DATA_HOME.value
+        ] = FlextInfraConstantsConfig.CacheHomeEnvironment.DATA_HOME.value
         user_home_environment_variable: Annotated[
             str,
             m.Field(
                 min_length=1,
                 description="User home variable for the XDG default",
             ),
-        ] = FlextInfraConstantsConfig.MypyCacheEnvironment.USER_HOME.value
+        ] = FlextInfraConstantsConfig.CacheHomeEnvironment.USER_HOME.value
 
     class MakeCiSpec(FlextInfraModelsConfigContract.ConfigContract):
         """The only permitted environment delta between local and CI execution."""
@@ -138,6 +135,19 @@ class FlextInfraModelsConfigMake(
                 ),
             ),
         ]
+        remote_variable: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description=(
+                    "Variable every remote runner exports, whatever CI token the "
+                    "step passes."
+                ),
+            ),
+        ] = "GITHUB_ACTIONS"
+        remote_value: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Value of remote_variable on a remote runner"),
+        ] = "true"
 
         @m.model_validator(mode="after")
         def _validate_distinct_tokens(self) -> Self:
@@ -304,7 +314,10 @@ class FlextInfraModelsConfigMake(
             ),
         ]
         requires: Annotated[
-            tuple[FlextInfraModelsConfigMake.MakeWorkflowRequirementSpec, ...],
+            tuple[
+                FlextInfraModelsConfigMake.MakeWorkflowRequirementSpec,
+                ...,
+            ],
             m.Field(
                 description=(
                     "Earlier workflow identities whose green result admits this step "
@@ -408,66 +421,6 @@ class FlextInfraModelsConfigMake(
                 raise ValueError(msg)
             return self
 
-    class MypyCacheSpec(
-        FlextInfraExternalCacheDirectorySpec.Directory[
-            FlextInfraConstantsConfig.MypyCacheEnvironment
-        ],
-        FlextInfraModelsConfigContract.ConfigContract,
-    ):
-        """Project-keyed shared Mypy cache, one analysis reused across relocks."""
-
-        cache_environment_variable: Annotated[
-            FlextInfraConstantsConfig.MypyCacheEnvironment,
-            m.Field(
-                description="Mypy's cache-directory environment variable",
-            ),
-        ] = FlextInfraConstantsConfig.MypyCacheEnvironment.CACHE_DIR
-        data_home_environment_variable: Annotated[
-            FlextInfraConstantsConfig.MypyCacheEnvironment,
-            m.Field(
-                description="XDG persistent cache-home variable",
-            ),
-        ] = FlextInfraConstantsConfig.MypyCacheEnvironment.DATA_HOME
-        user_home_environment_variable: Annotated[
-            FlextInfraConstantsConfig.MypyCacheEnvironment,
-            m.Field(
-                description="User home variable for the XDG default",
-            ),
-        ] = FlextInfraConstantsConfig.MypyCacheEnvironment.USER_HOME
-
-        @m.model_validator(mode="after")
-        def require_external_cache_contract(self) -> Self:
-            """Keep the official cache variable and the external path policy exact.
-
-            Returns:
-                The resulting ``Self``.
-
-            Raises:
-                ValueError: If mypy cache.
-
-            """
-            for name, actual, expected in (
-                (
-                    "cache_environment_variable",
-                    self.cache_environment_variable,
-                    FlextInfraConstantsConfig.MypyCacheEnvironment.CACHE_DIR,
-                ),
-                (
-                    "data_home_environment_variable",
-                    self.data_home_environment_variable,
-                    FlextInfraConstantsConfig.MypyCacheEnvironment.DATA_HOME,
-                ),
-                (
-                    "user_home_environment_variable",
-                    self.user_home_environment_variable,
-                    FlextInfraConstantsConfig.MypyCacheEnvironment.USER_HOME,
-                ),
-            ):
-                if actual != expected:
-                    msg = f"mypy cache {name} must be {expected.value}"
-                    raise ValueError(msg)
-            return self
-
     class MakeRuffSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Ruff CLI contract for generated Make verbs and quality gates.
 
@@ -553,10 +506,7 @@ class FlextInfraModelsConfigMake(
             m.Field(ge=1, le=32, description="Concurrent governed submodule clones"),
         ]
         ruff: Annotated[
-            Annotated[
-                p.Infra.MakeRuffSpec,
-                t.schema_for_model(lambda: FlextInfraModelsConfigMake.MakeRuffSpec),
-            ],
+            FlextInfraModelsConfigMake.MakeRuffSpec,
             m.Field(description="Ruff CLI flags for fmt/fix/check Make verbs"),
         ]
         fmt_gates: Annotated[
@@ -587,24 +537,14 @@ class FlextInfraModelsConfigMake(
         ] = False
         workflow: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.MakeWorkflowStepSpec,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsConfigMake.MakeWorkflowStepSpec
-                    ),
-                ],
+                FlextInfraModelsConfigMake.MakeWorkflowStepSpec,
                 ...,
             ],
             m.Field(min_length=1, description="Ordered canonical validation workflow"),
         ]
         lifecycle_steps: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.MakeLifecycleStepSpec,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsConfigMake.MakeLifecycleStepSpec
-                    ),
-                ],
+                FlextInfraModelsConfigMake.MakeLifecycleStepSpec,
                 ...,
             ],
             m.Field(
@@ -612,10 +552,7 @@ class FlextInfraModelsConfigMake(
             ),
         ]
         ci: Annotated[
-            Annotated[
-                p.Infra.MakeCiSpec,
-                t.schema_for_model(lambda: FlextInfraModelsConfigMake.MakeCiSpec),
-            ],
+            FlextInfraModelsConfigMake.MakeCiSpec,
             m.Field(description="Config-owned CI-only environment delta"),
         ]
         native_environment_unset: Annotated[
@@ -840,74 +777,9 @@ class FlextInfraModelsConfigMake(
                     raise ValueError(msg)
                 return self
 
-        class PytestScratchSpec(FlextInfraModelsConfigContract.ConfigContract):
-            """Scratch root every pytest-running verb declares (storage law).
-
-            The root is ``$<home>/<home_relative_directory>/<state_directory_name>``
-            followed by the absolute checkout path and ``<namespace>``: never
-            ``/tmp`` and never inside a versioned tree (a workspace member's
-            parent directory is the superproject checkout).
-            """
-
-            user_home_environment_variable: Annotated[
-                FlextInfraConstantsConfig.PytestCacheEnvironment,
-                m.Field(description="User home variable anchoring the scratch root"),
-            ]
-            home_relative_directory: Annotated[
-                t.NonEmptyStr,
-                m.Field(description="Home-relative scratch base directory"),
-            ]
-            state_directory_name: Annotated[
-                t.NonEmptyStr,
-                m.Field(description="Runtime-state directory name under the base"),
-            ]
-            namespace: Annotated[
-                t.NonEmptyStr,
-                m.Field(description="Scratch namespace below the checkout path"),
-            ]
-
-            @m.model_validator(mode="after")
-            def require_home_relative_components(self) -> Self:
-                """Keep the scratch root anchored at home and free of traversal.
-
-                Returns:
-                    The resulting ``Self``.
-
-                Raises:
-                    ValueError: If the home variable is not the user home, or a
-                        component is absolute, traverses upward, or is not a
-                        single path segment where one is required.
-
-                """
-                if (
-                    self.user_home_environment_variable
-                    != FlextInfraConstantsConfig.PytestCacheEnvironment.USER_HOME
-                ):
-                    msg = (
-                        "pytest scratch user_home_environment_variable must be "
-                        f"{FlextInfraConstantsConfig.PytestCacheEnvironment.USER_HOME.value}"
-                    )
-                    raise ValueError(msg)
-                base = Path(self.home_relative_directory)
-                if base.is_absolute() or ".." in base.parts:
-                    msg = "pytest scratch home_relative_directory must stay below home"
-                    raise ValueError(msg)
-                for name, value in (
-                    ("state_directory_name", self.state_directory_name),
-                    ("namespace", self.namespace),
-                ):
-                    if Path(value).name != value or value in {".", ".."}:
-                        msg = f"pytest scratch {name} must be one path segment"
-                        raise ValueError(msg)
-                return self
-
         testmon_cache: Annotated[
             TestmonCacheSpec,
             m.Field(description="Adaptive testmon Actions cache policy"),
-        ]
-        pytest_scratch: Annotated[
-            PytestScratchSpec,
-            m.Field(description="Scratch root declared by every pytest verb"),
         ]
         executor_environment: Annotated[
             ExecutorEnvironmentSpec,
@@ -951,12 +823,7 @@ class FlextInfraModelsConfigMake(
             ),
         ]
         testmon_cache_policy: Annotated[
-            Annotated[
-                p.Infra.TestmonCachePolicySpec,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsConfigMake.TestmonCachePolicySpec
-                ),
-            ],
+            FlextInfraModelsConfigMake.TestmonCachePolicySpec,
             m.Field(
                 description=(
                     "Declarative save/budget/quota policy for the shared"
@@ -964,32 +831,104 @@ class FlextInfraModelsConfigMake(
                 ),
             ),
         ]
-        mypy_cache: Annotated[
-            Annotated[
-                p.Infra.MypyCacheSpec,
-                t.schema_for_model(lambda: FlextInfraModelsConfigMake.MypyCacheSpec),
-            ],
+        ruff_cache: Annotated[
+            FlextInfraModelsConfigMake.RuffCacheSpec,
             m.Field(
-                description="Project-keyed shared Mypy analysis cache policy",
+                description="Shared external Ruff cache; Ruff keys its own entries"
             ),
         ]
-        ruff_cache: Annotated[
-            Annotated[
-                p.Infra.RuffCacheSpec,
-                t.schema_for_model(lambda: FlextInfraModelsConfigMake.RuffCacheSpec),
-            ],
-            m.Field(description="External project-keyed native Ruff cache policy"),
+
+    class MakeAdmissionOverrideSpec(FlextInfraModelsConfigContract.ConfigContract):
+        """Explicit per-verb exception to the admission limits; unset keeps defaults."""
+
+        max_load5: Annotated[
+            t.PositiveFloat | None,
+            m.Field(description="Highest 5-minute load average that admits the verb"),
+        ] = None
+        memory_limit_gb: Annotated[
+            t.PositiveInt | None,
+            m.Field(description="Memory limit of each verb recipe, in GiB"),
+        ] = None
+        max_processes: Annotated[
+            t.PositiveInt | None,
+            m.Field(description="CPU limit of each verb recipe"),
+        ] = None
+
+    class MakeAdmissionLimitsSpec(FlextInfraModelsConfigContract.ConfigContract):
+        """Resolved admission and run limits of one public Make verb."""
+
+        max_load5: Annotated[
+            t.PositiveFloat,
+            m.Field(description="Highest 5-minute load average that admits the verb"),
         ]
+        memory_limit_gb: Annotated[
+            t.PositiveInt,
+            m.Field(description="Memory limit of each verb recipe, in GiB"),
+        ]
+        max_processes: Annotated[
+            t.PositiveInt,
+            m.Field(description="CPU limit of each verb recipe"),
+        ]
+
+        @m.computed_field
+        @property
+        def memory_limit_bytes(self) -> int:
+            """Memory limit in bytes, the unit MemoryMax accepts."""
+            return self.memory_limit_gb * c.Infra.BYTES_PER_GIB
+
+    class MakeAdmissionSpec(MakeAdmissionLimitsSpec):
+        """Host admission and run limits of every public Make verb.
+
+        ADR-032: on the shared host every verb refuses to start above
+        ``max_load5`` and runs bounded by ``memory_limit_gb`` and
+        ``max_processes``; ``overrides`` declares explicit verb exceptions.
+        """
+
+        overrides: Annotated[
+            Mapping[
+                t.NonEmptyStr,
+                FlextInfraModelsConfigMake.MakeAdmissionOverrideSpec,
+            ],
+            m.Field(description="Explicit per-verb exceptions to the defaults"),
+        ] = m.Field(default_factory=dict)
+        refusal_guidance: Annotated[
+            tuple[
+                Annotated[
+                    str,
+                    m.StringConstraints(min_length=1, pattern=r"^[^$#\n]+$"),
+                ],
+                ...,
+            ],
+            m.Field(
+                min_length=1,
+                description=(
+                    "Lighter-route guidance printed with every refusal; plain "
+                    "Make text without '$', '#' or newlines"
+                ),
+            ),
+        ]
+
+        @m.computed_field
+        @property
+        def verb_limits(
+            self,
+        ) -> Mapping[str, FlextInfraModelsConfigMake.MakeAdmissionLimitsSpec]:
+            """Each overridden verb's limits merged over the defaults."""
+            return {
+                verb: FlextInfraModelsConfigMake.MakeAdmissionLimitsSpec(
+                    max_load5=override.max_load5 or self.max_load5,
+                    memory_limit_gb=override.memory_limit_gb or self.memory_limit_gb,
+                    max_processes=override.max_processes or self.max_processes,
+                )
+                for verb, override in self.overrides.items()
+            }
 
     class MakeVerbCatalogSpec(MakeHarnessSpec):
         """Public verb catalog, CLI routing and lifecycle policies of Make."""
 
         verbs: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.MakeVerbSpec,
-                    t.schema_for_model(lambda: FlextInfraModelsConfigMake.MakeVerbSpec),
-                ],
+                FlextInfraModelsConfigMake.MakeVerbSpec,
                 ...,
             ],
             m.Field(description="Ordered canonical public verbs"),
@@ -1042,20 +981,18 @@ class FlextInfraModelsConfigMake(
             tuple[t.NonEmptyStr, ...],
             m.Field(description="Named controls accepted by every generated Make verb"),
         ] = ()
+        bootstrap_bin_dir: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description="Repository-local directory of the project's Mise shims",
+            ),
+        ]
         clean: Annotated[
-            Annotated[
-                p.Infra.MakeCleanSpec,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsConfigMakeClean.MakeCleanSpec
-                ),
-            ],
+            FlextInfraModelsConfigMakeClean.MakeCleanSpec,
             m.Field(description="Disposable artifacts removed by the clean verb"),
         ]
         docs: Annotated[
-            Annotated[
-                p.Infra.MakeDocsSpec,
-                t.schema_for_model(lambda: FlextInfraModelsConfigMakeDocs.MakeDocsSpec),
-            ],
+            FlextInfraModelsConfigMakeDocs.MakeDocsSpec,
             m.Field(description="Public documentation lifecycle policy"),
         ]
 
@@ -1063,34 +1000,19 @@ class FlextInfraModelsConfigMake(
         """Complete generated Makefile public and extension contract."""
 
         custom_handler_policy: Annotated[
-            Annotated[
-                p.Infra.CustomHandlerPolicy,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsConfigMake.CustomHandlerPolicy
-                ),
-            ],
+            FlextInfraModelsConfigMake.CustomHandlerPolicy,
             m.Field(description="Private custom target policy"),
         ]
         custom_handler_profile_overrides: Annotated[
             Mapping[
                 t.NonEmptyStr,
-                Annotated[
-                    p.Infra.CustomHandlerPolicyOverride,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsConfigMake.CustomHandlerPolicyOverride
-                    ),
-                ],
+                FlextInfraModelsConfigMake.CustomHandlerPolicyOverride,
             ],
             m.Field(description="Per-profile overrides of the custom handler policy"),
         ]
         project_check_gates: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.MakeProjectCheckGateSpec,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsConfigMake.MakeProjectCheckGateSpec
-                    ),
-                ],
+                FlextInfraModelsConfigMake.MakeProjectCheckGateSpec,
                 ...,
             ],
             m.Field(
@@ -1119,6 +1041,27 @@ class FlextInfraModelsConfigMake(
                     "retains its own native concurrency"
                 ),
             ),
+        ]
+        scan_threads: Annotated[
+            t.PositiveInt,
+            m.Field(
+                default=4,
+                description=("Bounded thread budget for ast-grep scan execution"),
+            ),
+        ] = 4
+        scan_batch_files: Annotated[
+            t.PositiveInt,
+            m.Field(
+                default=64,
+                description=(
+                    "Sources per ast-grep scan invocation; each completed batch "
+                    "persists its cache fragments before the next starts"
+                ),
+            ),
+        ] = 64
+        admission: Annotated[
+            FlextInfraModelsConfigMake.MakeAdmissionSpec,
+            m.Field(description="Host admission and run limits of every public verb"),
         ]
 
         @m.model_validator(mode="after")
@@ -1224,14 +1167,15 @@ class FlextInfraModelsConfigMake(
             """Validate the workflow verbs against the declared public verbs.
 
             CI provisions first and runs the read-only check and complete test
-            owners in order. The pre-commit rows select only the read-only check.
+            owners in order. The pre-commit rows run setup, then the read-only
+            check.
 
             Raises:
                 ValueError: If make workflow verbs must be unique; or if make
                     workflow verbs are not declared public verbs; or if make
                     workflow verbs must be available in every profile; or if CI
                     approval boundaries or milestone order are invalid; or if
-                    pre-commit selects an operation other than check.
+                    the pre-commit rows are not setup followed by check.
 
             """
             workflow_verbs = tuple(step.verb for step in self.workflow)
@@ -1271,15 +1215,10 @@ class FlextInfraModelsConfigMake(
                 )
                 raise ValueError(msg)
             approval = tuple(step for step in self.workflow if "ci" in step.contexts)
-            milestones = (
-                (c.Infra.VERB_CHECK, c.Infra.CheckPhase.PRIMARY),
-                (c.Infra.VERB_TEST, c.Infra.CheckPhase.COMPLETE),
-                (c.Infra.VERB_CHECK, c.Infra.CheckPhase.COMPLETE),
-                (c.Infra.VERB_TEST, c.Infra.CheckPhase.COMPLETE),
-            )
+            milestones = ((c.Infra.VERB_CHECK, c.Infra.CheckPhase.PRIMARY),)
             if (
                 not approval
-                or approval[0].verb != "setup"
+                or approval[0].verb != c.Infra.VERB_SETUP
                 or tuple(
                     (step.verb, step.phase)
                     for step in approval
@@ -1287,16 +1226,15 @@ class FlextInfraModelsConfigMake(
                 )
                 != milestones
             ):
-                msg = (
-                    "CI requires setup followed by primary check, native tests "
-                    "and complete check followed by final incremental tests"
-                )
+                msg = "CI requires setup followed by the fast primary check only"
                 raise ValueError(msg)
             hook = tuple(
                 step.verb for step in self.workflow if "pre_commit" in step.contexts
             )
-            if hook != (c.Infra.VERB_CHECK,):
-                msg = "the pre-commit hook requires only the check operation"
+            # A commit first provisions the checkout's own environment, so the
+            # check runs the locked toolchain even in a fresh lane worktree.
+            if hook != (c.Infra.VERB_SETUP, c.Infra.VERB_CHECK):
+                msg = "the pre-commit hook requires setup followed by check"
                 raise ValueError(msg)
 
         def _validate_workflow_requirements(self) -> None:
@@ -1333,9 +1271,7 @@ class FlextInfraModelsConfigMake(
                     self._validate_test_admission(step)
             self._validate_admission_requirements()
 
-        def _validate_test_admission(
-            self, tests: FlextInfraModelsConfigMake.MakeWorkflowStepSpec
-        ) -> None:
+        def _validate_test_admission(self, tests: p.Infra.MakeWorkflowStepSpec) -> None:
             """Require primary evidence in every context of each test invocation.
 
             Raises:
@@ -1511,7 +1447,11 @@ class FlextInfraModelsConfigMake(
             return tuple(
                 gate
                 for gate in self.check_gates_default
-                if stages[gate] != FlextInfraConstantsConfig.GateStage.PUSH
+                if stages[gate]
+                in {
+                    FlextInfraConstantsConfig.GateStage.COMMIT,
+                    FlextInfraConstantsConfig.GateStage.CI,
+                }
             )
 
         @m.computed_field
@@ -1564,7 +1504,10 @@ class FlextInfraModelsConfigMake(
         @property
         def custom_handler_policies(
             self,
-        ) -> Mapping[str, FlextInfraModelsConfigMake.CustomHandlerPolicy]:
+        ) -> Mapping[
+            str,
+            FlextInfraModelsConfigMake.CustomHandlerPolicy,
+        ]:
             """Effective custom-handler policy for every Make profile.
 
             The base policy states the strictest contract (private handlers
@@ -1574,8 +1517,7 @@ class FlextInfraModelsConfigMake(
             it is conforming.
 
             Returns:
-                The resulting ``Mapping[str,
-                    FlextInfraModelsConfigMake.CustomHandlerPolicy]``.
+                The resulting ``Mapping[str, p.Infra.CustomHandlerPolicy]``.
 
             """
             base = self.custom_handler_policy

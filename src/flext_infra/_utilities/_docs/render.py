@@ -13,7 +13,7 @@ from collections.abc import Mapping, Sequence
 from glob import translate
 from pathlib import Path, PurePosixPath
 from posixpath import normpath
-from typing import ClassVar
+from typing import ClassVar, cast
 from urllib.parse import urlsplit
 
 from flext_cli import u
@@ -293,8 +293,16 @@ class FlextInfraUtilitiesDocsRender:
         return declared or default
 
     @staticmethod
-    def docs_directive_page(title: str, dotted_path: str, *, width: int) -> str:
+    def docs_directive_page(
+        title: str,
+        dotted_path: str,
+        *,
+        width: int,
+        documentation_language: t.Infra.DocumentationLanguage = "en",
+    ) -> str:
         """Return a mkdocstrings page for a module path.
+
+        An empty path renders the page of an unpackaged project: no directive.
 
         Returns:
             A mkdocstrings page for a module path.
@@ -303,7 +311,10 @@ class FlextInfraUtilitiesDocsRender:
         return FlextInfraUtilitiesDocsRender._render_template(
             c.Infra.TEMPLATE_DOCS_DIRECTIVE_PAGE,
             m.Infra.DocsDirectivePageContext(
-                line_width=width, title=title, dotted_path=dotted_path
+                documentation_language=documentation_language,
+                line_width=width,
+                title=title,
+                dotted_path=dotted_path,
             ),
         )
 
@@ -320,22 +331,26 @@ class FlextInfraUtilitiesDocsRender:
         text = scope.documentation_text
         return FlextInfraUtilitiesDocsRender._render_template(
             c.Infra.TEMPLATE_DOCS_PROJECT_INDEX,
-            m.Infra.DocsProjectIndexContext(
-                documentation_language=scope.documentation_language,
-                line_width=width,
-                name=scope.name,
-                project_class=scope.project_class,
-                package_name=scope.package_name,
-                version=FlextInfraUtilitiesDocsRender._declared_or(
-                    contract, "version", text(c.Infra.DocumentationText.UNKNOWN)
+            m.Infra.DocsProjectIndexContext.model_validate({
+                "documentation_language": (scope.documentation_language),
+                "line_width": (width),
+                "name": (scope.name),
+                "project_class": (scope.project_class),
+                "package_name": (scope.package_name),
+                "version": (
+                    FlextInfraUtilitiesDocsRender._declared_or(
+                        contract, "version", text(c.Infra.DocumentationText.UNKNOWN)
+                    )
                 ),
-                description=FlextInfraUtilitiesDocsRender._declared_or(
-                    contract,
-                    "description",
-                    text(c.Infra.DocumentationText.NOT_DECLARED),
+                "description": (
+                    FlextInfraUtilitiesDocsRender._declared_or(
+                        contract,
+                        "description",
+                        text(c.Infra.DocumentationText.NOT_DECLARED),
+                    )
                 ),
-                links=FlextInfraUtilitiesDocsRender._governance_links(scope),
-            ),
+                "links": (FlextInfraUtilitiesDocsRender._governance_links(scope)),
+            }),
         )
 
     @staticmethod
@@ -357,25 +372,31 @@ class FlextInfraUtilitiesDocsRender:
         text = scope.documentation_text
         return FlextInfraUtilitiesDocsRender._render_template(
             c.Infra.TEMPLATE_DOCS_PROJECT_README,
-            m.Infra.DocsProjectReadmeContext(
-                documentation_language=scope.documentation_language,
-                line_width=width,
-                name=scope.name,
-                project_class=scope.project_class,
-                package_name=scope.package_name,
-                version=FlextInfraUtilitiesDocsRender._declared_or(
-                    contract, "version", text(c.Infra.DocumentationText.UNKNOWN)
+            m.Infra.DocsProjectReadmeContext.model_validate({
+                "documentation_language": (scope.documentation_language),
+                "line_width": (width),
+                "name": (scope.name),
+                "project_class": (scope.project_class),
+                "package_name": (scope.package_name),
+                "version": (
+                    FlextInfraUtilitiesDocsRender._declared_or(
+                        contract, "version", text(c.Infra.DocumentationText.UNKNOWN)
+                    )
                 ),
-                description=FlextInfraUtilitiesDocsRender._declared_or(
-                    contract,
-                    "description",
-                    text(c.Infra.DocumentationText.NOT_DECLARED),
+                "description": (
+                    FlextInfraUtilitiesDocsRender._declared_or(
+                        contract,
+                        "description",
+                        text(c.Infra.DocumentationText.NOT_DECLARED),
+                    )
                 ),
-                links=FlextInfraUtilitiesDocsRender._governance_links(scope),
-                facades=FlextInfraUtilitiesDocsRender.as_string_sequence(
-                    contract, "facades"
+                "links": (FlextInfraUtilitiesDocsRender._governance_links(scope)),
+                "facades": (
+                    FlextInfraUtilitiesDocsRender.as_string_sequence(
+                        contract, "facades"
+                    )
                 ),
-            ),
+            }),
         )
 
     @staticmethod
@@ -534,7 +555,10 @@ class FlextInfraUtilitiesDocsRender:
                 public_symbols=sequence(contract, "public_symbols"),
                 module_exports=sequence(contract, "module_exports"),
                 preview_limits=(
-                    config.Infra.codegen.make.docs.overview_preview_limits.model_dump()
+                    cast(
+                        Mapping[str, int],
+                        config.Infra.codegen.make.docs.overview_preview_limits.model_dump(),
+                    )
                 ),
                 module_count=len(modules),
             ),
@@ -648,18 +672,22 @@ class FlextInfraUtilitiesDocsRender:
         english = c.Infra.DocumentationText
         return FlextInfraUtilitiesDocsRender._render_template(
             c.Infra.TEMPLATE_DOCS_ROOT_OVERVIEW_PAGE,
-            m.Infra.DocsRootOverviewContext(
-                line_width=width,
-                site_title=FlextInfraUtilitiesDocsRender._site_title(contract),
-                version=FlextInfraUtilitiesDocsRender._declared_or(
-                    contract, "version", english.UNKNOWN.localized("en")
+            m.Infra.DocsRootOverviewContext.model_validate({
+                "line_width": (width),
+                "site_title": (FlextInfraUtilitiesDocsRender._site_title(contract)),
+                "version": (
+                    FlextInfraUtilitiesDocsRender._declared_or(
+                        contract, "version", english.UNKNOWN.localized("en")
+                    )
                 ),
-                description=FlextInfraUtilitiesDocsRender._declared_or(
-                    contract, "description", english.NOT_DECLARED.localized("en")
+                "description": (
+                    FlextInfraUtilitiesDocsRender._declared_or(
+                        contract, "description", english.NOT_DECLARED.localized("en")
+                    )
                 ),
-                project_count=project_count,
-                class_counts=class_counts,
-            ),
+                "project_count": (project_count),
+                "class_counts": (class_counts),
+            }),
         )
 
     @staticmethod
@@ -674,7 +702,10 @@ class FlextInfraUtilitiesDocsRender:
         """
         return FlextInfraUtilitiesDocsRender._render_template(
             c.Infra.TEMPLATE_DOCS_ROOT_PROJECTS_INDEX,
-            m.Infra.DocsRootProjectsIndexContext(line_width=width, entries=entries),
+            m.Infra.DocsRootProjectsIndexContext.model_validate({
+                "line_width": (width),
+                "entries": (entries),
+            }),
         )
 
     @staticmethod
@@ -693,9 +724,9 @@ class FlextInfraUtilitiesDocsRender:
         exclude_patterns: Sequence[str] = tuple(exclude_docs or ())
         return FlextInfraUtilitiesDocsRender._render_template(
             c.Infra.TEMPLATE_DOCS_PROJECT_CATALOG_PAGE,
-            m.Infra.DocsProjectCatalogContext(
-                line_width=width,
-                entries=tuple(
+            m.Infra.DocsProjectCatalogContext.model_validate({
+                "line_width": width,
+                "entries": tuple(
                     entry
                     for entry in entries
                     if not any(
@@ -705,7 +736,7 @@ class FlextInfraUtilitiesDocsRender:
                         for pattern in exclude_patterns
                     )
                 ),
-            ),
+            }),
         )
 
 

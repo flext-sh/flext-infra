@@ -46,4 +46,11 @@ install_lazy_exports(
         "FlextInfraProtocolsCodegenTransaction": ".transaction",
     },
     public_exports=__all__,
+    deferred_members=(
+        "FlextInfraProtocolsCodegenFix",
+        "FlextInfraProtocolsCodegenLazyInit",
+        "FlextInfraProtocolsCodegenPipeline",
+        "FlextInfraProtocolsCodegenScaffold",
+        "FlextInfraProtocolsCodegenTransaction",
+    ),
 )

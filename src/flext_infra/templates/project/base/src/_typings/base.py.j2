@@ -5,7 +5,7 @@ helpers, no ``Any``/``object``. The ``typings.py`` facade composes this class
 into the ``{{ ns }}`` namespace via FLEXT.
 
 Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
-SPDX-License-Identifier: MIT
+SPDX-License-Identifier: {{ license }}
 """
 
 from __future__ import annotations
@@ -20,8 +20,8 @@ from collections.abc import (
 )
 
 
-class {{ class_stem }}TypingsBase:
+class {{ class_stem }}TypesBase:
     """{{ ns }} core type aliases (add PEP 695 ``type`` aliases here)."""
 
 
-__all__: list[str] = ["{{ class_stem }}TypingsBase"]
+__all__: list[str] = ["{{ class_stem }}TypesBase"]

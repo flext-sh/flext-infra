@@ -103,37 +103,15 @@ class FlextInfraUtilitiesGitSemanticLane:
             The resulting ``p.Result[bool]``.
 
         """
-        root = request.repo_root
-        admitted = FlextInfraUtilitiesGitSemanticRefs.git_verify_lane(
-            m.Infra.GitLaneVerificationRequest(
-                repo_root=root,
-                operation="verify",
-                candidate=request.base,
-                ownership=request.ownership,
-            ),
-        )
-        if admitted.failure:
-            return r[bool].from_failure(admitted)
         base = cls._verified_lane_base(request)
         if base.failure:
             return r[bool].from_failure(base)
-        owned = FlextInfraUtilitiesGitSemanticRefs.git_verify_lane(
-            m.Infra.GitLaneVerificationRequest(
-                repo_root=root,
-                operation="create",
-                candidate=request.base,
-                ownership=request.ownership,
-                expected_tip=admitted.value.oid,
-            )
-        )
-        if owned.failure:
-            return r[bool].from_failure(owned)
         produced = cls._git_produce_lane(request, produce)
         if produced.failure:
             return produced
         ahead = u.Cli.capture(
             [c.Infra.GIT, "rev-list", "--count", f"{request.base}..{request.branch}"],
-            cwd=root,
+            cwd=base.value,
         )
         if ahead.failure:
             return r[bool].from_failure(ahead)
@@ -198,9 +176,79 @@ class FlextInfraUtilitiesGitSemanticLane:
             )
         if switched.failure:
             return switched
-        return FlextInfraUtilitiesGitSemanticPublish.git_merge_no_edit(
+        merged = FlextInfraUtilitiesGitSemanticPublish.git_merge_no_edit(
             m.Infra.GitCommitishRequest(repo_root=root, commitish=request.base),
-        ).map(lambda _report: True)
+        )
+        if merged.success:
+            return r[bool].ok(value=True)
+        return cls._git_take_base_projections(request, merged.error or "")
+
+    @classmethod
+    def _git_take_base_projections(
+        cls,
+        request: p.Infra.GitLaneRequest,
+        merge_error: str,
+    ) -> p.Result[bool]:
+        """Conclude a merge whose only conflicts are full generated projections.
+
+        ``.gitattributes`` marks a full projection ``-merge linguist-generated``:
+        Git never combines it textually, so the lane's earlier rendering and
+        the base's always conflict. The merge takes the base's rendering and
+        the producing step regenerates it from the merged sources. Any other
+        conflict keeps the merge state and fails with the original error.
+
+        Returns:
+            The resulting ``p.Result[bool]``.
+
+        """
+        root = request.repo_root
+        listed = u.Cli.capture(
+            [c.Infra.GIT, "diff", "--name-only", "--diff-filter=U", "-z"],
+            cwd=root,
+        )
+        if listed.failure:
+            return r[bool].from_failure(listed)
+        conflicted = tuple(path for path in listed.value.split("\0") if path)
+        if not conflicted:
+            return r[bool].fail(merge_error)
+        attributes = u.Cli.capture(
+            [
+                c.Infra.GIT,
+                "check-attr",
+                "-z",
+                *c.Infra.GIT_PROJECTION_ATTRIBUTES,
+                "--",
+                *conflicted,
+            ],
+            cwd=root,
+        )
+        if attributes.failure:
+            return r[bool].from_failure(attributes)
+        fields = attributes.value.split("\0")
+        declared = set(zip(fields[::3], fields[1::3], fields[2::3], strict=False))
+        regenerated = {
+            path
+            for path in conflicted
+            if all(
+                (path, name, value) in declared
+                for name, value in c.Infra.GIT_PROJECTION_ATTRIBUTES.items()
+            )
+        }
+        foreign = sorted(set(conflicted) - regenerated)
+        if foreign:
+            return r[bool].fail(
+                f"{merge_error}\nconflicts outside generated projections: "
+                + ", ".join(foreign),
+            )
+        for command in (
+            [c.Infra.GIT, "checkout", "--theirs", "--", *conflicted],
+            [c.Infra.GIT, "add", "--", *conflicted],
+            [c.Infra.GIT, "commit", "--no-edit"],
+        ):
+            outcome = u.Cli.run_checked(command, cwd=root)
+            if outcome.failure:
+                return outcome
+        return r[bool].ok(value=True)
 
     @classmethod
     def _git_commit_produced(cls, request: p.Infra.GitLaneRequest) -> p.Result[bool]:
@@ -236,25 +284,60 @@ class FlextInfraUtilitiesGitSemanticLane:
 
     @classmethod
     def _git_open_pull_request(cls, request: p.Infra.GitLaneRequest) -> p.Result[bool]:
-        """Push the lane, then open its pull request or refresh the open one.
+        """Push the lane, then refresh its open pull request or open a new one.
+
+        The pull request is resolved by head, base and ``open`` state: once the
+        previous one merged, the lane opens a new one. Several open pull
+        requests on one lane, or a body beyond GitHub's ceiling, fail loud.
 
         Returns:
             The resulting ``p.Result[bool]``.
 
         """
         root, branch = request.repo_root, request.branch
+        body = u.Cli.files_read_text(request.body_file)
+        if body.failure:
+            return r[bool].from_failure(body)
+        if len(body.value) > c.Infra.GH_PULL_REQUEST_BODY_MAX_CHARS:
+            return r[bool].fail(
+                f"pull request body {request.body_file} has {len(body.value)} "
+                f"characters; GitHub accepts {c.Infra.GH_PULL_REQUEST_BODY_MAX_CHARS}",
+            )
         pushed = FlextInfraUtilitiesGitSemanticPublish.git_push_upstream(
             m.Infra.GitPushRequest(repo_root=root, branch=branch),
         )
         if pushed.failure:
             return r[bool].from_failure(pushed)
-        exists = u.Cli.capture(
-            [c.Infra.GH, "pr", "view", branch, "--json", "number"],
+        # Only an open pull request is the lane's: a merged or closed one on
+        # the same head (the previous release) is history and never edited.
+        listed = u.Cli.capture(
+            [
+                c.Infra.GH,
+                "pr",
+                "list",
+                "--head",
+                branch,
+                "--base",
+                request.base,
+                "--state",
+                "open",
+                "--json",
+                "number",
+                "--jq",
+                ".[].number",
+            ],
             cwd=root,
         )
+        if listed.failure:
+            return r[bool].from_failure(listed)
+        numbers = listed.value.split()
+        if len(numbers) > 1:
+            return r[bool].fail(
+                f"lane {branch} has several open pull requests: {', '.join(numbers)}",
+            )
         command = (
-            [c.Infra.GH, "pr", "edit", branch]
-            if exists.success
+            [c.Infra.GH, "pr", "edit", numbers[0]]
+            if numbers
             else [c.Infra.GH, "pr", "create", "--base", request.base, "--head", branch]
         )
         return u.Cli.run_checked(
