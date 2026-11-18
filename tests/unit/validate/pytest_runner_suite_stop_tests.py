@@ -298,3 +298,53 @@ class TestsFlextInfraPytestRunnerSuiteStop:
                 "exit=0",
             ],
         )
+
+    @c.Tests.MARK.slow
+    def test_deadline_inside_a_fixture_publishes_the_executed_prefix(
+        self,
+        cached_runner_project: Path,
+    ) -> None:
+        """A fixture still running at the deadline ends through pytest's interrupt.
+
+        A class fixture is not bounded by the per-item call timeout, so the
+        process deadline's SIGTERM lands inside it. The suite must still
+        write its JUnit report and the runner its accounting, never
+        ``executed=unknown``.
+        """
+        target = config.Infra.codegen.make.testmon_cache.target_directory
+        (cached_runner_project / target / "test_hanging_fixture.py").write_text(
+            "import time\n\n"
+            "import pytest\n"
+            "from runner_sample import answer\n\n\n"
+            "def test_a_completes() -> None:\n"
+            "    assert answer() == 42\n\n\n"
+            "@pytest.fixture\n"
+            "def hanging() -> None:\n"
+            "    time.sleep(600)\n\n\n"
+            "def test_b_hangs_in_setup(hanging: None) -> None:\n"
+            "    assert hanging is None\n",
+            encoding="utf-8",
+        )
+        policy = config.Infra.tooling.tools.pytest
+        runner = u.Tests.PytestRunner.runner_for(cached_runner_project).model_copy(
+            update={
+                "started_at_monotonic": time.monotonic()
+                - policy.run_timeout_seconds
+                + policy.slow_timeout_seconds
+                - 3 * policy.termination_grace_seconds,
+            },
+        )
+
+        tm.that(tm.ok(runner.execute()), eq=c.Tests.ExitCode.INTERRUPTED.value)
+
+        reports = config.Infra.codegen.make.testmon_cache.reports_directory
+        (bounded,) = (
+            path.parent
+            for path in (cached_runner_project / reports).glob("*/summary.txt")
+        )
+        outcome = m.Cli.ProcessOutcome.model_validate_json(
+            self._read(bounded / "suite-outcome.json"),
+        )
+        tm.that(outcome.timed_out, truth=True)
+        tm.that((bounded / "junit.xml").is_file(), truth=True)
+        tm.that(self._read(bounded / "summary.txt"), lacks="executed=unknown")

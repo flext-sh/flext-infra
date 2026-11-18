@@ -460,9 +460,13 @@ class FlextInfraPytestRunnerExecution(
 
         Under xdist the declared max-failures stop exits as Interrupted, not
         TestsFailed; it is still one completed suite lifecycle whose bounded
-        evidence must be published. An operator signal keeps forwarded_signal
-        set and never qualifies. A startup interruption has no final JUnit
-        report and must retain its native failure without suite finalization.
+        evidence must be published. The process deadline's SIGTERM unwinds
+        the suite through pytest's own interruption (``SuiteStop``), so a
+        timed-out suite that wrote its final JUnit report also finished its
+        lifecycle and publishes its executed prefix. An operator signal keeps
+        forwarded_signal set and never qualifies. A startup interruption has
+        no final JUnit report and must retain its native failure without
+        suite finalization.
 
         Returns:
             Whether a failing suite still finished its lifecycle.
@@ -471,7 +475,6 @@ class FlextInfraPytestRunnerExecution(
         return (
             outcome.raw_return_code
             in {c.Infra.PytestExitCode.TESTS_FAILED, c.Infra.PytestExitCode.INTERRUPTED}
-            and not outcome.timed_out
             and outcome.forwarded_signal is None
             and (report_dir / "junit.xml").is_file()
         )
