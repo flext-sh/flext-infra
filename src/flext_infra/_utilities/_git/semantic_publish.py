@@ -39,6 +39,109 @@ class FlextInfraUtilitiesGitSemanticPublish(FlextInfraUtilitiesGitRepo):
         return r[p.Infra.GitTextReport].ok(m.Infra.GitTextReport(text=text))
 
     @classmethod
+    def git_conflicted_paths(
+        cls,
+        request: p.Infra.GitRepoRequest,
+    ) -> p.Result[tuple[str, ...]]:
+        """List the unmerged paths of an open merge.
+
+        Returns:
+            The conflicted paths, empty when nothing is unmerged.
+
+        """
+        try:
+            listed = cls._repo(request.repo_root).git.diff(
+                "--name-only",
+                "--diff-filter=U",
+                "-z",
+            )
+        except GitCommandError as exc:
+            return r[tuple[str, ...]].fail(str(exc), exception=exc)
+        except (OSError, ValueError) as exc:
+            return r[tuple[str, ...]].fail(
+                f"failed to list conflicted paths: {exc}",
+                exception=exc,
+            )
+        return r[tuple[str, ...]].ok(tuple(path for path in listed.split("\0") if path))
+
+    @classmethod
+    def git_merge_abort(
+        cls,
+        request: p.Infra.GitRepoRequest,
+    ) -> p.Result[p.Infra.GitBoolReport]:
+        """Abort the open merge, restoring the pre-merge worktree and index.
+
+        Returns:
+            The resulting ``p.Result[p.Infra.GitBoolReport]``.
+
+        """
+        try:
+            cls._repo(request.repo_root).git.merge("--abort")
+        except GitCommandError as exc:
+            return r[p.Infra.GitBoolReport].fail(str(exc), exception=exc)
+        except (OSError, ValueError) as exc:
+            return r[p.Infra.GitBoolReport].fail(
+                f"merge abort failed: {exc}",
+                exception=exc,
+            )
+        return r[p.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
+
+    @classmethod
+    def git_checkout_theirs(
+        cls,
+        request: p.Infra.GitPathsRequest,
+    ) -> p.Result[p.Infra.GitBoolReport]:
+        """Take the merged-in side of conflicted ``paths`` in the worktree.
+
+        Returns:
+            The resulting ``p.Result[p.Infra.GitBoolReport]``.
+
+        """
+        try:
+            cls._repo(request.repo_root).git.checkout(
+                "--theirs",
+                "--",
+                *request.paths,
+            )
+        except GitCommandError as exc:
+            return r[p.Infra.GitBoolReport].fail(str(exc), exception=exc)
+        except (OSError, ValueError) as exc:
+            return r[p.Infra.GitBoolReport].fail(
+                f"failed to take the merged-in side: {exc}",
+                exception=exc,
+            )
+        return r[p.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
+
+    @classmethod
+    def git_merge_conclude(
+        cls,
+        request: p.Infra.GitPathsRequest,
+    ) -> p.Result[p.Infra.GitBoolReport]:
+        """Stage ``paths`` as they stand and commit the open merge.
+
+        The commit keeps ``MERGE_HEAD`` as its second parent, so the merge is
+        recorded as a merge, never squashed into a single-parent commit. A
+        conflicted gitlink stages the member checkout's current HEAD.
+
+        Returns:
+            The resulting ``p.Result[p.Infra.GitBoolReport]``.
+
+        """
+        try:
+            git = cls._repo(request.repo_root).git
+            if request.paths:
+                git.add("--", *request.paths)
+            git.commit("--no-edit")
+        except GitCommandError as exc:
+            return r[p.Infra.GitBoolReport].fail(str(exc), exception=exc)
+        except (OSError, ValueError) as exc:
+            return r[p.Infra.GitBoolReport].fail(
+                f"failed to conclude the merge: {exc}",
+                exception=exc,
+            )
+        return r[p.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
+
+    @classmethod
     def git_delete_ref(
         cls,
         request: p.Infra.GitDeleteRefRequest,
