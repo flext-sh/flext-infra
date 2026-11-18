@@ -145,6 +145,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
             required_dev_dependencies=u.Infra.project_development_requirements(
                 codegen.scaffold.project,
                 distribution=target.repository.distribution,
+                standalone=target.make_profile is c.Infra.MakeProfile.STANDALONE,
             ),
             uv_resolution=m.Infra.UvResolutionSpec.model_validate({
                 "link_mode": (cls.link_mode(target.repository, toolchain)),
@@ -550,6 +551,8 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         repository: p.Infra.RepositoryRef,
         codegen: p.Infra.CodegenConfigSpec,
         project: p.Infra.ProjectSpec,
+        *,
+        standalone: bool,
     ) -> p.Result[tuple[tuple[t.NonEmptyStr, ...], tuple[t.NonEmptyStr, ...]]]:
         """Resolve declared and composed development dependencies of one render.
 
@@ -558,6 +561,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
             repository: Declared immutable repository identity.
             codegen: Codegen contract the repository renders under.
             project: Validated scaffold project of the conform request.
+            standalone: Whether the checkout is its own workspace root.
 
         Returns:
             The declared project dependencies and the validated development
@@ -575,6 +579,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
             codegen.scaffold.project,
             distribution=repository.distribution,
             declared=declared_dev,
+            standalone=standalone,
         )
         development_dependencies = r[tuple[t.NonEmptyStr, ...]].create_from_callable(
             partial(t.Infra.NON_EMPTY_STR_SEQ_ADAPTER.validate_python, composed_dev),
@@ -608,7 +613,11 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
             return r[p.Infra.ProjectRenderContext].from_failure(project)
         project = project.value
         dependencies = self._development_dependencies(
-            repository_root, repository, codegen, project
+            repository_root,
+            repository,
+            codegen,
+            project,
+            standalone=target.make_profile is c.Infra.MakeProfile.STANDALONE,
         )
         if dependencies.failure:
             return r[p.Infra.ProjectRenderContext].from_failure(dependencies)

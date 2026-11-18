@@ -572,3 +572,10 @@ class TestsFlextInfraPyprojectDependencyGroups:
             declared=(),
         )
         tm.that(any("flext-infra" in item for item in root), truth=True)
+        standalone = u.Infra.project_development_requirements(
+            policy,
+            distribution="consumer",
+            declared=(),
+            standalone=True,
+        )
+        tm.that(any("flext-infra" in item for item in standalone), truth=True)
