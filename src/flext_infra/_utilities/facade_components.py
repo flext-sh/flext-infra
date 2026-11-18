@@ -790,6 +790,9 @@ class FlextInfraUtilitiesFacadeComponents:
     ) -> str:
         """Project the upstream letter base and the domain nested class.
 
+        Each edit replaces only its own name span in the original text, so
+        every comment and the layout of the facade survive.
+
         Returns:
             The canonical facade source, unchanged when it already conforms.
 
@@ -804,58 +807,54 @@ class FlextInfraUtilitiesFacadeComponents:
             and node.module.partition(".")[0] != own_package
             for alias in node.names
         }
-        changed = False
+        lines = source.encode().splitlines(keepends=True)
+        edits: dict[tuple[int, int, int, int], str] = {}
         for node in tree.body:
             if isinstance(node, ast.ClassDef):
-                renamed = FlextInfraUtilitiesFacadeComponents._strip_nested_prefix(node)
-                rebased = FlextInfraUtilitiesFacadeComponents._rebase_upstream_letter(
-                    tree, node, upstream, family
+                FlextInfraUtilitiesFacadeComponents._strip_nested_prefix(
+                    node, lines, edits
                 )
-                changed = changed or renamed or rebased
-        if not changed:
-            return source
-        lines = source.splitlines()
-        prefix_end = 0
-        for index, line in enumerate(lines):
-            if line.startswith("#") or not line.strip():
-                prefix_end = index + 1
-            else:
-                break
-        prefix = "\n".join(lines[:prefix_end]).rstrip()
-        rendered = ast.unparse(tree)
-        return f"{prefix}\n{rendered}" if prefix else rendered
+                FlextInfraUtilitiesFacadeComponents._rebase_upstream_letter(
+                    tree, node, (upstream, family), edits
+                )
+        for (line, start, end_line, end), text in sorted(edits.items(), reverse=True):
+            lines[line - 1 : end_line] = [
+                lines[line - 1][:start] + text.encode() + lines[end_line - 1][end:]
+            ]
+        return b"".join(lines).decode()
 
     @staticmethod
-    def _strip_nested_prefix(facade: ast.ClassDef) -> bool:
-        """Name each nested namespace by its domain stem, never ``Flext<Domain>``.
-
-        Returns:
-            Whether a nested class was renamed.
-
-        """
-        changed = False
+    def _strip_nested_prefix(
+        facade: ast.ClassDef,
+        lines: Sequence[bytes],
+        edits: MutableMapping[tuple[int, int, int, int], str],
+    ) -> None:
+        """Name each nested namespace by its domain stem, never ``Flext<Domain>``."""
         for child in facade.body:
             if isinstance(child, ast.ClassDef) and child.name.startswith("Flext"):
-                child.name = child.name.removeprefix("Flext")
-                changed = True
-        return changed
+                start = lines[child.lineno - 1].index(
+                    child.name.encode(), child.col_offset
+                )
+                span = (child.lineno, start, child.lineno, start + len(child.name))
+                edits[span] = child.name.removeprefix("Flext")
 
     @staticmethod
     def _rebase_upstream_letter(
         tree: ast.Module,
         facade: ast.ClassDef,
-        upstream: Mapping[str, str],
-        family: c.Infra.FacadeFamily,
-    ) -> bool:
-        """Replace the first upstream facade base by that package's letter.
+        target: tuple[Mapping[str, str], c.Infra.FacadeFamily],
+        edits: MutableMapping[tuple[int, int, int, int], str],
+    ) -> None:
+        """Replace the first upstream facade base and its import by the letter.
 
         A facade already based on the letter keeps every other base, so a
         sister facade composed beside it is never removed.
 
-        Returns:
-            Whether the base and its import were rebound to the letter.
+        Raises:
+            ValueError: If a rebound name carries no source end location.
 
         """
+        upstream, family = target
         base = next(
             (
                 item
@@ -865,23 +864,20 @@ class FlextInfraUtilitiesFacadeComponents:
             None,
         )
         if base is None or base.id == family.value:
-            return False
-        module = upstream[base.id]
-        alias = next(
-            (
-                alias
-                for node in tree.body
-                if isinstance(node, ast.ImportFrom) and node.module == module
-                for alias in node.names
-                if (alias.asname or alias.name) == base.id
-            ),
-            None,
-        )
-        if alias is not None:
-            alias.name = family.value
-            alias.asname = None
-        base.id = family.value
-        return True
+            return
+        rebound = [base] + [
+            alias
+            for node in tree.body
+            if isinstance(node, ast.ImportFrom) and node.module == upstream[base.id]
+            for alias in node.names
+            if (alias.asname or alias.name) == base.id
+        ]
+        for item in rebound:
+            if item.end_lineno is None or item.end_col_offset is None:
+                msg = f"{ast.dump(item)} has no source end location"
+                raise ValueError(msg)
+            span = (item.lineno, item.col_offset, item.end_lineno, item.end_col_offset)
+            edits[span] = family.value
 
     @classmethod
     def _facade_foreign_publications(
