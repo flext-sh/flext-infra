@@ -115,7 +115,6 @@ install_lazy_exports(
             "_overlay_tool_tables",
             "_drop_package_declaration",
             "overlay_preserved",
-            "plain_fleet_requirements",
         ),
         "FlextInfraUtilitiesPyprojectRequirements": (
             "dependency_group_name",

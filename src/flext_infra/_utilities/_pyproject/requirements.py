@@ -464,11 +464,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
             or dependency_name in provenance.native_sources
             or cls._declares_direct_source(requirement)
         ):
-            return r[str].ok(
-                FlextInfraUtilitiesDependencies.fleet_requirement(requirement)
-                if workspace
-                else requirement.strip(),
-            )
+            return r[str].ok(requirement.strip())
         if "@" not in requirement.partition(";")[0] and (
             FlextInfraUtilitiesDependencies
             .dependency_constraint(

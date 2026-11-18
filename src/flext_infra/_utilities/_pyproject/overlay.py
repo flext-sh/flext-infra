@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping, Sequence
+from collections.abc import Sequence
 
 from flext_cli import u
 from packaging.requirements import Requirement
@@ -445,41 +445,7 @@ class FlextInfraUtilitiesPyprojectOverlay:
         cls._overlay_tool_tables(merged, live_payload.value, tool_tables)
         if cls._render_is_unpackaged(merged):
             cls._drop_package_declaration(merged)
-        cls.plain_fleet_requirements(merged)
         return r[str].ok(u.Cli.toml_dumps(u.Cli.toml_document_from_mapping(merged)))
-
-    @classmethod
-    def plain_fleet_requirements(cls, merged: MutableMapping[str, t.JsonValue]) -> None:
-        """Strip embedded source URLs from fleet requirements in the projection.
-
-        The projection is the last writer, and a fleet requirement that carries
-        its own ``@ git+...`` cannot be overridden by the workspace source: uv
-        then sees two URLs for one package (``file:///...`` editable and
-        ``git+...@0.12.0-dev``) and refuses the resolution that ``make upg`` and
-        ``make gen`` depend on. The name alone lets the workspace elect the
-        editable checkout and a standalone consumer take the locked git source.
-        """
-        project = merged.get(c.Infra.PROJECT)
-        if isinstance(project, dict):
-            _rewrite_fleet_requirements(project.get(c.Infra.DEPENDENCIES))
-            optional = project.get(c.Infra.OPTIONAL_DEPENDENCIES)
-            if isinstance(optional, dict):
-                for requirements in optional.values():
-                    _rewrite_fleet_requirements(requirements)
-        groups = merged.get(c.Infra.DEPENDENCY_GROUPS)
-        if isinstance(groups, dict):
-            for requirements in groups.values():
-                _rewrite_fleet_requirements(requirements)
-
-
-def _rewrite_fleet_requirements(requirements: object) -> None:
-    """Replace fleet git requirements in place; other entries are untouched."""
-    if not isinstance(requirements, list):
-        return
-    for index, requirement in enumerate(requirements):
-        if isinstance(requirement, str):
-            plain = FlextInfraUtilitiesDependencies.fleet_requirement(requirement)
-            requirements[index] = plain
 
 
 __all__: list[str] = ["FlextInfraUtilitiesPyprojectOverlay"]

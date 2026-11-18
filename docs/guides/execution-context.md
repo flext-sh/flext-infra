@@ -585,14 +585,9 @@ copied into the audited stage. Required build assets must belong to the committe
 source or be produced by its build backend inside the isolated build, not injected
 from unauthenticated checkout outputs. Release metadata and snapshotted build
 policy retain their existing explicit rendering and attestation boundaries.
-Release-version takes no ownership receipt: the release lane admits through the
-read-only lane verification and a clean checkout on the integration branch (see
-[Durable Git state capture, Lane admission](git-state-capture.md#lane-admission)).
-The public `workspace lane-ownership` command still reconstructs a checkpoint's
-original metadata and index parent, verifies the full repository scope, live
-remote retention, and inclusion in the current integration tip, and emits the
-typed receipt for agent-lane ownership. It never captures, publishes, integrates,
-switches branches, or modifies current staged, unstaged, or untracked work.
+Release-version starts its lane from a clean checkout on the integration branch
+(see [Durable Git state capture, Git primitives and lane
+publication](git-state-capture.md#git-primitives-and-lane-publication)).
 The scoped Git API separates `prepare_publication`, `publication_scope`, and
 `commit_publications`. Its live admission binds the prior ownership, integration
 tip, caller ref and exact original index. Native producers retain their original
