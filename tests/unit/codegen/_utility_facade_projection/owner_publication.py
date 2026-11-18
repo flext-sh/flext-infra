@@ -95,6 +95,11 @@ class UtilityFacadeOwnerPublication:
             cwd=root,
         )
 
+    # Measured 2026-11-18: the native_consumer probe spawns a fresh interpreter
+    # (run_lazy_init_probe) by contract; 1.89 s call uncovered and 3.50 s under
+    # coverage at load 14.6, and the canonical gate timed out at the 2 s
+    # ordinary call budget while the child was still running.
+    @c.Tests.MARK.slow
     def test_initializer_retires_exports_moved_into_class_owners(
         self,
         tmp_path: Path,
