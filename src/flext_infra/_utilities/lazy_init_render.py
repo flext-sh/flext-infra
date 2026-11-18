@@ -108,7 +108,6 @@ class FlextInfraUtilitiesLazyInitRender:
                 runtime_import_lines=cls._lazy_init_runtime_imports(
                     helpers,
                     deferring=bool(plan.deferred_instances),
-                    sharing=bool(plan.deferred_bases),
                 ),
                 type_checking_lines="\n".join(
                     cls._lazy_init_type_checking(public, first_party)
@@ -116,10 +115,9 @@ class FlextInfraUtilitiesLazyInitRender:
                 eager_binding_lines=cls._lazy_init_eager_bindings(plan, first_party),
                 exports_tuple=cls._lazy_init_exports_tuple((*public, *helpers)),
                 lazy_export_mapping=cls._lazy_init_mapping(entries),
-                deferred_members_mapping=cls._lazy_init_deferred_mapping(
-                    plan.deferred_members
+                deferred_exports_argument=cls._lazy_init_deferred_exports(
+                    plan.deferred_exports
                 ),
-                deferred_bases_call=cls._lazy_init_bases_call(plan.deferred_bases),
                 deferred_instances_call=cls._lazy_init_instances_call({
                     name: entries[name] for name in plan.deferred_instances
                 }),
@@ -235,7 +233,7 @@ class FlextInfraUtilitiesLazyInitRender:
 
     @classmethod
     def _lazy_init_runtime_imports(
-        cls, helpers: Sequence[str], *, deferring: bool, sharing: bool
+        cls, helpers: Sequence[str], *, deferring: bool
     ) -> str:
         """Render the lazy-helper import, the only pre-installer runtime import.
 
@@ -246,41 +244,10 @@ class FlextInfraUtilitiesLazyInitRender:
         names = sorted({
             *(helpers or ("install_lazy_exports",)),
             *(("defer_lazy_instances",) if deferring else ()),
-            *(("defer_lazy_bases",) if sharing else ()),
         })
         return "\n".join(
             cls.source_import_lines("", c.Infra.LAZY_BOOTSTRAP_MODULE, names)
         )
-
-    @classmethod
-    def _lazy_init_bases_call(
-        cls, bases: Mapping[str, Sequence[tuple[str, str]]]
-    ) -> str:
-        """Render the ``defer_lazy_bases`` call in Ruff's fixed point.
-
-        Every bracket ends with a magic trailing comma, so Ruff keeps the
-        mapping and each multi-base tuple exploded; a one-base entry stays on
-        its line when that line fits.
-
-        Returns:
-            The call source, empty when no deferred export shares a base.
-
-        """
-        if not bases:
-            return ""
-        lines = ["defer_lazy_bases(", "    __name__,", "    {"]
-        indent = "        "
-        for name in sorted(bases, key=cls.lazy_init_export_key):
-            refs = [f'("{package}", "{attr}")' for package, attr in bases[name]]
-            single = f'{indent}"{name}": ({refs[0]},),'
-            if len(refs) == 1 and len(single) <= cls.lazy_init_width():
-                lines.append(single)
-                continue
-            lines.append(f'{indent}"{name}": (')
-            lines.extend(f"{indent}    {ref}," for ref in refs)
-            lines.append(f"{indent}),")
-        lines.extend(("    },", ")"))
-        return "\n".join(lines)
 
     @classmethod
     def _lazy_init_instances_call(cls, entries: t.LazyAliasMap) -> str:
@@ -495,12 +462,11 @@ class FlextInfraUtilitiesLazyInitRender:
         return "\n".join(lines)
 
     @classmethod
-    def _lazy_init_deferred_mapping(cls, deferred: Mapping[str, Sequence[str]]) -> str:
+    def _lazy_init_deferred_exports(cls, deferred: Sequence[str]) -> str:
         """Render the installer's ``deferred_members`` argument in Ruff's fixed point.
 
-        Every bracket ends with a magic trailing comma, so Ruff keeps the
-        mapping and each multi-member tuple exploded; an empty or one-member tuple
-        stays on its entry line when that line fits.
+        It names the stand-in exports only; the magic trailing comma keeps
+        the tuple exploded, one export per line.
 
         Returns:
             The argument lines, each prefixed by a newline; empty for no export.
@@ -508,23 +474,15 @@ class FlextInfraUtilitiesLazyInitRender:
         """
         if not deferred:
             return ""
-        lines = ["", "    deferred_members={"]
-        indent = "        "
-        for name in sorted(deferred, key=cls.lazy_init_export_key):
-            members = deferred[name]
-            single = (
-                f'{indent}"{name}": ("{members[0]}",),'
-                if members
-                else f'{indent}"{name}": (),'
-            )
-            if len(members) <= 1 and len(single) <= cls.lazy_init_width():
-                lines.append(single)
-                continue
-            lines.append(f'{indent}"{name}": (')
-            lines.extend(f'{indent}    "{member}",' for member in members)
-            lines.append(f"{indent}),")
-        lines.append("    },")
-        return "\n".join(lines)
+        return "\n".join((
+            "",
+            "    deferred_members=(",
+            *(
+                f'        "{name}",'
+                for name in sorted(deferred, key=cls.lazy_init_export_key)
+            ),
+            "    ),",
+        ))
 
     @staticmethod
     def _lazy_init_compact_module(current: str, module: str) -> str:
