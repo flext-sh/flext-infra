@@ -370,3 +370,43 @@ class TestsFlextInfraCodemodBatchApplyValidation:
 
         with u.Tests.raises(RuntimeError, match="introduced 1 new actionable"):
             FlextInfraCodemodBatchApply.validate_fix_match(before, after)
+
+    @staticmethod
+    def test_syntax_findings_exclude_engine_only_rules(
+        tmp_path: Path,
+    ) -> None:
+        """Only ast-grep replacement findings belong to the syntax cascade."""
+        path = tmp_path / "subject.py"
+        native = m.Infra.ModScanFinding(
+            rule_file="fixture.yml",
+            rule_id="rewire-test-assert-equal",
+            repository="fixture",
+            file=path,
+            source_owner="authored",
+            source_state=None,
+            range={},
+            text="before",
+            replacement="after",
+            actionable=True,
+            classification=c.Infra.ModScanFindingClass.ACTIONABLE,
+            severity="error",
+            native_record=m.Infra.ModNativeRecord(offset=0, length=1, sha256="0" * 64),
+            replacement_offsets=m.Infra.ModReplacementOffsets(start=0, end=1),
+        )
+        engine = native.model_copy(
+            update={
+                "rule_id": "test-utilities-tier-facade",
+                "replacement_offsets": None,
+            }
+        )
+        report = m.Infra.ModOccurrenceReport(
+            files=frozenset({path}),
+            entries=(native, engine),
+        )
+
+        filtered = FlextInfraCodemodBatchApply.syntax_findings(report)
+
+        tm.that(
+            tuple(entry.rule_id for entry in filtered.entries),
+            eq=("rewire-test-assert-equal",),
+        )
