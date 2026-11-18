@@ -6,12 +6,15 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import sys
 from collections.abc import Iterator, Mapping
+from functools import partial
 from pathlib import Path
 
 import pytest
 
 from flext_infra import config, infra
+from flext_infra.services import FlextInfraModHandlers
 from tests import c, m, p, t, tm, u
 
 
@@ -71,6 +74,13 @@ def rope_contract_consumer(
         )
     )
     with infra.rope_workspace(root) as workspace:
+        # The fixture runtime carries no checker: the envelope gate runs on the
+        # generator's own runtime, injected through the workspace's checker port.
+        workspace.model_envelope_checker = partial(
+            FlextInfraModHandlers.model_envelope_diagnostics,
+            workspace.repository_root,
+            runtime_root=Path(sys.prefix).parent,
+        )
         yield workspace, path
 
 
