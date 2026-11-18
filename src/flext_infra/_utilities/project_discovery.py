@@ -797,7 +797,7 @@ class FlextInfraUtilitiesProjectDiscovery(
 
         Raises:
             OSError: If the Git inventory of the scope cannot be read.
-            RuntimeError: If ``directory`` is neither a Git checkout nor a
+            RuntimeError: If ``directory`` is neither a Git checkout nor inside a
                 staged preview.
 
         """
@@ -808,7 +808,11 @@ class FlextInfraUtilitiesProjectDiscovery(
             raise
         if source_paths is not None:
             return source_paths
-        if not directory.name.startswith(c.Infra.SOURCE_PREVIEW_PREFIX):
+        # A member is scoped by the staged preview that contains it.
+        if not any(
+            scope.name.startswith(c.Infra.SOURCE_PREVIEW_PREFIX)
+            for scope in (directory, *directory.parents)
+        ):
             msg = f"Python source discovery requires a Git checkout: {directory}"
             raise RuntimeError(msg)
         return tuple(path for path in directory.rglob("*") if path.is_file())
