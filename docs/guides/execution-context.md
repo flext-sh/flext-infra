@@ -2515,6 +2515,12 @@ prefix. Generated internal floors use their declared provider provenance;
 explicit member Git references retain the existing URL validation. Preserving a
 requirement during conformance does not prove its resolution or installation.
 
+A requirement declared in `codegen.scaffold.project.dev` owns its distribution by
+name: a project requirement with the same name, extras, marker and origin but
+another version constraint, such as a typing-stub floor raised by Dependabot in a
+generated `pyproject.toml`, is replaced by the declared one, so each distribution
+appears once. The declared floor advances in `codegen.yaml`, never in a projection.
+
 Member contributions carry per-occurrence provenance in both managed development
 groups. CUSTOM entries retain their full constraints and origins; removing a
 member removes only its generated contributions. The public conform and overlay
