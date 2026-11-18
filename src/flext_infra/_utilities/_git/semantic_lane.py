@@ -202,13 +202,12 @@ class FlextInfraUtilitiesGitSemanticLane:
 
         """
         root = request.repo_root
-        listed = u.Cli.capture(
-            [c.Infra.GIT, "diff", "--name-only", "--diff-filter=U", "-z"],
-            cwd=root,
+        listed = FlextInfraUtilitiesGitSemanticPublish.git_conflicted_paths(
+            m.Infra.GitRepoRequest(repo_root=root),
         )
         if listed.failure:
             return r[bool].from_failure(listed)
-        conflicted = tuple(path for path in listed.value.split("\0") if path)
+        conflicted = listed.value
         if not conflicted:
             return r[bool].fail(merge_error)
         attributes = u.Cli.capture(
@@ -240,15 +239,9 @@ class FlextInfraUtilitiesGitSemanticLane:
                 f"{merge_error}\nconflicts outside generated projections: "
                 + ", ".join(foreign),
             )
-        for command in (
-            [c.Infra.GIT, "checkout", "--theirs", "--", *conflicted],
-            [c.Infra.GIT, "add", "--", *conflicted],
-            [c.Infra.GIT, "commit", "--no-edit"],
-        ):
-            outcome = u.Cli.run_checked(command, cwd=root)
-            if outcome.failure:
-                return outcome
-        return r[bool].ok(value=True)
+        return FlextInfraUtilitiesGitSemanticPublish.git_merge_conclude_with_base(
+            m.Infra.GitPathsRequest(repo_root=root, paths=conflicted),
+        ).map(lambda _concluded: True)
 
     @classmethod
     def _git_commit_produced(cls, request: p.Infra.GitLaneRequest) -> p.Result[bool]:
