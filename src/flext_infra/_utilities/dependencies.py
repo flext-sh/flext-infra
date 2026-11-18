@@ -408,27 +408,6 @@ class FlextInfraUtilitiesDependencies(
         ])
 
     @staticmethod
-    def fleet_requirement(requirement: str) -> str:
-        """Return a fleet requirement without an embedded source URL.
-
-        A fleet package is sourced exactly once: the workspace elects the
-        editable checkout, a standalone consumer takes the locked git source.
-        A ``@ git+...`` inside the requirement blocks that election - uv then
-        sees two URLs for the same package (``file:///.../flext-cli`` editable
-        and ``git+...@0.12.0-dev``) and refuses to resolve, which is what
-        stopped ``make upg`` and ``make gen`` for flext-infra.
-
-        Returns:
-            The plain distribution name for a fleet package, the input
-            otherwise.
-
-        """
-        name, separator, _ = requirement.partition(" @ ")
-        if separator and name.startswith("flext-") and "git+" in requirement:
-            return name
-        return requirement
-
-    @staticmethod
     def project_development_requirements(
         scaffold: p.Infra.ScaffoldProjectSpec,
         *,
