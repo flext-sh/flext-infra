@@ -204,11 +204,11 @@ class TestsFlextInfraGitFacetWorktreeStatus:
         tm.ok(refreshed)
         tm.ok(refreshed.value)
 
-    def test_remove_clean_worktree_keeps_a_lane_that_holds_submodules(
+    def test_remove_clean_worktree_retires_a_clean_superproject_lane(
         self,
         tmp_path: Path,
     ) -> None:
-        """Git itself refuses to remove a working tree that contains submodules."""
+        """A proven-clean lane with submodules retires; the primary is untouched."""
         repository = u.Tests.git_repository(tmp_path)
         source = u.Tests.git_repository(tmp_path, "member-source")
         self._add_submodule(repository, source, "member")
@@ -228,12 +228,9 @@ class TestsFlextInfraGitFacetWorktreeStatus:
             ),
         )
 
-        tm.fail(
-            u.Infra.git_remove_clean_worktree(repository, lane),
-            has="containing submodules",
-        )
+        tm.ok(u.Infra.git_remove_clean_worktree(repository, lane))
 
-        tm.that(lane.is_dir(), truth=True)
+        tm.that(lane.exists(), truth=False)
         tm.that((repository / "member").is_dir(), truth=True)
         tm.that(
             (repository / ".gitmodules").read_text(encoding="utf-8") == gitmodules,
