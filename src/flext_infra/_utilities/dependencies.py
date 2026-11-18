@@ -413,13 +413,15 @@ class FlextInfraUtilitiesDependencies(
         *,
         distribution: str,
         declared: Sequence[str] = (),
+        standalone: bool = False,
     ) -> Sequence[str]:
         """Compose development policy over the target's own requirement declarations.
 
         Existing requirement spellings, marker variants and sources stay intact.
-        The fleet codegen/test development suppliers belong to the workspace root
-        (``c.Infra.PKG_ROOT``) and never to a member: a member's own group must
-        not redeclare them beside the workspace's editable sources. Installed
+        The fleet codegen/test development suppliers belong to a workspace root
+        (``c.Infra.PKG_ROOT``) or to a standalone checkout that is its own root,
+        and never to a workspace member: a member's own group must not
+        redeclare them beside the workspace's editable sources. Installed
         packages and project names do not elect any other policy.
 
         Returns:
@@ -427,7 +429,7 @@ class FlextInfraUtilitiesDependencies(
 
         """
         own = canonicalize_name(distribution)
-        is_root = own == canonicalize_name(c.Infra.PKG_ROOT)
+        is_root = standalone or own == canonicalize_name(c.Infra.PKG_ROOT)
         root_suppliers = (
             set()
             if is_root
