@@ -15,6 +15,7 @@ from types import (
     BuiltinFunctionType,
     ClassMethodDescriptorType,
     CodeType,
+    FrameType,
     FunctionType,
     GetSetDescriptorType,
     MemberDescriptorType,
@@ -31,12 +32,16 @@ from jinja2.environment import (
     Template as _JinjaTemplate,
 )
 
+from flext_infra import c
+
 
 class FlextInfraTypesBase:
     """Base typings for flext-infra project."""
 
     type DocumentationLanguage = t.DocumentationLanguage
     "Supported project-local documentation presentation languages."
+    type SignalHandler = Callable[[int, FrameType | None], object] | int | None
+    "The stdlib SIGTERM action: a callable, SIG_DFL/SIG_IGN, or None."
     type PythonMemberKind = Literal["alias", "attribute", "class", "function"]
     "How a module binds one top-level name: imported, assigned, or defined."
     type AstModule = _ast.Module
@@ -314,6 +319,10 @@ class FlextInfraTypesBase:
     "Fully-qualified or short Git ref name."
     type GitPathSpec = str
     "Git pathspec string (e.g. ``:(exclude)dir``)."
+    type PydanticClassFacts = Mapping[str, tuple[str, int]]
+    "Class name to declared base name and logical line."
+    type PydanticLiteralFact = tuple[str, t.StrTuple, c.Infra.PydanticLiteralKind, int]
+    "Owner name, literal values, classification and line."
 
 
 __all__: list[str] = ["FlextInfraTypesBase"]
