@@ -120,13 +120,12 @@ class FlextInfraRefactorCensusCollect(
             Path(resource.real_path): resource.read()
             for resource in rope.rope_project.get_python_files()
         }
+        objects = tuple(
+            item for entries in findings.project_objects.values() for item in entries
+        )
         alias_rows, duplicate_rows, shortest_rows = self.extermination_rows(
             sources=sources,
-            objects=tuple(
-                item
-                for entries in findings.project_objects.values()
-                for item in entries
-            ),
+            objects=objects,
             duplicates=duplicates,
             census_kinds=census_kinds,
         )
