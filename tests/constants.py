@@ -19,8 +19,10 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING, ClassVar
 
 from flext_infra import FlextInfraConstants
-from tests._constants import TestsFlextInfraConstantsSemanticCutover
-from tests._constants.scan import TestsFlextInfraConstantsScan
+from tests._constants import (
+    TestsFlextInfraConstantsScan,
+    TestsFlextInfraConstantsSemanticCutover,
+)
 
 if TYPE_CHECKING:
     from flext_infra import t

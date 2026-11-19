@@ -1322,7 +1322,5 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
             )
             return tree, status
 
-    __all__: tuple[str, ...] = ("WorktreeFixture",)
-
 
 __all__: list[str] = ["TestsFlextInfraUtilitiesWorkspaceFixture"]

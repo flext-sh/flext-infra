@@ -15,40 +15,42 @@ from pathlib import Path
 
 from flext_infra import FlextInfraUtilities, config
 from tests import c, m, p, r, t, tm
-from tests._utilities import TestsFlextInfraUtilitiesSemanticCutover
-from tests._utilities.codegen import TestsFlextInfraUtilitiesCodegen
-from tests._utilities.deps import TestsFlextInfraUtilitiesDeps
-from tests._utilities.fixture_docs import TestsFlextInfraUtilitiesDocsFixture
-from tests._utilities.fixture_project import TestsFlextInfraUtilitiesProjectFixture
-from tests._utilities.fixture_tooling import TestsFlextInfraUtilitiesToolingFixture
-from tests._utilities.fixture_workspace import TestsFlextInfraUtilitiesWorkspaceFixture
-from tests._utilities.gates import TestsFlextInfraUtilitiesGates
-from tests._utilities.git import TestsFlextInfraUtilitiesGit
-from tests._utilities.hermetic_git import TestsFlextInfraUtilitiesHermeticGit
-from tests._utilities.promoted import TestsFlextInfraUtilitiesPromoted
-from tests._utilities.release import TestsFlextInfraUtilitiesRelease
-from tests._utilities.toml_documents import TestsFlextInfraUtilitiesToml
-from tests._utilities.workspace_env import TestsFlextInfraUtilitiesWorkspaceEnv
+from tests._utilities import (
+    TestsFlextInfraUtilitiesCodegen,
+    TestsFlextInfraUtilitiesDeps,
+    TestsFlextInfraUtilitiesDocsFixture,
+    TestsFlextInfraUtilitiesGates,
+    TestsFlextInfraUtilitiesGit,
+    TestsFlextInfraUtilitiesHermeticGit,
+    TestsFlextInfraUtilitiesProjectFixture,
+    TestsFlextInfraUtilitiesPromoted,
+    TestsFlextInfraUtilitiesRelease,
+    TestsFlextInfraUtilitiesSemanticCutover,
+    TestsFlextInfraUtilitiesToml,
+    TestsFlextInfraUtilitiesToolingFixture,
+    TestsFlextInfraUtilitiesWorkspaceEnv,
+    TestsFlextInfraUtilitiesWorkspaceFixture,
+)
 
 
 class TestsFlextInfraUtilities(FlextInfraUtilities):
     """Typed test utilities for flext-infra."""
 
     class Tests(
-        TestsFlextInfraUtilitiesToml,
-        TestsFlextInfraUtilitiesProjectFixture,
-        TestsFlextInfraUtilitiesWorkspaceFixture,
-        TestsFlextInfraUtilitiesToolingFixture,
-        TestsFlextInfraUtilitiesDocsFixture,
-        TestsFlextInfraUtilitiesPromoted,
-        TestsFlextInfraUtilitiesRelease,
-        TestsFlextInfraUtilitiesGit,
-        TestsFlextInfraUtilitiesHermeticGit,
-        TestsFlextInfraUtilitiesGates,
         TestsFlextInfraUtilitiesCodegen,
         TestsFlextInfraUtilitiesDeps,
-        TestsFlextInfraUtilitiesWorkspaceEnv,
+        TestsFlextInfraUtilitiesDocsFixture,
+        TestsFlextInfraUtilitiesProjectFixture,
+        TestsFlextInfraUtilitiesToolingFixture,
+        TestsFlextInfraUtilitiesWorkspaceFixture,
+        TestsFlextInfraUtilitiesGates,
+        TestsFlextInfraUtilitiesGit,
+        TestsFlextInfraUtilitiesHermeticGit,
+        TestsFlextInfraUtilitiesPromoted,
+        TestsFlextInfraUtilitiesRelease,
         TestsFlextInfraUtilitiesSemanticCutover,
+        TestsFlextInfraUtilitiesToml,
+        TestsFlextInfraUtilitiesWorkspaceEnv,
     ):
         """Canonical test helper namespace."""
 
