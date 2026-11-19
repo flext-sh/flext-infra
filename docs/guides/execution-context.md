@@ -290,9 +290,10 @@ Make, its shared runtime reader, setup and
 direnv consume the same configured native selection without a host-PATH fallback,
 custom lock parser or second resolver. Setup always bootstraps and never fails on
 lock drift (operator order 2026-10-24): `uv sync --frozen` installs the committed
-`uv.lock` without re-resolving or rewriting it, and plain `mise install` honors
-every `mise.lock` entry and records only missing ones. Check reports drift through
-`uv lock --check`; upgrade alone advances versions and writes the native locks.
+`uv.lock` without re-resolving or rewriting it, and a locked `mise install`
+installs the committed `mise.lock` entries without recording new ones. Check
+reports drift through `uv lock --check`; upgrade alone advances versions and
+writes the native locks, through the declared self-managed Mise release.
 
 Within one Make evaluation or direnv activation, the shared readers authenticate
 the physical project and its Git root once. The bootstrap reader receives that
