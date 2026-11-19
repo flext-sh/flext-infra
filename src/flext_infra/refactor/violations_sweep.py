@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import shlex
 import sys
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from operator import itemgetter
 from pathlib import Path
 from time import monotonic
@@ -92,33 +92,15 @@ class FlextInfraRefactorViolationsSweep(s[p.Infra.ViolationsSweepReport]):
         )
         after_scan = self._scan_evidence(root, invocation / "after.json")
         comparisons = (
-            tuple(
-                {
-                    stage.repository_root: stage
-                    for stage in repairs[1]
-                    if stage.invoked
-                }.values()
-            )
-            if self.audit_rules
-            else (
-                self._snapshot_comparison(
-                    root,
-                    root.resolve(),
-                    r[p.Infra.ViolationsSweepSources].ok(initial)
-                    if initial is not None
-                    else r[p.Infra.ViolationsSweepSources].fail(str(before_scan.error)),
-                    after_scan.map(itemgetter(2)),
-                ),
-                *(
-                    self._snapshot_comparison(
-                        root,
-                        project,
-                        members_before[project],
-                        self._source_snapshot(project, observe=True),
-                    )
-                    for project in members_before
-                ),
-            )
+            self._snapshot_comparison(
+                root,
+                root.resolve(),
+                r[p.Infra.ViolationsSweepSources].ok(initial)
+                if initial is not None
+                else r[p.Infra.ViolationsSweepSources].fail(str(before_scan.error)),
+                after_scan.map(itemgetter(2)),
+            ),
+            *self._member_comparisons(root, projects, repairs[1], members_before),
         )
         report = m.Infra.ViolationsSweepReport.model_validate({
             "schema_version": (c.Infra.VIOLATIONS_SWEEP_REPORT_SCHEMA_VERSION),
@@ -224,6 +206,41 @@ class FlextInfraRefactorViolationsSweep(s[p.Infra.ViolationsSweepReport]):
                 for item in declared.value
                 if item.managed is not False
             ),
+        )
+
+    def _member_comparisons(
+        self,
+        root: Path,
+        projects: Sequence[Path],
+        stages: Sequence[p.Infra.ViolationsSweepStage],
+        members_before: Mapping[Path, p.Result[p.Infra.ViolationsSweepSources]],
+    ) -> tuple[p.Infra.ViolationsSweepStage, ...]:
+        """Compare each declared member through its own observations.
+
+        An audit reads the member's own invoked audit stage; a repair run
+        compares the member's own snapshots around the repairs.
+
+        Returns:
+            One comparison stage per declared member.
+
+        """
+        if self.audit_rules:
+            audited = {
+                stage.repository_root: stage for stage in stages if stage.invoked
+            }
+            return tuple(
+                audited[project]
+                for project in projects
+                if project != root.resolve() and project in audited
+            )
+        return tuple(
+            self._snapshot_comparison(
+                root,
+                project,
+                members_before[project],
+                self._source_snapshot(project, observe=True),
+            )
+            for project in members_before
         )
 
     @staticmethod

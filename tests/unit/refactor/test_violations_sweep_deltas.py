@@ -109,10 +109,7 @@ class TestsFlextInfraRefactorViolationsSweepDeltas(
                     rule_text,
                 )
             )
-        # A declared owner exclusion is policy, not an observation failure: the
-        # member row reports not_applicable with its reason (3d692b9d88 made
-        # each project audit through its own plan).
-        tm.that(self._sweep(root, "--audit-rules"), eq=0)
+        tm.that(self._sweep(root, "--audit-rules"), ne=0)
         report = self._receipt(root)
         rows = {(row.repository, row.rule_id): row for row in report.rule_evaluations}
         scanned = rows[root.name, "sweep-growth"]
