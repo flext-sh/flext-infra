@@ -116,7 +116,9 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
         project_dir = root / name
         project_dir.mkdir(parents=True, exist_ok=True)
         (project_dir / c.PYPROJECT_FILENAME).write_text(pyproject, encoding="utf-8")
-        TestsFlextInfraUtilitiesGit.git_bootstrap(project_dir, ("init", "--quiet"))
+        TestsFlextInfraUtilitiesGit.git_bootstrap(
+            project_dir, ("init", "--quiet", "-b", c.Infra.GIT_MAIN)
+        )
         if markdown_config is not None:
             (project_dir / c.Infra.MARKDOWN_CONFIG_FILENAME).write_text(
                 markdown_config, encoding="utf-8"
@@ -171,8 +173,12 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
         package_dir.mkdir(parents=True, exist_ok=True)
         (package_dir / "__init__.py").write_text("", encoding="utf-8")
         (project_dir / c.PYPROJECT_FILENAME).write_text(pyproject, encoding="utf-8")
-        # Git owns Python source discovery: the project is a real checkout.
-        TestsFlextInfraUtilitiesGit.git_bootstrap(project_dir, ("init", "--quiet"))
+        # Git owns Python source discovery: the project is a real checkout. The
+        # branch is pinned: a later ``init -b`` on an existing repository is
+        # ignored, so the host's init.defaultBranch must never decide it.
+        TestsFlextInfraUtilitiesGit.git_bootstrap(
+            project_dir, ("init", "--quiet", "-b", c.Infra.GIT_MAIN)
+        )
         return package_dir
 
     @staticmethod
