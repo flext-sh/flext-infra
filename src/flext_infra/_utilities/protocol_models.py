@@ -78,11 +78,12 @@ class FlextInfraUtilitiesModelsProtocol:
     @classmethod
     def protocol_model_sources(
         cls, workspace: p.Infra.RopeWorkspaceDsl
-    ) -> p.Result[Mapping[Path, str]]:
+    ) -> p.Result[Mapping[Path, str | None]]:
         """Return protocol sources without importing or publishing the target.
 
         Returns:
-            Relative generated declarations, or the inventory's original failure.
+            Relative generated declarations (``None`` retires a projection whose
+            models are gone), or the inventory's original failure.
             An absent declared facade/layout has no applicable projection.
 
         """
@@ -98,7 +99,7 @@ class FlextInfraUtilitiesModelsProtocol:
         *,
         domain_owner: p.Infra.SourceClassReference | None = None,
         package_name: str | None = None,
-    ) -> p.Result[Mapping[Path, str]]:
+    ) -> p.Result[Mapping[Path, str | None]]:
         """Plan protocol mirrors directly from an overlaid source project.
 
         This public bootstrap entry intentionally does not construct a Rope
@@ -148,10 +149,10 @@ class FlextInfraUtilitiesModelsProtocol:
     @classmethod
     def _with_mirror_package_initializers(
         cls,
-        rendered: Mapping[Path, str],
+        rendered: Mapping[Path, str | None],
         repository_root: Path,
         source_project: p.Infra.RopeProject,
-    ) -> Mapping[Path, str]:
+    ) -> Mapping[Path, str | None]:
         """Seed the initializer of every protocol mirror package it creates.
 
         A mirror of a nested model package lands in a ``_protocols``
@@ -170,7 +171,8 @@ class FlextInfraUtilitiesModelsProtocol:
             package = relative.parent
             initializer = package / c.Infra.INIT_PY
             if (
-                relative.name == c.Infra.INIT_PY
+                text is None
+                or relative.name == c.Infra.INIT_PY
                 or "_protocols" not in package.parent.parts
                 or initializer in rendered
                 or source_project.source_query(repository_root / initializer, "isfile")
@@ -661,9 +663,14 @@ class FlextInfraUtilitiesModelsProtocol:
                 ]
                 | None
             ].from_failure(planned)
+        # Retiring a projection belongs to the conform stage, which republishes
+        # the lazy exports over the retirement in the same candidate.
+        projected = {
+            path: text for path, text in planned.value.items() if text is not None
+        }
         updates = {
             **normalized,
-            **{root / path: text for path, text in planned.value.items()},
+            **{root / path: text for path, text in projected.items()},
         }
         for path in updates:
             if path not in originals:
@@ -685,7 +692,7 @@ class FlextInfraUtilitiesModelsProtocol:
                     node.name for node in holder.body if isinstance(node, ast.ClassDef)
                 ),
             )
-            for relative, text in planned.value.items()
+            for relative, text in projected.items()
             for holder in ast.parse(text).body
             if isinstance(holder, ast.ClassDef)
         ]
@@ -700,7 +707,7 @@ class FlextInfraUtilitiesModelsProtocol:
                 Sequence[tuple[str, str, tuple[str, ...]]],
             ]
             | None
-        ].ok((package, planned.value, updates, originals, inputs, members))
+        ].ok((package, projected, updates, originals, inputs, members))
 
     @classmethod
     def _publish_bootstrap_protocol_facades(
@@ -877,11 +884,12 @@ class FlextInfraUtilitiesModelsProtocol:
                 )
             return self._documentation_language
 
-        def sources(self) -> p.Result[Mapping[Path, str]]:
+        def sources(self) -> p.Result[Mapping[Path, str | None]]:
             """Inventory declaring model sources before any semantic module opens.
 
             Returns:
-                Generated data contracts, or the inventory or render failure.
+                Generated data contracts (``None`` retires a projected module),
+                or the inventory or render failure.
 
             """
             # Pydantic evaluates annotations while Rope opens a semantic module.
@@ -1153,23 +1161,169 @@ class FlextInfraUtilitiesModelsProtocol:
             self._source_index_model_protocols(package_dir, package_name, grouped)
             return package_dir, package_name, grouped
 
-        def _source_model_sources(self) -> p.Result[Mapping[Path, str]]:
+        def _source_model_sources(self) -> p.Result[Mapping[Path, str | None]]:
             """Project local Pydantic declarations using only the source view.
 
             The source inventory deliberately does not consult ``m`` or ``p``.
             Those facades are consumers of this projection and may be incomplete
-            during bootstrap.
+            during bootstrap. Projections whose models are gone retire in the
+            same candidate, hidden from the rest of the projection so no facade
+            composes them.
 
             Returns:
-                Same-path protocol mirror sources derived from local model files.
+                Same-path protocol mirror sources derived from local model files;
+                ``None`` retires a projected module.
 
             """
-            result_type = r[Mapping[Path, str]]
+            result_type = r[Mapping[Path, str | None]]
             inventory = self.source_model_inventory()
             if inventory is None:
                 return result_type.ok({})
             package_dir, package_name, grouped = inventory
+            # Every module a model declaration still maps to stays owned, even
+            # when no public Protocol owner is elected for it in this run.
+            retired = self._source_retired_projections(package_dir, grouped)
             grouped = self._source_owned_model_protocols(grouped)
+            declared = FlextInfraUtilitiesWorkspaceSnapshot.workspace_declared_sources(
+                self.repository_root,
+                (),
+                {
+                    self.repository_root / relative: source
+                    for relative, source in retired.items()
+                },
+                source_project=self.project,
+            )
+            with self.project.source_view(
+                declared_files=declared, additional_source_folders=None
+            ):
+                rendered = self._source_rendered_model_sources(
+                    package_dir, package_name, grouped
+                )
+            return result_type.ok({**retired, **rendered})
+
+        def _source_retired_projections(
+            self,
+            package_dir: Path,
+            grouped: Mapping[
+                Path, list[tuple[ast.ClassDef, tuple[str, ...], ast.Module]]
+            ],
+        ) -> dict[Path, str | None]:
+            """Retire the projections of protocol modules no model owns anymore.
+
+            A generated module whose every contract is a projection retires
+            whole; an authored module keeps its authored contracts and loses
+            only the projected ones. Modules a model still owns are reconciled
+            by their own render.
+
+            Returns:
+                Relative paths mapped to the pruned source, or ``None`` to retire.
+
+            """
+            protocols = package_dir / "_protocols"
+            retired: dict[Path, str | None] = {}
+            if not self.project.source_query(protocols, "isdir"):
+                return retired
+            owned = {destination.resolve() for destination in grouped}
+            for directory, _children, files in self.project.source_walk(protocols):
+                # Private families (service ports, external capabilities) are
+                # authored, never model mirrors, exactly as the aggregate skips.
+                if any(
+                    part.startswith("_")
+                    for part in directory.relative_to(protocols).parts
+                ):
+                    continue
+                for name in files:
+                    path = directory / name
+                    if (
+                        not name.endswith(c.Infra.EXT_PYTHON)
+                        or name.startswith("_")
+                        or path.resolve() in owned
+                    ):
+                        continue
+                    source = self.project.source_text(path)
+                    pruned = self._source_retire_stale_contracts(source, frozenset())
+                    if pruned == source:
+                        continue
+                    relative = path.relative_to(self.repository_root)
+                    contracts = [
+                        node
+                        for holder in ast.parse(pruned).body
+                        if isinstance(holder, ast.ClassDef)
+                        for node in holder.body
+                        if isinstance(node, ast.ClassDef)
+                    ]
+                    retired[relative] = (
+                        None
+                        if source.startswith(c.Infra.AUTOGEN_HEADER) and not contracts
+                        else FlextInfraUtilitiesProtectedEditLinting.normalize_python_text(
+                            path, pruned
+                        ).unwrap()
+                    )
+            return retired
+
+        @staticmethod
+        def _source_retire_stale_contracts(source: str, kept: frozenset[str]) -> str:
+            """Remove the projected contracts whose model no longer exists.
+
+            Only a contract carrying the projection docstring is generated
+            output; authored contracts are never removed.
+
+            Returns:
+                ``source`` without the projected contracts absent from ``kept``.
+
+            Raises:
+                ValueError: A holder would keep no declaration at all.
+
+            """
+            projected = c.Infra.DocumentationText.MODEL_PROTOCOL_CONTRACT.value
+            lines = source.splitlines(keepends=True)
+            spans: list[tuple[int, int]] = []
+            for holder in ast.parse(source).body:
+                if not isinstance(holder, ast.ClassDef):
+                    continue
+                stale = [
+                    node
+                    for node in holder.body
+                    if isinstance(node, ast.ClassDef)
+                    and node.name not in kept
+                    and ast.get_docstring(node) in projected
+                ]
+                if stale and len(stale) == len(holder.body):
+                    message = (
+                        f"protocol holder {holder.name} keeps no declaration "
+                        "after retiring its projected contracts"
+                    )
+                    raise ValueError(message)
+                spans.extend(
+                    (
+                        (
+                            node.decorator_list[0].lineno
+                            if node.decorator_list
+                            else node.lineno
+                        )
+                        - 1,
+                        node.end_lineno or node.lineno,
+                    )
+                    for node in stale
+                )
+            for start, end in reversed(spans):
+                del lines[start:end]
+            return "".join(lines)
+
+        def _source_rendered_model_sources(
+            self,
+            package_dir: Path,
+            package_name: str,
+            grouped: Mapping[
+                Path, list[tuple[ast.ClassDef, tuple[str, ...], ast.Module]]
+            ],
+        ) -> dict[Path, str]:
+            """Render every owned protocol module and the facades composing them.
+
+            Returns:
+                Relative paths mapped to their projected sources.
+
+            """
             rendered: dict[Path, str] = {}
             for destination, classes in sorted(grouped.items()):
                 owner = self._source_generated_holder(destination)
@@ -1223,7 +1377,7 @@ class FlextInfraUtilitiesModelsProtocol:
                     self.repository_root / relative,
                     relative.with_suffix("").name,
                 )
-            return result_type.ok(rendered)
+            return rendered
 
         def _source_apply_protocol_rewrites(
             self, package_dir: Path, rendered: dict[Path, str]
@@ -2245,7 +2399,11 @@ class FlextInfraUtilitiesModelsProtocol:
             if protocol_dir.is_dir():
                 for path in sorted(protocol_dir.glob("*.py")):
                     relative = path.relative_to(self.repository_root)
-                    if path.name.startswith("_") or relative in rendered:
+                    if (
+                        path.name.startswith("_")
+                        or relative in rendered
+                        or not self.project.source_query(path, "isfile")
+                    ):
                         continue
                     module_name = self.module_name_for(relative)
                     for node in ast.parse(
@@ -7097,6 +7255,16 @@ class FlextInfraUtilitiesModelsProtocol:
             """
             source, generated_source = sources
             destination, package_name = target
+            # A projected contract whose model is gone is not authored: it
+            # retires before the authored contracts are reconciled.
+            source = self._source_retire_stale_contracts(
+                source,
+                frozenset(
+                    node.name
+                    for node in ast.walk(ast.parse(generated_source))
+                    if isinstance(node, ast.ClassDef)
+                ),
+            )
             tree = ast.parse(source, filename=str(destination))
             holder = self._source_authored_holder(tree, owner, destination)
             authored = {
