@@ -322,10 +322,11 @@ class FlextInfraPytestRunnerExecution(
         return True
 
     def _process_deadline(self) -> p.Cli.ProcessDeadline:
-        """Use the entrypoint clock for selection, execution, and cleanup.
+        """Use the suite clock for selection, execution, and cleanup.
 
         Returns:
-            The absolute deadline shared by every phase of this operation.
+            The absolute deadline shared by every phase of this operation;
+            an incremental run re-arms it when the testmon lease is acquired.
 
         """
         return m.Cli.ProcessDeadline(
@@ -895,8 +896,12 @@ class FlextInfraPytestRunnerExecution(
                 else 0,
             )
         u.Cli.ensure_dir(database.parent).unwrap()
-        # Selection, execution, and integrity inspection share one database.
-        # Serialize competing worktrees within this invocation's typed deadline.
+        # Selection, execution, and integrity inspection share this checkout's
+        # database. Its lease and a linked worktree's one-time seed from the
+        # canonical database are admission, like the host gate queue: both are
+        # awaited within this invocation's deadline, and the suite clock is
+        # re-armed once they are done, so neither consumes the budget of
+        # selection and execution.
         deadline = self._process_deadline()
         report_dir = self._report_directory()
         context = m.Infra.PytestRunContext(
@@ -907,25 +912,37 @@ class FlextInfraPytestRunnerExecution(
             report_directory=report_dir,
         )
         self._write_run_context(report_dir, context)
-        wait_seconds = max(
-            0.0,
-            deadline.expires_at_monotonic
-            - deadline.termination_grace_seconds
-            - time.monotonic(),
+        admission_ends = (
+            deadline.expires_at_monotonic - deadline.termination_grace_seconds
         )
         self._cache_publication = None
         lease_started = time.monotonic()
         sys.stderr.write(f"pytest cache lease: acquiring {database}\n")
         with u.Cli.file_changes_lock(
             database.with_name(f"{database.name}.lock"),
-        ).acquire(timeout=wait_seconds):
+        ).acquire(timeout=max(0.0, admission_ends - time.monotonic())):
+            seed = self.testmon_seed_db
+            if seed is not None and not database.exists() and seed.is_file():
+                with u.Cli.file_changes_lock(
+                    seed.with_name(f"{seed.name}.lock")
+                ).acquire(timeout=max(0.0, admission_ends - time.monotonic())):
+                    FlextInfraTestmonDbInspector.seed_file(seed, database)
+                sys.stderr.write(f"pytest cache seed: {database} from {seed}\n")
+            self.started_at_monotonic = time.monotonic()
             self._write_run_context(
                 report_dir,
-                context.model_copy(update={"testmon_lease_acquired": True}),
+                context.model_copy(
+                    update={
+                        "testmon_lease_acquired": True,
+                        "deadline_monotonic": (
+                            self._process_deadline().expires_at_monotonic
+                        ),
+                    },
+                ),
             )
             sys.stderr.write(
                 "pytest cache lease: acquired "
-                f"after {time.monotonic() - lease_started:.3f}s\n",
+                f"after {self.started_at_monotonic - lease_started:.3f}s\n",
             )
             result = self._execute_testmon_leased(
                 database=database,
