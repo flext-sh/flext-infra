@@ -10,7 +10,7 @@ from collections.abc import Mapping
 from pathlib import Path
 
 from flext_infra import c, p, r
-from flext_infra.codemod.duplicate_apply import FlextInfraCodemodDuplicateApply
+from flext_infra.codemod import FlextInfraCodemodDuplicateApply
 from flext_infra.refactor._census import (
     FlextInfraRefactorCensusCollectHelpers,
     FlextInfraRefactorCensusFilters,

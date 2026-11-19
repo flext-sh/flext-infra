@@ -42,7 +42,7 @@ from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeRuntime,
     FlextInfraUtilitiesRopeSourceBasesAliases,
 )
-from flext_infra._utilities._rope._analysis.rope_analysis_workspace import (
+from flext_infra._utilities._rope._analysis import (
     FlextInfraUtilitiesRopeAnalysisWorkspace,
 )
 
@@ -2644,7 +2644,7 @@ class FlextInfraUtilitiesCodemodNativePackage:
                 },
                 "constraints": own,
                 "message": (
-                    "Layer-zero settings/config imports from its own root "
+                    "Layer-zero module imports from its own root "
                     "`$MODULE`, including TYPE_CHECKING: use native or valid "
                     "upstream contracts, never its own namespace."
                 ),
@@ -2683,7 +2683,7 @@ class FlextInfraUtilitiesCodemodNativePackage:
                 },
                 "constraints": own_module,
                 "message": (
-                    "Layer-zero settings/config imports its own namespace "
+                    "Layer-zero module imports its own namespace "
                     "`$MODULE`, including TYPE_CHECKING: use native, valid "
                     "upstream contracts or an identity-proven acyclic layer-zero "
                     "helper."

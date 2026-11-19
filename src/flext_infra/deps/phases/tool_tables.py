@@ -20,8 +20,8 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesProjectDiscovery,
 )
 from flext_infra._utilities._docs import FlextInfraUtilitiesDocsScopeProjects
-from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
-from flext_infra._utilities._pyproject.toml_phases import (
+from flext_infra._utilities._pyproject import (
+    FlextInfraUtilitiesPyprojectConform,
     FlextInfraUtilitiesPyprojectTomlPhases,
 )
 from flext_infra._utilities._rope import FlextInfraUtilitiesRopeSource

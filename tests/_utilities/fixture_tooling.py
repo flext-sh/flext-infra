@@ -10,15 +10,16 @@ import hashlib
 import os
 import shutil
 import sys
+import sysconfig
 import time
 from collections.abc import Mapping, Sequence
 from functools import cache
 from pathlib import Path
 from tempfile import TemporaryDirectory, mkdtemp
 
-from flext_infra import config, u, validate, workspace
-from tests import c, m, p, r, t, tm
-from tests.utilities_git import TestsFlextInfraUtilitiesGit
+from flext_infra import r, u, validate, workspace
+from tests import c, config, m, p, t, tm
+from tests._utilities import TestsFlextInfraUtilitiesGit
 
 
 class TestsFlextInfraUtilitiesToolingFixture:
@@ -50,9 +51,11 @@ class TestsFlextInfraUtilitiesToolingFixture:
                 / cache.database_filename
             )
             testmon_db.parent.mkdir(parents=True, exist_ok=True)
-            policy = config.Infra.tooling.tools.pytest
+            tooling = u.Infra.load_tooling_inputs(cached_runner_project).unwrap()
+            policy = tooling.document.tools.pytest
             return validate.FlextInfraPytestRunner(
                 repository_root=cached_runner_project,
+                tooling=tooling.document,
                 ci_context=ci_context,
                 collection_command_prefix=(
                     (sys.executable, "-c", c.Infra.PYTEST_PROFILE_LAUNCHER)
@@ -234,7 +237,7 @@ class TestsFlextInfraUtilitiesToolingFixture:
             The absolute UV executable the committed toolchain pins.
 
         """
-        checkout = Path(__file__).resolve().parents[1]
+        checkout = tm.not_none(u.Infra.project_root(Path(__file__)))
         return str(tm.ok(u.Infra.managed_mise_binary(c.Infra.UV, checkout)))
 
     @staticmethod
@@ -253,7 +256,7 @@ class TestsFlextInfraUtilitiesToolingFixture:
         # A linked worktree is never a registered submodule: its primary
         # checkout names the superproject that owns the sibling sources. The
         # checkout under test stays its own source, never the primary's copy.
-        checkout = Path(__file__).resolve().parents[1]
+        checkout = tm.not_none(u.Infra.project_root(Path(__file__)))
         primary = tm.ok(
             u.Infra.git_primary_worktree_root(
                 m.Infra.GitRepoRequest(repo_root=checkout)
@@ -354,6 +357,8 @@ class TestsFlextInfraUtilitiesToolingFixture:
         keyed by the content of each dependency's sources. A build is staged
         beside its destination and published by one atomic rename, so no worker
         ever reads a partial wheel and a later worker reuses the first build.
+        Another key is never removed: concurrent checkouts with different
+        sources share the storage and install their own keys.
 
         Returns:
             Real wheels, or the original build failure without retrying it.
@@ -369,8 +374,10 @@ class TestsFlextInfraUtilitiesToolingFixture:
             owner.mkdir(parents=True, exist_ok=True)
             with u.Cli.file_changes_lock(owner.with_suffix(".lock")):
                 if not destination.is_dir():
-                    # Earlier content keys and interrupted stagings are retired.
-                    for stale in owner.iterdir():
+                    # Only interrupted stagings are retired. Every other content
+                    # key belongs to a live checkout or run sharing this
+                    # storage, which may be installing it right now.
+                    for stale in owner.glob(".staging-*"):
                         shutil.rmtree(stale)
                     staging = Path(mkdtemp(dir=owner, prefix=".staging-"))
                     built = u.Cli.run_checked(
@@ -421,8 +428,44 @@ class TestsFlextInfraUtilitiesToolingFixture:
             [str(binary.value), "venv", "--python", sys.executable, str(environment)],
             cwd=root,
         )
-        if created.failure or not dependency_projects:
+        if created.failure:
             return created
+        if dependency_projects:
+            # The installed wheels bring their own dependency closure; binding
+            # the generator runtime as well would give a distribution two
+            # installations, which the codemod rule plan refuses.
+            return TestsFlextInfraUtilitiesToolingFixture._install_dependency_wheels(
+                binary.value,
+                root,
+                environment,
+                dependency_projects,
+                session_runtime,
+            )
+        # Without fixture wheels, Rope resolves pydantic and the other runtime
+        # libraries through the generator runtime (uv ignores
+        # --system-site-packages when the parent is itself a uv venv).
+        fixture_site = next(environment.glob("lib/python*/site-packages"), None)
+        if fixture_site is None:
+            return created
+        return u.Cli.files_write_text(
+            fixture_site / "flext-fixture-runtime.pth",
+            f"{Path(sysconfig.get_paths()['purelib'])}\n",
+        )
+
+    @staticmethod
+    def _install_dependency_wheels(
+        uv: Path,
+        root: Path,
+        environment: Path,
+        dependency_projects: Sequence[Path],
+        session_runtime: p.Tests.SessionRuntime | None,
+    ) -> p.Result[bool]:
+        """Install session-built real dependency wheels into the fixture venv.
+
+        Returns:
+            The installation result.
+
+        """
         if session_runtime is None:
             return r[bool].fail("Fixture dependency builds require a session runtime")
         wheels = TestsFlextInfraUtilitiesToolingFixture.python_dependency_wheels(
@@ -446,7 +489,7 @@ class TestsFlextInfraUtilitiesToolingFixture:
             return r[bool].from_failure(bound)
         return u.Cli.run_checked(
             (
-                str(binary.value),
+                str(uv),
                 "pip",
                 "install",
                 "--python",
@@ -508,7 +551,7 @@ class TestsFlextInfraUtilitiesToolingFixture:
             The installation result or the original environment failure.
 
         """
-        checkout = Path(__file__).resolve().parents[1]
+        checkout = tm.not_none(u.Infra.project_root(Path(__file__)))
         dependency_projects = tuple(
             dict.fromkeys((
                 checkout,
@@ -609,7 +652,9 @@ class TestsFlextInfraUtilitiesToolingFixture:
         reuses the shared Mise executable; it never copies it.
         """
         source_root = (
-            Path(__file__).resolve().parents[1] if source_root is None else source_root
+            tm.not_none(u.Infra.project_root(Path(__file__)))
+            if source_root is None
+            else source_root
         )
         for relative in (
             c.Infra.MISE_TOML_FILENAME,
@@ -619,7 +664,9 @@ class TestsFlextInfraUtilitiesToolingFixture:
             destination = root / relative
             destination.parent.mkdir(parents=True, exist_ok=True)
             _ = shutil.copy2(source, destination)
-        reader = tm.ok(u.Infra.managed_mise_self(Path(__file__).resolve().parents[1]))
+        reader = tm.ok(
+            u.Infra.managed_mise_self(tm.not_none(u.Infra.project_root(Path(__file__))))
+        )
         tm.ok(
             u.Cli.run_checked(
                 (str(reader), "trust", str(root / c.Infra.MISE_TOML_FILENAME)),

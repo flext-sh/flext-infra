@@ -25,14 +25,10 @@ import tomllib
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Protocol, TypeIs, override
+from typing import Protocol, TypeIs, override
 
-if TYPE_CHECKING:
-    from flext_infra import FlextInfraCli
-    from flext_infra._utilities.protocol_publication import (
-        FlextInfraUtilitiesProtocolPublication,
-    )
-
+from flext_infra import FlextInfraCli
+from flext_infra._utilities import FlextInfraUtilitiesProtocolPublication
 
 _SOURCE_BOOTSTRAP_MARKER = "# AUTO-GENERATED FILE - Source bootstrap"
 _SOURCE_BOOTSTRAP_CONTRACT_DOCSTRING = (
@@ -2586,9 +2582,7 @@ def _publication() -> type[FlextInfraUtilitiesProtocolPublication]:
         The publication owner class.
 
     """
-    return importlib.import_module(
-        "flext_infra._utilities.protocol_publication"
-    ).FlextInfraUtilitiesProtocolPublication
+    return FlextInfraUtilitiesProtocolPublication
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -2624,7 +2618,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
     command = arguments[2:] if arguments[1] == "--" else arguments[1:]
     sys.path.insert(0, str(root / "src"))
-    cli: type[FlextInfraCli] = importlib.import_module("flext_infra").FlextInfraCli
+    cli: type[FlextInfraCli] = FlextInfraCli
     return cli.infra_main(command)
 
 

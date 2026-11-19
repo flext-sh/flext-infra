@@ -699,6 +699,16 @@ class FlextInfraModelsConfigArtifact(
                 ),
             ),
         ]
+        docs_site_unpublished: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                description=(
+                    "Distributions whose generated docs workflow never publishes "
+                    "the built site to GitHub Pages; every other distribution "
+                    "deploys it from main"
+                ),
+            ),
+        ]
         sonarcloud: Annotated[
             FlextInfraModelsConfigRender.SonarcloudSpec,
             m.Field(description="Fleet SonarCloud automatic-analysis scope policy"),

@@ -13,13 +13,13 @@ from typing import Annotated, Literal, Self
 from flext_cli import m, t
 
 from flext_infra import c, p
-from flext_infra._constants.config import FlextInfraConstantsConfig
-from flext_infra._models._config import FlextInfraModelsConfigContract
-from flext_infra._models._config.external_cache import (
+from flext_infra._constants import FlextInfraConstantsConfig
+from flext_infra._models._config import (
     FlextInfraExternalCacheDirectorySpec,
+    FlextInfraModelsConfigContract,
+    FlextInfraModelsConfigMakeClean,
+    FlextInfraModelsConfigMakeDocs,
 )
-from flext_infra._models._config.make_clean import FlextInfraModelsConfigMakeClean
-from flext_infra._models._config.make_docs import FlextInfraModelsConfigMakeDocs
 from flext_infra.make_contract import FlextInfraConfigMakeContract
 
 

@@ -12,7 +12,7 @@ from typing import Self, override
 from flext_cli import m, r
 from flext_core import FlextService
 
-from flext_infra import c, p, settings
+from flext_infra import FlextInfraSettings, c, p
 from flext_infra._base import FlextInfraBasePayload
 from flext_infra._models import FlextInfraModelsBase
 from flext_infra._protocols import FlextInfraProtocolsBase
@@ -39,7 +39,7 @@ class FlextInfraServiceBase[TDomainResult](
 
         """
         # flext-j47u: configure the inherited runtime once; no settings proxy/property.
-        return m.RuntimeBootstrapOptions(settings_type=type(settings))
+        return m.RuntimeBootstrapOptions(settings_type=FlextInfraSettings)
 
     @property
     def fail_fast(self) -> bool:

@@ -70,7 +70,7 @@ class FlextInfraUtilitiesEnforcementCatalog:
 
         """
         result = r[p.Infra.EnforcementCatalog]
-        package_root = type(config).ssot_config_dir().parent
+        package_root = config.ssot_config_dir().parent
         rules = FlextInfraUtilitiesCodemodRules.codemod_catalog_rules(
             c.Infra.PACKAGE_IMPORT_NAME,
             package_root / c.Infra.CODEMOD_CONFIG_RELPATH

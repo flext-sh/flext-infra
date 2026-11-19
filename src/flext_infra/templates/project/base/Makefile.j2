@@ -178,7 +178,7 @@ WORKSPACE_SUBPROJECTS :={% for subproject in workspace_subprojects %} {{ subproj
 # The Makefile validates no caller input. Every verb
 # always applies; a mistyped variable fails where the verb consumes it, and an
 # unconsumed variable is ignored.
-export CHECK_PHASE
+export CHECK_PHASE MARKER
 PYTEST_REPORTS_DIR := {{ make.testmon_cache.reports_directory }}
 PYTEST_CACHE_HOME = $(if $(strip $({{ make.testmon_cache.data_home_environment_variable }})),$({{ make.testmon_cache.data_home_environment_variable }}),$(if $(strip $({{ make.testmon_cache.user_home_environment_variable }})),$({{ make.testmon_cache.user_home_environment_variable }})/{{ make.testmon_cache.home_cache_directory }},))
 # One persistent testmon database per project, shared by every checkout and
@@ -984,6 +984,9 @@ _builtin_tests_all: _builtin_require_environment
 _builtin_tests_full_all: _builtin_require_environment
 	@{{ pytest_test_runner("tests-full") | trim }}
 
+_builtin_tests_harness_all: _builtin_require_environment
+	@{{ pytest_test_runner("tests-harness") | trim }}$(if $(MARKER), --marker "$$MARKER")
+
 # fmt is format-only (single-pass verb law): ruff formats Python, the
 # fmt_gates formatters run once through the checker's apply mode, and every
 # lint repair belongs to `make fix`. Every repair requires read-only native
@@ -997,8 +1000,8 @@ _builtin_fix_all: _builtin_require_environment
 _builtin_clean_generated: _builtin_require_interpreter
 	@$(PROJECT_FLEXT_INFRA) maintenance clean --repository-root "$(PROJECT_ROOT)" --apply
 
-# Heavy verbs (check, tests, tests-full, gen, gen-scope, mod) admit themselves
-# into the per-host FIFO queue and arm their wall-time budget only once
+# Heavy verbs (check, tests, tests-full, tests-harness, gen, gen-scope, mod)
+# admit themselves into the per-host FIFO queue and arm their wall-time budget only once
 # admitted (FLEXT ADR-032, config Infra.gate_admission): queue time never
 # counts against a budget. GEN_PROFILE=1 / MOD_PROFILE=1 capture cProfile.
 GEN_PROFILE ?=
@@ -1049,6 +1052,7 @@ _builtin-check: _builtin_check_all
 
 _builtin-tests: _builtin_tests_all
 _builtin-tests-full: _builtin_tests_full_all
+_builtin-tests-harness: _builtin_tests_harness_all
 _builtin-fmt: _builtin_fmt_all
 _builtin-fix: _builtin_fix_all
 _builtin-clean: _builtin_clean_generated

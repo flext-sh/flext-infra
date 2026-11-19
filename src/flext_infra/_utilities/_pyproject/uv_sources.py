@@ -17,9 +17,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesDependencies,
     FlextInfraUtilitiesDependencyRequirements,
 )
-from flext_infra._utilities._git.requirement_source import (
-    FlextInfraUtilitiesGitRequirementSource,
-)
+from flext_infra._utilities._git import FlextInfraUtilitiesGitRequirementSource
 from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectRequirements
 
 

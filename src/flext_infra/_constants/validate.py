@@ -43,6 +43,12 @@ class FlextInfraConstantsSharedInfra:
         USAGE_ERROR = 4
         NO_TESTS_COLLECTED = 5
 
+    PYTEST_COMPLETED_FAILURES: ClassVar[frozenset[int]] = frozenset({
+        PytestExitCode.TESTS_FAILED,
+        PytestExitCode.INTERRUPTED,
+    })
+    "Failing codes pytest reports after finishing a suite lifecycle."
+
     @unique
     class ScriptExitCode(IntEnum):
         """Canonical exit codes for infra-owned validation scripts."""

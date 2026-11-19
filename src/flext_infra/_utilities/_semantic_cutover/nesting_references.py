@@ -30,8 +30,6 @@ from flext_infra._utilities._codemod import FlextInfraUtilitiesCodemodBindingCha
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntimeModules,
-)
-from flext_infra._utilities._rope.runtime_types import (
     FlextInfraUtilitiesRopeRuntimeTypes,
 )
 from flext_infra._utilities._semantic_cutover import (

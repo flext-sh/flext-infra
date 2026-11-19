@@ -27,11 +27,9 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesProjectManagedArtifacts,
 )
 from flext_infra._utilities._git import (
+    FlextInfraUtilitiesGitAttestationEvidence,
     FlextInfraUtilitiesGitSemanticIdentity,
     FlextInfraUtilitiesGitWorktreeIO,
-)
-from flext_infra._utilities._git.attestation_evidence import (
-    FlextInfraUtilitiesGitAttestationEvidence,
 )
 
 

@@ -260,6 +260,15 @@ class FlextInfraModelsDepsToolConfig(
             le=1800,
             description="Aggregate wall-clock maximum for one pytest operation.",
         )
+        harness_run_timeout_seconds: int = m.Field(
+            alias="harness-run-timeout-seconds",
+            gt=0,
+            le=1800,
+            description=(
+                "Aggregate wall-clock maximum for one harness-gate pytest operation,"
+                " whose budget also pays for the harness provisioning its fixtures own."
+            ),
+        )
         termination_grace_seconds: int = m.Field(
             alias="termination-grace-seconds",
             gt=0,
@@ -386,7 +395,8 @@ class FlextInfraModelsDepsToolConfig(
             strict=False,
             description=(
                 "External gate markers whose suites run only under their own harness:"
-                " every incremental scope deselects them, local or CI."
+                " every other scope deselects them, local or CI; the harness scope"
+                " selects only them."
             ),
         )
 
@@ -462,16 +472,19 @@ class FlextInfraModelsDepsToolConfig(
                     progress arguments hide item names.
 
             """
-            if self.termination_grace_seconds >= self.run_timeout_seconds:
-                msg = "pytest termination grace must be less than run timeout"
-                raise ValueError(msg)
-            if self.slow_timeout_seconds >= self.run_timeout_seconds:
-                msg = "pytest slow timeout must be less than run timeout"
-                raise ValueError(msg)
-            reserve = self.slow_suite_stop_reserve_seconds
-            if self.run_timeout_seconds <= reserve:
-                msg = "pytest run timeout must exceed the suite stop reserve"
-                raise ValueError(msg)
+            for run_timeout in (
+                self.run_timeout_seconds,
+                self.harness_run_timeout_seconds,
+            ):
+                if self.termination_grace_seconds >= run_timeout:
+                    msg = "pytest termination grace must be less than run timeout"
+                    raise ValueError(msg)
+                if self.slow_timeout_seconds >= run_timeout:
+                    msg = "pytest slow timeout must be less than run timeout"
+                    raise ValueError(msg)
+                if run_timeout <= self.slow_suite_stop_reserve_seconds:
+                    msg = "pytest run timeout must exceed the suite stop reserve"
+                    raise ValueError(msg)
             if self.slow_marker in self.ci_excluded_markers:
                 msg = "pytest slow marker must not be excluded from CI"
                 raise ValueError(msg)

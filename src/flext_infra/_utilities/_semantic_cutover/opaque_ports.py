@@ -13,6 +13,7 @@ from pathlib import Path
 from flext_cli import u
 
 from flext_infra import m, p
+from flext_infra._utilities import FlextInfraUtilitiesWorkspaceSnapshot
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeRuntimeModules,
     FlextInfraUtilitiesRopeRuntimeRefactors,
@@ -20,9 +21,6 @@ from flext_infra._utilities._rope import (
 )
 from flext_infra._utilities._semantic_cutover.model_envelopes import (
     FlextInfraUtilitiesSemanticModelEnvelopes,
-)
-from flext_infra._utilities.workspace_snapshot import (
-    FlextInfraUtilitiesWorkspaceSnapshot,
 )
 
 

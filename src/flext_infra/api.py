@@ -595,16 +595,26 @@ class FlextInfra(
         Ordinary test failures retain their original first status while every
         selected repository is reached. Interruptions and infrastructure errors
         stop dispatch with their native status; configuration failures escape.
-        Discovery and member execution share this operation's clock.
+        Each member runs on its own suite clock, started when it is dispatched:
+        a shared clock left every later member only the budget its
+        predecessors did not spend.
         FULL executes the complete applicable suite once in each project context
         without Testmon, an incremental pre-run or database access.
         A declared file selects only this repository through that same runner.
+        A declared marker narrows only the harness scope to that harness gate.
 
         Returns:
             The first failing native test status, or zero after every success.
 
         """
         started_at_monotonic = monotonic()
+        if (
+            request.marker is not None
+            and execution_mode != c.Infra.PytestExecutionMode.HARNESS
+        ):
+            return r[int].fail(
+                f"tests marker narrows only the harness scope: {execution_mode}"
+            )
         context = FlextInfra.project_context(request.repository_root).unwrap()
         if context.identity is None or context.runtime is None:
             return r[int].fail(f"tests require a project context: {context.cwd}")
@@ -624,6 +634,7 @@ class FlextInfra(
                         else execution_mode
                     ),
                     target_file=request.file,
+                    harness_marker=request.marker,
                 )
             )
         observed = workspace.FlextInfraWorkspaceDetector.load_workspace_spec(
@@ -644,7 +655,10 @@ class FlextInfra(
             return r[int].fail(
                 "tests workspace declarations differ from governed roots"
             )
-        status = 0
+        # A member owning no harness gate is an empty harness scope; the run
+        # still fails when no member executed a harness item.
+        harness = execution_mode == c.Infra.PytestExecutionMode.HARNESS
+        status, executed = 0, not harness
         for distribution in ordered:
             selected = by_distribution[distribution]
             u.Cli.info(f"tests: repository {distribution} root={selected}")
@@ -655,16 +669,22 @@ class FlextInfra(
             )
             outcome = validate.FlextInfraPytestRunner.execute_project_context(
                 project,
-                started_at_monotonic=started_at_monotonic,
+                started_at_monotonic=monotonic(),
                 execution_mode=execution_mode,
+                harness_marker=request.marker,
             )
             u.Cli.info(f"tests: repository {distribution} exit={outcome}")
+            if harness and outcome == c.Infra.PytestExitCode.NO_TESTS_COLLECTED:
+                continue
+            executed = True
             if outcome:
                 if outcome != c.Infra.Pytest.ExitCode.TESTS_FAILED:
                     return r[int].ok(outcome)
                 if not status:
                     status = outcome
-        return r[int].ok(status)
+        return r[int].ok(
+            status if executed else int(c.Infra.PytestExitCode.NO_TESTS_COLLECTED)
+        )
 
     @staticmethod
     def project_context(cwd: Path) -> p.Result[p.Infra.WorkspaceProjectContext]:

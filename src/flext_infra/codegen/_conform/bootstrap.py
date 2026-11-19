@@ -10,8 +10,7 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import Annotated, assert_never
 
-from flext_infra import c, m, p, s, u
-from flext_infra.promoted import FlextInfraPromoted
+from flext_infra import FlextInfraPromoted, c, m, p, s, u
 
 
 class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):

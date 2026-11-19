@@ -71,6 +71,8 @@ jobs:
       - name: Check documentation and projections
         run: make check
 
+{%- if docs_site_publish %}
+
       # The site artifact exists only to feed deploy on main; an integration
       # push proves the build and uploads nothing.
       - name: Upload site artifact
@@ -78,6 +80,7 @@ jobs:
         uses: {{ github_actions["upload-pages-artifact"].repository }}@{{ github_actions["upload-pages-artifact"].version }}
         with:
           path: {{ report_root }}.reports/docs/site
+{%- endif %}
 
       # Failure diagnostics execute only after the original Make step has
       # already propagated its exact status to Actions.
@@ -113,6 +116,7 @@ jobs:
           # upload-artifact excludes hidden paths unless this is explicit.
           include-hidden-files: true
           retention-days: 7
+{%- if docs_site_publish %}
 
   deploy:
     name: deploy
@@ -137,3 +141,4 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: {{ github_actions["deploy-pages"].repository }}@{{ github_actions["deploy-pages"].version }}
+{%- endif %}
