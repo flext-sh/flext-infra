@@ -13,3 +13,5 @@ invalid:
     members = (t.Core.Tests.CentralizedUnion,)
   - |
     u.Ldap.Tests.that(result, eq=1)
+  - |
+    message = TestsFlextLdapModels.Ldap.Tests.FAIL_ERROR_MESSAGE

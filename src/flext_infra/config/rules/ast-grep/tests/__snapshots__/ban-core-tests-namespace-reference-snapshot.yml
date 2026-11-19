@@ -1,18 +1,36 @@
 id: ban-core-tests-namespace-reference
 snapshots:
-  "def send(request: t.Core.Tests.DispatchRequest) -> p.Result[str]: ...\n":
+  ? |
+    def send(request: t.Core.Tests.DispatchRequest) -> p.Result[str]: ...
+  : fixed: |
+      def send(request: t.Tests.DispatchRequest) -> p.Result[str]: ...
     labels:
     - source: t.Core.Tests
       style: primary
       start: 18
       end: 30
-  "members = (t.Core.Tests.CentralizedUnion,)\n":
+  ? |
+    members = (t.Core.Tests.CentralizedUnion,)
+  : fixed: |
+      members = (t.Tests.CentralizedUnion,)
     labels:
     - source: t.Core.Tests
       style: primary
       start: 11
       end: 23
-  "u.Ldap.Tests.that(result, eq=1)\n":
+  ? |
+    message = TestsFlextLdapModels.Ldap.Tests.FAIL_ERROR_MESSAGE
+  : fixed: |
+      message = TestsFlextLdapModels.Tests.FAIL_ERROR_MESSAGE
+    labels:
+    - source: TestsFlextLdapModels.Ldap.Tests
+      style: primary
+      start: 10
+      end: 41
+  ? |
+    u.Ldap.Tests.that(result, eq=1)
+  : fixed: |
+      u.Tests.that(result, eq=1)
     labels:
     - source: u.Ldap.Tests
       style: primary

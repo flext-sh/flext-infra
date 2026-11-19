@@ -1,64 +1,268 @@
 id: ban-core-tests-namespace-declaration
 snapshots:
-  "class TestsFlextCoreTypes(FlextTestsTypes):\n    class Core:\n        class Tests(FlextTestsTypes.Tests):\n            type DispatchRequest = str\n":
+  ? |
+    class TestsFlextCleanModels:
+        class Core:
+            """Core test-model namespace."""
+
+            class Tests:
+                """Clean models."""
+
+                class GoodEntity(m.ArbitraryTypesModel):
+                    name: str = ""
+  : fixed: "class TestsFlextCleanModels:\n    class Tests:\n        \"\"\"Clean models.\"\"\"\n    \n        class GoodEntity(m.ArbitraryTypesModel):\n            name: str = \"\"\n"
     labels:
-    - source: |-
-        class Tests(FlextTestsTypes.Tests):
-                    type DispatchRequest = str
-      style: primary
-      start: 68
-      end: 142
-    - source: |-
-        class TestsFlextCoreTypes(FlextTestsTypes):
-            class Core:
-                class Tests(FlextTestsTypes.Tests):
-                    type DispatchRequest = str
-      style: secondary
-      start: 0
-      end: 142
-    - source: Core
-      style: secondary
-      start: 54
-      end: 58
     - source: |-
         class Core:
-                class Tests(FlextTestsTypes.Tests):
-                    type DispatchRequest = str
-      style: secondary
-      start: 48
-      end: 142
+                """Core test-model namespace."""
+
+                class Tests:
+                    """Clean models."""
+
+                    class GoodEntity(m.ArbitraryTypesModel):
+                        name: str = ""
+      style: primary
+      start: 33
+      end: 224
     - source: Tests
       style: secondary
-      start: 74
-      end: 79
-  "class TestsFlextLdapUtilities(FlextLdapUtilities):\n    class Ldap:\n        class Tests(FlextTestsUtilities.Tests):\n            pass\n":
-    labels:
+      start: 101
+      end: 106
     - source: |-
-        class Tests(FlextTestsUtilities.Tests):
-                    pass
-      style: primary
-      start: 75
-      end: 131
+        class Tests:
+                    """Clean models."""
+
+                    class GoodEntity(m.ArbitraryTypesModel):
+                        name: str = ""
+      style: secondary
+      start: 95
+      end: 224
     - source: |-
-        class TestsFlextLdapUtilities(FlextLdapUtilities):
-            class Ldap:
-                class Tests(FlextTestsUtilities.Tests):
-                    pass
+        class Tests:
+                    """Clean models."""
+
+                    class GoodEntity(m.ArbitraryTypesModel):
+                        name: str = ""
+      style: secondary
+      start: 95
+      end: 224
+    - source: Core
+      style: secondary
+      start: 39
+      end: 43
+    - source: Tests
+      style: secondary
+      start: 101
+      end: 106
+    - source: |-
+        class Tests:
+                    """Clean models."""
+
+                    class GoodEntity(m.ArbitraryTypesModel):
+                        name: str = ""
+      style: secondary
+      start: 95
+      end: 224
+    - source: |-
+        class Tests:
+                    """Clean models."""
+
+                    class GoodEntity(m.ArbitraryTypesModel):
+                        name: str = ""
+      style: secondary
+      start: 95
+      end: 224
+    - source: '"""Core test-model namespace."""'
+      style: secondary
+      start: 53
+      end: 85
+    - source: Tests
+      style: secondary
+      start: 101
+      end: 106
+    - source: |
+        class TestsFlextCleanModels:
+            class Core:
+                """Core test-model namespace."""
+
+                class Tests:
+                    """Clean models."""
+
+                    class GoodEntity(m.ArbitraryTypesModel):
+                        name: str = ""
       style: secondary
       start: 0
-      end: 131
-    - source: Ldap
-      style: secondary
-      start: 61
-      end: 65
+      end: 225
     - source: |-
-        class Ldap:
-                class Tests(FlextTestsUtilities.Tests):
-                    pass
+        class TestsFlextCleanModels:
+            class Core:
+                """Core test-model namespace."""
+
+                class Tests:
+                    """Clean models."""
+
+                    class GoodEntity(m.ArbitraryTypesModel):
+                        name: str = ""
       style: secondary
-      start: 55
-      end: 131
+      start: 0
+      end: 224
+    - source: |-
+        class Core:
+                """Core test-model namespace."""
+
+                class Tests:
+                    """Clean models."""
+
+                    class GoodEntity(m.ArbitraryTypesModel):
+                        name: str = ""
+      style: secondary
+      start: 33
+      end: 224
+  ? |
+    class TestsFlextLdapTypes(FlextTestsTypes, FlextLdapTypes):
+        """Facade."""
+
+        class Ldap(FlextLdapTypes.Ldap):
+            """LDAP test types."""
+
+            class Tests(FlextTestsTypes.Tests):
+                """Use t.Ldap.Tests.* for all test types."""
+
+                type LdapContainerDict = Mapping[
+                    str,
+                    FlextLdapTypes.Scalar,
+                ]
+  : fixed: "class TestsFlextLdapTypes(FlextTestsTypes, FlextLdapTypes):\n    \"\"\"Facade.\"\"\"\n\n    class Tests(FlextTestsTypes.Tests):\n        \"\"\"Use t.Tests.* for all test types.\"\"\"\n    \n        type LdapContainerDict = Mapping[\n            str,\n            FlextLdapTypes.Scalar,\n        ]\n"
+    labels:
+    - source: |-
+        class Ldap(FlextLdapTypes.Ldap):
+                """LDAP test types."""
+
+                class Tests(FlextTestsTypes.Tests):
+                    """Use t.Ldap.Tests.* for all test types."""
+
+                    type LdapContainerDict = Mapping[
+                        str,
+                        FlextLdapTypes.Scalar,
+                    ]
+      style: primary
+      start: 83
+      end: 369
     - source: Tests
       style: secondary
-      start: 81
-      end: 86
+      start: 162
+      end: 167
+    - source: (FlextTestsTypes.Tests)
+      style: secondary
+      start: 167
+      end: 190
+    - source: |-
+        class Tests(FlextTestsTypes.Tests):
+                    """Use t.Ldap.Tests.* for all test types."""
+
+                    type LdapContainerDict = Mapping[
+                        str,
+                        FlextLdapTypes.Scalar,
+                    ]
+      style: secondary
+      start: 156
+      end: 369
+    - source: |-
+        class Tests(FlextTestsTypes.Tests):
+                    """Use t.Ldap.Tests.* for all test types."""
+
+                    type LdapContainerDict = Mapping[
+                        str,
+                        FlextLdapTypes.Scalar,
+                    ]
+      style: secondary
+      start: 156
+      end: 369
+    - source: Ldap
+      style: secondary
+      start: 89
+      end: 93
+    - source: Tests
+      style: secondary
+      start: 162
+      end: 167
+    - source: |-
+        class Tests(FlextTestsTypes.Tests):
+                    """Use t.Ldap.Tests.* for all test types."""
+
+                    type LdapContainerDict = Mapping[
+                        str,
+                        FlextLdapTypes.Scalar,
+                    ]
+      style: secondary
+      start: 156
+      end: 369
+    - source: |-
+        class Tests(FlextTestsTypes.Tests):
+                    """Use t.Ldap.Tests.* for all test types."""
+
+                    type LdapContainerDict = Mapping[
+                        str,
+                        FlextLdapTypes.Scalar,
+                    ]
+      style: secondary
+      start: 156
+      end: 369
+    - source: '"""LDAP test types."""'
+      style: secondary
+      start: 124
+      end: 146
+    - source: Tests
+      style: secondary
+      start: 162
+      end: 167
+    - source: |
+        class TestsFlextLdapTypes(FlextTestsTypes, FlextLdapTypes):
+            """Facade."""
+
+            class Ldap(FlextLdapTypes.Ldap):
+                """LDAP test types."""
+
+                class Tests(FlextTestsTypes.Tests):
+                    """Use t.Ldap.Tests.* for all test types."""
+
+                    type LdapContainerDict = Mapping[
+                        str,
+                        FlextLdapTypes.Scalar,
+                    ]
+      style: secondary
+      start: 0
+      end: 370
+    - source: |-
+        class TestsFlextLdapTypes(FlextTestsTypes, FlextLdapTypes):
+            """Facade."""
+
+            class Ldap(FlextLdapTypes.Ldap):
+                """LDAP test types."""
+
+                class Tests(FlextTestsTypes.Tests):
+                    """Use t.Ldap.Tests.* for all test types."""
+
+                    type LdapContainerDict = Mapping[
+                        str,
+                        FlextLdapTypes.Scalar,
+                    ]
+      style: secondary
+      start: 0
+      end: 369
+    - source: |-
+        """Facade."""
+
+            class Ldap(FlextLdapTypes.Ldap):
+                """LDAP test types."""
+
+                class Tests(FlextTestsTypes.Tests):
+                    """Use t.Ldap.Tests.* for all test types."""
+
+                    type LdapContainerDict = Mapping[
+                        str,
+                        FlextLdapTypes.Scalar,
+                    ]
+      style: secondary
+      start: 64
+      end: 369
