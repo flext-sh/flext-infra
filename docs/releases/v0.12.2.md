@@ -12,6 +12,8 @@
 
 ## Pull requests since last release
 
+- fix(sweep): violations-sweep is repository-scoped; members observed by their own plans
+  (flext-oja0z) (#2709)
 - fix(validate): the fresh-import probe deadline is the target's typed policy
   (flext-s20br) (#2706)
 - fix(tests): fixture checkouts are created on main, never the host default branch
