@@ -72,10 +72,9 @@ class TestsFlextInfraPytestRunnerHarness:
         """A declared harness marker narrows the scope; any other one fails."""
         policy = config.Infra.tooling.tools.pytest
         narrowed = policy.harness_gate_markers[-1]
+        runner = u.Tests.PytestRunner.runner_for(cached_runner_project)
         tm.that(
-            u.Tests.PytestRunner.runner_for(
-                cached_runner_project, harness_marker=narrowed
-            ).harness_markers(),
+            runner.model_copy(update={"harness_marker": narrowed}).harness_markers(),
             eq=(narrowed,),
         )
         for marker in (
@@ -86,11 +85,8 @@ class TestsFlextInfraPytestRunnerHarness:
                 if marker not in policy.harness_gate_markers
             ),
         ):
-            runner = u.Tests.PytestRunner.runner_for(
-                cached_runner_project, harness_marker=marker
-            )
             with u.Tests.raises(ValueError, match="harness-gate-marker"):
-                runner.harness_markers()
+                runner.model_copy(update={"harness_marker": marker}).harness_markers()
 
     @staticmethod
     @c.Tests.MARK.parametrize("ci_context", [False, True])
