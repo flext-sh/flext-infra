@@ -1,0 +1,21 @@
+id: ban-core-tests-namespace-declaration-mixed
+valid:
+  - |
+    class TestsFlextLdapTypes(FlextTestsTypes, FlextLdapTypes):
+        class Ldap(FlextLdapTypes.Ldap):
+            """LDAP test types."""
+
+            class Tests(FlextTestsTypes.Tests):
+                type Alias = str
+  - |
+    class TestsFlextCliTypes(FlextTestsTypes, FlextCliTypes):
+        class Tests(FlextTestsTypes.Tests):
+            type Alias = str
+invalid:
+  - |
+    class TestsFlextMeltanoTypes(FlextTestsTypes, FlextMeltanoTypes):
+        class Meltano(FlextMeltanoTypes.Meltano):
+            type ComponentCase = tuple[str, str]
+
+            class Tests(FlextTestsTypes.Tests):
+                """Aliases."""

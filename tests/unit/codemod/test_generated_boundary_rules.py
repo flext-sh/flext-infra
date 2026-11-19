@@ -140,19 +140,24 @@ class TestsFlextInfraCodemodGeneratedBoundaryRules:
     def test_own_namespace_import_fails_only_in_layer_zero(
         fixture_tree: p.Tests.FixtureTree, tmp_path: Path, case: str, shape: str
     ) -> None:
-        """The layer-zero module fails; a consumer with the same import does not."""
+        """The lazy loader fails; settings and a consumer with the same import pass.
+
+        Layer zero is the lazy loader alone (dc39079215): settings and config
+        import through the lazy initializer like any consumer.
+        """
         owner = TestsFlextInfraCodemodGeneratedBoundaryRules
         source = owner.scenario_source(fixture_tree, tmp_path, case)
         findings = owner.scan_sources(
             tmp_path,
             {
                 **owner.SUPPORT.get(case, {}),
+                "_lazy.py": source,
                 "_settings.py": source,
                 "consumer.py": source,
             },
         )
-        tm.that(findings, has=f"_settings.py:{shape}")
-        tm.that([item for item in findings if item.startswith("consumer.py")], eq=[])
+        tm.that(findings, has=f"_lazy.py:{shape}")
+        tm.that([item for item in findings if not item.startswith("_lazy.py")], eq=[])
 
     @staticmethod
     @c.Tests.MARK.parametrize(
