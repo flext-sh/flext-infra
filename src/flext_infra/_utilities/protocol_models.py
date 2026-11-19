@@ -4644,7 +4644,13 @@ class FlextInfraUtilitiesModelsProtocol:
             ) | (
                 frozenset()
                 if destination is None
-                else {self._source_destination_holder(destination)}
+                or (
+                    self.project.source_query(destination, "isfile")
+                    and not self.project.source_text(destination).startswith(
+                        c.Infra.AUTOGEN_HEADER
+                    )
+                )
+                else {self._source_generated_holder(destination)}
             )
             type_imports.extend(
                 f"from {family} import {name}"
@@ -7736,7 +7742,7 @@ class FlextInfraUtilitiesModelsProtocol:
                 raise ValueError(message)
             end = holder.end_lineno
             inline = holder.body[0]
-            if inline.lineno == holder.lineno:
+            if lines[inline.lineno - 1][: inline.col_offset].strip():
                 # A one-line suite (``class X: pass``) takes no indented body.
                 head = lines[inline.lineno - 1]
                 lines[inline.lineno - 1] = (

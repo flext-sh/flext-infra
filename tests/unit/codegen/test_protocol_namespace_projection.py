@@ -381,3 +381,47 @@ class TestsFlextInfraProtocolNamespaceProjection:
             "assert isinstance(Value(), p.Namespace.Payload)\n",
             cwd=root,
         )
+
+    @staticmethod
+    def test_override_alias_follows_native_c3_order(tmp_path: Path) -> None:
+        """An alias that overrides the C3 owner stays; ``Generic`` is no part."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        directory = u.Infra.facade_family_declared_by(c.Infra.MODELS_PY).directory
+        facade = package / c.Infra.MODELS_PY
+        sources = {
+            package / c.Infra.INIT_PY: "",
+            package / directory / "root.py": (
+                "class RootPart:\n    class Member:\n        pass\n"
+                "__all__ = ['RootPart']\n"
+            ),
+            package / directory / "left.py": (
+                f"from {package.name}.{directory}.root import RootPart\n"
+                "class LeftPart(RootPart):\n    pass\n__all__ = ['LeftPart']\n"
+            ),
+            package / directory / "right.py": (
+                f"from {package.name}.{directory}.root import RootPart\n"
+                "class RightPart(RootPart):\n    class Member:\n        pass\n"
+                "__all__ = ['RightPart']\n"
+            ),
+            facade: (
+                f"from {package.name}.{directory}.left import LeftPart\n"
+                f"from {package.name}.{directory}.right import RightPart\n"
+                f"from {package.name}.{directory}.root import RootPart\n"
+                "class Facade:\n    class Namespace(LeftPart, RightPart):\n"
+                "        Member = RootPart.Member\n"
+                "m = Facade\n__all__ = ['Facade', 'm']\n"
+            ),
+        }
+        for path, source in sources.items():
+            path.parent.mkdir(parents=True, exist_ok=True)
+            tm.ok(u.Cli.atomic_write_text_file(path, source))
+            u.Tests.git_bootstrap(root, ("add", "--", str(path.relative_to(root))))
+        service = u.Tests.create_lazy_init_service(root)
+        service.module = f"{package.name}.{directory}"
+        tm.ok(u.Tests.materialize_lazy_init(service))
+        # C3 resolves Member to RightPart.Member, so the authored alias is an
+        # override, never a redundant binding.
+        rendered = tm.ok(
+            tm.not_none(u.Infra.render_utility_facade(package, family="m"))
+        )
+        tm.that(rendered, has="Member = RootPart.Member")
