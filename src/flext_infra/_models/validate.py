@@ -304,14 +304,14 @@ class FlextInfraModelsCore:
         )
         testmon_db: Path | None = m.Field(
             description=(
-                "External pytest-testmon database for incremental operations; "
-                "absent for full and coverage execution"
+                "External pytest-testmon database for incremental and full "
+                "operations; absent for coverage execution"
             ),
         )
         testmon_lease_acquired: bool | None = m.Field(
             description=(
-                "Whether an incremental phase acquired its Testmon lease; "
-                "absent for full and coverage execution"
+                "Whether an incremental or full phase acquired its Testmon lease; "
+                "absent for coverage execution"
             ),
         )
         deadline_monotonic: float = m.Field(
@@ -340,13 +340,13 @@ class FlextInfraModelsCore:
                 ValueError: If the mode contradicts its database or lease state.
 
             """
-            incremental = self.execution_mode.is_incremental
-            if incremental != (self.testmon_db is not None) or incremental != (
+            recorded = self.execution_mode.records_testmon
+            if recorded != (self.testmon_db is not None) or recorded != (
                 self.testmon_lease_acquired is not None
             ):
                 msg = (
-                    "incremental execution requires a Testmon database and lease; "
-                    "full and coverage execution require neither"
+                    "incremental and full execution require a Testmon database "
+                    "and lease; coverage execution requires neither"
                 )
                 raise ValueError(msg)
             return self

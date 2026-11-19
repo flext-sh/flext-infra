@@ -437,8 +437,8 @@ class TestsFlextInfraPytestRunnerZeroTest:
             self._read(report_dir / "run-context.json"),
         )
         tm.that(context.execution_mode, eq=c.Infra.PytestExecutionMode.FULL)
-        tm.that(context.testmon_db, none=True)
-        tm.that(context.testmon_lease_acquired, none=True)
+        tm.that(context.testmon_db, eq=runner.testmon_db)
+        tm.that(context.testmon_lease_acquired, eq=True)
         tm.that(
             context.deadline_monotonic,
             eq=runner.started_at_monotonic
@@ -517,8 +517,8 @@ class TestsFlextInfraPytestRunnerZeroTest:
             context_path.read_bytes(),
         )
         tm.that(context.execution_mode, eq=c.Infra.PytestExecutionMode.FULL)
-        tm.that(context.testmon_db, none=True)
-        tm.that(context.testmon_lease_acquired, none=True)
+        tm.that(context.testmon_db, eq=runner.testmon_db)
+        tm.that(context.testmon_lease_acquired, eq=True)
         tm.that(
             context.deadline_monotonic,
             eq=runner.started_at_monotonic

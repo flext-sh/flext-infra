@@ -59,8 +59,8 @@ class FlextInfraPytestRunnerExecution(
     ) -> p.Cli.ProcessOptions:
         """Declare child overrides and removals at the process boundary.
 
-        Unselected full and coverage suites own no Testmon plugin, so their
-        children neither receive nor inherit a database location.
+        Coverage suites own no Testmon plugin, so their children neither
+        receive nor inherit a database location.
 
         Returns:
             The process options shared by every runner invocation.
@@ -95,9 +95,9 @@ class FlextInfraPytestRunnerExecution(
                 )
                 if path
             )
-        if execution_mode.is_incremental:
+        if execution_mode.records_testmon:
             if database is None:
-                msg = "incremental pytest requires its external Testmon database"
+                msg = "Testmon pytest requires its external Testmon database"
                 raise ValueError(msg)
             overrides.update(dict.fromkeys(testmon_keys, str(database)))
         if self.profile_enabled or self.collection_command_prefix:
@@ -107,7 +107,7 @@ class FlextInfraPytestRunnerExecution(
         remove_keys = (
             *c.Infra.PYTEST_INHERITED_ENV_REMOVE_KEYS,
             "GITHUB_OUTPUT",
-            *(testmon_keys if not execution_mode.is_incremental else ()),
+            *(testmon_keys if not execution_mode.records_testmon else ()),
         )
         return m.Cli.ProcessOptions(
             env=overrides,
@@ -800,8 +800,10 @@ class FlextInfraPytestRunnerExecution(
     ) -> p.Result[int]:
         """Select impacted global cases independently of quality checks.
 
-        Explicit FULL executes once without Testmon. Both operations retain
-        the same marker inventory and native execution evidence.
+        Explicit FULL executes its complete inventory once and records it
+        under its own Testmon environment, which locally is the global
+        incremental one, so one FULL run warms a cold lane. Both operations
+        retain the same marker inventory and native execution evidence.
 
         Returns:
             The native status with selection, inventory and execution evidence.
@@ -813,14 +815,10 @@ class FlextInfraPytestRunnerExecution(
         if not execution_mode.is_global:
             msg = f"global pytest operation requires a global mode: {execution_mode}"
             raise ValueError(msg)
-        return (
-            self._execute_complete_suite()
-            if execution_mode == c.Infra.PytestExecutionMode.FULL
-            else self._execute_testmon(execution_mode=execution_mode)
-        )
+        return self._execute_testmon(execution_mode=execution_mode)
 
     def execute_file(self) -> p.Result[int]:
-        """Run the complete declared file once without Testmon.
+        """Run and record the complete declared file once.
 
         Returns:
             The native status of the complete file execution.
@@ -834,30 +832,24 @@ class FlextInfraPytestRunnerExecution(
             raise ValueError(msg)
         return self.execute_full()
 
-    def _execute_complete_suite(self) -> p.Result[int]:
-        """Run and account for one complete suite without opening Testmon.
+    def _execute_complete_suite(
+        self, *, database: Path, report_dir: Path
+    ) -> p.Result[int]:
+        """Run, record and account for one complete suite under the lease.
+
+        Testmon selects nothing; it records every executed item, so the
+        incremental run of the same marker scope starts warm.
 
         Returns:
             The original suite status after its complete-inventory evidence.
 
         """
-        report_dir = self._report_directory()
-        deadline = self._process_deadline()
         mode = c.Infra.PytestExecutionMode.FULL
-        self._write_run_context(
-            report_dir,
-            m.Infra.PytestRunContext(
-                execution_mode=mode,
-                testmon_db=None,
-                testmon_lease_acquired=None,
-                deadline_monotonic=deadline.expires_at_monotonic,
-                report_directory=report_dir,
-            ),
-        )
         outcome = self._run_suite(
             self.build_command(report_dir, execution_mode=mode),
             report_dir,
             execution_mode=mode,
+            database=database,
         )
         selection = self._selection_from_suite(report_dir, outcome)
         if isinstance(selection, p.Cli.ProcessOutcome):
@@ -875,18 +867,18 @@ class FlextInfraPytestRunnerExecution(
             c.Infra.PytestExecutionMode.INCREMENTAL
         ),
     ) -> p.Result[int]:
-        """Execute one selected testmon phase without resetting shared state.
+        """Execute one Testmon phase, selected or FULL, under the database lease.
 
         Returns:
             The resulting ``p.Result[int]``.
 
         Raises:
-            ValueError: If incremental pytest requires its external Testmon database.
+            ValueError: If the Testmon phase has no external database.
 
         """
         database = self.testmon_db
         if database is None:
-            msg = "incremental pytest requires its external Testmon database"
+            msg = "Testmon pytest requires its external Testmon database"
             raise ValueError(msg)
         slow_marker = self.pytest_policy().slow_marker
         if self.slow_phase and slow_marker in self.ci_excluded_markers(
@@ -952,10 +944,14 @@ class FlextInfraPytestRunnerExecution(
                 "pytest cache lease: acquired "
                 f"after {self.started_at_monotonic - lease_started:.3f}s\n",
             )
-            result = self._execute_testmon_leased(
-                database=database,
-                execution_mode=execution_mode,
-                report_dir=report_dir,
+            result = (
+                self._execute_complete_suite(database=database, report_dir=report_dir)
+                if execution_mode == c.Infra.PytestExecutionMode.FULL
+                else self._execute_testmon_leased(
+                    database=database,
+                    execution_mode=execution_mode,
+                    report_dir=report_dir,
+                )
             )
         # Only the parent publishes, after SQLite closure and lease release.
         self._publish_cache_output()
@@ -1117,6 +1113,16 @@ class FlextInfraPytestRunnerExecution(
             report_dir / "selection-plan.json",
             selection_plan.model_dump_json(indent=2) + "\n",
         ).unwrap()
+        if (
+            selection_plan.whole_target
+            and selection_plan.node_ids
+            and not selection_plan.inventory_collected
+        ):
+            sys.stderr.write(
+                f"pytest selection: all {len(selection_plan.node_ids)} items "
+                "selected; a cold Testmon environment is warmed by running "
+                "`make tests-full` once\n",
+            )
         if (
             not selection_plan.node_ids
             and not cache_restored

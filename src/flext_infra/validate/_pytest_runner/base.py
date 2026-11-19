@@ -48,7 +48,7 @@ class FlextInfraPytestRunnerBase(s[int]):
         m.Field(
             description=(
                 "This checkout's external SQLite database for incremental "
-                "Testmon runs; each checkout owns its database and lease."
+                "and FULL Testmon runs; each checkout owns its database and lease."
             ),
         ),
     ] = None
@@ -183,7 +183,7 @@ class FlextInfraPytestRunnerBase(s[int]):
         cache = make.testmon_cache
         database: Path | None = None
         seed: Path | None = None
-        if execution_mode.is_incremental:
+        if execution_mode.records_testmon:
             cache_home_value = u.Infra.env_value(cache.data_home_environment_variable)
             cache_home = (
                 Path(cache_home_value)
@@ -338,7 +338,7 @@ class FlextInfraPytestRunnerBase(s[int]):
                         config.Infra.codegen.make.testmon_cache.database_environment_variable,
                     ),
                 )
-                if execution_mode.is_incremental
+                if execution_mode.records_testmon
                 else None
             ),
         )

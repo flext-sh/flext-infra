@@ -737,12 +737,12 @@ class TestsFlextInfraPytestRunner:
     @staticmethod
     @c.Tests.MARK.slow
     @c.Tests.MARK.parametrize("ci_context", [False, True])
-    def test_full_executes_the_applicable_population_once_without_touching_testmon(
+    def test_full_executes_the_applicable_population_once_and_records_testmon(
         cached_runner_project: Path,
         *,
         ci_context: bool,
     ) -> None:
-        """A bounded full execution ignores its cache and its harness gates."""
+        """A bounded full execution records its scope and skips harness gates."""
         policy = config.Infra.tooling.tools.pytest
         markers = tuple(
             sorted({
@@ -767,8 +767,6 @@ class TestsFlextInfraPytestRunner:
             cached_runner_project, ci_context=ci_context
         )
         database = tm.not_none(runner.testmon_db)
-        database.write_bytes(b"invalid cache must remain outside the full operation")
-        database_before = database.read_bytes()
         source = "import pytest\nfrom runner_sample import answer\n\n"
         for index, marker in enumerate(markers):
             source += (
@@ -791,9 +789,9 @@ class TestsFlextInfraPytestRunner:
             [context.execution_mode for context in parsed],
             eq=[c.Infra.PytestExecutionMode.FULL],
         )
-        tm.that({context.testmon_db for context in parsed}, eq={None})
-        tm.that({context.testmon_lease_acquired for context in parsed}, eq={None})
-        tm.that(database.read_bytes(), eq=database_before)
+        tm.that({context.testmon_db for context in parsed}, eq={database})
+        tm.that({context.testmon_lease_acquired for context in parsed}, eq={True})
+        tm.ok(database.is_file())
         tm.that(parsed[-1].execution_mode, eq=c.Infra.PytestExecutionMode.FULL)
         tm.that(
             parsed[-1].deadline_monotonic,
@@ -821,7 +819,15 @@ class TestsFlextInfraPytestRunner:
             ],
         )
         recorded = (report_dir / "command.txt").read_text()
-        tm.fail("--testmon" in recorded)
+        tm.that(
+            recorded.split(),
+            has=[
+                "--testmon",
+                "--testmon-noselect",
+                runner.testmon_environment(c.Infra.PytestExecutionMode.FULL),
+            ],
+            lacks="--testmon-forceselect",
+        )
         tm.that(recorded, has=c.Infra.PYTEST_SUITE_STOP_OPTION)
         tm.that(recorded, has=f"--timeout={policy.ordinary_timeout_seconds}")
         tm.that(recorded, has=[*not_executed])
@@ -835,7 +841,7 @@ class TestsFlextInfraPytestRunner:
     def test_file_runs_after_warm_cache_and_ignores_node_like_diagnostics(
         cached_runner_project: Path,
     ) -> None:
-        """Complete file collection preserves a cache warmed by native selection."""
+        """Complete file collection records into a cache warmed by selection."""
         (cached_runner_project / "conftest.py").write_text(
             "import sys\n\n"
             "def pytest_collection_finish(session):\n"
@@ -853,7 +859,6 @@ class TestsFlextInfraPytestRunner:
         tm.that(tm.ok(baseline.execute()), eq=0)
         database = tm.not_none(baseline.testmon_db)
         tm.ok(database.is_file())
-        database_before = database.read_bytes()
         reports_root = cached_runner_project / baseline.reports
         existing = set(reports_root.glob("*/run-context.json"))
         runner = u.Tests.PytestRunner.runner_for(
@@ -872,14 +877,14 @@ class TestsFlextInfraPytestRunner:
             [context.execution_mode for context in parsed],
             eq=[c.Infra.PytestExecutionMode.FULL],
         )
-        tm.that({context.testmon_db for context in parsed}, eq={None})
-        tm.that({context.testmon_lease_acquired for context in parsed}, eq={None})
+        tm.that({context.testmon_db for context in parsed}, eq={database})
+        tm.that({context.testmon_lease_acquired for context in parsed}, eq={True})
         tm.ok(database.is_absolute())
         tm.that(
             database.is_relative_to(cached_runner_project.resolve()),
             eq=False,
         )
-        tm.that(database.read_bytes(), eq=database_before)
+        tm.ok(database.is_file())
         tm.that(
             (
                 cached_runner_project
@@ -960,8 +965,8 @@ class TestsFlextInfraPytestRunner:
                 + config.Infra.tooling.tools.pytest.run_timeout_seconds,
             },
         )
-        tm.that({context.testmon_db for context in parsed}, eq={None})
-        tm.that({context.testmon_lease_acquired for context in parsed}, eq={None})
+        tm.that({context.testmon_db for context in parsed}, eq={runner.testmon_db})
+        tm.that({context.testmon_lease_acquired for context in parsed}, eq={True})
 
     @staticmethod
     @c.Tests.MARK.slow

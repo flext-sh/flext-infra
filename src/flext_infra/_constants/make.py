@@ -32,9 +32,11 @@ class FlextInfraConstantsMake(FlextInfraConstantsConfig):
 
         GLOBAL_INCREMENTAL shares FULL's marker scope, but uses Testmon to
         select impacted cases. INCREMENTAL retains the local/slow partition.
-        FULL executes the complete inventory once without Testmon. HARNESS
-        selects only the harness gates the other scopes deselect, through
-        Testmon, under the harness that provides their inputs.
+        FULL executes the complete inventory once and records it in Testmon
+        under its own marker scope, which locally is GLOBAL_INCREMENTAL's, so
+        one FULL run warms a cold database for the next incremental run.
+        HARNESS selects only the harness gates the other scopes deselect,
+        through Testmon, under the harness that provides their inputs.
         """
 
         INCREMENTAL = "incremental"
@@ -52,6 +54,11 @@ class FlextInfraConstantsMake(FlextInfraConstantsConfig):
         def is_incremental(self) -> bool:
             """Whether testmon selects impacted cases before suite execution."""
             return self in {self.INCREMENTAL, self.GLOBAL_INCREMENTAL, self.HARNESS}
+
+        @property
+        def records_testmon(self) -> bool:
+            """Whether the run opens the Testmon database (selecting or not)."""
+            return self.is_incremental or self is self.FULL
 
     MAKE_ASSIGNMENT_RE: ClassVar[t.RegexPattern] = re.compile(
         r"^[A-Za-z_][A-Za-z0-9_]*\s*(?::?:|\?|\+)?=",
@@ -82,14 +89,6 @@ class FlextInfraConstantsMake(FlextInfraConstantsConfig):
     """Ruff's immutable external cache-directory environment contract."""
     TEMPORARY_DIRECTORY_VARIABLE: ClassVar[str] = "TMPDIR"
     """Declared temporary root under which pytest keeps its own basetemp."""
-    TEST_SELECTION_DISABLE_PLUGIN_ARGS: ClassVar[t.StrTuple] = (
-        "-p",
-        "no:pytest-testmon",
-        "-p",
-        "no:testmon.pytest_testmon",
-    )
-    """Block the selection plugin's installed entrypoint and module forms."""
-
     CLI_GROUP_CHECK: ClassVar[str] = "check"
     CLI_GROUP_CODEGEN: ClassVar[str] = "codegen"
     CLI_GROUP_DEPS: ClassVar[str] = "deps"
