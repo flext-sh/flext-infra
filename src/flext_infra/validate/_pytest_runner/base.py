@@ -24,7 +24,13 @@ class FlextInfraPytestRunnerBase(s[int]):
 
     started_at_monotonic: Annotated[
         float,
-        m.Field(gt=0, description="Clock captured before FLEXT imports."),
+        m.Field(
+            gt=0,
+            description=(
+                "Suite clock: captured before FLEXT imports and re-armed when "
+                "the testmon lease is acquired."
+            ),
+        ),
     ]
     target: Annotated[Path, m.Field(description="Repository-relative test root.")]
     target_file: Annotated[
@@ -39,7 +45,12 @@ class FlextInfraPytestRunnerBase(s[int]):
     reports: Annotated[Path, m.Field(description="Repository-relative report root.")]
     testmon_db: Annotated[
         Path | None,
-        m.Field(description="External SQLite database for incremental Testmon runs."),
+        m.Field(
+            description=(
+                "The project's external SQLite database for incremental "
+                "Testmon runs, shared by every checkout and worktree."
+            ),
+        ),
     ] = None
     run_timeout_seconds: Annotated[
         int,
@@ -144,18 +155,13 @@ class FlextInfraPytestRunnerBase(s[int]):
         cache = make.testmon_cache
         database: Path | None = None
         if execution_mode.is_incremental:
-            cache_home_value = u.Infra.env_value(cache.data_home_environment_variable)
-            cache_home = (
-                Path(cache_home_value)
-                if cache_home_value
-                else Path(settings.env_required(cache.user_home_environment_variable))
-                / cache.home_cache_directory
-            )
-            if not cache_home.is_absolute():
-                msg = "pytest persistent cache anchor must be absolute"
-                raise ValueError(msg)
+            # One database per project, shared by every checkout and worktree
+            # (testmon tracks each checkout's sources by checksum), anchored at
+            # the real account home so a redirected HOME or XDG_CACHE_HOME never
+            # moves it.
             database = (
-                cache_home
+                u.Infra.real_account_home()
+                / cache.home_cache_directory
                 / cache.external_storage_directory
                 / context.target.canonical_project_name
                 / cache.database_filename
