@@ -96,7 +96,7 @@ class FlextInfraRefactorAccessorOrigin:
         module = u.Infra.module_name_for_file(path, project_root=project_root)
         return module.split(".", 1)[0] == origin
 
-    def module(self, py_file: Path) -> p.Infra.RopePyModule:
+    def original_module(self, py_file: Path) -> p.Infra.RopePyModule:
         """Return the original module snapshot or fail on an unknown source.
 
         Returns:
@@ -274,7 +274,7 @@ class FlextInfraRefactorAccessorOrigin:
         """
         if str(py_file) in self._bindings:
             return
-        scope = self.module(py_file).get_scope()
+        scope = self.original_module(py_file).get_scope()
         project_root = u.Infra.nearest_project_root(self._root, py_file)
         if project_root is None:
             msg = f"accessor source has no project owner: {py_file}"
@@ -333,7 +333,7 @@ class FlextInfraRefactorAccessorOrigin:
         """
         if (
             rope_project is not self._rope_project
-            or source != self.module(py_file).source_code
+            or source != self.original_module(py_file).source_code
         ):
             msg = f"accessor discovery source differs from Rope snapshot: {py_file}"
             raise ValueError(msg)
@@ -490,7 +490,7 @@ class FlextInfraRefactorAccessorOrigin:
             builtin, or out-of-project definition.
 
         """
-        module = self.module(py_file)
+        module = self.original_module(py_file)
         definition = u.Infra.name_definition_resource_path(module, offset)
         if definition is None:
             return None
@@ -530,7 +530,7 @@ class FlextInfraRefactorAccessorOrigin:
             declared = u.Infra.published_facade_owner(self._rope_project, resource)
             if declared is None or declared[0] != alias:
                 continue
-            owner = self.module(path).get_attribute(declared[1]).get_object()
+            owner = self.original_module(path).get_attribute(declared[1]).get_object()
             for domain in domains:
                 binding = owner.get_attributes().get(domain)
                 if binding is None:
