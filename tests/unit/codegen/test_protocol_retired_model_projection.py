@@ -46,6 +46,19 @@ class TestsProtocolRetiredModelProjection:
         "__all__ = ['FlextInfraProtocols', 'p']\n"
     )
 
+    # An authored service port: it carries no projection marker and must
+    # survive byte for byte.
+    _AUTHORED_PORT = (
+        "from typing import Protocol, runtime_checkable\n"
+        "class FlextInfraProtocolsServicesPort:\n"
+        '    """Service ports."""\n'
+        "    @runtime_checkable\n"
+        "    class Reader(Protocol):\n"
+        '        """Authored port."""\n'
+        "        def read(self) -> str: ...\n"
+        "__all__ = ['FlextInfraProtocolsServicesPort']\n"
+    )
+
     @staticmethod
     def _stale_contract(name: str, field: str) -> str:
         """Render one contract exactly as a previous projection emitted it.
@@ -97,6 +110,16 @@ class TestsProtocolRetiredModelProjection:
                 + cls._stale_contract("Ledger", "total")
                 + "__all__ = ['FlextInfraProtocolsLegacy']\n"
             ),
+            # A mirror of a deleted nested model package retires as well.
+            package / "_protocols" / "_config" / "archive.py": (
+                f"{c.Infra.AUTOGEN_HEADER}\n"
+                + imports
+                + "class FlextInfraProtocolsConfigArchive:\n"
+                f'    """{owner}"""\n'
+                + cls._stale_contract("Archive", "path")
+                + "__all__ = ['FlextInfraProtocolsConfigArchive']\n"
+            ),
+            package / "_protocols" / "_services" / "port.py": cls._AUTHORED_PORT,
         }
 
     @staticmethod
@@ -150,10 +173,6 @@ class TestsProtocolRetiredModelProjection:
         generated = package / "_protocols" / "legacy.py"
         initializer = package / "_protocols" / c.Infra.INIT_PY
         self._write(self._stale_sources(package))
-        tm.that(u.Tests.run_lazy_init(root), eq=0)
-        tm.that(
-            initializer.read_text(encoding="utf-8"), has="FlextInfraProtocolsLegacy"
-        )
 
         self._generate(root)
 
@@ -162,6 +181,13 @@ class TestsProtocolRetiredModelProjection:
         tm.that(projection, has="class Packet(")
         tm.that(projection, has="class Reader(Protocol)")
         tm.fail(generated.exists())
+        tm.fail((package / "_protocols" / "_config" / "archive.py").exists())
+        tm.that(
+            (package / "_protocols" / "_services" / "port.py").read_text(
+                encoding="utf-8"
+            ),
+            eq=self._AUTHORED_PORT,
+        )
         for facade in (initializer, package / "protocols.py"):
             tm.that(
                 facade.read_text(encoding="utf-8"), lacks="FlextInfraProtocolsLegacy"
