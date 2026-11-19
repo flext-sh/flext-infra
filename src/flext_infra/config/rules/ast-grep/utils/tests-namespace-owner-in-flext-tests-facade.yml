@@ -1,0 +1,17 @@
+# A class nested in a test facade that composes a flext-tests facade
+# (`FlextTestsModels`, `flext_tests_m`, ...); the composed facade is captured as
+# `$FTBASE`, whose `Tests` namespace a flattened bare `Tests` class extends.
+id: tests-namespace-owner-in-flext-tests-facade
+language: python
+rule:
+  kind: class_definition
+  inside:
+    kind: block
+    inside:
+      kind: class_definition
+      has:
+        field: superclasses
+        has:
+          kind: identifier
+          pattern: $FTBASE
+          regex: "^(FlextTests[A-Z][A-Za-z0-9]*|flext_tests_[ctmpu])$"

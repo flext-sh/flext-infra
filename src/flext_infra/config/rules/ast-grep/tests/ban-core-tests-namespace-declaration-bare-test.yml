@@ -1,0 +1,34 @@
+id: ban-core-tests-namespace-declaration-bare
+valid:
+  - |
+    class TestsFlextCliModels(FlextTestsModels, FlextCliModels):
+        class Tests(FlextTestsModels.Tests):
+            FAIL = "nope"
+  - |
+    class TestsFlextCleanModels:
+        class Core:
+            class Tests:
+                FAIL = "nope"
+invalid:
+  - |
+    class TestsFlextLdapModels(FlextLdapModels, FlextTestsModels):
+        """Test models."""
+
+        class Ldap(FlextLdapModels.Ldap):
+            """LDAP test models."""
+
+            class Tests:
+                """Test fixture models namespace."""
+
+                FAIL_ERROR_MESSAGE = "nope"
+
+                class FailService(TestsFlextLdapServiceBase[bool]):
+                    def execute(self) -> p.Result[bool]:
+                        return r[bool].fail(
+                            TestsFlextLdapModels.Ldap.Tests.FAIL_ERROR_MESSAGE,
+                        )
+  - |
+    class TestsFlextInfraConstants(flext_tests_c, FlextInfraConstants):
+        class Infra(FlextInfraConstants.Infra):
+            class Tests:
+                LIMIT = 3
