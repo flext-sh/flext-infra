@@ -18,6 +18,8 @@ from collections.abc import Mapping, Sequence
 from types import MappingProxyType
 from typing import TYPE_CHECKING, ClassVar
 
+from flext_tests import c as flext_tests_c
+
 from flext_infra import FlextInfraConstants
 from tests._constants import TestsFlextInfraConstantsSemanticCutover
 from tests.constants_scan import TestsFlextInfraConstantsScan
@@ -30,6 +32,7 @@ class TestsFlextInfraConstants(FlextInfraConstants):
     """Constants for FLEXT infra tests composed from the production facade."""
 
     class Tests(
+        flext_tests_c.Tests,
         TestsFlextInfraConstantsScan,
         TestsFlextInfraConstantsSemanticCutover,
     ):

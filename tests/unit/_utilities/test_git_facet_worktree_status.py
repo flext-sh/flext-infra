@@ -504,9 +504,7 @@ class TestsFlextInfraGitFacetWorktreeStatus:
             )
         )
         tm.ok(
-            u.Infra.git_has_staged_changes(
-                m.Infra.GitRepoRequest(repo_root=repository)
-            )
+            u.Infra.git_has_staged_changes(m.Infra.GitRepoRequest(repo_root=repository))
         )
         tm.fail(
             tm.ok(
