@@ -52,7 +52,7 @@ class TestsFlextInfraUtilitiesSemanticCutover:
         """
         template = c.Tests.SEMANTIC_CUTOVER_TEMPLATES[scenario.template]
         path = (
-            Path(__file__).resolve().parents[2]
+            Path(__file__).resolve().parents[1]
             / "fixtures"
             / c.Tests.SEMANTIC_CUTOVER_TEMPLATE_DIRECTORY
             / template
