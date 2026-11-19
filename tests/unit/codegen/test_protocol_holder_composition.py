@@ -93,6 +93,32 @@ class TestsProtocolHolderComposition:
         )
 
     @staticmethod
+    def _without_member(source: str, member: str) -> str:
+        tree = ast.parse(source)
+        for holder in tree.body:
+            if isinstance(holder, ast.ClassDef):
+                holder.body = [
+                    node
+                    for node in holder.body
+                    if not (isinstance(node, ast.ClassDef) and node.name == member)
+                ] or [ast.Pass()]
+        # An import only the removed member read leaves with it.
+        used = {node.id for node in ast.walk(tree) if isinstance(node, ast.Name)}
+        for statement in tree.body:
+            if isinstance(statement, ast.ImportFrom):
+                statement.names = [
+                    alias
+                    for alias in statement.names
+                    if (alias.asname or alias.name) in used
+                ]
+        tree.body = [
+            statement
+            for statement in tree.body
+            if not (isinstance(statement, ast.ImportFrom) and not statement.names)
+        ]
+        return ast.unparse(tree)
+
+    @staticmethod
     def _declares_member(source: str, member: str) -> bool:
         return any(
             isinstance(node, ast.ClassDef) and node.name == member
@@ -297,6 +323,7 @@ class TestsProtocolHolderComposition:
         equivalent or not, a duplicate nothing consumes leaves its holder.
         """
         root, package = cls._domain_workspace(tmp_path, authored_scope)
+        before = (package / "_protocols/authored.py").read_text(encoding="utf-8")
         with u.Infra.facade_source_project(root) as binding:
             projected = tm.ok(
                 u.Infra.protocol_model_sources_from_source(root, binding[0])
@@ -305,6 +332,11 @@ class TestsProtocolHolderComposition:
         tm.ok(cls._declares_member(part, "Scope"))
         authored = projected[(package / "_protocols/authored.py").relative_to(root)]
         tm.fail(cls._declares_member(authored, "Scope"))
+        # Only the retired duplicate leaves; the rest of the file is kept.
+        tm.that(
+            cls._without_member(authored, "Scope"),
+            eq=cls._without_member(before, "Scope"),
+        )
         for relative, source in projected.items():
             tm.ok(u.Cli.atomic_write_text_file(root / relative, source))
         tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
