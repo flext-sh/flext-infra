@@ -394,7 +394,7 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
         scope = frozenset(seed.updates) | {
             root / entry.file
             for entry in current.entries
-            if entry.rule_id in native_ids
+            if entry.rule_id in native_ids and entry.replacement_offsets is not None
         }
         plans = self._native_plans(root, rule_plan, inputs, seed, scope)
         start = (
@@ -404,7 +404,7 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
         )
         if start.failure:
             return r[p.Infra.StageSourcePlan].from_failure(start)
-        after_ast = FlextInfraModGateEngine.authored(start.value)
+        after_ast = self.syntax_findings(FlextInfraModGateEngine.authored(start.value))
         if self.focused:
             # A focused transaction must not compose unrelated catalog
             # findings: the wave loop would never settle on rules the
@@ -486,9 +486,35 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
             if previewed.failure:
                 return r[bool].from_failure(previewed)
             before_ast = after_ast
-            after_ast = FlextInfraModGateEngine.authored(previewed.value)
+            after_ast = self.syntax_findings(
+                FlextInfraModGateEngine.authored(previewed.value)
+            )
             FlextInfraCodemodBatchApply.validate_fix_match(before_ast, after_ast)
         return r[bool].ok(value=True)
+
+    @staticmethod
+    def syntax_findings(
+        report: p.Infra.ModOccurrenceReport[p.Infra.ModScanFinding],
+    ) -> p.Infra.ModOccurrenceReport[p.Infra.ModScanFinding]:
+        """Keep only findings the ast-grep syntax cascade can replace.
+
+        Engine and text rules own their own stage; a finding without native
+        replacement offsets can never converge through this wave.
+
+        Returns:
+            The report restricted to non-generator findings with offsets.
+
+        """
+        return report.model_copy(
+            update={
+                "entries": tuple(
+                    entry
+                    for entry in report.entries
+                    if entry.replacement_offsets is not None
+                    and entry.source_owner != "generator"
+                )
+            }
+        )
 
     @staticmethod
     def _require_wave_progress(

@@ -1,5 +1,5 @@
 {% from "submodule_setup_recipe.j2" import submodule_setup_recipe -%}
-{% from "tool_bootstrap_recipe.j2" import tool_bootstrap_recipe, mise_network_admission, uv_lock_resolution, direnv_allow_governed, mise_staging_cleanup, mise_acquisition, mise_install, toml_projection_preflight, mise_lock_changed -%}
+{% from "tool_bootstrap_recipe.j2" import tool_bootstrap_recipe, mise_network_admission, uv_lock_resolution, direnv_allow_governed, mise_declared_reader, mise_staging_cleanup, mise_acquisition, mise_install, toml_projection_preflight, mise_lock_changed -%}
 {% from "runtime_context_recipe.j2" import physical_file_reader, git_root_reader, bootstrap_root_reader, runtime_root_reader -%}
 {% set direnv_tool = toolchain.tools | selectattr("name", "equalto", "direnv") | first -%}
 {% set uv_tool = toolchain.tools | selectattr("name", "equalto", "uv") | first %}
@@ -325,14 +325,13 @@ CALLER_VIRTUAL_ENV := $(patsubst %/,%,$(VIRTUAL_ENV))
 # Source: repository topology. workspace has .gitmodules; standalone does not.
 # Native UV membership and Git attachment elect the physical runtime.
 override RUNTIME_ROOT := $(REPOSITORY_ROOT)
-override export GIT_CEILING_DIRECTORIES := $(shell cd "$(GIT_DISCOVERY_ROOT)/.." && pwd -P)
+# Git and Mise discovery share the runtime boundary: an attached member's
+# verbs read workspace paths through the workspace runtime.
+override export GIT_CEILING_DIRECTORIES := $(shell cd "$(RUNTIME_ROOT)/.." && pwd -P)
 ifneq ($(.SHELLSTATUS),0)
-$(error Cannot resolve Git ceiling for $(GIT_DISCOVERY_ROOT))
+$(error Cannot resolve the discovery ceiling for $(RUNTIME_ROOT))
 endif
-override export MISE_CEILING_PATHS := $(shell cd "$(RUNTIME_ROOT)/.." && pwd -P)
-ifneq ($(.SHELLSTATUS),0)
-$(error Cannot resolve Mise ceiling for $(RUNTIME_ROOT))
-endif
+override export MISE_CEILING_PATHS := $(GIT_CEILING_DIRECTORIES)
 # The locked install reads only the declared project config: a machine-local
 # override (mise.local.toml and siblings) never selects a tool outside the lock.
 override export MISE_OVERRIDE_CONFIG_FILENAMES := {{ mise_config_filename }}
@@ -345,9 +344,9 @@ override export MISE_GLOBAL_CONFIG_FILE := $(MISE_CONFIG_DIR)/config.toml
 override export MISE_SYSTEM_CONFIG_DIR := $(MISE_CONFIG_DIR)
 # A file override wins over the system directory in native Mise discovery.
 unexport MISE_SYSTEM_CONFIG_FILE MISE_ENV MISE_ENV_FILE
-# No global locked mode: setup installs whatever mise.lock pins and never stops
-# on a stale or incomplete lock (operator-ruling-2026-10-09-setup-resilient);
-# only the runtime reader's discovery calls run locked, scoped to those calls.
+# Setup installs the committed mise.lock with a locked install and never
+# writes it; only `make upg` writes locks, and it resolves them through the
+# declared self-managed release (`MISE_LOCKFILE=0` on bootstrap calls).
 override export MISE_AUTO_INSTALL := 0
 # Project provisioning must never install or resolve tools from host config.
 # The physical runtime owns both its environment and frozen tool identities.
@@ -916,18 +915,19 @@ _upg_toolchain: _builtin_require_workspace _builtin_require_github_credential
 		*" pre-upg "*) $(SELF_MAKE) pre-upg ;; \
 	esac; \
 	{{ mise_acquisition("$(PROJECT_ROOT)", toolchain) }} \
+	{{ mise_declared_reader("$(PROJECT_ROOT)", toolchain) }}
 	uv_lock="$(RUNTIME_ROOT)/{{ uv_lock_filename }}"; \
-	{{ toml_projection_preflight("$(BOOTSTRAP_MISE)", '"$$uv_lock"') }} \
+	{{ toml_projection_preflight('$$mise_reader', '"$$uv_lock"') }} \
 	set -f; \
 	$(GOVERNED_CHECKOUTS); \
 	for checkout in $$checkouts; do \
 		case "$$checkout" in .) lock_root="$$root" ;; *) lock_root="$$root/$$checkout" ;; esac; \
 		mise_lock="$$lock_root/{{ mise_lock_filename }}"; \
-		{{ toml_projection_preflight("$(BOOTSTRAP_MISE)", '"$$mise_lock"') }} \
-		{{ mise_lock_changed("$(BOOTSTRAP_MISE)", '"$$lock_root"', mise_install_tools) }} \
+		{{ toml_projection_preflight('$$mise_reader', '"$$mise_lock"') }} \
+		{{ mise_lock_changed('$$mise_reader', '"$$lock_root"', mise_install_tools) }} \
 	done; \
 	set +f; \
-	{{ mise_install("$(PROJECT_ROOT)", mise_install_tools, make.bootstrap_bin_dir) }} \
+	{{ mise_install("$(PROJECT_ROOT)", mise_install_tools, make.bootstrap_bin_dir, mise='"$$mise_reader"', locked=true) }} \
 	printf 'upg: locks classified, Mise locks current, locked toolchain provisioned\n'
 
 _upg_lifecycle:

@@ -114,9 +114,9 @@ class FlextInfraCodegenHandlers:
                                 lambda: m.Infra.CodegenRootSelection(
                                     workspace_root=workspace_root,
                                     requested_root=requested,
-                                    members=tuple(
-                                        (workspace_root / member.path).resolve()
-                                        for member in observed.subprojects
+                                    members=u.Infra.generation_root_members(
+                                        workspace_root,
+                                        observed,
                                     ),
                                 ),
                             )

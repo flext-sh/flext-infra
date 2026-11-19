@@ -454,14 +454,13 @@ CALLER_VIRTUAL_ENV := $(patsubst %/,%,$(VIRTUAL_ENV))
 # Source: repository topology. workspace has .gitmodules; standalone does not.
 # Native UV membership and Git attachment elect the physical runtime.
 override RUNTIME_ROOT := $(REPOSITORY_ROOT)
-override export GIT_CEILING_DIRECTORIES := $(shell cd "$(GIT_DISCOVERY_ROOT)/.." && pwd -P)
+# Git and Mise discovery share the runtime boundary: an attached member's
+# verbs read workspace paths through the workspace runtime.
+override export GIT_CEILING_DIRECTORIES := $(shell cd "$(RUNTIME_ROOT)/.." && pwd -P)
 ifneq ($(.SHELLSTATUS),0)
-$(error Cannot resolve Git ceiling for $(GIT_DISCOVERY_ROOT))
+$(error Cannot resolve the discovery ceiling for $(RUNTIME_ROOT))
 endif
-override export MISE_CEILING_PATHS := $(shell cd "$(RUNTIME_ROOT)/.." && pwd -P)
-ifneq ($(.SHELLSTATUS),0)
-$(error Cannot resolve Mise ceiling for $(RUNTIME_ROOT))
-endif
+override export MISE_CEILING_PATHS := $(GIT_CEILING_DIRECTORIES)
 # The locked install reads only the declared project config: a machine-local
 # override (mise.local.toml and siblings) never selects a tool outside the lock.
 override export MISE_OVERRIDE_CONFIG_FILENAMES := .mise.toml
@@ -474,9 +473,9 @@ override export MISE_GLOBAL_CONFIG_FILE := $(MISE_CONFIG_DIR)/config.toml
 override export MISE_SYSTEM_CONFIG_DIR := $(MISE_CONFIG_DIR)
 # A file override wins over the system directory in native Mise discovery.
 unexport MISE_SYSTEM_CONFIG_FILE MISE_ENV MISE_ENV_FILE
-# No global locked mode: setup installs whatever mise.lock pins and never stops
-# on a stale or incomplete lock (operator-ruling-2026-10-09-setup-resilient);
-# only the runtime reader's discovery calls run locked, scoped to those calls.
+# Setup installs the committed mise.lock with a locked install and never
+# writes it; only `make upg` writes locks, and it resolves them through the
+# declared self-managed release (`MISE_LOCKFILE=0` on bootstrap calls).
 override export MISE_AUTO_INSTALL := 0
 # Project provisioning must never install or resolve tools from host config.
 # The physical runtime owns both its environment and frozen tool identities.
@@ -602,13 +601,36 @@ _bootstrap_setup_tools:
 			sh "$${mise_stage}/install.sh" ;; \
 	esac; \
 	fi; \
+	bootstrap_stage=lock-pin; \
+	if MISE_LOCKED=1 "$(BOOTSTRAP_MISE)" -C "$(PROJECT_ROOT)" install --yes "github:jdx/mise"; then :; else \
+		printf 'ERROR: mise.lock pins no usable github:jdx/mise release for this tree; run make upg\n' >&2; \
+		exit 2; \
+	fi; \
+	mise_pin="$$(MISE_LOCKED=1 "$(BOOTSTRAP_MISE)" -C "$(PROJECT_ROOT)" tool "github:jdx/mise" --active)"; \
+	if [ -z "$$mise_pin" ]; then \
+		printf 'ERROR: mise.lock pins no active github:jdx/mise release for this tree; run make upg\n' >&2; \
+		exit 2; \
+	fi; \
+	mise_reader="$$(MISE_LOCKED=1 "$(BOOTSTRAP_MISE)" -C "$(PROJECT_ROOT)" which mise)"; \
+	if [ "$${OS:-}" = Windows_NT ]; then mise_reader="$$(cygpath --unix "$$mise_reader")"; fi; \
+	bootstrap_stage=release-verification; \
+	case "$$(MISE_LOCKFILE=0 "$$mise_reader" --version)" in \
+		"$$mise_pin "*) : ;; \
+		*) printf 'setup: installed Mise %s does not report the locked %s; re-provisioning the pinned release\n' "$$mise_reader" "$$mise_pin"; \
+			MISE_LOCKED=1 "$(BOOTSTRAP_MISE)" -C "$(PROJECT_ROOT)" install --force --yes "github:jdx/mise"; \
+			mise_reader="$$(MISE_LOCKED=1 "$(BOOTSTRAP_MISE)" -C "$(PROJECT_ROOT)" which mise)"; \
+			if [ "$${OS:-}" = Windows_NT ]; then mise_reader="$$(cygpath --unix "$$mise_reader")"; fi; \
+			case "$$(MISE_LOCKFILE=0 "$$mise_reader" --version)" in \
+				"$$mise_pin "*) : ;; \
+				*) printf 'ERROR: installed Mise %s still does not report the locked %s after the locked reinstall\n' "$$mise_reader" "$$mise_pin" >&2; exit 2 ;; \
+			esac ;; \
+	esac; \
 	export MISE_SHIMS_DIR="$(PROJECT_ROOT)/.bin/shims"; \
-	export MISE_LOCKED=0; \
+	export MISE_LOCKED=1; \
 	bootstrap_stage=tool-install; \
-	"$(BOOTSTRAP_MISE)" -C "$(PROJECT_ROOT)" install --yes "python" "github:jdx/mise" "uv" "github:direnv/direnv" "taplo" "aqua:ast-grep/ast-grep" "gitleaks" "aqua:boyter/scc" "github:qltysh/qlty" "github:kucherenko/jscpd" "github:microsoft/waza" "aqua:j178/prek"; \
-	mise_active="$$("$(BOOTSTRAP_MISE)" -C "$(PROJECT_ROOT)" tool "github:jdx/mise" --active)"; \
-	mise_binary="$$("$(BOOTSTRAP_MISE)" -C "$(PROJECT_ROOT)" which mise)"; \
-	if [ "$${OS:-}" = Windows_NT ]; then mise_binary="$$(cygpath --unix "$${mise_binary}")"; fi; \
+	"$$mise_reader" -C "$(PROJECT_ROOT)" install --yes "python" "github:jdx/mise" "uv" "github:direnv/direnv" "taplo" "aqua:ast-grep/ast-grep" "gitleaks" "aqua:boyter/scc" "github:qltysh/qlty" "github:kucherenko/jscpd" "github:microsoft/waza" "aqua:j178/prek"; \
+	mise_active="$$(MISE_LOCKED=1 "$${mise_reader}" -C "$(PROJECT_ROOT)" tool "github:jdx/mise" --active)"; \
+	mise_binary="$${mise_reader}"; \
 	bootstrap_stage=tool-paths; \
 	if [ -n "$${GITHUB_PATH:-}" ]; then "$${mise_binary}" -C "$(PROJECT_ROOT)" bin-paths >> "$${GITHUB_PATH}"; fi; \
 	printf 'setup: mise %s provisioning complete\n' "$${mise_active}"; \
@@ -1287,10 +1309,17 @@ _upg_toolchain: _builtin_require_workspace _builtin_require_github_credential
 			sh "$${mise_stage}/install.sh" ;; \
 	esac; \
 	fi; \
+	MISE_LOCKFILE=0 "$(BOOTSTRAP_MISE)" -C "$(PROJECT_ROOT)" install --yes "github:jdx/mise"; \
+	mise_reader="$$(MISE_LOCKFILE=0 "$(BOOTSTRAP_MISE)" -C "$(PROJECT_ROOT)" which mise)"; \
+	if [ "$${OS:-}" = Windows_NT ]; then mise_reader="$$(cygpath --unix "$$mise_reader")"; fi; \
+	case "$$(MISE_LOCKFILE=0 "$$mise_reader" --version)" in \
+		"2026.10.3 "*) : ;; \
+		*) printf 'ERROR: the resolved Mise reader %s does not report the declared 2026.10.3; run make upg\n' "$$mise_reader" >&2; exit 2 ;; \
+	esac; \
 	uv_lock="$(RUNTIME_ROOT)/uv.lock"; \
 	if [ -f "$$uv_lock" ]; then \
-		"$(BOOTSTRAP_MISE)" fmt --stdin < /dev/null >/dev/null; \
-		if "$(BOOTSTRAP_MISE)" fmt --stdin < "$$uv_lock" >/dev/null; then :; else \
+		"$$mise_reader" fmt --stdin < /dev/null >/dev/null; \
+		if "$$mise_reader" fmt --stdin < "$$uv_lock" >/dev/null; then :; else \
 			lint_status=$$?; \
 			if [ "$$lint_status" -ne 1 ]; then exit "$$lint_status"; fi; \
 			printf 'upg: %s is not valid TOML; deleting it so its native writer regenerates it\n' "$$uv_lock"; \
@@ -1303,31 +1332,31 @@ _upg_toolchain: _builtin_require_workspace _builtin_require_github_credential
 		case "$$checkout" in .) lock_root="$$root" ;; *) lock_root="$$root/$$checkout" ;; esac; \
 		mise_lock="$$lock_root/mise.lock"; \
 		if [ -f "$$mise_lock" ]; then \
-		"$(BOOTSTRAP_MISE)" fmt --stdin < /dev/null >/dev/null; \
-		if "$(BOOTSTRAP_MISE)" fmt --stdin < "$$mise_lock" >/dev/null; then :; else \
+		"$$mise_reader" fmt --stdin < /dev/null >/dev/null; \
+		if "$$mise_reader" fmt --stdin < "$$mise_lock" >/dev/null; then :; else \
 			lint_status=$$?; \
 			if [ "$$lint_status" -ne 1 ]; then exit "$$lint_status"; fi; \
 			printf 'upg: %s is not valid TOML; deleting it so its native writer regenerates it\n' "$$mise_lock"; \
 			rm -f "$$mise_lock"; \
 		fi; \
 	fi; \
-		if [ "$$("$(BOOTSTRAP_MISE)" -C "$$lock_root" lock --bump --dry-run --json)" = "[]" ]; then \
+		if [ "$$("$$mise_reader" -C "$$lock_root" lock --bump --dry-run --json)" = "[]" ]; then \
 		printf 'upg: %s: no locked version changes\n' "$$lock_root"; \
 	else \
 		changed_tools=""; \
 		for tool in "python" "github:jdx/mise" "uv" "github:direnv/direnv" "taplo" "aqua:ast-grep/ast-grep" "gitleaks" "aqua:boyter/scc" "github:qltysh/qlty" "github:kucherenko/jscpd" "github:microsoft/waza" "aqua:j178/prek"; do \
-			if [ "$$("$(BOOTSTRAP_MISE)" -C "$$lock_root" lock --bump --dry-run --json "$$tool")" != "[]" ]; then changed_tools="$$changed_tools $$tool"; fi; \
+			if [ "$$("$$mise_reader" -C "$$lock_root" lock --bump --dry-run --json "$$tool")" != "[]" ]; then changed_tools="$$changed_tools $$tool"; fi; \
 		done; \
 		if [ -z "$$changed_tools" ]; then \
 			printf 'upg: %s: pruning lock entries no declared tool owns\n' "$$lock_root"; \
-			"$(BOOTSTRAP_MISE)" -C "$$lock_root" lock; \
-			if [ "$$("$(BOOTSTRAP_MISE)" -C "$$lock_root" lock --bump --dry-run --json)" != "[]" ]; then \
+			"$$mise_reader" -C "$$lock_root" lock; \
+			if [ "$$("$$mise_reader" -C "$$lock_root" lock --bump --dry-run --json)" != "[]" ]; then \
 				printf 'ERROR[upg] %s: mise still previews a lock change that no declared tool owns\n' "$$lock_root" >&2; \
 				exit 2; \
 			fi; \
 		else \
 			printf 'upg: %s: locking%s\n' "$$lock_root" "$$changed_tools"; \
-			"$(BOOTSTRAP_MISE)" -C "$$lock_root" lock --bump $$changed_tools; \
+			"$$mise_reader" -C "$$lock_root" lock --bump $$changed_tools; \
 		fi; \
 	fi; \
 	done; \
@@ -1335,7 +1364,7 @@ _upg_toolchain: _builtin_require_workspace _builtin_require_github_credential
 	export MISE_SHIMS_DIR="$(PROJECT_ROOT)/.bin/shims"; \
 	export MISE_LOCKED=1; \
 	bootstrap_stage=tool-install; \
-	"$(BOOTSTRAP_MISE)" -C "$(PROJECT_ROOT)" install --yes "python" "github:jdx/mise" "uv" "github:direnv/direnv" "taplo" "aqua:ast-grep/ast-grep" "gitleaks" "aqua:boyter/scc" "github:qltysh/qlty" "github:kucherenko/jscpd" "github:microsoft/waza" "aqua:j178/prek"; \
+	"$$mise_reader" -C "$(PROJECT_ROOT)" install --yes "python" "github:jdx/mise" "uv" "github:direnv/direnv" "taplo" "aqua:ast-grep/ast-grep" "gitleaks" "aqua:boyter/scc" "github:qltysh/qlty" "github:kucherenko/jscpd" "github:microsoft/waza" "aqua:j178/prek"; \
 	printf 'upg: locks classified, Mise locks current, locked toolchain provisioned\n'
 
 _upg_lifecycle:
