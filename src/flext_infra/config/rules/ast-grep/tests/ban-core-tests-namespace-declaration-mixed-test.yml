@@ -19,3 +19,27 @@ invalid:
 
             class Tests(FlextTestsTypes.Tests):
                 """Aliases."""
+  - |
+    class TestsFlextLdapConstants(FlextTestsConstants, FlextLdapConstants):
+        class Ldap(FlextLdapConstants.Ldap):
+            class Tests(FlextTestsConstants.Tests):
+                LDIF = """dn: cn=a
+        objectClass: top
+    """
+  - |
+    class TestsFlextOtherConstants(FlextTestsConstants):
+        class Ldap(FlextLdapConstants.Ldap):
+            class Tests:
+                A = 1
+
+        class Ldif:
+            class Tests:
+                B = 2
+  - |
+    class TestsFlextOtherTypes(FlextTestsTypes):
+        class Tests(FlextTestsTypes.Tests):
+            A = 1
+
+        class Ldap(FlextLdapTypes.Ldap):
+            class Tests(FlextTestsTypes.Tests):
+                B = 2

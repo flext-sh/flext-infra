@@ -60,6 +60,15 @@ snapshots:
       start: 10
       end: 41
   ? |
+    runner = tu.DbtLdap.Tests.InMemoryDbtRunnerLdap(settings=settings)
+  : fixed: |
+      runner = tu.Tests.InMemoryDbtRunnerLdap(settings=settings)
+    labels:
+    - source: tu.DbtLdap.Tests
+      style: primary
+      start: 9
+      end: 25
+  ? |
     u.Ldap.Tests.that(result, eq=1)
   : fixed: |
       u.Tests.that(result, eq=1)

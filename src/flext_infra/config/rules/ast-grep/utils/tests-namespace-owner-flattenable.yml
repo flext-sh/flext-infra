@@ -1,0 +1,65 @@
+# A `<Project>` owner class nested in a module-level test facade that flattens
+# mechanically (ENFORCE-054): its body holds only its docstring, comments and
+# one `class Tests`; that `Tests` body holds no multi-line data string (whose
+# continuation lines a re-indent would change); and no sibling in the facade
+# is or owns another `class Tests` (two flattened classes would shadow).
+id: tests-namespace-owner-flattenable
+language: python
+utils:
+  owns-tests:
+    kind: class_definition
+    any:
+      - has: {field: name, regex: "^Tests$"}
+      - has:
+          field: body
+          has:
+            kind: class_definition
+            has: {field: name, regex: "^Tests$"}
+rule:
+  kind: class_definition
+  all:
+    - has:
+        field: name
+        regex: "^[A-Z][A-Za-z0-9]*$"
+    - has:
+        field: body
+        has:
+          kind: class_definition
+          has: {field: name, regex: "^Tests$"}
+    - not:
+        has:
+          field: body
+          has:
+            not:
+              any:
+                - kind: comment
+                - kind: expression_statement
+                  has: {kind: string}
+                - kind: class_definition
+                  has: {field: name, regex: "^Tests$"}
+    - not:
+        has:
+          field: body
+          has:
+            kind: class_definition
+            has:
+              stopBy: end
+              kind: string
+              regex: "\\n"
+              not:
+                inside:
+                  kind: expression_statement
+    - not:
+        follows:
+          stopBy: end
+          matches: owns-tests
+    - not:
+        precedes:
+          stopBy: end
+          matches: owns-tests
+  inside:
+    kind: block
+    inside:
+      kind: class_definition
+      inside:
+        kind: module

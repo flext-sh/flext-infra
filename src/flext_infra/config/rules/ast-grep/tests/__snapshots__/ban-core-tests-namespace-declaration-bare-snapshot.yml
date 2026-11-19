@@ -120,7 +120,7 @@ snapshots:
                         return r[bool].fail(
                             TestsFlextLdapModels.Ldap.Tests.FAIL_ERROR_MESSAGE,
                         )
-  : fixed: "class TestsFlextLdapModels(FlextLdapModels, FlextTestsModels):\n    \"\"\"Test models.\"\"\"\n\n    class Tests(FlextTestsModels.Tests):\n        \"\"\"Test fixture models namespace.\"\"\"\n    \n        FAIL_ERROR_MESSAGE = \"nope\"\n    \n        class FailService(TestsFlextLdapServiceBase[bool]):\n            def execute(self) -> p.Result[bool]:\n                return r[bool].fail(\n                    TestsFlextLdapModels.Tests.FAIL_ERROR_MESSAGE,\n                )\n"
+  : fixed: "class TestsFlextLdapModels(FlextLdapModels, FlextTestsModels):\n    \"\"\"Test models.\"\"\"\n\n    class Tests(FlextTestsModels.Tests):\n        \"\"\"Test fixture models namespace.\"\"\"\n    \n        FAIL_ERROR_MESSAGE = \"nope\"\n    \n        class FailService(TestsFlextLdapServiceBase[bool]):\n            def execute(self) -> p.Result[bool]:\n                return r[bool].fail(\n                    TestsFlextLdapModels.Ldap.Tests.FAIL_ERROR_MESSAGE,\n                )\n"
     labels:
     - source: |-
         class Ldap(FlextLdapModels.Ldap):

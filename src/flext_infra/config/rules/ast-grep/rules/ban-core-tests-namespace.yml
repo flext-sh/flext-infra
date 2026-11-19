@@ -14,8 +14,12 @@
 # members the owner nesting used to leave visible. The reference rule rewrites
 # every `<facade>.<Project>.Tests` path to the flat `<facade>.Tests`; both run
 # in the same `make mod` transaction, so no reference outlives its declaration.
-# An owner that also declares other members cannot be flattened mechanically
-# and stays a detection-only finding.
+# ast-grep re-indents the moved class and leaves its blank lines indented;
+# `make fmt` and `make fix` normalize them with the shortened lines in the
+# same slice cycle. An owner that also declares other members, that holds a multi-line data
+# string, or that shares its facade with another `Tests` owner cannot be
+# flattened mechanically and stays a detection-only finding (`-mixed`); it must
+# be resolved before its references are rewritten.
 id: ban-core-tests-namespace-reference
 language: python
 severity: error
@@ -24,31 +28,37 @@ files:
   - "examples/**/*.py"
   - "scripts/**/*.py"
   - "**/conftest.py"
-# The path is matched as an expression, as a `case` value pattern (a dotted
-# name, not an attribute node) and inside docstrings and comments, so no stale
-# spelling survives the flattening. Other string literals are data (scenario
-# sources of other refactors) and are never rewritten.
+# The facade is any binding of a test facade (`c`, `tu`, `flext_tests_m`,
+# `TestsFlextLdapModels`, ...), never `self`/`cls` or a dotted tail. The path is
+# matched as an expression, as a `case` value pattern (a dotted name, not an
+# attribute node) and inside docstrings (the first statement of a body) and
+# comments, so no stale spelling
+# survives the flattening. Other string literals are data (scenario sources of
+# other refactors) and are never rewritten.
 rule:
   pattern: $REF
+  not:
+    regex: "\\b(self|cls)\\.[A-Z][A-Za-z0-9]*\\.Tests\\b"
   any:
     - kind: attribute
-      regex: "^([ctmpu]|Tests[A-Z][A-Za-z0-9]*)\\.[A-Z][A-Za-z0-9]*\\.Tests$"
+      regex: "^([a-z_][A-Za-z0-9_]*|Tests[A-Z][A-Za-z0-9]*)\\.[A-Z][A-Za-z0-9]*\\.Tests$"
     - kind: dotted_name
-      regex: "^([ctmpu]|Tests[A-Z][A-Za-z0-9]*)\\.[A-Z][A-Za-z0-9]*\\.Tests\\b"
+      regex: "^([a-z_][A-Za-z0-9_]*|Tests[A-Z][A-Za-z0-9]*)\\.[A-Z][A-Za-z0-9]*\\.Tests\\b"
     - kind: string_content
-      regex: "\\b([ctmpu]|Tests[A-Z][A-Za-z0-9]*)\\.[A-Z][A-Za-z0-9]*\\.Tests\\b"
+      regex: "(^|[^.\\w])([a-z_][A-Za-z0-9_]*|Tests[A-Z][A-Za-z0-9]*)\\.[A-Z][A-Za-z0-9]*\\.Tests\\b"
       inside:
         kind: string
         inside:
           kind: expression_statement
+          nthChild: 1
     - kind: comment
-      regex: "\\b([ctmpu]|Tests[A-Z][A-Za-z0-9]*)\\.[A-Z][A-Za-z0-9]*\\.Tests\\b"
+      regex: "(^|[^.\\w])([a-z_][A-Za-z0-9_]*|Tests[A-Z][A-Za-z0-9]*)\\.[A-Z][A-Za-z0-9]*\\.Tests\\b"
 transform:
   FLAT:
     replace:
       source: $REF
-      replace: "\\b([ctmpu]|Tests[A-Z][A-Za-z0-9]*)\\.[A-Z][A-Za-z0-9]*\\.Tests\\b"
-      by: "$1.Tests"
+      replace: "(^|[^.\\w])([a-z_][A-Za-z0-9_]*|Tests[A-Z][A-Za-z0-9]*)\\.[A-Z][A-Za-z0-9]*\\.Tests\\b"
+      by: "$1$2.Tests"
 fix: $FLAT
 message: >-
   `<facade>.<Project>.Tests` is the deprecated nested test namespace: read the
@@ -70,7 +80,7 @@ files:
   - "**/conftest.py"
 rule:
   kind: class_definition
-  matches: tests-namespace-owner-only-tests
+  matches: tests-namespace-owner-flattenable
   any:
     - has:
         field: body
@@ -88,13 +98,7 @@ rule:
           kind: class_definition
           pattern: $TESTS
           has: {field: name, regex: "^Tests$"}
-transform:
-  FLAT:
-    replace:
-      source: $TESTS
-      replace: "\\b([ctmpu]|Tests[A-Z][A-Za-z0-9]*)\\.[A-Z][A-Za-z0-9]*\\.Tests\\b"
-      by: "$1.Tests"
-fix: $FLAT
+fix: $TESTS
 message: >-
   `class <Project>: class Tests` nests the test namespace under a second owner:
   declare `class Tests` directly in the facade class.
@@ -115,7 +119,7 @@ files:
   - "**/conftest.py"
 rule:
   kind: class_definition
-  matches: tests-namespace-owner-only-tests
+  matches: tests-namespace-owner-flattenable
   all:
     - inside:
         kind: block
@@ -141,12 +145,7 @@ transform:
       source: $TESTS
       replace: "^class Tests:"
       by: ""
-  FLAT:
-    replace:
-      source: $BODY
-      replace: "\\b([ctmpu]|Tests[A-Z][A-Za-z0-9]*)\\.[A-Z][A-Za-z0-9]*\\.Tests\\b"
-      by: "$1.Tests"
-fix: class Tests($FTBASE.Tests):$FLAT
+fix: class Tests($FTBASE.Tests):$BODY
 message: >-
   `class <Project>: class Tests` nests the test namespace under a second owner:
   declare `class Tests($FTBASE.Tests)` directly in the facade class.
@@ -179,17 +178,21 @@ rule:
         field: name
         regex: "^[A-Z][A-Za-z0-9]*$"
       not:
-        matches: tests-namespace-owner-only-tests
+        matches: tests-namespace-owner-flattenable
       inside:
         kind: block
         inside:
           kind: class_definition
+          inside:
+            kind: module
 message: >-
-  `class <Project>` declares other members beside its nested `class Tests`:
-  move them into one flat `class Tests` declared directly in the facade class.
+  This nested `class Tests` cannot be flattened mechanically: its owner declares
+  other members, it holds a multi-line data string, or another `Tests` owner
+  shares the facade. Merge them into one flat `class Tests` in the facade class.
 note: >-
   Where: this class. Why: the test tier exposes one flat `Tests` namespace per
-  facade (ENFORCE-054). How: move the owner's members into the `Tests` class,
-  declare it in the facade class and read `<facade>.Tests.<member>`.
+  facade (ENFORCE-054). How: move every member into one `Tests` class declared
+  in the facade class and read `<facade>.Tests.<member>`; until then its
+  references keep the nested path.
 metadata:
   enforce: [ENFORCE-054]

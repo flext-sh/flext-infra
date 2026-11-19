@@ -10,7 +10,14 @@ valid:
     """Read self.Ldap.Tests and t.Tests.Value."""
   - |
     source.write_text("    _ = c.Core.Tests.ERR_OK_FAILED\n", encoding="utf-8")
+  - |
+    value = registry.cases.Ldap.Tests
+  - |
+    def build() -> None:
+        """Read self.Ldap.Tests before t.Ldap.Tests."""
 invalid:
+  - |
+    runner = tu.DbtLdap.Tests.InMemoryDbtRunnerLdap(settings=settings)
   - |
     def send(request: t.Core.Tests.DispatchRequest) -> p.Result[str]: ...
   - |
