@@ -12,6 +12,7 @@
 
 ## Pull requests since last release
 
+- fix(codegen): apply the independent review of #2701 (flext-5w9c0) (#2712)
 - fix(make): regenerate the Makefile so every verb admits at load5 20 (flext-kugv4)
   (#2710)
 - fix(sweep): violations-sweep is repository-scoped; members observed by their own plans
