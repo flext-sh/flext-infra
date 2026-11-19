@@ -93,6 +93,32 @@ class TestsProtocolHolderComposition:
         )
 
     @staticmethod
+    def _without_member(source: str, member: str) -> str:
+        tree = ast.parse(source)
+        for holder in tree.body:
+            if isinstance(holder, ast.ClassDef):
+                holder.body = [
+                    node
+                    for node in holder.body
+                    if not (isinstance(node, ast.ClassDef) and node.name == member)
+                ] or [ast.Pass()]
+        # An import only the removed member read leaves with it.
+        used = {node.id for node in ast.walk(tree) if isinstance(node, ast.Name)}
+        for statement in tree.body:
+            if isinstance(statement, ast.ImportFrom):
+                statement.names = [
+                    alias
+                    for alias in statement.names
+                    if (alias.asname or alias.name) in used
+                ]
+        tree.body = [
+            statement
+            for statement in tree.body
+            if not (isinstance(statement, ast.ImportFrom) and not statement.names)
+        ]
+        return ast.unparse(tree)
+
+    @staticmethod
     def _declares_member(source: str, member: str) -> bool:
         return any(
             isinstance(node, ast.ClassDef) and node.name == member
@@ -210,10 +236,11 @@ class TestsProtocolHolderComposition:
         }
         remote_bases = tuple(ast.unparse(base) for base in contracts["Remote"].bases)
         tm.that(remote_bases, has="Scope")
+        # Fields project as annotations, not properties (field-annotation mirror).
         remote_members = {
-            node.name
+            node.target.id
             for node in contracts["Remote"].body
-            if isinstance(node, ast.FunctionDef)
+            if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name)
         }
         tm.that(remote_members, has="url")
         tm.fail("root" in remote_members)
@@ -277,49 +304,49 @@ class TestsProtocolHolderComposition:
 
     @classmethod
     @c.Tests.MARK.parametrize(
-        ("authored_scope", "equivalent"),
+        "authored_scope",
         [
-            ("        @property\n        def root(self) -> str: ...\n", True),
-            ("        @property\n        def root(self) -> int: ...\n", False),
+            "        @property\n        def root(self) -> str: ...\n",
+            "        @property\n        def root(self) -> int: ...\n",
         ],
     )
-    def test_authored_duplicate_resolves_to_one_owner(
+    def test_authored_duplicate_retires_to_the_model_projection(
         cls,
         tmp_path: Path,
         native_consumer: p.Tests.NativeConsumer,
         authored_scope: str,
-        *,
-        equivalent: bool,
     ) -> None:
-        """An equivalent authored port stays the owner; a divergent one blocks."""
+        """An unconsumed authored duplicate retires; the model projection owns it.
+
+        The authored-Protocol retirement contract (fd7e70dd12,
+        ``_source_require_retirable``) replaced the non-equivalence refusal:
+        equivalent or not, a duplicate nothing consumes leaves its holder.
+        """
         root, package = cls._domain_workspace(tmp_path, authored_scope)
-        authored_path = package / "_protocols/authored.py"
-        before = authored_path.read_text(encoding="utf-8")
+        before = (package / "_protocols/authored.py").read_text(encoding="utf-8")
         with u.Infra.facade_source_project(root) as binding:
-            if not equivalent:
-                with u.Tests.raises(ValueError, match="non-equivalent public Protocol"):
-                    u.Infra.protocol_model_sources_from_source(root, binding[0])
-                tm.that(authored_path.read_text(encoding="utf-8"), eq=before)
-                return
             projected = tm.ok(
                 u.Infra.protocol_model_sources_from_source(root, binding[0])
             )
-        tm.fail((package / "_protocols/_git/part.py").relative_to(root) in projected)
-        for source in projected.values():
-            tm.fail(cls._declares_member(source, "Scope"))
-        sibling = projected[(package / "_protocols/git.py").relative_to(root)]
-        tm.ok(f"from {package.name}._protocols import ProtocolsAuthored" in sibling)
+        part = projected[(package / "_protocols/_git/part.py").relative_to(root)]
+        tm.ok(cls._declares_member(part, "Scope"))
+        authored = projected[(package / "_protocols/authored.py").relative_to(root)]
+        tm.fail(cls._declares_member(authored, "Scope"))
+        # Only the retired duplicate leaves; the rest of the file is kept.
+        tm.that(
+            cls._without_member(authored, "Scope"),
+            eq=cls._without_member(before, "Scope"),
+        )
         for relative, source in projected.items():
             tm.ok(u.Cli.atomic_write_text_file(root / relative, source))
         tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
-        tm.that(authored_path.read_text(encoding="utf-8"), eq=before)
         native_consumer(
             f"sys.path.insert(0, {str(package.parent)!r})\n"
             f"from {package.name}.models import m\n"
             f"from {package.name}.protocols import p\n"
-            f"from {package.name}._protocols import ProtocolsAuthored\n"
+            f"from {package.name}._protocols._git.part import ProtocolsGitPart\n"
             "from flext_tests import tm\n"
-            "tm.ok(p.Scope is ProtocolsAuthored.Scope)\n"
+            "tm.ok(p.Scope is ProtocolsGitPart.Scope)\n"
             "tm.ok(isinstance(m.Scope(root='physical'), p.Scope))\n",
             cwd=root,
         )
@@ -365,7 +392,10 @@ class TestsProtocolHolderComposition:
                     "class FlextDerivedSampleProtocolsAuthored: pass\n"
                     "__all__ = ['FlextDerivedSampleProtocolsAuthored']\n"
                 ),
+                # The stale disk copy is a previous projection, so it carries
+                # the generated header (an authored module keeps its holder).
                 "_protocols/payload.py": (
+                    f"{c.Infra.AUTOGEN_HEADER}\n"
                     "class FlextDerivedSampleProtocolsLegacyPayload: pass\n"
                     "__all__ = ['FlextDerivedSampleProtocolsLegacyPayload']\n"
                 ),
@@ -427,9 +457,10 @@ class TestsProtocolHolderComposition:
                 u.Infra.protocol_model_sources_from_source(root, binding[0])
             )
         generated = planned[(package / "_protocols/payload.py").relative_to(root)]
-        port = p.ModelCopy.__name__
+        # The copy port is the facade's BaseModel contract (d5de6dee02).
+        port = p.BaseModel.__name__
         if upstream is None:
-            supplier = p.ModelCopy.__module__.partition(".")[0]
+            supplier = p.BaseModel.__module__.partition(".")[0]
             tm.ok(f"from {supplier} import " in generated)
             tm.ok(f".{port}, Protocol):" in generated)
         else:
