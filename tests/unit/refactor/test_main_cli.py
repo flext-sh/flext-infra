@@ -174,12 +174,13 @@ class TestsFlextInfraRefactorMainCli:
 
     _DECORATED_UNUSED_SERVICE = (
         "from __future__ import annotations\n\n"
-        "import functools\n\n"
+        "import functools\n"
+        "from collections.abc import Callable\n\n"
         '__all__: list[str] = ["only_for_tests"]\n\n'
-        "def log_entry(fn):\n"
+        "def log_entry(fn: Callable[[int], int]) -> Callable[[int], int]:\n"
         "    @functools.wraps(fn)\n"
-        "    def wrapper(*args, **kwargs):\n"
-        "        return fn(*args, **kwargs)\n"
+        "    def wrapper(value: int) -> int:\n"
+        "        return fn(value)\n"
         "    return wrapper\n\n"
         "@log_entry\n"
         "def only_for_tests(value: int) -> int:\n"
@@ -199,7 +200,7 @@ class TestsFlextInfraRefactorMainCli:
         "from __future__ import annotations\n\n"
         "import typing as _t\n\n"
         "from flext_core.lazy import build_lazy_import_map, install_lazy_exports\n\n"
-        "if t.TYPE_CHECKING:\n"
+        "if _t.TYPE_CHECKING:\n"
         "    from sample_pkg.operations import helper_used, only_for_tests\n"
         "_LAZY_IMPORTS = build_lazy_import_map(\n"
         "    {\n"
@@ -257,7 +258,9 @@ class TestsFlextInfraRefactorMainCli:
             workspace / c.PYPROJECT_FILENAME,
             "[project]\n"
             'name = "sample-pkg"\n'
-            'version = "0.1.0"\n\n'
+            'version = "0.1.0"\n'
+            'license = "MIT"\n'
+            'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n\n'
             "[tool.pyrefly]\n"
             "disable-project-excludes-heuristics = true\n"
             "project-excludes = []\n"
@@ -431,6 +434,7 @@ class TestsFlextInfraRefactorMainCli:
         """The root is a subcommand option, not a group flag ahead of the verb."""
         workspace = tmp_path / "workspace"
         self._write_workspace_pyproject(workspace)
+        u.Tests.provision_checkout(workspace)
         result = self._refactor_main("census", "--repository-root", str(workspace))
         tm.that(result, eq=0)
 

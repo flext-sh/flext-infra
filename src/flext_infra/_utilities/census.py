@@ -328,6 +328,9 @@ class FlextInfraUtilitiesRefactorCensus:
                     source,
                     candidate.object_name,
                 )
+            source = FlextInfraUtilitiesProtectedEdit.remove_orphaned_text_imports(
+                original_source, source
+            )
             updates[file_path] = (
                 FlextInfraUtilitiesRefactorCensus.normalize_top_level_spacing(source)
             )
