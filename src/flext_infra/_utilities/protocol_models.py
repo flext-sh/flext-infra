@@ -144,14 +144,14 @@ class FlextInfraUtilitiesModelsProtocol:
             Relative protocol mirror sources, or the source inventory failure.
 
         """
-        if domain_owner is None:
-            return cls.protocol_model_projection_from_source(
-                repository_root, source_project, package_name=package_name
-            ).map(lambda projected: projected[0])
         projection = cls._ModelProtocolProjection(
             repository_root, source_project, package_name=package_name
         )
-        return projection.domain_sources(domain_owner).map(
+        return (
+            projection.domain_sources(domain_owner)
+            if domain_owner is not None
+            else projection.sources()
+        ).map(
             lambda rendered: cls._with_mirror_package_initializers(
                 rendered, repository_root, source_project
             )
