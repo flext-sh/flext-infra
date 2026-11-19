@@ -1172,6 +1172,10 @@ class FlextInfraUtilitiesFacadeComponents:
                     directory, family, namespace, resolved.value[2]
                 )
             ),
+        ).flat_map(
+            lambda found: cls._facade_protocol_marker(
+                project, namespace, found[1], path
+            ).map(lambda _admitted: found)
         )
         if framed.failure:
             return r[
@@ -1793,6 +1797,44 @@ class FlextInfraUtilitiesFacadeComponents:
                 or child in storage
             )
         )
+
+    @staticmethod
+    def _facade_protocol_marker(
+        project: p.Infra.RopeProject,
+        namespace: p.Infra.RopeSourceClass,
+        bases: Sequence[tuple[str, p.Infra.RopePyObject]],
+        path: Path,
+    ) -> p.Result[bool]:
+        """Refuse a Protocol marker beside a concrete namespace part.
+
+        Python cannot build such a class; the source is corrected, never
+        compensated (ADR-018 rules 5 and 6).
+
+        Returns:
+            True, or the namespace declaration that must drop its marker.
+
+        """
+        protocol = (
+            FlextInfraUtilitiesRopeRuntime
+            .require_semantic_module(project.get_module("typing"))
+            .get_attributes()["Protocol"]
+            .get_object()
+        )
+        concrete = [
+            expression
+            for expression, base in bases
+            if base is not protocol
+            and FlextInfraUtilitiesRopeRuntimeTypes.py_class(base)
+            and protocol not in base.get_mro()
+        ]
+        if concrete and len(concrete) < len(bases):
+            message = (
+                f"Facade namespace {namespace.get_name()} declares Protocol beside "
+                f"non-protocol parts {concrete}: {path}; fix: remove the Protocol "
+                "base and its runtime_checkable decorator from the namespace"
+            )
+            return r[bool].fail(message)
+        return r[bool].ok(value=True)
 
     @staticmethod
     def _facade_namespace_bases(

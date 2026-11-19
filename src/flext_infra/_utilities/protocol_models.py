@@ -7728,7 +7728,18 @@ class FlextInfraUtilitiesModelsProtocol:
                     f"authored protocol holder has no source extent: {destination}"
                 )
                 raise ValueError(message)
-            lines.insert(holder.end_lineno, "\n" + "\n".join(additions).rstrip() + "\n")
+            end = holder.end_lineno
+            inline = holder.body[0]
+            if inline.lineno == holder.lineno:
+                # A one-line suite (``class X: pass``) takes no indented body.
+                head = lines[inline.lineno - 1]
+                lines[inline.lineno - 1] = (
+                    head[: inline.col_offset].rstrip()
+                    + "\n"
+                    + " " * (holder.col_offset + 4)
+                    + head[inline.col_offset :]
+                )
+            lines.insert(end, "\n" + "\n".join(additions).rstrip() + "\n")
             updated = "".join(lines)
             header = FlextInfraUtilitiesTransformerHeader
             for name in ("Protocol", "runtime_checkable"):
