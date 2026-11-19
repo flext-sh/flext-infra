@@ -94,16 +94,9 @@ class TestsFlextInfraRefactorViolationsSweepSupport:
                 )
             )
             cls._prepare(member, makefile=cls._makefile(), local_rule=True)
-        tm.ok(
-            u.Cli.atomic_write_text_file(
-                root / c.Infra.GITMODULES,
-                "".join(
-                    f'[submodule "{member.name}"]\n\tpath = {member.name}\n'
-                    f"\turl = https://example.com/{member.name}.git\n"
-                    for member in members
-                ),
-            )
-        )
+        # Members are attached gitlinks, as in a real workspace: each one's
+        # runtime is elected from Git, never from a plain directory.
+        u.Tests.WorktreeFixture.register_checker_workspace(root, *members)
         return members
 
     @staticmethod
