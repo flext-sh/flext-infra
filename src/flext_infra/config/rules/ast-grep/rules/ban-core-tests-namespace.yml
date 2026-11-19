@@ -26,7 +26,8 @@ files:
   - "**/conftest.py"
 # The path is matched as an expression, as a `case` value pattern (a dotted
 # name, not an attribute node) and inside docstrings and comments, so no stale
-# spelling survives the flattening.
+# spelling survives the flattening. Other string literals are data (scenario
+# sources of other refactors) and are never rewritten.
 rule:
   pattern: $REF
   any:
@@ -36,6 +37,10 @@ rule:
       regex: "^([ctmpu]|Tests[A-Z][A-Za-z0-9]*)\\.[A-Z][A-Za-z0-9]*\\.Tests\\b"
     - kind: string_content
       regex: "\\b([ctmpu]|Tests[A-Z][A-Za-z0-9]*)\\.[A-Z][A-Za-z0-9]*\\.Tests\\b"
+      inside:
+        kind: string
+        inside:
+          kind: expression_statement
     - kind: comment
       regex: "\\b([ctmpu]|Tests[A-Z][A-Za-z0-9]*)\\.[A-Z][A-Za-z0-9]*\\.Tests\\b"
 transform:

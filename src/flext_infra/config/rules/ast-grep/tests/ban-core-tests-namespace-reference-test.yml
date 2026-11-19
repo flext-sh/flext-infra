@@ -8,6 +8,8 @@ valid:
     value = self.Ldap.Tests
   - |
     """Read self.Ldap.Tests and t.Tests.Value."""
+  - |
+    source.write_text("    _ = c.Core.Tests.ERR_OK_FAILED\n", encoding="utf-8")
 invalid:
   - |
     def send(request: t.Core.Tests.DispatchRequest) -> p.Result[str]: ...

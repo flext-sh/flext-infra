@@ -11,6 +11,14 @@ snapshots:
       style: primary
       start: 28
       end: 70
+    - source: '"""Return ``t.DbtLdap.Tests.ServiceFactory``."""'
+      style: secondary
+      start: 25
+      end: 73
+    - source: '"""Return ``t.DbtLdap.Tests.ServiceFactory``."""'
+      style: secondary
+      start: 25
+      end: 73
   ? |
     def send(request: t.Core.Tests.DispatchRequest) -> p.Result[str]: ...
   : fixed: |
