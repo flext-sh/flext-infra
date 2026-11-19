@@ -13,7 +13,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra.validate import FlextInfraValidateFreshImport
-from tests import m, p, tm, u
+from tests import c, m, p, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -62,6 +62,7 @@ class TestsFlextInfraFreshImport:
         The runtime proves the environment is physical before probing its
         interpreter, so the case declares a physical environment without one.
         """
+        u.Tests.initialize_git_repo(tmp_path)
         u.Infra.runtime_environment_dir(tmp_path, runtime_root=tmp_path).mkdir()
         validator = FlextInfraValidateFreshImport(
             repository_root=tmp_path,
@@ -129,14 +130,36 @@ class TestsFlextInfraFreshImport:
         tm.that(report.summary, has="import")
 
     @staticmethod
-    def test_workspace_src_package_passes(
+    @c.Tests.MARK.parametrize(
+        ("declared", "body", "passed"),
+        [
+            ("", "VALUE = 1\n", True),
+            (
+                "Infra:\n  codegen:\n    fresh_import_timeout_seconds: 1\n",
+                "import time\ntime.sleep(3)\n",
+                False,
+            ),
+        ],
+    )
+    def test_workspace_src_package_honours_its_declared_deadline(
         tmp_path: Path,
         suite_runtime_root: Path,
+        declared: str,
+        body: str,
+        *,
+        passed: bool,
     ) -> None:
-        """A checkout's src package imports in its declared runtime."""
+        """A checkout's src package imports within its own declared deadline."""
+        # The deadline is the checkout's own policy, read from its Git root.
+        u.Tests.initialize_git_repo(tmp_path)
         package_root = tmp_path / "src" / "demo_external"
         package_root.mkdir(parents=True)
-        package_root.joinpath("__init__.py").write_text("VALUE = 1\n", encoding="utf-8")
+        package_root.joinpath("__init__.py").write_text(body, encoding="utf-8")
+        if declared:
+            (tmp_path / "config").mkdir()
+            (tmp_path / "config" / "codegen.yaml").write_text(
+                declared, encoding="utf-8"
+            )
         validator = FlextInfraValidateFreshImport(
             repository_root=tmp_path,
             runtime_root=suite_runtime_root,
@@ -144,7 +167,9 @@ class TestsFlextInfraFreshImport:
         report: p.Infra.ValidationReport = tm.ok(
             validator.build_report(packages=("demo_external",)),
         )
-        tm.that(report.passed, eq=True, msg=str(report.violations))
+        tm.that(report.passed, eq=passed, msg=str(report.violations))
+        if not passed:
+            tm.that(report.violations[0], has='"timed_out":true')
 
     @staticmethod
     def test_flext_core_imports_cleanly(v: FlextInfraValidateFreshImport) -> None:
