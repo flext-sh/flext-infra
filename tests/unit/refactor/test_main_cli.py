@@ -435,8 +435,16 @@ class TestsFlextInfraRefactorMainCli:
         workspace = tmp_path / "workspace"
         self._write_workspace_pyproject(workspace)
         u.Tests.provision_checkout(workspace)
-        result = self._refactor_main("census", "--repository-root", str(workspace))
+        report_path = tmp_path / "census.json"
+        result = self._refactor_main(
+            "census",
+            "--repository-root",
+            str(workspace),
+            "--json-output",
+            str(report_path),
+        )
         tm.that(result, eq=0)
+        tm.ok(u.Cli.json_read(report_path))
 
     @c.Tests.MARK.parametrize(
         ("kinds", "rules", "families"),

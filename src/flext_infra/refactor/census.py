@@ -62,10 +62,11 @@ class FlextInfraRefactorCensus(
 
     @override
     def execute(self) -> p.Result[p.Infra.WorkspaceReport]:
-        """Run the census, export its impact map, and apply its removals.
+        """Run the census, export its maps, and apply its removals.
 
         The impact map reads the pre-apply report: it records what the run
-        planned to change, not the inventory left after the changes.
+        planned to change, not the inventory left after the changes; the JSON
+        report is the final inventory.
 
         Returns:
             The resulting ``p.Result[p.Infra.WorkspaceReport]``.
@@ -85,6 +86,8 @@ class FlextInfraRefactorCensus(
                 and self._apply_removal_candidates(rope, report)
             ):
                 report = self._collect_report(rope, source_preview=self.source_preview)
+        if self.json_output_path is not None:
+            u.Infra.export_pydantic_json(report, self.json_output_path)
         return r[p.Infra.WorkspaceReport].ok(report)
 
 
