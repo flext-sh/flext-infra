@@ -161,7 +161,8 @@ class FlextInfraStagedPackage:
         """Prepare producer bytes in a temporary candidate tree.
 
         The preparation tree owns no runtime environment. Only desired source
-        bytes leave it.
+        bytes leave it. It carries the staged-preview prefix because it is a
+        staged source scope: Git-only source discovery admits it by that name.
 
         Returns:
             Prepared updates, or the original staging or repair failure.
@@ -169,7 +170,7 @@ class FlextInfraStagedPackage:
         """
         result_type = r[Mapping[Path, str | None]]
         cls.source_preparation_bootstrap()
-        with TemporaryDirectory(prefix="flext-source-prepare-") as directory:
+        with TemporaryDirectory(prefix=c.Infra.SOURCE_PREVIEW_PREFIX) as directory:
             root = Path(directory)
             writes = cls.source_writes(plan, root)
             materialized = cls.materialize_sources(plan, root)
