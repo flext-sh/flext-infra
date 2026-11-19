@@ -12,7 +12,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from flext_infra import u
-from tests import config, m, p, t
+from tests import config, m, p, t, tm
 
 
 class TestsFlextInfraUtilitiesDeps:
@@ -22,7 +22,7 @@ class TestsFlextInfraUtilitiesDeps:
     def record_dependency_command_output(output: p.Cli.CommandOutput) -> None:
         """Keep the original subprocess evidence outside disposable test scratch."""
         receipt = (
-            Path(__file__).resolve().parents[2]
+            tm.not_none(u.Infra.project_root(Path(__file__)))
             / config.Infra.codegen.make.testmon_cache.reports_directory
             / "dependency-commands"
             / f"{uuid4()}.json"

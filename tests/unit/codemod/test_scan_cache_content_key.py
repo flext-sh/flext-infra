@@ -91,9 +91,7 @@ class TestsFlextInfraCodemodScanCacheContentKey:
         """
         root, consumer, selection = cls._project(duplicate_project)
         tm.ok(
-            u.Cli.atomic_write_text_file(
-                root / c.Infra.MISE_TOML_FILENAME, "[tools]\n"
-            )
+            u.Cli.atomic_write_text_file(root / c.Infra.MISE_TOML_FILENAME, "[tools]\n")
         )
         report = tm.ok(
             FlextInfraModGateEngine.scan(
