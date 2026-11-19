@@ -19,7 +19,7 @@ from rope.base import ast
 
 from flext_infra import c, p, t
 from flext_infra._utilities._rope import FlextInfraUtilitiesRopeRuntime
-from flext_infra._utilities._rope._analysis.asthelpers import (
+from flext_infra._utilities._rope._analysis import (
     FlextInfraUtilitiesRopeAnalysisAstHelpers,
 )
 
@@ -202,14 +202,14 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
     @staticmethod
     def module_class_base_names(
         module: ast.Module,
-    ) -> tuple[tuple[str, frozenset[str]], ...]:
-        """Read class names and base spellings from the existing module tree.
+    ) -> tuple[tuple[str, tuple[str, ...], int], ...]:
+        """Read class names, declared bases and lines from the module tree.
 
         Returns:
-            Each class and its syntactic base names, including nested bodies.
+            Each class, its declared base spellings and line, nested included.
 
         """
-        found: list[tuple[str, frozenset[str]]] = []
+        found: list[tuple[str, tuple[str, ...], int]] = []
         pending: list[ast.AST] = [module]
         while pending:
             node = pending.pop()
@@ -218,7 +218,7 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
                     if isinstance(child, ast.ClassDef):
                         found.append((
                             child.name,
-                            frozenset(
+                            tuple(
                                 base.id if isinstance(base, ast.Name) else base.attr
                                 for expression in child.bases
                                 for base in (
@@ -228,6 +228,7 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
                                 )
                                 if isinstance(base, ast.Name | ast.Attribute)
                             ),
+                            child.lineno,
                         ))
                     if isinstance(child, ast.stmt | ast.excepthandler | ast.match_case):
                         pending.append(child)

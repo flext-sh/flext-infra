@@ -1,12 +1,21 @@
 # The test tier reaches its facade members through the flat `Tests` namespace
 # (`t.Tests.X`, `p.Tests.X`, ...). A `<Project>.Tests` path (`Core`, `Ldap`, ...;
-# measured 2026-11-04: flext-ldap 369, target-oracle-wms 67) nests the test namespace
+# measured 2026-11-04: flext-ldap 369, target-oracle-wms 67; 2026-11-19: 1072
+# references and 77 declarations across 22 members) nests the test namespace
 # under a second owner class, a deprecated shape that duplicates the flat one
-# and that flext-core enforced only at runtime (ENFORCE-054). Both the
-# reference and the declaring `class Core: class Tests` shape are detected; the
-# declaration is flattened at its owner, after which every reference reads the
-# flat `Tests` path. Detection-only: the reference cannot be rewritten before
-# its declaration is flattened.
+# and that flext-core enforced only at runtime (ENFORCE-054). The canonical
+# shape is flext-cli's `tests/typings.py`: `class Tests(FlextTestsTypes.Tests)`
+# declared directly in the test facade.
+#
+# The declaration rules flatten the owner class: an owner whose body holds only
+# its docstring and `class Tests` is replaced by that `Tests` class, one level
+# up. A bare `class Tests:` inside a facade that composes a flext-tests facade
+# gains that facade's `Tests` base, so the flat class keeps the flext-tests
+# members the owner nesting used to leave visible. The reference rule rewrites
+# every `<facade>.<Project>.Tests` path to the flat `<facade>.Tests`; both run
+# in the same `make mod` transaction, so no reference outlives its declaration.
+# An owner that also declares other members cannot be flattened mechanically
+# and stays a detection-only finding.
 id: ban-core-tests-namespace-reference
 language: python
 severity: error
@@ -15,20 +24,39 @@ files:
   - "examples/**/*.py"
   - "scripts/**/*.py"
   - "**/conftest.py"
+# The path is matched as an expression, as a `case` value pattern (a dotted
+# name, not an attribute node) and inside docstrings and comments, so no stale
+# spelling survives the flattening. Other string literals are data (scenario
+# sources of other refactors) and are never rewritten.
 rule:
-  pattern: $FACADE.$PROJ.Tests
-constraints:
-  FACADE:
-    regex: "^[ctmpu]$"
-  PROJ:
-    regex: "^[A-Z][A-Za-z0-9]*$"
+  pattern: $REF
+  any:
+    - kind: attribute
+      regex: "^([ctmpu]|Tests[A-Z][A-Za-z0-9]*)\\.[A-Z][A-Za-z0-9]*\\.Tests$"
+    - kind: dotted_name
+      regex: "^([ctmpu]|Tests[A-Z][A-Za-z0-9]*)\\.[A-Z][A-Za-z0-9]*\\.Tests\\b"
+    - kind: string_content
+      regex: "\\b([ctmpu]|Tests[A-Z][A-Za-z0-9]*)\\.[A-Z][A-Za-z0-9]*\\.Tests\\b"
+      inside:
+        kind: string
+        inside:
+          kind: expression_statement
+    - kind: comment
+      regex: "\\b([ctmpu]|Tests[A-Z][A-Za-z0-9]*)\\.[A-Z][A-Za-z0-9]*\\.Tests\\b"
+transform:
+  FLAT:
+    replace:
+      source: $REF
+      replace: "\\b([ctmpu]|Tests[A-Z][A-Za-z0-9]*)\\.[A-Z][A-Za-z0-9]*\\.Tests\\b"
+      by: "$1.Tests"
+fix: $FLAT
 message: >-
-  `$FACADE.$PROJ.Tests` is the deprecated nested test namespace: read the flat
-  `$FACADE.Tests` member.
+  `<facade>.<Project>.Tests` is the deprecated nested test namespace: read the
+  flat `<facade>.Tests` member.
 note: >-
   Where: this reference. Why: the test tier exposes one flat `Tests` namespace
-  per facade. How: flatten the owning `class Core: class Tests` declaration and
-  read `$FACADE.Tests.<member>`.
+  per facade. How: read `<facade>.Tests.<member>`; the declaration rules
+  flatten the owning `class <Project>: class Tests` in the same transaction.
 metadata:
   enforce: [ENFORCE-054]
 ---
@@ -42,26 +70,126 @@ files:
   - "**/conftest.py"
 rule:
   kind: class_definition
-  has:
-    field: name
-    regex: "^Tests$"
-  inside:
-    kind: class_definition
-    stopBy:
-      kind: class_definition
-    has:
-      field: name
-      regex: "^[A-Z][A-Za-z0-9]*$"
-    inside:
-      kind: class_definition
-      stopBy:
-        kind: class_definition
+  matches: tests-namespace-owner-only-tests
+  any:
+    - has:
+        field: body
+        has:
+          kind: class_definition
+          pattern: $TESTS
+          all:
+            - has: {field: name, regex: "^Tests$"}
+            - has: {field: superclasses, kind: argument_list}
+    - not:
+        matches: tests-namespace-owner-in-flext-tests-facade
+      has:
+        field: body
+        has:
+          kind: class_definition
+          pattern: $TESTS
+          has: {field: name, regex: "^Tests$"}
+transform:
+  FLAT:
+    replace:
+      source: $TESTS
+      replace: "\\b([ctmpu]|Tests[A-Z][A-Za-z0-9]*)\\.[A-Z][A-Za-z0-9]*\\.Tests\\b"
+      by: "$1.Tests"
+fix: $FLAT
 message: >-
   `class <Project>: class Tests` nests the test namespace under a second owner:
   declare `class Tests` directly in the facade class.
 note: >-
+  Where: this owner class. Why: the test tier exposes one flat `Tests`
+  namespace per facade (ENFORCE-054). How: the owner is replaced by its
+  `Tests` class, one level up; members read `<facade>.Tests.<member>`.
+metadata:
+  enforce: [ENFORCE-054]
+---
+id: ban-core-tests-namespace-declaration-bare
+language: python
+severity: error
+files:
+  - "tests/**/*.py"
+  - "examples/**/*.py"
+  - "scripts/**/*.py"
+  - "**/conftest.py"
+rule:
+  kind: class_definition
+  matches: tests-namespace-owner-only-tests
+  all:
+    - inside:
+        kind: block
+        inside:
+          kind: class_definition
+          has:
+            field: superclasses
+            has:
+              kind: identifier
+              pattern: $FTBASE
+              regex: "^(FlextTests[A-Z][A-Za-z0-9]*|flext_tests_[ctmpu])$"
+    - has:
+        field: body
+        has:
+          kind: class_definition
+          pattern: $TESTS
+          has: {field: name, regex: "^Tests$"}
+          not:
+            has: {field: superclasses, kind: argument_list}
+transform:
+  BODY:
+    replace:
+      source: $TESTS
+      replace: "^class Tests:"
+      by: ""
+  FLAT:
+    replace:
+      source: $BODY
+      replace: "\\b([ctmpu]|Tests[A-Z][A-Za-z0-9]*)\\.[A-Z][A-Za-z0-9]*\\.Tests\\b"
+      by: "$1.Tests"
+fix: class Tests($FTBASE.Tests):$FLAT
+message: >-
+  `class <Project>: class Tests` nests the test namespace under a second owner:
+  declare `class Tests($FTBASE.Tests)` directly in the facade class.
+note: >-
+  Where: this owner class. Why: the test tier exposes one flat `Tests`
+  namespace per facade (ENFORCE-054), and a flat bare `Tests` would hide the
+  `$FTBASE.Tests` members. How: the owner is replaced by
+  `class Tests($FTBASE.Tests)` carrying the nested body.
+metadata:
+  enforce: [ENFORCE-054]
+---
+id: ban-core-tests-namespace-declaration-mixed
+language: python
+severity: error
+files:
+  - "tests/**/*.py"
+  - "examples/**/*.py"
+  - "scripts/**/*.py"
+  - "**/conftest.py"
+rule:
+  kind: class_definition
+  has:
+    field: name
+    regex: "^Tests$"
+  inside:
+    kind: block
+    inside:
+      kind: class_definition
+      has:
+        field: name
+        regex: "^[A-Z][A-Za-z0-9]*$"
+      not:
+        matches: tests-namespace-owner-only-tests
+      inside:
+        kind: block
+        inside:
+          kind: class_definition
+message: >-
+  `class <Project>` declares other members beside its nested `class Tests`:
+  move them into one flat `class Tests` declared directly in the facade class.
+note: >-
   Where: this class. Why: the test tier exposes one flat `Tests` namespace per
-  facade (ENFORCE-054). How: move the `Tests` class one level up and read its
-  members as `<facade>.Tests.<member>`.
+  facade (ENFORCE-054). How: move the owner's members into the `Tests` class,
+  declare it in the facade class and read `<facade>.Tests.<member>`.
 metadata:
   enforce: [ENFORCE-054]

@@ -50,6 +50,9 @@ class TestsFlextInfraRefactorImportNormalizationSupport:
 
         """
         project = tmp_path / "project"
+        project.mkdir(parents=True, exist_ok=True)
+        # Python source discovery is scoped to a Git checkout (3a7d175738).
+        u.Tests.initialize_git_repo(project)
         package: Path = u.Tests.src_package(
             project,
             "demo_pkg",

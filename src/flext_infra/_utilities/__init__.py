@@ -133,9 +133,13 @@ if TYPE_CHECKING:
     from flext_infra._utilities.protocol_retirement import (
         FlextInfraUtilitiesModelsProtocolRetirement,
     )
+    from flext_infra._utilities.pydantic_census import FlextInfraUtilitiesPydanticCensus
     from flext_infra._utilities.pyrefly import FlextInfraUtilitiesPyrefly
     from flext_infra._utilities.pytest_collection import (
         FlextInfraUtilitiesPytestCollection,
+    )
+    from flext_infra._utilities.pytest_suite_stop import (
+        FlextInfraUtilitiesPytestSuiteStop,
     )
     from flext_infra._utilities.pytest_surface import FlextInfraUtilitiesPytest
     from flext_infra._utilities.python_model import FlextInfraUtilitiesPythonModel
@@ -228,9 +232,11 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesProtectedEditPreview",
     "FlextInfraUtilitiesProtectedEditWrites",
     "FlextInfraUtilitiesProtocolPublication",
+    "FlextInfraUtilitiesPydanticCensus",
     "FlextInfraUtilitiesPyrefly",
     "FlextInfraUtilitiesPytest",
     "FlextInfraUtilitiesPytestCollection",
+    "FlextInfraUtilitiesPytestSuiteStop",
     "FlextInfraUtilitiesPythonModel",
     "FlextInfraUtilitiesQualifiedNames",
     "FlextInfraUtilitiesRefactor",
@@ -318,9 +324,11 @@ install_lazy_exports(
         "FlextInfraUtilitiesProtectedEditPreview": ".protected_edit_preview",
         "FlextInfraUtilitiesProtectedEditWrites": ".protected_edit_writes",
         "FlextInfraUtilitiesProtocolPublication": ".protocol_publication",
+        "FlextInfraUtilitiesPydanticCensus": ".pydantic_census",
         "FlextInfraUtilitiesPyrefly": ".pyrefly",
         "FlextInfraUtilitiesPytest": ".pytest_surface",
         "FlextInfraUtilitiesPytestCollection": ".pytest_collection",
+        "FlextInfraUtilitiesPytestSuiteStop": ".pytest_suite_stop",
         "FlextInfraUtilitiesPythonModel": ".python_model",
         "FlextInfraUtilitiesQualifiedNames": ".qualified_names",
         "FlextInfraUtilitiesRefactor": ".refactor",
@@ -399,9 +407,11 @@ install_lazy_exports(
         "FlextInfraUtilitiesProtectedEditPreview",
         "FlextInfraUtilitiesProtectedEditWrites",
         "FlextInfraUtilitiesProtocolPublication",
+        "FlextInfraUtilitiesPydanticCensus",
         "FlextInfraUtilitiesPyrefly",
         "FlextInfraUtilitiesPytest",
         "FlextInfraUtilitiesPytestCollection",
+        "FlextInfraUtilitiesPytestSuiteStop",
         "FlextInfraUtilitiesPythonModel",
         "FlextInfraUtilitiesQualifiedNames",
         "FlextInfraUtilitiesRefactor",

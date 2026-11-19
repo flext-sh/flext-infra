@@ -13,8 +13,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, r, u
+from flext_infra.validate import FlextInfraPytestDiagExtractor
 from flext_infra.validate._pytest_runner import FlextInfraPytestRunnerBase
-from flext_infra.validate.pytest_diag import FlextInfraPytestDiagExtractor
 
 if TYPE_CHECKING:
     from flext_infra import p

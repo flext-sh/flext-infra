@@ -478,3 +478,41 @@ class TestsFlextInfraGitFacetWorktreeStatus:
             ),
         )
         tm.fail(tm.ok(u.Infra.git_has_staged_changes(request)).value)
+
+    @staticmethod
+    def test_add_paths_stages_a_tracked_deletion(tmp_path: Path) -> None:
+        """A tracked deletion is staged by the same path operation as a write."""
+        repository = u.Tests.git_repository(tmp_path)
+        retired = repository / "retired.txt"
+        retired.write_text("retired\n", encoding="utf-8")
+        tm.ok(
+            u.Cli.run_checked(
+                [c.Infra.GIT, "add", "retired.txt"],
+                cwd=repository,
+            ),
+        )
+        tm.ok(
+            u.Cli.run_checked(
+                [c.Infra.GIT, "commit", "-m", "retired"],
+                cwd=repository,
+            ),
+        )
+        retired.unlink()
+        tm.ok(
+            u.Infra.git_add_paths(
+                m.Infra.GitPathsRequest(repo_root=repository, paths=("retired.txt",))
+            )
+        )
+        tm.ok(
+            u.Infra.git_has_staged_changes(m.Infra.GitRepoRequest(repo_root=repository))
+        )
+        tm.fail(
+            tm.ok(
+                u.Infra.git_is_tracked(
+                    m.Infra.GitRelativePathRequest(
+                        repo_root=repository,
+                        relative_path="retired.txt",
+                    )
+                )
+            ).value
+        )

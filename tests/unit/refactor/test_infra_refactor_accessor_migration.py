@@ -193,7 +193,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
         u.Tests.provision_checkout(workspace)
         with u.Tests.authenticated_rope_workspace(project) as rope:
             resolver = FlextInfraRefactorAccessor(rope.rope_project)
-            module = resolver.module(path)
+            module = resolver.original_module(path)
             tree = module.get_ast()
             receiver = next(
                 node.value

@@ -1,0 +1,60 @@
+id: ban-core-tests-namespace-declaration-mixed
+snapshots:
+  ? |
+    class TestsFlextMeltanoTypes(FlextTestsTypes, FlextMeltanoTypes):
+        class Meltano(FlextMeltanoTypes.Meltano):
+            type ComponentCase = tuple[str, str]
+
+            class Tests(FlextTestsTypes.Tests):
+                """Aliases."""
+  : labels:
+    - source: |-
+        class Tests(FlextTestsTypes.Tests):
+                    """Aliases."""
+      style: primary
+      start: 166
+      end: 228
+    - source: |-
+        class TestsFlextMeltanoTypes(FlextTestsTypes, FlextMeltanoTypes):
+            class Meltano(FlextMeltanoTypes.Meltano):
+                type ComponentCase = tuple[str, str]
+
+                class Tests(FlextTestsTypes.Tests):
+                    """Aliases."""
+      style: secondary
+      start: 0
+      end: 228
+    - source: |-
+        class Meltano(FlextMeltanoTypes.Meltano):
+                type ComponentCase = tuple[str, str]
+
+                class Tests(FlextTestsTypes.Tests):
+                    """Aliases."""
+      style: secondary
+      start: 70
+      end: 228
+    - source: Meltano
+      style: secondary
+      start: 76
+      end: 83
+    - source: |-
+        class Meltano(FlextMeltanoTypes.Meltano):
+                type ComponentCase = tuple[str, str]
+
+                class Tests(FlextTestsTypes.Tests):
+                    """Aliases."""
+      style: secondary
+      start: 70
+      end: 228
+    - source: |-
+        type ComponentCase = tuple[str, str]
+
+                class Tests(FlextTestsTypes.Tests):
+                    """Aliases."""
+      style: secondary
+      start: 120
+      end: 228
+    - source: Tests
+      style: secondary
+      start: 172
+      end: 177

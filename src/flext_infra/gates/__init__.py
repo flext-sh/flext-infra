@@ -33,6 +33,7 @@ if TYPE_CHECKING:
     from flext_infra.gates.markdown_list_indent import FlextInfraMarkdownListIndent
     from flext_infra.gates.markdown_support import FlextInfraMarkdownGateBase
     from flext_infra.gates.project_module import FlextInfraGatesProjectModule
+    from flext_infra.gates.pydantic_census import FlextInfraGatesPydanticCensus
     from flext_infra.gates.pyrefly import FlextInfraGatesPyrefly
     from flext_infra.gates.ruff_base import FlextInfraGatesRuffGate
     from flext_infra.gates.ruff_format import FlextInfraGatesRuffFormat
@@ -61,6 +62,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraGatesMarkdownCode",
     "FlextInfraGatesMarkdownFormat",
     "FlextInfraGatesProjectModule",
+    "FlextInfraGatesPydanticCensus",
     "FlextInfraGatesPyrefly",
     "FlextInfraGatesRuffFormat",
     "FlextInfraGatesRuffGate",
@@ -95,6 +97,7 @@ install_lazy_exports(
         "FlextInfraGatesMarkdownCode": ".markdown_code",
         "FlextInfraGatesMarkdownFormat": ".markdown_format",
         "FlextInfraGatesProjectModule": ".project_module",
+        "FlextInfraGatesPydanticCensus": ".pydantic_census",
         "FlextInfraGatesPyrefly": ".pyrefly",
         "FlextInfraGatesRuffFormat": ".ruff_format",
         "FlextInfraGatesRuffGate": ".ruff_base",

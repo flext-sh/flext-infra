@@ -13,9 +13,9 @@ from flext_infra import c, m, p
 from flext_infra._utilities import FlextInfraUtilitiesWorkspaceSnapshot
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeCorePyModule,
+    FlextInfraUtilitiesRopeModulePatch,
     FlextInfraUtilitiesRopeRuntimeModules,
 )
-from flext_infra._utilities._rope.module_patch import FlextInfraUtilitiesRopeModulePatch
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticHelperReferences,
 )

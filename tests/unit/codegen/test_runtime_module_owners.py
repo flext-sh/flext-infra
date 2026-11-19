@@ -10,9 +10,8 @@ import sys
 from itertools import permutations
 from pathlib import Path
 
-from flext_infra import config, infra
-from tests import c, t, tm, u
-from tests.unit.codegen.test_codegen_ci_matrix import TestsFlextInfraCodegenCiMatrix
+from tests import c, config, infra, t, tm, u
+from tests.unit.codegen import TestsFlextInfraCodegenCiMatrix
 
 
 class TestsFlextInfraRuntimeModuleOwners:

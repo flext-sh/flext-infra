@@ -339,6 +339,15 @@ class FlextInfraProtocolsCodegenRender:
             ...
 
         @property
+        def docs_site_publish(self) -> bool:
+            """Structural member projected from the owning model.
+
+            Upload the built docs site and deploy it to GitHub Pages from main;
+            False keeps the docs workflow a build-only proof.
+            """
+            ...
+
+        @property
         def superproject(
             self,
         ) -> FlextInfraProtocolsConfigProvider.CiSuperprojectCheckoutSpec | None:

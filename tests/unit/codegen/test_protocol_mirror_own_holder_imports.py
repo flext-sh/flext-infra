@@ -98,6 +98,24 @@ class TestsProtocolMirrorOwnHolderImports:
         )
         package = root / "infra" / "contracts"
         holder = "InfraContractsProtocolsPayload"
+        # A namespace package is a declared repository fact (repository config).
+        declaration = u.Tests.project_spec(root.name).model_copy(
+            update={"repository_namespace_packages": ("infra",)}
+        )
+        tm.ok(
+            u.Cli.yaml_dump(
+                root / "config" / "codegen.yaml",
+                {
+                    "Infra": {
+                        "codegen": {
+                            "repository": {
+                                "project": declaration.model_dump(mode="json")
+                            }
+                        }
+                    }
+                },
+            )
+        )
         cls._write({
             root / "infra" / "__init__.py": "",
             package / "__init__.py": "",

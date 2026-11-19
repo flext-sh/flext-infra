@@ -118,15 +118,16 @@ class FlextInfraConstantsRefactor:
         "settings",
     })
     "Root singletons and import layers of the config/settings law (ADR-005)."
-    IMPORT_LAW_LAYER_ZERO_ROOTS: ClassVar[frozenset[str]] = (
-        IMPORT_LAW_ROOT_SINGLETONS | frozenset({"lazy"})
-    )
-    """Module roots classified layer zero: the root singletons and the lazy loader.
+    IMPORT_LAW_LAYER_ZERO_ROOTS: ClassVar[frozenset[str]] = frozenset({"lazy"})
+    """Module roots classified layer zero: the lazy loader alone.
 
-    The lazy loader bootstraps every package, the facades included, so it
-    cannot import them without a cycle; ADR-028 declares it the one documented
-    layer-zero exception beside config/settings. It is not an importable root
-    singleton, so alias routing keeps reading ``IMPORT_LAW_ROOT_SINGLETONS``.
+    The lazy loader runs before a package root installs its lazy exports, so
+    it cannot import its own namespace without a cycle; it is the only
+    exception (operator decision 2026-11-19). Every other module, settings and
+    config included, imports through the lazy package initializer: a root
+    executes only the lazy loader, so no other module re-enters the bootstrap.
+    The modules the loader itself executes stay layer zero through the
+    captured bootstrap closure.
     """
     IMPORT_LAW_PYTEST_PLUGIN_GROUP: ClassVar[str] = "pytest11"
     """Entry-point group whose registered modules are layer zero for pytest.
@@ -443,13 +444,14 @@ class FlextInfraConstantsRefactor:
     CODEMOD_COMPAT_MESSAGE_PATTERN: ClassVar[str] = (
         r"^compat: (?P<old>[A-Za-z_][\w.]*) -> (?P<new>[A-Za-z_][\w.]*); fix: .+$"
     )
-    # Generated shapes of the layer-zero import boundary: a settings/config
-    # module imports neither its own root facade nor its own modules.
+    # Generated shapes of the layer-zero import boundary: a layer-zero
+    # (lazy loader) module imports neither its own root facade nor its own
+    # modules.
     CODEMOD_LAYER_ZERO_FACADE_IMPORT_SHAPE: ClassVar[str] = (
-        "ban-settings-config-own-facade-import"
+        "ban-layer-zero-own-facade-import"
     )
     CODEMOD_LAYER_ZERO_MODULE_IMPORT_SHAPE: ClassVar[str] = (
-        "ban-settings-config-own-module-import"
+        "ban-layer-zero-own-module-import"
     )
     # Role the import-law classifier gives a layer-zero module.
     IMPORT_LAW_LAYER_ZERO_ROLE: ClassVar[str] = "layer0"
@@ -566,8 +568,6 @@ class FlextInfraConstantsRefactor:
     CODEMOD_FACADE_MODULE_SCOPE: ClassVar[str] = "facade-module"
     CODEMOD_FAMILY_SCOPE_PREFIX: ClassVar[str] = "facade-family-"
     CODEMOD_PRIVATE_FAMILY_SCOPE_PREFIX: ClassVar[str] = "private-family-"
-    CODEMOD_TOP_PACKAGE_SCOPE_PREFIX: ClassVar[str] = "top-package-"
-    "File scope: the modules whose dotted name starts with that top-level package."
     CODEMOD_LACKS_LAYER_SCOPE_PREFIX: ClassVar[str] = "lacks-layer-"
     CODEMOD_FAMILY_WITHOUT_BASE_SCOPE: ClassVar[str] = "family-without-base"
     CODEMOD_FAMILY_BASE_SCOPE: ClassVar[str] = "family-base-file"

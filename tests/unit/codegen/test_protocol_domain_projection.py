@@ -98,13 +98,17 @@ class TestsProtocolDomainProjection:
             ),
         ],
     )
-    def test_selected_domain_is_public_and_global_collision_still_fails(
+    def test_selected_domain_is_public(
         cls,
         tmp_path: Path,
         native_consumer: p.Tests.NativeConsumer,
         metadata_fields: str,
     ) -> None:
-        """A real model satisfies the selected Protocol after its holder projection."""
+        """A real model satisfies the selected Protocol after its holder projection.
+
+        The global non-equivalence refusal was replaced by authored-Protocol
+        retirement (fd7e70dd12); only the selected domain is asserted here.
+        """
         root, package = cls._workspace(tmp_path, metadata_fields)
         reference = m.Infra.SourceClassReference(
             target=f"{package.name}._models.git", attributes=("ModelsGit",)
@@ -121,8 +125,6 @@ class TestsProtocolDomainProjection:
                     tm.not_none(declaration.get_module()).get_resource()
                 )
                 tm.that(Path(resource.real_path), eq=package / source)
-            with u.Tests.raises(ValueError, match="non-equivalent public Protocol"):
-                u.Infra.protocol_model_sources_from_source(root, binding[0])
             projected = tm.ok(
                 u.Infra.protocol_model_sources_from_source(
                     root, binding[0], domain_owner=reference
