@@ -32,23 +32,26 @@ class FlextInfraConstantsMake(FlextInfraConstantsConfig):
 
         GLOBAL_INCREMENTAL shares FULL's marker scope, but uses Testmon to
         select impacted cases. INCREMENTAL retains the local/slow partition.
-        FULL executes the complete inventory once without Testmon.
+        FULL executes the complete inventory once without Testmon. HARNESS
+        selects only the harness gates the other scopes deselect, through
+        Testmon, under the harness that provides their inputs.
         """
 
         INCREMENTAL = "incremental"
         GLOBAL_INCREMENTAL = "global-incremental"
         FULL = "full"
         COVERAGE = "coverage"
+        HARNESS = "harness"
 
         @property
         def is_global(self) -> bool:
             """Whether the inventory retains FULL's external and CI marker scope."""
-            return self in {self.GLOBAL_INCREMENTAL, self.FULL}
+            return self in {self.GLOBAL_INCREMENTAL, self.FULL, self.HARNESS}
 
         @property
         def is_incremental(self) -> bool:
             """Whether testmon selects impacted cases before suite execution."""
-            return self in {self.INCREMENTAL, self.GLOBAL_INCREMENTAL}
+            return self in {self.INCREMENTAL, self.GLOBAL_INCREMENTAL, self.HARNESS}
 
     MAKE_ASSIGNMENT_RE: ClassVar[t.RegexPattern] = re.compile(
         r"^[A-Za-z_][A-Za-z0-9_]*\s*(?::?:|\?|\+)?=",
@@ -72,6 +75,7 @@ class FlextInfraConstantsMake(FlextInfraConstantsConfig):
     VERB_CHECK: ClassVar[str] = "check"
     VERB_TEST: ClassVar[str] = "tests"
     VERB_TEST_FULL: ClassVar[str] = "tests-full"
+    VERB_TEST_HARNESS: ClassVar[str] = "tests-harness"
     VERB_NATIVE_GATE: ClassVar[str] = "native-gate"
     RUFF_UNSAFE_FIXES_FLAG: ClassVar[str] = "--unsafe-fixes"
     RUFF_CACHE_ENVIRONMENT_VARIABLE: ClassVar[str] = "RUFF_CACHE_DIR"
