@@ -11,16 +11,11 @@ from pathlib import Path
 
 from flext_infra import FlextInfraCli, u
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-from tests import (
+from tests import c, config, m, p, t, tm
+from tests._utilities import (
     TestsFlextInfraUtilitiesGit,
     TestsFlextInfraUtilitiesProjectFixture,
     TestsFlextInfraUtilitiesToolingFixture,
-    c,
-    config,
-    m,
-    p,
-    t,
-    tm,
 )
 
 

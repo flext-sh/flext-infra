@@ -18,7 +18,7 @@ from tempfile import TemporaryDirectory, mkdtemp
 
 from flext_infra import config, u, validate, workspace
 from tests import c, m, p, r, t, tm
-from tests.utilities_git import TestsFlextInfraUtilitiesGit
+from tests._utilities.git import TestsFlextInfraUtilitiesGit
 
 
 class TestsFlextInfraUtilitiesToolingFixture:

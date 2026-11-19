@@ -15,10 +15,10 @@ from pathlib import Path
 from flext_infra import FlextInfraWorktreeService, config, infra, u
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, m, p, t, tm
-from tests.utilities_codegen import TestsFlextInfraUtilitiesCodegen
-from tests.utilities_fixture_project import TestsFlextInfraUtilitiesProjectFixture
-from tests.utilities_fixture_tooling import TestsFlextInfraUtilitiesToolingFixture
-from tests.utilities_git import TestsFlextInfraUtilitiesGit
+from tests._utilities.codegen import TestsFlextInfraUtilitiesCodegen
+from tests._utilities.fixture_project import TestsFlextInfraUtilitiesProjectFixture
+from tests._utilities.fixture_tooling import TestsFlextInfraUtilitiesToolingFixture
+from tests._utilities.git import TestsFlextInfraUtilitiesGit
 
 
 class TestsFlextInfraUtilitiesWorkspaceFixture:

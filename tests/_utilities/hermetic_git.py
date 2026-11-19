@@ -23,8 +23,8 @@ from urllib.parse import parse_qs, unquote, urlsplit
 from flext_infra import config, u
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, m, p, t, tm
-from tests.utilities_fixture_project import TestsFlextInfraUtilitiesProjectFixture
-from tests.utilities_toml import TestsFlextInfraUtilitiesToml
+from tests._utilities.fixture_project import TestsFlextInfraUtilitiesProjectFixture
+from tests._utilities.toml_documents import TestsFlextInfraUtilitiesToml
 
 
 class TestsFlextInfraUtilitiesHermeticGit:

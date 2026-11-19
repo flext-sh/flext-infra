@@ -55,6 +55,22 @@ if TYPE_CHECKING:
         TestsFlextInfraProtocolsSemanticCutover,
     )
     from tests._utilities import TestsFlextInfraUtilitiesSemanticCutover
+    from tests._utilities.codegen import TestsFlextInfraUtilitiesCodegen
+    from tests._utilities.conform import TestsFlextInfraUtilitiesConform
+    from tests._utilities.deps import TestsFlextInfraUtilitiesDeps
+    from tests._utilities.fixture_docs import TestsFlextInfraUtilitiesDocsFixture
+    from tests._utilities.fixture_project import TestsFlextInfraUtilitiesProjectFixture
+    from tests._utilities.fixture_tooling import TestsFlextInfraUtilitiesToolingFixture
+    from tests._utilities.fixture_workspace import (
+        TestsFlextInfraUtilitiesWorkspaceFixture,
+    )
+    from tests._utilities.gates import TestsFlextInfraUtilitiesGates
+    from tests._utilities.git import TestsFlextInfraUtilitiesGit
+    from tests._utilities.hermetic_git import TestsFlextInfraUtilitiesHermeticGit
+    from tests._utilities.promoted import TestsFlextInfraUtilitiesPromoted
+    from tests._utilities.release import TestsFlextInfraUtilitiesRelease
+    from tests._utilities.toml_documents import TestsFlextInfraUtilitiesToml
+    from tests._utilities.workspace_env import TestsFlextInfraUtilitiesWorkspaceEnv
     from tests.base import TestsFlextInfraServiceBase, s
     from tests.constants import TestsFlextInfraConstants, c
     from tests.constants_scan import TestsFlextInfraConstantsScan
@@ -69,22 +85,6 @@ if TYPE_CHECKING:
     from tests.typings import TestsFlextInfraTypes, t
     from tests.unit import TestsFlextInfraModelsPytestMarkdown
     from tests.utilities import TestsFlextInfraUtilities, u
-    from tests.utilities_codegen import TestsFlextInfraUtilitiesCodegen
-    from tests.utilities_conform import TestsFlextInfraUtilitiesConform
-    from tests.utilities_deps import TestsFlextInfraUtilitiesDeps
-    from tests.utilities_fixture_docs import TestsFlextInfraUtilitiesDocsFixture
-    from tests.utilities_fixture_project import TestsFlextInfraUtilitiesProjectFixture
-    from tests.utilities_fixture_tooling import TestsFlextInfraUtilitiesToolingFixture
-    from tests.utilities_fixture_workspace import (
-        TestsFlextInfraUtilitiesWorkspaceFixture,
-    )
-    from tests.utilities_gates import TestsFlextInfraUtilitiesGates
-    from tests.utilities_git import TestsFlextInfraUtilitiesGit
-    from tests.utilities_hermetic_git import TestsFlextInfraUtilitiesHermeticGit
-    from tests.utilities_promoted import TestsFlextInfraUtilitiesPromoted
-    from tests.utilities_release import TestsFlextInfraUtilitiesRelease
-    from tests.utilities_toml import TestsFlextInfraUtilitiesToml
-    from tests.utilities_workspace_env import TestsFlextInfraUtilitiesWorkspaceEnv
 
 
 __all__: tuple[str, ...] = (
@@ -201,21 +201,21 @@ install_lazy_exports(
         "TestsFlextInfraServiceBase": ".base",
         "TestsFlextInfraTypes": ".typings",
         "TestsFlextInfraUtilities": ".utilities",
-        "TestsFlextInfraUtilitiesCodegen": ".utilities_codegen",
-        "TestsFlextInfraUtilitiesConform": ".utilities_conform",
-        "TestsFlextInfraUtilitiesDeps": ".utilities_deps",
-        "TestsFlextInfraUtilitiesDocsFixture": ".utilities_fixture_docs",
-        "TestsFlextInfraUtilitiesGates": ".utilities_gates",
-        "TestsFlextInfraUtilitiesGit": ".utilities_git",
-        "TestsFlextInfraUtilitiesHermeticGit": ".utilities_hermetic_git",
-        "TestsFlextInfraUtilitiesProjectFixture": ".utilities_fixture_project",
-        "TestsFlextInfraUtilitiesPromoted": ".utilities_promoted",
-        "TestsFlextInfraUtilitiesRelease": ".utilities_release",
+        "TestsFlextInfraUtilitiesCodegen": "._utilities.codegen",
+        "TestsFlextInfraUtilitiesConform": "._utilities.conform",
+        "TestsFlextInfraUtilitiesDeps": "._utilities.deps",
+        "TestsFlextInfraUtilitiesDocsFixture": "._utilities.fixture_docs",
+        "TestsFlextInfraUtilitiesGates": "._utilities.gates",
+        "TestsFlextInfraUtilitiesGit": "._utilities.git",
+        "TestsFlextInfraUtilitiesHermeticGit": "._utilities.hermetic_git",
+        "TestsFlextInfraUtilitiesProjectFixture": "._utilities.fixture_project",
+        "TestsFlextInfraUtilitiesPromoted": "._utilities.promoted",
+        "TestsFlextInfraUtilitiesRelease": "._utilities.release",
         "TestsFlextInfraUtilitiesSemanticCutover": "._utilities",
-        "TestsFlextInfraUtilitiesToml": ".utilities_toml",
-        "TestsFlextInfraUtilitiesToolingFixture": ".utilities_fixture_tooling",
-        "TestsFlextInfraUtilitiesWorkspaceEnv": ".utilities_workspace_env",
-        "TestsFlextInfraUtilitiesWorkspaceFixture": ".utilities_fixture_workspace",
+        "TestsFlextInfraUtilitiesToml": "._utilities.toml_documents",
+        "TestsFlextInfraUtilitiesToolingFixture": "._utilities.fixture_tooling",
+        "TestsFlextInfraUtilitiesWorkspaceEnv": "._utilities.workspace_env",
+        "TestsFlextInfraUtilitiesWorkspaceFixture": "._utilities.fixture_workspace",
         "TestsImportedModelCollision": ".fixtures",
         "TestsImportedModelReference": ".fixtures",
         "c": ".constants",

@@ -13,9 +13,9 @@ from typing import TYPE_CHECKING
 from flext_infra import infra, u
 from flext_infra.deps import FlextInfraConfigFixer
 from tests import c, m, p, tm
-from tests.utilities_fixture_tooling import TestsFlextInfraUtilitiesToolingFixture
-from tests.utilities_git import TestsFlextInfraUtilitiesGit
-from tests.utilities_hermetic_git import TestsFlextInfraUtilitiesHermeticGit
+from tests._utilities.fixture_tooling import TestsFlextInfraUtilitiesToolingFixture
+from tests._utilities.git import TestsFlextInfraUtilitiesGit
+from tests._utilities.hermetic_git import TestsFlextInfraUtilitiesHermeticGit
 
 if TYPE_CHECKING:
     from flext_infra.gates import FlextInfraGates

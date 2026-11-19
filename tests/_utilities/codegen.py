@@ -14,17 +14,13 @@ from multiprocessing import get_context
 from pathlib import Path
 
 from flext_infra import codegen, config, u, workspace
-from tests import (
+from tests import c, m, p, r, tm
+from tests._utilities import (
     TestsFlextInfraUtilitiesGit,
     TestsFlextInfraUtilitiesProjectFixture,
     TestsFlextInfraUtilitiesToolingFixture,
-    c,
-    m,
-    p,
-    r,
-    tm,
 )
-from tests.utilities_conform import TestsFlextInfraUtilitiesConform
+from tests._utilities.conform import TestsFlextInfraUtilitiesConform
 
 
 class TestsFlextInfraUtilitiesCodegen(

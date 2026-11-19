@@ -13,7 +13,7 @@ from pathlib import Path
 
 from flext_infra import config, u
 from tests import c, m, t, tm
-from tests.utilities_fixture_project import TestsFlextInfraUtilitiesProjectFixture
+from tests._utilities.fixture_project import TestsFlextInfraUtilitiesProjectFixture
 
 
 class TestsFlextInfraUtilitiesGit:
