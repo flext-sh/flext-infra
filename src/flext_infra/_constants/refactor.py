@@ -118,15 +118,16 @@ class FlextInfraConstantsRefactor:
         "settings",
     })
     "Root singletons and import layers of the config/settings law (ADR-005)."
-    IMPORT_LAW_LAYER_ZERO_ROOTS: ClassVar[frozenset[str]] = (
-        IMPORT_LAW_ROOT_SINGLETONS | frozenset({"lazy"})
-    )
-    """Module roots classified layer zero: the root singletons and the lazy loader.
+    IMPORT_LAW_LAYER_ZERO_ROOTS: ClassVar[frozenset[str]] = frozenset({"lazy"})
+    """Module roots classified layer zero: the lazy loader alone.
 
-    The lazy loader bootstraps every package, the facades included, so it
-    cannot import them without a cycle; ADR-028 declares it the one documented
-    layer-zero exception beside config/settings. It is not an importable root
-    singleton, so alias routing keeps reading ``IMPORT_LAW_ROOT_SINGLETONS``.
+    The lazy loader runs before a package root installs its lazy exports, so
+    it cannot import its own namespace without a cycle; it is the only
+    exception (operator decision 2026-11-19). Every other module, settings and
+    config included, imports through the lazy package initializer: a root
+    executes only the lazy loader, so no other module re-enters the bootstrap.
+    The modules the loader itself executes stay layer zero through the
+    captured bootstrap closure.
     """
     IMPORT_LAW_PYTEST_PLUGIN_GROUP: ClassVar[str] = "pytest11"
     """Entry-point group whose registered modules are layer zero for pytest.

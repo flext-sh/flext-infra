@@ -212,8 +212,7 @@ class FlextInfraUtilitiesSemanticContracts(
 
         """
         packaged = (
-            type(config).ssot_config_dir().parent
-            / c.Infra.CODEMOD_ROPE_CONTRACTS_RELPATH
+            config.ssot_config_dir().parent / c.Infra.CODEMOD_ROPE_CONTRACTS_RELPATH
         )
         roots = dict.fromkeys((
             repository_root.resolve(),

@@ -397,9 +397,14 @@ class FlextInfraUtilitiesCodemodImportLawRules:
                     for target in node.targets
                 )
             )
-            declared[path] = list(
-                FlextInfraUtilitiesRopeAnalysisSourceScan.module_class_base_names(tree)
-            )
+            declared[path] = [
+                (name, frozenset(bases))
+                for name, bases, _line in (
+                    FlextInfraUtilitiesRopeAnalysisSourceScan.module_class_base_names(
+                        tree
+                    )
+                )
+            ]
         while True:
             grown = names | {
                 name

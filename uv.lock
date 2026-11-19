@@ -533,7 +533,7 @@ requires-dist = [
     { name = "pymdown-extensions", specifier = ">=11.0.1" },
     { name = "pytest", specifier = ">=9.1.1" },
     { name = "pytest-markdown-docs", specifier = ">=0.9.2" },
-    { name = "rope", git = "https://github.com/marlon-costa-dc/rope.git?rev=3a0cb69024fb5f17ba32064bf6c294d016c7d9d8" },
+    { name = "rope", git = "https://github.com/marlon-costa-dc/rope.git?rev=09806ca918b69994ac3a880c92cde9689f480f46" },
     { name = "typing-extensions", specifier = ">=4.16.0" },
 ]
 

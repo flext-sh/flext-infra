@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_core.lazy import install_lazy_exports
+from flext_core.lazy import defer_lazy_instances, install_lazy_exports
 
 if TYPE_CHECKING:
     from flext_tests import td, tf, tk, tm
@@ -45,6 +45,10 @@ if TYPE_CHECKING:
         settings,
         x,
     )
+    from tests._constants import (
+        TestsFlextInfraConstantsScan,
+        TestsFlextInfraConstantsSemanticCutover,
+    )
     from tests._models import (
         TestsFlextInfraModelsBase,
         TestsFlextInfraModelsSemanticCutover,
@@ -52,6 +56,23 @@ if TYPE_CHECKING:
     from tests._protocols import (
         TestsFlextInfraProtocolsBase,
         TestsFlextInfraProtocolsSemanticCutover,
+    )
+    from tests._utilities import (
+        TestsFlextInfraUtilitiesCodegen,
+        TestsFlextInfraUtilitiesConform,
+        TestsFlextInfraUtilitiesDeps,
+        TestsFlextInfraUtilitiesDocsFixture,
+        TestsFlextInfraUtilitiesGates,
+        TestsFlextInfraUtilitiesGit,
+        TestsFlextInfraUtilitiesHermeticGit,
+        TestsFlextInfraUtilitiesProjectFixture,
+        TestsFlextInfraUtilitiesPromoted,
+        TestsFlextInfraUtilitiesRelease,
+        TestsFlextInfraUtilitiesSemanticCutover,
+        TestsFlextInfraUtilitiesToml,
+        TestsFlextInfraUtilitiesToolingFixture,
+        TestsFlextInfraUtilitiesWorkspaceEnv,
+        TestsFlextInfraUtilitiesWorkspaceFixture,
     )
     from tests.base import TestsFlextInfraServiceBase, s
     from tests.constants import TestsFlextInfraConstants, c
@@ -91,6 +112,8 @@ __all__: tuple[str, ...] = (
     "FlextInfraVersion",
     "FlextInfraWorktreeService",
     "TestsFlextInfraConstants",
+    "TestsFlextInfraConstantsScan",
+    "TestsFlextInfraConstantsSemanticCutover",
     "TestsFlextInfraGateAdmissionHolder",
     "TestsFlextInfraModels",
     "TestsFlextInfraModelsBase",
@@ -103,6 +126,21 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraServiceBase",
     "TestsFlextInfraTypes",
     "TestsFlextInfraUtilities",
+    "TestsFlextInfraUtilitiesCodegen",
+    "TestsFlextInfraUtilitiesConform",
+    "TestsFlextInfraUtilitiesDeps",
+    "TestsFlextInfraUtilitiesDocsFixture",
+    "TestsFlextInfraUtilitiesGates",
+    "TestsFlextInfraUtilitiesGit",
+    "TestsFlextInfraUtilitiesHermeticGit",
+    "TestsFlextInfraUtilitiesProjectFixture",
+    "TestsFlextInfraUtilitiesPromoted",
+    "TestsFlextInfraUtilitiesRelease",
+    "TestsFlextInfraUtilitiesSemanticCutover",
+    "TestsFlextInfraUtilitiesToml",
+    "TestsFlextInfraUtilitiesToolingFixture",
+    "TestsFlextInfraUtilitiesWorkspaceEnv",
+    "TestsFlextInfraUtilitiesWorkspaceFixture",
     "TestsImportedModelCollision",
     "TestsImportedModelReference",
     "c",
@@ -151,6 +189,8 @@ install_lazy_exports(
         "FlextInfraVersion": "flext_infra",
         "FlextInfraWorktreeService": "flext_infra",
         "TestsFlextInfraConstants": ".constants",
+        "TestsFlextInfraConstantsScan": "._constants",
+        "TestsFlextInfraConstantsSemanticCutover": "._constants",
         "TestsFlextInfraGateAdmissionHolder": ".fixtures",
         "TestsFlextInfraModels": ".models",
         "TestsFlextInfraModelsBase": "._models",
@@ -163,6 +203,21 @@ install_lazy_exports(
         "TestsFlextInfraServiceBase": ".base",
         "TestsFlextInfraTypes": ".typings",
         "TestsFlextInfraUtilities": ".utilities",
+        "TestsFlextInfraUtilitiesCodegen": "._utilities",
+        "TestsFlextInfraUtilitiesConform": "._utilities",
+        "TestsFlextInfraUtilitiesDeps": "._utilities",
+        "TestsFlextInfraUtilitiesDocsFixture": "._utilities",
+        "TestsFlextInfraUtilitiesGates": "._utilities",
+        "TestsFlextInfraUtilitiesGit": "._utilities",
+        "TestsFlextInfraUtilitiesHermeticGit": "._utilities",
+        "TestsFlextInfraUtilitiesProjectFixture": "._utilities",
+        "TestsFlextInfraUtilitiesPromoted": "._utilities",
+        "TestsFlextInfraUtilitiesRelease": "._utilities",
+        "TestsFlextInfraUtilitiesSemanticCutover": "._utilities",
+        "TestsFlextInfraUtilitiesToml": "._utilities",
+        "TestsFlextInfraUtilitiesToolingFixture": "._utilities",
+        "TestsFlextInfraUtilitiesWorkspaceEnv": "._utilities",
+        "TestsFlextInfraUtilitiesWorkspaceFixture": "._utilities",
         "TestsImportedModelCollision": ".fixtures",
         "TestsImportedModelReference": ".fixtures",
         "c": ".constants",
@@ -185,4 +240,11 @@ install_lazy_exports(
         "x": "flext_infra",
     },
     public_exports=__all__,
+)
+
+defer_lazy_instances(
+    __name__,
+    globals(),
+    {"config": "flext_infra", "settings": "flext_infra"},
+    ("config", "settings"),
 )

@@ -362,14 +362,14 @@ class FlextInfraUtilitiesGitSemanticPaths(FlextInfraUtilitiesGitStateFiles):
         cls,
         request: p.Infra.GitPathsRequest,
     ) -> p.Result[p.Infra.GitBoolReport]:
-        """Stage multiple paths via ``git add --force``.
+        """Stage multiple paths, including deletions, via ``git add --force --all``.
 
-        The sole caller is the release stamp stage: it stages exactly the
-        paths the preceding ``git status --porcelain`` listed (the preflight
-        proved the checkout clean, so every listed path was produced by the
-        stamp). ``--force`` is required because generated release artifacts
-        may also match ``.gitignore`` projections; ignore rules must never
-        silently drop a proven produced path from the release commit.
+        Callers stage exactly the paths their own operation proved it produced
+        or removed. ``--all`` stages a tracked path's deletion as well as its
+        modification, so a retirement is never left unstaged; ``--force`` is
+        required because generated artifacts may also match ``.gitignore``
+        projections, and ignore rules must never silently drop a proven path
+        from the commit.
 
         Returns:
             The resulting ``p.Result[p.Infra.GitBoolReport]``.
@@ -377,7 +377,7 @@ class FlextInfraUtilitiesGitSemanticPaths(FlextInfraUtilitiesGitStateFiles):
         """
         try:
             repo = cls._repo(request.repo_root)
-            repo.git.add("--force", "--", *request.paths)
+            repo.git.add("--force", "--all", "--", *request.paths)
         except GitCommandError as exc:
             return r[p.Infra.GitBoolReport].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:

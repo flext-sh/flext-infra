@@ -45,9 +45,7 @@ class FlextInfraValidateFreshImport(s[bool]):
                 "undeclared, the target checkout's own environment"
             ),
         ),
-    ] = m.Field(
-        default_factory=lambda: type(settings).fetch_global().Infra.runtime_root
-    )
+    ] = m.Field(default_factory=lambda: settings.fetch_global().Infra.runtime_root)
 
     def build_report(
         self,

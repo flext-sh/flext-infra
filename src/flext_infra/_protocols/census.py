@@ -578,6 +578,211 @@ class FlextInfraProtocolsCensus:
             ...
 
     @runtime_checkable
+    class PydanticModelCensus(FlextInfraProtocolsBase.FrozenArbitrary, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def package(self) -> str:
+            """Owning FLEXT package."""
+            ...
+
+        @property
+        def name(self) -> t.NonEmptyStr:
+            """Model class name."""
+            ...
+
+        @property
+        def file_path(self) -> Path:
+            """Declaring source file."""
+            ...
+
+        @property
+        def line(self) -> t.PositiveInt:
+            """Declaration line."""
+            ...
+
+        @property
+        def base(self) -> str:
+            """Resolved declared base."""
+            ...
+
+        @property
+        def preset(self) -> str:
+            """Resolved preset name."""
+            ...
+
+        @property
+        def raw(self) -> bool:
+            """Whether the base is raw pydantic.BaseModel."""
+            ...
+
+        @property
+        def generated(self) -> bool:
+            """Whether the declaration is generated."""
+            ...
+
+    @runtime_checkable
+    class PydanticEnumCensus(FlextInfraProtocolsBase.FrozenArbitrary, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def package(self) -> str:
+            """Owning FLEXT package."""
+            ...
+
+        @property
+        def name(self) -> t.NonEmptyStr:
+            """Enum class name."""
+            ...
+
+        @property
+        def tier(self) -> str:
+            """Declaring facade tier letter."""
+            ...
+
+        @property
+        def file_path(self) -> Path:
+            """Declaring source file."""
+            ...
+
+        @property
+        def line(self) -> t.PositiveInt:
+            """Declaration line."""
+            ...
+
+        @property
+        def generated(self) -> bool:
+            """Whether the declaration is generated."""
+            ...
+
+    @runtime_checkable
+    class PydanticLiteralCensus(FlextInfraProtocolsBase.FrozenArbitrary, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def package(self) -> str:
+            """Owning FLEXT package."""
+            ...
+
+        @property
+        def owner(self) -> str:
+            """Nearest declaring owner."""
+            ...
+
+        @property
+        def values(self) -> tuple[str, ...]:
+            """Literal member values."""
+            ...
+
+        @property
+        def kind(self) -> c.Infra.PydanticLiteralKind:
+            """Full-domain, subset or discriminator."""
+            ...
+
+        @property
+        def file_path(self) -> Path:
+            """Declaring source file."""
+            ...
+
+        @property
+        def line(self) -> t.PositiveInt:
+            """Declaration line."""
+            ...
+
+        @property
+        def generated(self) -> bool:
+            """Whether the declaration is generated."""
+            ...
+
+    @runtime_checkable
+    class PydanticParityCensus(FlextInfraProtocolsBase.FrozenArbitrary, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def package(self) -> str:
+            """Owning FLEXT package."""
+            ...
+
+        @property
+        def kind(self) -> str:
+            """missing-protocol or projection-drift."""
+            ...
+
+        @property
+        def model(self) -> str:
+            """Model class name."""
+            ...
+
+        @property
+        def protocol(self) -> str:
+            """Projected protocol name."""
+            ...
+
+        @property
+        def file_path(self) -> Path:
+            """Projection file."""
+            ...
+
+        @property
+        def line(self) -> t.PositiveInt:
+            """Observation line."""
+            ...
+
+        @property
+        def detail(self) -> str:
+            """Divergence detail."""
+            ...
+
+    @runtime_checkable
+    class PydanticDuplicateModelCensus(
+        FlextInfraProtocolsBase.FrozenArbitrary, Protocol
+    ):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def fingerprint(self) -> t.NonEmptyStr:
+            """Payload digest."""
+            ...
+
+        @property
+        def models(self) -> tuple[str, ...]:
+            """Duplicate model identities."""
+            ...
+
+    @runtime_checkable
+    class PydanticCensus(FlextInfraProtocolsBase.FrozenArbitrary, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def models(self) -> tuple[FlextInfraProtocolsCensus.PydanticModelCensus, ...]:
+            """Concrete model inventory."""
+            ...
+
+        @property
+        def enums(self) -> tuple[FlextInfraProtocolsCensus.PydanticEnumCensus, ...]:
+            """Closed-domain enum inventory."""
+            ...
+
+        @property
+        def literals(
+            self,
+        ) -> tuple[FlextInfraProtocolsCensus.PydanticLiteralCensus, ...]:
+            """Literal annotation inventory."""
+            ...
+
+        @property
+        def parity(self) -> tuple[FlextInfraProtocolsCensus.PydanticParityCensus, ...]:
+            """Model-to-protocol divergence rows."""
+            ...
+
+        @property
+        def duplicate_models(
+            self,
+        ) -> tuple[FlextInfraProtocolsCensus.PydanticDuplicateModelCensus, ...]:
+            """Exact duplicate declaration payloads."""
+            ...
+
+    @runtime_checkable
     class CensusFixPlan(FlextInfraProtocolsBase.FrozenArbitrary, Protocol):
         """Structural data contract projected from the owning model."""
 
@@ -964,6 +1169,11 @@ class FlextInfraProtocolsCensus:
             self,
         ) -> tuple[FlextInfraProtocolsCensus.ShortestFormCensus, ...]:
             """Declarations or uses longer than their canonical form."""
+            ...
+
+        @property
+        def pydantic_census(self) -> FlextInfraProtocolsCensus.PydanticCensus:
+            """Pydantic domain classification and parity."""
             ...
 
         @property

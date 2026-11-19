@@ -223,7 +223,9 @@ class FlextInfraCodegenLazyInit(
             )
         with (
             self._source_view(workspace, source_project, roots) as view,
-            self._run_snapshot(workspace, roots, snapshot) as shared,
+            self._run_snapshot(
+                workspace, roots, snapshot, source_project=view
+            ) as shared,
         ):
             invalid = next(
                 (
@@ -366,8 +368,15 @@ class FlextInfraCodegenLazyInit(
         workspace: Path,
         roots: tuple[Path, ...],
         snapshot: FlextInfraProtocolsWorkspaceSnapshot.WorkspaceSnapshot | None,
+        source_project: (
+            FlextInfraProtocolsWorkspaceSnapshot.RopeProject | None
+        ) = None,
     ) -> Generator[FlextInfraProtocolsWorkspaceSnapshot.WorkspaceSnapshot]:
         """Bind the run's snapshot without replacing an injected one.
+
+        The plan's source view is borrowed, so one native project serves both the
+        stage's source reads and its snapshot instead of a second overlay project
+        over the same roots.
 
         Yields:
             The injected snapshot, or one scoped to this plan.
@@ -377,7 +386,9 @@ class FlextInfraCodegenLazyInit(
             yield snapshot
             return
         with FlextInfraUtilitiesWorkspaceSnapshot.workspace_snapshot(
-            workspace, tuple(dict.fromkeys((workspace, *roots)))
+            workspace,
+            tuple(dict.fromkeys((workspace, *roots))),
+            source_project=source_project,
         ) as scoped:
             yield scoped
 

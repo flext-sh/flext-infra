@@ -35,6 +35,7 @@ class FlextInfraTypesPytest:
         type CaptureFixture[AnyStrT: (str, bytes)] = pytest.CaptureFixture[AnyStrT]
         type Collector = pytest.Collector
         type Config = pytest.Config
+        type ExceptionInfo[E: BaseException] = pytest.ExceptionInfo[E]
         type FenceDefinition = FenceTestDefinition
         type FixtureRequest = pytest.FixtureRequest
         type Item = pytest.Item

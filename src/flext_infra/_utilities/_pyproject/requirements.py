@@ -200,10 +200,13 @@ class FlextInfraUtilitiesPyprojectRequirements:
         generated: Sequence[str | p.Infra.DependencyGroupInclude],
         custom: Sequence[str | p.Infra.DependencyGroupInclude],
     ) -> tuple[str | p.Infra.DependencyGroupInclude, ...]:
-        """Lead missing complete requirements and preserve authored entries.
+        """Lead the generated requirements and preserve the other authored entries.
 
-        Packaging owns requirement identity, including version constraints.
-        Explicit retirement policy determines which authored entries are removed.
+        The SSOT owns a generated requirement by name: an authored requirement
+        with the same name, extras, marker and origin but another constraint is
+        replaced by the generated one, so each distribution appears once.
+        Explicit retirement policy determines which other authored entries are
+        removed.
 
         Returns:
             The resulting ``tuple[str | m.Infra.DependencyGroupInclude, ...]``.
@@ -214,8 +217,25 @@ class FlextInfraUtilitiesPyprojectRequirements:
                 tuple(entry for entry in custom if isinstance(entry, str)),
             ),
         )
+        owned = {
+            FlextInfraUtilitiesDependencies.requirement_variant_identity(
+                entry
+            ): Requirement(entry)
+            for entry in generated
+            if isinstance(entry, str)
+        }
         authored = cls.unique_group_entries([
-            entry for entry in custom if not isinstance(entry, str) or entry in active
+            entry
+            for entry in custom
+            if not isinstance(entry, str)
+            or (
+                entry in active
+                and owned.get(
+                    FlextInfraUtilitiesDependencies.requirement_variant_identity(entry),
+                    Requirement(entry),
+                )
+                == Requirement(entry)
+            )
         ])
         requirements = {
             Requirement(entry) for entry in authored if isinstance(entry, str)
@@ -239,22 +259,6 @@ class FlextInfraUtilitiesPyprojectRequirements:
                 inclusions.add(included)
             additions.append(entry)
         return (*additions, *authored)
-
-    @staticmethod
-    def _development_requirement_identity(
-        requirement: str,
-    ) -> tuple[tuple[str, str], tuple[str | None, str | None]]:
-        """Scope floor replacement to the same extras, marker and origin.
-
-        Returns:
-            The resulting ``tuple[tuple[str, str], tuple[str | None, str | None]]``.
-
-        """
-        parsed = Requirement(requirement)
-        return (
-            (canonicalize_name(parsed.name), ",".join(sorted(parsed.extras))),
-            (str(parsed.marker) if parsed.marker is not None else None, parsed.url),
-        )
 
     @staticmethod
     def requirement_group_fields(
@@ -854,7 +858,9 @@ class FlextInfraUtilitiesPyprojectRequirements:
 
         """
         parsed = Requirement(requirement)
-        identity = cls._development_requirement_identity(requirement)
+        identity = FlextInfraUtilitiesDependencies.requirement_variant_identity(
+            requirement
+        )
         if (
             not canonicalize_name(parsed.name).startswith("flext-")
             or parsed.url is not None
@@ -864,7 +870,9 @@ class FlextInfraUtilitiesPyprojectRequirements:
         return any(
             identity[0] == candidate[0] and identity[1][0] == candidate[1][0]
             for source in authored_live
-            for candidate in (cls._development_requirement_identity(source),)
+            for candidate in (
+                FlextInfraUtilitiesDependencies.requirement_variant_identity(source),
+            )
         )
 
     @staticmethod
