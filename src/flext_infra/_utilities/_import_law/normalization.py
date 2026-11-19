@@ -1375,7 +1375,7 @@ class FlextInfraUtilitiesImportLawNormalization(
         state: p.Infra.ImportLawPass,
         target: str,
     ) -> bool:
-        """Allow a layer-zero settings module to import a leaf directly.
+        """Allow a layer-zero module to import a leaf directly.
 
         Returns:
             Whether the target is a non-root descendant of the module's own

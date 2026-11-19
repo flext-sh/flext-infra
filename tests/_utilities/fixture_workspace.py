@@ -184,8 +184,8 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
     ) -> tuple[Path, Path, Path]:
         """Materialize the workspace tree the namespace enforcer scans.
 
-        Returns ``(workspace, project, package)``. ``declare`` writes the
-        governed ``.gitmodules`` row; a scan that must observe an undeclared
+        Returns ``(workspace, project, package)``. ``declare`` registers the
+        project as a real submodule; a scan that must observe an undeclared
         project sets it to ``False``. Workspace and project both carry the
         tracked Mise seeds, as governed repositories do: the rule engine runs
         ast-grep through the scanned repository's pinned lock, and a bare
@@ -212,9 +212,12 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
                 governed_root,
             )
         if declare:
-            TestsFlextInfraUtilitiesProjectFixture.declare_workspace_projects(
+            # A governed member is a real gitlink: the rule engine elects each
+            # target's runtime from Git, and only an attached member shares the
+            # workspace environment the tests provision.
+            TestsFlextInfraUtilitiesWorkspaceFixture.WorktreeFixture.register_checker_workspace(
                 workspace,
-                (project_name,),
+                project,
             )
         return workspace, project, package
 
