@@ -290,11 +290,13 @@ class FlextInfraUtilitiesImportLawRoutes(
         where the name came from; the consumer moves to the deepest own package
         whose planned initializer publishes it, or to the declaring
         distribution root for a foreign provider, once native resolution proves
-        that owner binds the name.
+        that owner binds the name. Without that record, the one package of the
+        importer's own namespace whose candidate initializer publishes the
+        name owns it; none or several leave the import to the type checker.
 
         Returns:
             The owning package, or ``None`` when the candidate still publishes
-            the name or it never had an initializer route.
+            the name or no single owner binds it.
 
         """
         module, name = imported
@@ -304,7 +306,30 @@ class FlextInfraUtilitiesImportLawRoutes(
             return None
         provider = (cls.import_lazy_exports(root, module) or {}).get(name)
         if provider is None:
-            return None
+            namespace = state.scope.namespace
+            base = (
+                cls.import_package_dir(root, namespace, sources=sources)
+                if module == namespace or module.startswith(f"{namespace}.")
+                else None
+            )
+            owners = {
+                package
+                for init in sources or ()
+                if base is not None
+                and init.name == c.Infra.INIT_PY
+                and init.parent.is_relative_to(base)
+                and (
+                    package := ".".join((
+                        namespace,
+                        *init.parent.relative_to(base).parts,
+                    ))
+                )
+                != module
+                and name
+                in (cls.import_lazy_exports(root, package, sources=sources) or {})
+            }
+            owner = owners.pop() if len(owners) == 1 else None
+            return owner if owner and resolve(owner, name) is not None else None
         original = resolve(provider, name)
         if original is None:
             return None
