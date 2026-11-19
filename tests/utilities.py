@@ -13,6 +13,8 @@ import shutil
 from collections.abc import Mapping
 from pathlib import Path
 
+from flext_tests import u as flext_tests_u
+
 from flext_infra import FlextInfraUtilities, config
 from tests import c, m, p, r, t, tm
 from tests._utilities import (
@@ -37,6 +39,8 @@ class TestsFlextInfraUtilities(FlextInfraUtilities):
     """Typed test utilities for flext-infra."""
 
     class Tests(
+        flext_tests_u.Tests,
+        TestsFlextInfraUtilitiesToml,
         TestsFlextInfraUtilitiesCodegen,
         TestsFlextInfraUtilitiesDeps,
         TestsFlextInfraUtilitiesDocsFixture,

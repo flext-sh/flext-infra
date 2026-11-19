@@ -184,6 +184,28 @@ class TestsFlextInfraCodegenPyprojectConform(TestsFlextInfraPyprojectConformSupp
         )
 
     @staticmethod
+    def test_overlay_keeps_a_rendered_direct_git_requirement() -> None:
+        """The overlay never strips a source: a standalone consumer has no other."""
+        direct = "flext-cli @ git+https://github.com/flext-sh/flext-cli.git@0.12.0-dev"
+        rendered = (
+            '[project]\nname = "sample"\n'
+            f"dependencies = [{tm.ok(u.Cli.json_dumps(direct))}]\n"
+            "[dependency-groups]\n"
+            f"dev = [{tm.ok(u.Cli.json_dumps(direct))}]\n"
+        )
+
+        overlaid = tm.ok(u.Infra.overlay_preserved(rendered, rendered))
+
+        tm.that(
+            u.Tests.toml_strings_at(overlaid, "project", "dependencies"),
+            eq=(direct,),
+        )
+        tm.that(
+            u.Tests.toml_strings_at(overlaid, "dependency-groups", "dev"),
+            eq=(direct,),
+        )
+
+    @staticmethod
     @c.Tests.MARK.parametrize("live_readme", [None, "docs/consumer.md"])
     def test_custom_metadata_preserves_authored_absence(
         live_readme: t.StrippedStr | None,
