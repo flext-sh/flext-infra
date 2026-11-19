@@ -100,6 +100,10 @@ class FlextInfraConstantsCensus:
     "The union wrapper that makes a literal a subset or discriminator."
     PYDANTIC_PROTOCOL_DIRECTORY: ClassVar[str] = "_protocols"
     "The generated projection directory compared against models."
+    PYDANTIC_SUBSCRIPT_KIND: ClassVar[str] = "Subscript"
+    "Native node kind of a ``Literal[...]`` annotation."
+    PYDANTIC_CONSTANT_KIND: ClassVar[str] = "Constant"
+    "Native node kind of one literal value element."
 
     CENSUS_ALIAS_SELECTORS: ClassVar[frozenset[str]] = frozenset({
         "alias",

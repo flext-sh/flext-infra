@@ -31,6 +31,8 @@ from jinja2.environment import (
     Template as _JinjaTemplate,
 )
 
+from flext_infra import c
+
 
 class FlextInfraTypesBase:
     """Base typings for flext-infra project."""
@@ -314,6 +316,10 @@ class FlextInfraTypesBase:
     "Fully-qualified or short Git ref name."
     type GitPathSpec = str
     "Git pathspec string (e.g. ``:(exclude)dir``)."
+    type PydanticClassFacts = Mapping[str, tuple[str, int]]
+    "Class name to declared base name and logical line."
+    type PydanticLiteralFact = tuple[str, t.StrTuple, c.Infra.PydanticLiteralKind, int]
+    "Owner name, literal values, classification and line."
 
 
 __all__: list[str] = ["FlextInfraTypesBase"]

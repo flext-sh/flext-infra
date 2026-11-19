@@ -14,10 +14,12 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
-from flext_infra import c, m, p, u
+from flext_infra import c, m, p
+from flext_infra._utilities import FlextInfraUtilitiesModelsProtocol
+from flext_infra._utilities._rope import FlextInfraUtilitiesRopePydantic
 
 
-class FlextInfraRefactorCensusPydantic:
+class FlextInfraUtilitiesPydanticCensus:
     """Assemble the typed Pydantic section of the workspace census report."""
 
     @classmethod
@@ -25,31 +27,33 @@ class FlextInfraRefactorCensusPydantic:
         cls,
         workspace: p.Infra.RopeWorkspaceDsl,
         sources: Mapping[Path, str],
-        objects: Sequence[p.Infra.Object],
-        duplicates: Sequence[p.Infra.DuplicateGroup],
+        duplicates: Sequence[p.Infra.DuplicateGroup] = (),
     ) -> m.Infra.PydanticCensus:
-        """Build the Pydantic census from the shared inventory.
+        """Build the Pydantic census from the authenticated source inventory.
 
         Returns:
             The complete Pydantic section.
 
         """
-        presets = u.Infra.preset_names()
-        bases = {path: u.Infra.class_bases(workspace, path) for path in sorted(sources)}
-        classes = tuple(item for item in objects if item.kind == "class")
+        presets = FlextInfraUtilitiesRopePydantic.preset_names()
+        facts = {
+            path: FlextInfraUtilitiesRopePydantic.class_facts(workspace, path)
+            for path in sorted(sources)
+        }
         models = tuple(
             m.Infra.PydanticModelCensus(
-                package=cls._package(Path(item.file_path)),
-                name=item.name,
-                file_path=Path(item.file_path),
-                line=item.line,
+                package=cls._package(path),
+                name=name,
+                file_path=path,
+                line=line,
                 base=base,
                 preset=base if base in presets else "",
                 raw=base == c.Infra.PYDANTIC_RAW_MODEL_NAME,
-                generated=cls._generated(sources.get(Path(item.file_path), "")),
+                generated=cls._generated(source),
             )
-            for item in classes
-            if (base := bases.get(Path(item.file_path), {}).get(item.name, ""))
+            for path, source in sorted(sources.items())
+            for name, (base, line) in facts[path].items()
+            if base
             and (base.endswith(c.Infra.PYDANTIC_MODEL_SUFFIX) or base in presets)
         )
         model_names = {model.name for model in models}
@@ -57,16 +61,16 @@ class FlextInfraRefactorCensusPydantic:
             models=models,
             enums=tuple(
                 m.Infra.PydanticEnumCensus(
-                    package=cls._package(Path(item.file_path)),
-                    name=item.name,
-                    tier=item.actual_tier,
-                    file_path=Path(item.file_path),
-                    line=item.line,
-                    generated=cls._generated(sources.get(Path(item.file_path), "")),
+                    package=cls._package(path),
+                    name=name,
+                    tier=FlextInfraUtilitiesRopePydantic.tier(path),
+                    file_path=path,
+                    line=line,
+                    generated=cls._generated(sources[path]),
                 )
-                for item in classes
-                if bases.get(Path(item.file_path), {}).get(item.name)
-                == c.Infra.PYDANTIC_STR_ENUM_NAME
+                for path in sorted(sources)
+                for name, (base, line) in facts[path].items()
+                if base == c.Infra.PYDANTIC_STR_ENUM_NAME
             ),
             literals=tuple(
                 m.Infra.PydanticLiteralCensus(
@@ -79,7 +83,12 @@ class FlextInfraRefactorCensusPydantic:
                     generated=cls._generated(sources[path]),
                 )
                 for path in sorted(sources)
-                for owner, values, kind, line in u.Infra.literals(workspace, path)
+                for (
+                    owner,
+                    values,
+                    kind,
+                    line,
+                ) in FlextInfraUtilitiesRopePydantic.literals(workspace, path)
             ),
             parity=cls._parity(workspace),
             duplicate_models=tuple(
@@ -115,10 +124,14 @@ class FlextInfraRefactorCensusPydantic:
         """
         root = workspace.repository_root
         rows: list[m.Infra.PydanticParityCensus] = []
-        packages = u.Infra.protocol_model_package_names(root, workspace.rope_project)
+        packages = FlextInfraUtilitiesModelsProtocol.protocol_model_package_names(
+            root, workspace.rope_project
+        )
         for package in packages:
-            rendered = u.Infra.protocol_model_sources_from_source(
-                root, workspace.rope_project, package_name=package
+            rendered = (
+                FlextInfraUtilitiesModelsProtocol.protocol_model_sources_from_source(
+                    root, workspace.rope_project, package_name=package
+                )
             )
             if rendered.failure:
                 raise ValueError(rendered.error)
@@ -166,4 +179,4 @@ class FlextInfraRefactorCensusPydantic:
         return parts[parts.index("src") + 1] if "src" in parts else ""
 
 
-__all__: list[str] = ["FlextInfraRefactorCensusPydantic"]
+__all__: list[str] = ["FlextInfraUtilitiesPydanticCensus"]

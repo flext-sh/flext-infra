@@ -1,8 +1,7 @@
 """Native Pydantic facts served by Rope to the census.
 
-The methods read Rope's semantic model only: class scopes and superclasses for
-bases, and the source-binding type hints for literals. Preset identities come
-from the live model facade, so no role table is duplicated here.
+Class declarations and literals come from Rope's source-scan and binding
+owners; presets come from the live model facade. No source text is parsed here.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -11,53 +10,77 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Iterator, Mapping
+from functools import cache
 from pathlib import Path
 
-from flext_infra import c, m, p
-from flext_infra._utilities._rope import (
-    FlextInfraUtilitiesDeclarationPayload,
-    FlextInfraUtilitiesRopeRuntime,
-    FlextInfraUtilitiesRopeRuntimeModules,
-)
+from flext_infra import c, m, p, t
+from flext_infra._utilities import FlextInfraUtilitiesCodegenNamespace
+from flext_infra._utilities._rope import FlextInfraUtilitiesRopeRuntime
 from flext_infra._utilities._rope._analysis import (
     FlextInfraUtilitiesRopeAnalysisAstHelpers,
+    FlextInfraUtilitiesRopeAnalysisSourceScan,
 )
 
 
 class FlextInfraUtilitiesRopePydantic:
     """Serve the exact Pydantic facts the census classifies."""
 
-    @staticmethod
-    def class_bases(
+    @classmethod
+    def class_facts(
+        cls,
         workspace: p.Infra.RopeWorkspaceDsl,
         path: Path,
-    ) -> Mapping[str, str]:
-        """Read the first declared superclass of every class in one module.
+    ) -> t.Infra.PydanticClassFacts:
+        """Read every class's declared base and line through the native scan.
 
         Returns:
-            Class names mapped to their first native superclass short name.
+            Class names mapped to their first base name and logical line.
 
         """
-        pending = list(
-            FlextInfraUtilitiesRopePydantic
-            ._module(workspace, path)
-            .get_scope()
-            .get_scopes()
-        )
-        bases: dict[str, str] = {}
-        while pending:
-            scope = pending.pop()
-            value = scope.pyobject
-            if scope.get_kind() == "Class" and FlextInfraUtilitiesRopeRuntime.py_class(
-                value
-            ):
-                pending.extend(scope.get_scopes())
-                bases[value.get_name()] = FlextInfraUtilitiesRopePydantic._first_base(
-                    value
+        module = cls._module(workspace, path)
+        return {
+            name: (bases[0] if bases else "", line)
+            for name, bases, line in (
+                FlextInfraUtilitiesRopeAnalysisSourceScan.module_class_base_names(
+                    module.get_ast()
                 )
-        return bases
+            )
+        }
+
+    @classmethod
+    def literals(
+        cls,
+        workspace: p.Infra.RopeWorkspaceDsl,
+        path: Path,
+    ) -> Iterator[t.Infra.PydanticLiteralFact]:
+        """Serve every ``Literal`` annotation of one module as native facts.
+
+        Yields:
+            Owner name, values, classification and line per annotation.
+
+        """
+        scopes: list[p.Infra.RopeScope] = [cls._module(workspace, path).get_scope()]
+        while scopes:
+            scope = scopes.pop()
+            scopes.extend(scope.get_scopes())
+            for name, binding in scope.get_defined_names().items():
+                if not FlextInfraUtilitiesRopeRuntime.assigned_name(binding):
+                    continue
+                for assignment in binding.assignments:
+                    hint = assignment.type_hint
+                    if hint is None:
+                        continue
+                    helper = FlextInfraUtilitiesRopeAnalysisAstHelpers
+                    position = helper.line_col_range(hint)
+                    if position is None:
+                        continue
+                    for node in helper.walk_ast_nodes(hint):
+                        values = cls._values(node)
+                        if values is not None:
+                            yield name, values, cls._kind(hint, node), position[0]
 
     @staticmethod
+    @cache
     def preset_names() -> frozenset[str]:
         """Read preset identities from the live model facade.
 
@@ -73,33 +96,36 @@ class FlextInfraUtilitiesRopePydantic:
         )
 
     @classmethod
-    def literals(
-        cls,
-        workspace: p.Infra.RopeWorkspaceDsl,
-        path: Path,
-    ) -> Iterator[tuple[str, tuple[str, ...], c.Infra.PydanticLiteralKind, int]]:
-        """Serve every ``Literal`` annotation of one module as native facts.
+    def tier(cls, path: Path) -> str:
+        """Resolve the facade tier letter of one source path.
 
-        Yields:
-            Owner name, values, classification and line per annotation.
+        Returns:
+            The tier letter, or an empty string outside a family directory.
 
         """
-        scopes = [cls._module(workspace, path).get_scope()]
-        while scopes:
-            scope = scopes.pop()
-            scopes.extend(scope.get_scopes())
-            for name, binding in scope.get_defined_names().items():
-                if not FlextInfraUtilitiesRopeRuntime.assigned_name(binding):
-                    continue
-                for assignment in binding.assignments:
-                    hint = assignment.type_hint
-                    if hint is None:
-                        continue
-                    walked = FlextInfraUtilitiesRopeAnalysisAstHelpers
-                    for node in walked.walk_ast_nodes(hint):
-                        values = cls._values(node)
-                        if values is not None:
-                            yield name, values, cls._kind(hint, node), hint.lineno
+        return next(
+            (
+                cls._tiers()[part.removeprefix("_")]
+                for part in path.parts
+                if part.removeprefix("_") in cls._tiers()
+            ),
+            "",
+        )
+
+    @staticmethod
+    @cache
+    def _tiers() -> Mapping[str, str]:
+        """Read facade tier letters from the canonical family owner.
+
+        Returns:
+            The family directory name to facade letter map.
+
+        """
+        return {
+            directory: family.suffix
+            for family in FlextInfraUtilitiesCodegenNamespace.facade_families().values()
+            for directory in family.directories
+        }
 
     @staticmethod
     def _module(
@@ -119,39 +145,24 @@ class FlextInfraUtilitiesRopePydantic:
         )
 
     @staticmethod
-    def _first_base(value: p.Infra.RopeSourceClass) -> str:
-        """Read the first declared superclass short name.
-
-        Returns:
-            The superclass name, or an empty string.
-
-        """
-        modules = FlextInfraUtilitiesRopeRuntimeModules
-        for base in FlextInfraUtilitiesDeclarationPayload.direct_bases(value):
-            identity = modules.native_object_identity(base)
-            if identity:
-                return identity.rsplit("::", 1)[-1].rsplit(".", 1)[-1]
-        return ""
-
-    @staticmethod
-    def _values(node: p.Infra.RopeAstNode) -> tuple[str, ...] | None:
+    def _values(node: p.Infra.RopeAstNode) -> t.StrTuple | None:
         """Read one ``Literal[...]`` value set from a native node.
 
         Returns:
             The literal values, or ``None`` when the node is not a literal.
 
         """
+        helper = FlextInfraUtilitiesRopeAnalysisAstHelpers
         if (
-            FlextInfraUtilitiesRopeAnalysisAstHelpers.node_kind(node) != "Subscript"
-            or FlextInfraUtilitiesRopePydantic._name(getattr(node, "value", node))
+            helper.node_kind(node) != c.Infra.PYDANTIC_SUBSCRIPT_KIND
+            or helper.name_of(getattr(node, "value", node))
             != c.Infra.PYDANTIC_LITERAL_NAME
         ):
             return None
         return tuple(
             str(element.value)
             for element in getattr(getattr(node, "slice", None), "elts", ())
-            if FlextInfraUtilitiesRopeAnalysisAstHelpers.node_kind(element)
-            == "Constant"
+            if helper.node_kind(element) == c.Infra.PYDANTIC_CONSTANT_KIND
         )
 
     @staticmethod
@@ -164,28 +175,17 @@ class FlextInfraUtilitiesRopePydantic:
             Full domain, subset or discriminator.
 
         """
+        helper = FlextInfraUtilitiesRopeAnalysisAstHelpers
         if hint is node:
             return c.Infra.PydanticLiteralKind.FULL_DOMAIN
-        if FlextInfraUtilitiesRopePydantic._name(getattr(hint, "value", hint)) == (
+        if helper.name_of(getattr(hint, "value", hint)) == (
             c.Infra.PYDANTIC_ANNOTATED_NAME
         ):
             members = getattr(getattr(hint, "slice", None), "elts", ())
             first = getattr(members[0], "value", members[0]) if members else None
-            if FlextInfraUtilitiesRopePydantic._name(first) == (
-                c.Infra.PYDANTIC_UNION_NAME
-            ):
+            if helper.name_of(first) == c.Infra.PYDANTIC_UNION_NAME:
                 return c.Infra.PydanticLiteralKind.DISCRIMINATOR
         return c.Infra.PydanticLiteralKind.SUBSET
-
-    @staticmethod
-    def _name(node: p.AttributeProbe | None) -> str:
-        """Read the trailing identifier of one native expression node.
-
-        Returns:
-            The trailing name, or an empty string.
-
-        """
-        return getattr(node, "id", None) or getattr(node, "attr", None) or ""
 
 
 __all__: list[str] = ["FlextInfraUtilitiesRopePydantic"]

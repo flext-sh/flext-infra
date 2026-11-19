@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections.abc import MutableMapping, MutableSequence, MutableSet
 from pathlib import Path
 
-from flext_infra import m, p, u
+from flext_infra import c, m, p, u
 from flext_infra.refactor._census import (
     FlextInfraRefactorCensusProject,
     FlextInfraRefactorCensusRemoval,
@@ -129,6 +129,16 @@ class FlextInfraRefactorCensusCollect(
             duplicates=duplicates,
             census_kinds=census_kinds,
         )
+        pydantic_census = (
+            u.Infra.pydantic_census(
+                rope,
+                sources=sources,
+                duplicates=duplicates,
+            )
+            if census_kinds is None
+            or not census_kinds.isdisjoint(c.Infra.CENSUS_PYDANTIC_SELECTORS)
+            else m.Infra.PydanticCensus()
+        )
         fixable_rows = tuple(
             row for row in (*alias_rows, *duplicate_rows, *shortest_rows) if row.fixable
         )
@@ -145,11 +155,7 @@ class FlextInfraRefactorCensusCollect(
             protocol_placement=u.Infra.protocol_contract_census(
                 rope,
                 sources=sources,
-                objects=tuple(
-                    item
-                    for entries in findings.project_objects.values()
-                    for item in entries
-                ),
+                objects=objects,
             ),
             projects=project_reports,
             total_objects=sum(report.objects_total for report in project_reports),
@@ -167,6 +173,7 @@ class FlextInfraRefactorCensusCollect(
             alias_census=alias_rows,
             duplicate_census=duplicate_rows,
             shortest_form_census=shortest_rows,
+            pydantic_census=pydantic_census,
             census_fix_plan=fix_plan,
         )
 
