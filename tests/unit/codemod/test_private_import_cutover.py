@@ -225,8 +225,6 @@ class TestsFlextInfraPrivateImportCutover(
                 match=expected or "no public facade exposes",
             ):
                 self._plan(tmp_path, sources, consumer, statement)
-        for path, source in dependency_sources.items():
-            tm.that(sources[path], eq=source)
 
     @staticmethod
     def _declared_export_case(

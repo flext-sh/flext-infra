@@ -8,9 +8,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tests import tm, u
+from tests import c, tm, u
 
 
+@c.Tests.MARK.usefixtures("semantic_cutover_runtime")
 class TestsProtocolModelLayoutAdmission:
     """The primary package follows the namespace and tier admission rule."""
 
