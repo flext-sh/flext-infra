@@ -40,7 +40,7 @@ class TestsFlextInfraUtilitiesToml:
             The repository's committed mise.lock text.
 
         """
-        lock = Path(__file__).resolve().parents[1] / c.Infra.MISE_LOCK_FILENAME
+        lock = Path(__file__).resolve().parents[2] / c.Infra.MISE_LOCK_FILENAME
         return lock.read_text(encoding=c.DEFAULT_ENCODING)
 
     @staticmethod
