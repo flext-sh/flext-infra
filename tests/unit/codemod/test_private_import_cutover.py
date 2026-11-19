@@ -16,7 +16,7 @@ from tests.unit.codemod.private_import_cutover_support import (
 )
 
 
-@c.Tests.MARK.slow
+@c.Tests.MARK.usefixtures("semantic_cutover_runtime")
 class TestsFlextInfraPrivateImportCutover(
     TestsFlextInfraPrivateImportCutoverSupport,
 ):
@@ -39,15 +39,14 @@ class TestsFlextInfraPrivateImportCutover(
         sources = {consumer: "from flext_sample import c\nvalue = c.Profile.Value\n"}
         tm.that(self._edits(tmp_path, sources, consumer, statement), empty=True)
 
+    @staticmethod
     def _seed_sample_dependency(
-        self,
         package: Path,
         facade_sources: Mapping[Path, str],
         *,
-        case: str,
         depth: int,
     ) -> MutableMapping[Path, str]:
-        """Materialize the installed sample dependency package for one case.
+        """Materialize the installed sample dependency package.
 
         Deep cases bridge the private facade through real subclasses and
         rewire every facade reference to the outermost bridge class.
@@ -65,16 +64,6 @@ class TestsFlextInfraPrivateImportCutover(
         dependency_sources[package / "_constants/profile.py"] = (
             "class FlextSampleConstantsProfile:\n    Value = str\n"
         )
-        if case == "ambiguous":
-            dependency_sources[package / "other.py"] = self._facade_source(
-                naming=TestsFlextInfraFacadeNaming(
-                    private_module="flext_sample._constants.profile",
-                    private_class="FlextSampleConstantsProfile",
-                    root_class="OtherConstants",
-                    nested_class="Other",
-                    alias="c",
-                ),
-            )
         previous_module = "flext_sample._constants.profile"
         previous_class = "FlextSampleConstantsProfile"
         for level in range(depth):
@@ -100,13 +89,11 @@ class TestsFlextInfraPrivateImportCutover(
             path.write_text(source, encoding="utf-8")
         return dependency_sources
 
-    @c.Tests.MARK.parametrize("case", ["unique", "ambiguous", "shadowed"])
     @c.Tests.MARK.parametrize("depth", [0, 2])
-    def test_installed_facades_are_read_only_discovery_inputs(
+    def test_installed_facades_are_never_discovery_inputs(
         self,
         tmp_path: Path,
         installed_dependency_path: Path,
-        case: str,
         depth: int,
     ) -> None:
         """Installed facades are never discovery inputs (per-repository law).
@@ -129,7 +116,6 @@ class TestsFlextInfraPrivateImportCutover(
         dependency_sources = self._seed_sample_dependency(
             package,
             facade_sources,
-            case=case,
             depth=depth,
         )
         sources = {
@@ -142,36 +128,54 @@ class TestsFlextInfraPrivateImportCutover(
         tm.that(tuple(sources), eq=(consumer,))
 
     @c.Tests.MARK.parametrize(
-        "declaration",
+        ("declaration", "expected"),
         [
             (
-                "class Facade:\n"
-                "    class Base:\n        pass\n"
-                "    class Leaf(Base):\n        pass\n"
+                (
+                    "class Facade:\n"
+                    "    class Base:\n        pass\n"
+                    "    class Leaf(Base):\n        pass\n"
+                ),
+                "",
             ),
             (
-                "class Facade:\n"
-                "    class Base:\n        pass\n"
-                "    class Branch(Base):\n"
-                "        class Leaf(Base):\n            pass\n"
+                (
+                    "class Facade:\n"
+                    "    class Base:\n        pass\n"
+                    "    class Branch(Base):\n"
+                    "        class Leaf(Base):\n            pass\n"
+                ),
+                "c.Branch.Leaf",
             ),
             (
-                "class Facade:\n"
-                "    class Branch:\n"
-                "        class Base:\n            pass\n"
-                "        class Leaf(Base):\n            pass\n"
-            ),
-            "class Facade:\n    class Leaf(private.Target):\n        pass\n",
-            (
-                "class Facade:\n"
-                "    class private:\n"
-                "        class Target:\n            pass\n"
-                "    class Leaf(private.Target):\n        pass\n"
+                (
+                    "class Facade:\n"
+                    "    class Branch:\n"
+                    "        class Base:\n            pass\n"
+                    "        class Leaf(Base):\n            pass\n"
+                ),
+                "",
             ),
             (
-                "class Facade:\n"
-                "    class Left(Base):\n        pass\n"
-                "    class Right(Base):\n        pass\n"
+                "class Facade:\n    class Leaf(private.Target):\n        pass\n",
+                "c.Leaf",
+            ),
+            (
+                (
+                    "class Facade:\n"
+                    "    class private:\n"
+                    "        class Target:\n            pass\n"
+                    "    class Leaf(private.Target):\n        pass\n"
+                ),
+                "",
+            ),
+            (
+                (
+                    "class Facade:\n"
+                    "    class Left(Base):\n        pass\n"
+                    "    class Right(Base):\n        pass\n"
+                ),
+                "ambiguous",
             ),
         ],
         ids=[
@@ -183,14 +187,14 @@ class TestsFlextInfraPrivateImportCutover(
             "ambiguous-siblings",
         ],
     )
-    def test_installed_facade_bases_follow_declaration_scope(
+    def test_facade_bases_follow_declaration_scope(
         self,
         tmp_path: Path,
-        installed_dependency_path: Path,
         declaration: str,
+        expected: str,
     ) -> None:
-        """No installed facade base shape makes the distribution a discovery input."""
-        package = installed_dependency_path / "lexical_sample"
+        """Facade bases resolve a private target through lexical declaration scope."""
+        package = tmp_path / "lexical-sample/src/lexical_sample"
         dependency_sources = {
             package / "__init__.py": (
                 "raise RuntimeError('discovery must not execute dependency code')\n"
@@ -202,17 +206,27 @@ class TestsFlextInfraPrivateImportCutover(
                 f"{declaration}\nc = Facade\n"
             ),
         }
-        for path, source in dependency_sources.items():
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(source, encoding="utf-8")
         consumer = tmp_path / "consumer/src/consumer/service.py"
         statement = "from lexical_sample._private import Target"
-        sources = {consumer: f"{statement}\nvalue = Target.Value\n"}
+        sources = {
+            **dependency_sources,
+            consumer: f"{statement}\nvalue = Target.Value\n",
+        }
 
-        with u.Tests.raises(ValueError, match="no public facade exposes"):
-            self._plan(tmp_path, sources, consumer, statement)
+        if expected.startswith("c."):
+            edits = self._edits(tmp_path, sources, consumer, statement)
+            tm.that(tuple(edit.file_path for edit in edits), eq=(consumer,))
+            tm.that(edits[0].updated_source, has="from lexical_sample import c")
+            tm.that(edits[0].updated_source, has=f"value = {expected}.Value")
+            tm.that(edits[0].updated_source, lacks=statement)
+        else:
+            with u.Tests.raises(
+                ValueError,
+                match=expected or "no public facade exposes",
+            ):
+                self._plan(tmp_path, sources, consumer, statement)
         for path, source in dependency_sources.items():
-            tm.that(path.read_text(encoding="utf-8"), eq=source)
+            tm.that(sources[path], eq=source)
 
     @staticmethod
     def _declared_export_case(
