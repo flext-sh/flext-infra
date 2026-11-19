@@ -595,9 +595,7 @@ class FlextInfra(
         Ordinary test failures retain their original first status while every
         selected repository is reached. Interruptions and infrastructure errors
         stop dispatch with their native status; configuration failures escape.
-        Each member runs on its own suite clock, started when it is dispatched:
-        a shared clock left every later member only the budget its
-        predecessors did not spend.
+        Discovery and member execution share this operation's clock.
         FULL executes the complete applicable suite once in each project context
         without Testmon, an incremental pre-run or database access.
         A declared file selects only this repository through that same runner.
@@ -657,7 +655,7 @@ class FlextInfra(
             )
             outcome = validate.FlextInfraPytestRunner.execute_project_context(
                 project,
-                started_at_monotonic=monotonic(),
+                started_at_monotonic=started_at_monotonic,
                 execution_mode=execution_mode,
             )
             u.Cli.info(f"tests: repository {distribution} exit={outcome}")

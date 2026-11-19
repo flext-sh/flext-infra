@@ -137,6 +137,9 @@ if TYPE_CHECKING:
     from flext_infra._utilities.pytest_collection import (
         FlextInfraUtilitiesPytestCollection,
     )
+    from flext_infra._utilities.pytest_suite_stop import (
+        FlextInfraUtilitiesPytestSuiteStop,
+    )
     from flext_infra._utilities.pytest_surface import FlextInfraUtilitiesPytest
     from flext_infra._utilities.python_model import FlextInfraUtilitiesPythonModel
     from flext_infra._utilities.qualified_names import FlextInfraUtilitiesQualifiedNames
@@ -231,6 +234,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesPyrefly",
     "FlextInfraUtilitiesPytest",
     "FlextInfraUtilitiesPytestCollection",
+    "FlextInfraUtilitiesPytestSuiteStop",
     "FlextInfraUtilitiesPythonModel",
     "FlextInfraUtilitiesQualifiedNames",
     "FlextInfraUtilitiesRefactor",
@@ -321,6 +325,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesPyrefly": ".pyrefly",
         "FlextInfraUtilitiesPytest": ".pytest_surface",
         "FlextInfraUtilitiesPytestCollection": ".pytest_collection",
+        "FlextInfraUtilitiesPytestSuiteStop": ".pytest_suite_stop",
         "FlextInfraUtilitiesPythonModel": ".python_model",
         "FlextInfraUtilitiesQualifiedNames": ".qualified_names",
         "FlextInfraUtilitiesRefactor": ".refactor",
@@ -402,6 +407,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesPyrefly",
         "FlextInfraUtilitiesPytest",
         "FlextInfraUtilitiesPytestCollection",
+        "FlextInfraUtilitiesPytestSuiteStop",
         "FlextInfraUtilitiesPythonModel",
         "FlextInfraUtilitiesQualifiedNames",
         "FlextInfraUtilitiesRefactor",

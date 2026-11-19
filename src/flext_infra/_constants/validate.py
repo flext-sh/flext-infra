@@ -49,6 +49,15 @@ class FlextInfraConstantsSharedInfra:
     })
     "Failing codes pytest reports after finishing a suite lifecycle."
 
+    PYTEST_DISTRIBUTED_PLUGIN: ClassVar[str] = "dsession"
+    "pytest-xdist's controller plugin name."
+
+    PYTEST_SUITE_STOP_REASON: ClassVar[str] = "suite stop instant {instant:.3f} reached"
+    "The stop reason the controller records at the derived instant."
+
+    PYTEST_TEARDOWN_PHASE: ClassVar[str] = "teardown"
+    "The report phase that completes one collected item."
+
     @unique
     class ScriptExitCode(IntEnum):
         """Canonical exit codes for infra-owned validation scripts."""
