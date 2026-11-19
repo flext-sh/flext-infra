@@ -357,6 +357,8 @@ class TestsFlextInfraUtilitiesToolingFixture:
         keyed by the content of each dependency's sources. A build is staged
         beside its destination and published by one atomic rename, so no worker
         ever reads a partial wheel and a later worker reuses the first build.
+        Another key is never removed: concurrent checkouts with different
+        sources share the storage and install their own keys.
 
         Returns:
             Real wheels, or the original build failure without retrying it.
@@ -372,8 +374,10 @@ class TestsFlextInfraUtilitiesToolingFixture:
             owner.mkdir(parents=True, exist_ok=True)
             with u.Cli.file_changes_lock(owner.with_suffix(".lock")):
                 if not destination.is_dir():
-                    # Earlier content keys and interrupted stagings are retired.
-                    for stale in owner.iterdir():
+                    # Only interrupted stagings are retired. Every other content
+                    # key belongs to a live checkout or run sharing this
+                    # storage, which may be installing it right now.
+                    for stale in owner.glob(".staging-*"):
                         shutil.rmtree(stale)
                     staging = Path(mkdtemp(dir=owner, prefix=".staging-"))
                     built = u.Cli.run_checked(
