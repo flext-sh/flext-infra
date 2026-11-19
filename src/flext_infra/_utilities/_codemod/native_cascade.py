@@ -39,22 +39,35 @@ class FlextInfraUtilitiesCodemodNativeCascade:
     """Stage and run the native ast-grep cascade of ``make mod``."""
 
     @staticmethod
-    def codemod_tool_binary(name: str) -> Path:
+    def codemod_tool_resolution(name: str) -> p.Result[Path]:
         """Resolve one declared tool from the invocation's own runtime owner.
 
-        Consumer scratch directories never own the invocation's runtime tools,
-        so the owner is the runtime environment of the current invocation.
+        Consumer scratch directories (staged previews, which live under the
+        primary checkout's Git directory for a linked worktree) never own the
+        invocation's runtime tools, so the owner is the runtime environment of
+        the current invocation. The runner, the cascade and the scan-cache key
+        all resolve through this one owner, so the keyed binary is the run one.
 
         Returns:
-            The absolute managed executable, never a PATH shim.
+            The absolute managed executable, never a PATH shim, or the failure.
 
         """
         owner_root = FlextInfraUtilitiesProjectDiscovery.runtime_environment_dir(
             Path.cwd(),
             runtime_root=type(settings).fetch_global().Infra.runtime_root,
         ).parent
-        return FlextInfraUtilitiesMiseBinary.managed_mise_binary(
-            name, owner_root
+        return FlextInfraUtilitiesMiseBinary.managed_mise_binary(name, owner_root)
+
+    @staticmethod
+    def codemod_tool_binary(name: str) -> Path:
+        """Resolve one declared tool from the invocation's own runtime owner.
+
+        Returns:
+            The absolute managed executable, never a PATH shim.
+
+        """
+        return FlextInfraUtilitiesCodemodNativeCascade.codemod_tool_resolution(
+            name
         ).unwrap()
 
     @staticmethod

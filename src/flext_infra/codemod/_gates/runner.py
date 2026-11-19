@@ -12,7 +12,7 @@ import time
 from collections.abc import Sequence
 from pathlib import Path
 
-from flext_infra import m, p, r, settings, u
+from flext_infra import m, p, r, u
 
 
 class FlextInfraModGateRunner:
@@ -48,11 +48,7 @@ class FlextInfraModGateRunner:
 
         """
         stdout_file, stderr_file, artifact_root = outputs
-        owner_root = u.Infra.runtime_environment_dir(
-            Path.cwd(),
-            runtime_root=type(settings).fetch_global().Infra.runtime_root,
-        ).parent
-        binary = u.Infra.managed_mise_binary(command[0], owner_root)
+        binary = u.Infra.codemod_tool_resolution(command[0])
         if binary.failure:
             return r[p.Cli.ProcessOutcome].from_failure(binary)
         sys.stderr.write(
