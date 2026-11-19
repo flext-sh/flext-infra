@@ -14,7 +14,7 @@ from pathlib import Path
 from flext_cli import u
 
 from flext_infra import c, m, p, r, t
-from flext_infra._models.transformers import FlextInfraModelsTransformers
+from flext_infra._models import FlextInfraModelsTransformers
 from flext_infra._utilities import (
     FlextInfraUtilitiesProjectManagedArtifacts,
     FlextInfraUtilitiesProtectedEditLinting,

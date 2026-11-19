@@ -534,6 +534,20 @@ class FlextInfraUtilitiesCodemodNative:
             .unwrap()
             .encode(c.DEFAULT_ENCODING)
         )
+        # An exact selection renders from its catalog documents (whether it
+        # consumes file scopes is read from them), so an edited catalog rule
+        # must never reuse the rendering of its previous text.
+        if rule_ids is not None:
+            selected = FlextInfraUtilitiesCodemodNative._selected_catalog_documents(
+                root, rule_ids
+            )
+            catalog: t.JsonValue = [dict(document) for document in selected]
+            digest.update(
+                u.Cli
+                .json_dumps(catalog, sort_keys=True)
+                .unwrap()
+                .encode(c.DEFAULT_ENCODING)
+            )
         workspace = (
             root.parent if (root.parent / c.Infra.GITMODULES).is_file() else root
         )

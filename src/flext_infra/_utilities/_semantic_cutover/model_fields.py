@@ -11,7 +11,10 @@ from collections.abc import Mapping, MutableMapping, Sequence
 from typing import TYPE_CHECKING, override
 
 from flext_infra import c
-from flext_infra._utilities import FlextInfraUtilitiesWorkspaceSnapshot
+from flext_infra._utilities import (
+    FlextInfraUtilitiesTransformerHeader,
+    FlextInfraUtilitiesWorkspaceSnapshot,
+)
 from flext_infra._utilities._codemod import FlextInfraUtilitiesCodemodProject
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeModulePatch,
@@ -22,9 +25,6 @@ from flext_infra._utilities._rope import (
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverEdits,
     FlextInfraUtilitiesSemanticCutoverModelFieldsBindings,
-)
-from flext_infra._utilities.transformer_header import (
-    FlextInfraUtilitiesTransformerHeader,
 )
 
 if TYPE_CHECKING:

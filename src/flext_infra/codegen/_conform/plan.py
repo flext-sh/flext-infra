@@ -13,11 +13,10 @@ from contextlib import ExitStack
 from pathlib import Path
 from typing import Literal, cast
 
-from flext_infra import c, m, p, r, u, workspace as workspace_services
+from flext_infra import c, m, p, r, u
 from flext_infra.codegen import FlextInfraCodegenLazyInit
-from flext_infra.codegen._conform.scaffold_plan import (
-    FlextInfraCodegenConformScaffoldPlan,
-)
+from flext_infra.codegen._conform import FlextInfraCodegenConformScaffoldPlan
+from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 
 class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
@@ -531,14 +530,12 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             return result_type.ok(cached)
         workspace = self.state.initial_workspace
         if workspace is None:
-            workspace_result = (
-                workspace_services.FlextInfraWorkspaceDetector.load_workspace_spec(
-                    root,
-                    inputs=inputs,
-                    allow_unprovisioned_members=(
-                        request.what in c.Infra.ALLOW_UNPROVISIONED_SURFACES
-                    ),
-                )
+            workspace_result = FlextInfraWorkspaceDetector.load_workspace_spec(
+                root,
+                inputs=inputs,
+                allow_unprovisioned_members=(
+                    request.what in c.Infra.ALLOW_UNPROVISIONED_SURFACES
+                ),
             )
             if workspace_result.failure:
                 return result_type.from_failure(workspace_result)
@@ -548,12 +545,10 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             self.state.initial_workspace is None
             and request.what not in c.Infra.DECLARED_TARGET_SURFACES
         ):
-            current_target_result = (
-                workspace_services.FlextInfraWorkspaceDetector.conform_target(
-                    root,
-                    workspace,
-                    inputs=inputs,
-                )
+            current_target_result = FlextInfraWorkspaceDetector.conform_target(
+                root,
+                workspace,
+                inputs=inputs,
             )
             if current_target_result.failure:
                 return result_type.from_failure(current_target_result)
@@ -562,10 +557,8 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             )
             current_repository = current_target.repository
         else:
-            rendered = (
-                workspace_services.FlextInfraWorkspaceDetector.conform_repository(
-                    root, current_repository
-                )
+            rendered = FlextInfraWorkspaceDetector.conform_repository(
+                root, current_repository
             )
             if rendered.failure:
                 return result_type.from_failure(rendered)
@@ -1392,7 +1385,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         if local.failure:
             return result_type.from_failure(local)
         local_workspace = local.value
-        target_result = workspace_services.FlextInfraWorkspaceDetector.conform_target(
+        target_result = FlextInfraWorkspaceDetector.conform_target(
             repository_root,
             local_workspace,
             inputs=inputs,
@@ -1429,7 +1422,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
 
         """
         result_type = r[m.Infra.WorkspaceSpec]
-        detector = workspace_services.FlextInfraWorkspaceDetector
+        detector = FlextInfraWorkspaceDetector
         members: list[p.Infra.RepositoryRef] = []
         for member in workspace.subprojects:
             rendered = detector.conform_repository(root / member.path, member)
@@ -1496,11 +1489,9 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             The resulting ``p.Result[p.Infra.WorkspaceSpec]``.
 
         """
-        declared_member = (
-            workspace_services.FlextInfraWorkspaceDetector.load_workspace_spec(
-                repository_root,
-                inputs=inputs,
-            )
+        declared_member = FlextInfraWorkspaceDetector.load_workspace_spec(
+            repository_root,
+            inputs=inputs,
         )
         if declared_member.failure or repository.path == Path():
             return declared_member

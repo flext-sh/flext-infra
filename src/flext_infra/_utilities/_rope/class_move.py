@@ -598,6 +598,18 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
                 return r[Path].fail(
                     f"module intermediate is occupied: {intermediate.with_suffix('')}"
                 )
+            shadowed = (
+                project.find_module(target.stem)
+                if cls._resource(project, root, source).parent
+                in project.get_source_folders()
+                else None
+            )
+            if shadowed is not None:
+                return r[Path].fail(
+                    "module intermediate would capture the imports of"
+                    f" {target.stem!r} ({shadowed.real_path}): choose another"
+                    " destination stem"
+                )
             if intermediate != target:
                 virtual.append(
                     cls._module_destination_plan(root, intermediate, "", mode)

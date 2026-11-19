@@ -21,6 +21,7 @@ from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticContracts,
     FlextInfraUtilitiesSemanticCutoverAliases,
     FlextInfraUtilitiesSemanticCutoverDynamicEnvironment,
+    FlextInfraUtilitiesSemanticCutoverExternalModelOwner,
     FlextInfraUtilitiesSemanticCutoverFacadeBases,
     FlextInfraUtilitiesSemanticCutoverModelFields,
     FlextInfraUtilitiesSemanticCutoverModuleLayout,
@@ -30,9 +31,6 @@ from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverTestNamespaceImports,
     FlextInfraUtilitiesSemanticDeclarationRelocation,
     FlextInfraUtilitiesSemanticModelAliases,
-)
-from flext_infra._utilities._semantic_cutover.external_model_owner import (
-    FlextInfraUtilitiesSemanticCutoverExternalModelOwner,
 )
 
 if TYPE_CHECKING:

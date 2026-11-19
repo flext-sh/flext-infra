@@ -10,10 +10,8 @@ from collections.abc import Generator, Mapping, Sequence
 from contextlib import contextmanager
 from pathlib import Path
 
-from flext_infra import c, config, deps as dependency_services, m, p, r, t, u
-from flext_infra.codegen._conform.context_render import (
-    FlextInfraCodegenConformContextRender,
-)
+from flext_infra import c, config, deps, m, p, r, t, u
+from flext_infra.codegen._conform import FlextInfraCodegenConformContextRender
 from flext_infra.deps.phases import FlextInfraToolTablesPhase
 
 
@@ -183,9 +181,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         if first_party == isort.get(c.Infra.KNOWN_FIRST_PARTY_HYPHEN):
             return tooling
         isort[c.Infra.KNOWN_FIRST_PARTY_HYPHEN] = first_party
-        return (
-            dependency_services.FlextInfraPyprojectModernizer.tooling_context_from_payload
-        )(
+        return (deps.FlextInfraPyprojectModernizer.tooling_context_from_payload)(
             payload,
             project_kind=tooling.project_kind,
             tool_config=tool_config,

@@ -51,9 +51,7 @@ class TestsFlextInfraRefactorImportNormalizationBindings(
     def test_root_layer_zero_helper_keeps_its_root_layer_rank() -> None:
         """A ``<root>_<suffix>`` declaration helper ranks with its root layer."""
         layer = u.Infra.module_import_layer
-        tm.that(
-            layer("demo_pkg._settings_models"), eq=layer("demo_pkg._settings")
-        )
+        tm.that(layer("demo_pkg._settings_models"), eq=layer("demo_pkg._settings"))
         tm.that(layer("demo_pkg._config_models"), eq=layer("demo_pkg._config"))
         tm.that(
             layer("demo_pkg._settings_models"),

@@ -17,9 +17,9 @@ from functools import cache
 from pathlib import Path
 from tempfile import TemporaryDirectory, mkdtemp
 
-from flext_infra import config, u, validate, workspace
-from tests import c, m, p, r, t, tm
-from tests.utilities_git import TestsFlextInfraUtilitiesGit
+from flext_infra import r, u, validate, workspace
+from tests import c, config, m, p, t, tm
+from tests._utilities import TestsFlextInfraUtilitiesGit
 
 
 class TestsFlextInfraUtilitiesToolingFixture:

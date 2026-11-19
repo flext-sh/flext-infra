@@ -28,8 +28,7 @@ from pathlib import Path
 
 from flext_cli import u
 
-from flext_infra import c, config, m, p, r, t
-from flext_infra._config import FlextInfraConfig
+from flext_infra import FlextInfraConfig, c, config, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesLintSourcePositions,
     FlextInfraUtilitiesProjectManagedArtifacts,

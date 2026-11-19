@@ -27,7 +27,7 @@ from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeRuntime,
     FlextInfraUtilitiesRopeSource,
 )
-from flext_infra._utilities._rope._analysis.asthelpers import (
+from flext_infra._utilities._rope._analysis import (
     FlextInfraUtilitiesRopeAnalysisAstHelpers,
 )
 

@@ -7,6 +7,8 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+import difflib
+import itertools
 from collections.abc import Callable, Mapping, MutableMapping, Sequence
 from contextlib import ExitStack
 from pathlib import Path
@@ -34,7 +36,7 @@ from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeSourceBasesAliases,
     FlextInfraUtilitiesRopeSourceBasesRuntime,
 )
-from flext_infra._utilities._semantic_cutover.own_mro import (
+from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverOwnMro,
 )
 
@@ -430,6 +432,7 @@ class FlextInfraUtilitiesImportLawNormalization(
         state, current = prepared.value
         if state is None:
             return r[str].ok(value=source)
+        history = [current]
         for _ in range(c.Infra.IMPORT_NORMALIZATION_MAX_PASSES):
             updated = cls._import_law_one_pass(
                 state,
@@ -443,15 +446,25 @@ class FlextInfraUtilitiesImportLawNormalization(
             if updated.value == current:
                 break
             current = updated.value
+            history.append(current)
             state = cls._import_law_refreshed_tree(
                 state,
                 current,
                 member_resolver=member_resolver,
             )
         else:
+            drift = "".join(
+                line
+                for before, after in itertools.pairwise(history[-3:])
+                for line in difflib.unified_diff(
+                    before.splitlines(keepends=True),
+                    after.splitlines(keepends=True),
+                    n=1,
+                )
+            )
             return r[str].fail(
                 f"{state.scope.file_path}: import normalization has no "
-                "validated fixed point",
+                f"validated fixed point; its last two passes changed:\n{drift}",
             )
         if runtime_diagnostics is not None:
             runtime_diagnostics[state.scope.module] = (
@@ -972,6 +985,9 @@ class FlextInfraUtilitiesImportLawNormalization(
                 )
             routes[bound, *path] = route
         if len(providers) > 1:
+            derived = cls._import_law_most_derived_provider(state, providers, name)
+            if derived is not None:
+                return r[frozenset[str]].ok(value=frozenset({derived}))
             return r[frozenset[str]].fail(
                 "Own-family upstream routes need more than one provider: "
                 f"path={scope.file_path} binding={bound} "
@@ -1081,6 +1097,46 @@ class FlextInfraUtilitiesImportLawNormalization(
             )
             raise ValueError(message)
         return module, owners[0], suffix
+
+    @classmethod
+    def _import_law_most_derived_provider(
+        cls,
+        state: p.Infra.ImportLawPass,
+        providers: set[str],
+        letter: str,
+    ) -> str | None:
+        """Elect the provider whose letter already composes every other's.
+
+        ``u.Cli.*`` is declared in flext-cli and ``u.Infra.*`` in flext-infra,
+        yet flext-infra's ``u`` extends flext-cli's: one import of the most
+        derived letter serves every consumed path.
+
+        Returns:
+            The provider whose letter MRO holds every other provider's letter,
+            or ``None`` when no single provider does.
+
+        """
+        project = state.source_project
+        if project is None:
+            return None
+        letters: dict[str, p.Infra.RopePyObject] = {}
+        for provider in providers:
+            binding = cls.resolve_declared_binding(
+                project,
+                (provider, letter),
+                state.scope.project_root,
+                state.sources or {},
+            )
+            if binding is None:
+                return None
+            letters[provider] = binding.get_object()
+        for provider, published in letters.items():
+            if not isinstance(published, p.Infra.RopeSourceClass):
+                continue
+            mro = published.get_mro()
+            if all(other in mro for other in letters.values()):
+                return provider
+        return None
 
     @classmethod
     def _import_law_upstream_letter_provider(
