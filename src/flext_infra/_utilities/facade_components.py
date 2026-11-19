@@ -776,6 +776,104 @@ class FlextInfraUtilitiesFacadeComponents:
             {} if unpublished is None else {path: unpublished}
         )
 
+    @staticmethod
+    def _canonical_facade_source(
+        source: str,
+        family: c.Infra.FacadeFamily,
+        *,
+        own_package: str,
+    ) -> str:
+        """Project the upstream letter base and the domain nested class.
+
+        Each edit replaces only its own name span in the original text, so
+        every comment and the layout of the facade survive.
+
+        Returns:
+            The canonical facade source, unchanged when it already conforms.
+
+        """
+        tree = ast.parse(source)
+        upstream = {
+            alias.asname or alias.name: node.module
+            for node in tree.body
+            if isinstance(node, ast.ImportFrom)
+            and node.module is not None
+            and node.module.startswith("flext_")
+            and node.module.partition(".")[0] != own_package
+            for alias in node.names
+        }
+        lines = source.encode().splitlines(keepends=True)
+        edits: dict[tuple[int, int, int, int], str] = {}
+        for node in tree.body:
+            if isinstance(node, ast.ClassDef):
+                FlextInfraUtilitiesFacadeComponents._strip_nested_prefix(
+                    node, lines, edits
+                )
+                FlextInfraUtilitiesFacadeComponents._rebase_upstream_letter(
+                    tree, node, (upstream, family), edits
+                )
+        for (line, start, end_line, end), text in sorted(edits.items(), reverse=True):
+            lines[line - 1 : end_line] = [
+                lines[line - 1][:start] + text.encode() + lines[end_line - 1][end:]
+            ]
+        return b"".join(lines).decode()
+
+    @staticmethod
+    def _strip_nested_prefix(
+        facade: ast.ClassDef,
+        lines: Sequence[bytes],
+        edits: MutableMapping[tuple[int, int, int, int], str],
+    ) -> None:
+        """Name each nested namespace by its domain stem, never ``Flext<Domain>``."""
+        for child in facade.body:
+            if isinstance(child, ast.ClassDef) and child.name.startswith("Flext"):
+                start = lines[child.lineno - 1].index(
+                    child.name.encode(), child.col_offset
+                )
+                span = (child.lineno, start, child.lineno, start + len(child.name))
+                edits[span] = child.name.removeprefix("Flext")
+
+    @staticmethod
+    def _rebase_upstream_letter(
+        tree: ast.Module,
+        facade: ast.ClassDef,
+        target: tuple[Mapping[str, str], c.Infra.FacadeFamily],
+        edits: MutableMapping[tuple[int, int, int, int], str],
+    ) -> None:
+        """Replace the first upstream facade base and its import by the letter.
+
+        A facade already based on the letter keeps every other base, so a
+        sister facade composed beside it is never removed.
+
+        Raises:
+            ValueError: If a rebound name carries no source end location.
+
+        """
+        upstream, family = target
+        base = next(
+            (
+                item
+                for item in facade.bases
+                if isinstance(item, ast.Name) and item.id in upstream
+            ),
+            None,
+        )
+        if base is None or base.id == family.value:
+            return
+        rebound = [base] + [
+            alias
+            for node in tree.body
+            if isinstance(node, ast.ImportFrom) and node.module == upstream[base.id]
+            for alias in node.names
+            if (alias.asname or alias.name) == base.id
+        ]
+        for item in rebound:
+            if item.end_lineno is None or item.end_col_offset is None:
+                msg = f"{ast.dump(item)} has no source end location"
+                raise ValueError(msg)
+            span = (item.lineno, item.col_offset, item.end_lineno, item.end_col_offset)
+            edits[span] = family.value
+
     @classmethod
     def _facade_foreign_publications(
         cls,
@@ -1145,7 +1243,6 @@ class FlextInfraUtilitiesFacadeComponents:
             ].from_failure(providers)
         composed = cls._facade_retained_providers(
             module,
-            path,
             providers.value[0],
             (
                 bases,
@@ -1153,6 +1250,8 @@ class FlextInfraUtilitiesFacadeComponents:
                 if owner_name is not None
                 else (),
             ),
+            project_root=Path(project.root.real_path),
+            upstream_last=namespace is not owner,
         ).flat_map(
             lambda retained: cls._facade_member_collisions(
                 project, retained[0], namespace.get_name()
@@ -2047,9 +2146,11 @@ class FlextInfraUtilitiesFacadeComponents:
     def _facade_retained_providers(
         cls,
         module: p.Infra.RopeSourceModule,
-        path: Path,
         admitted: Sequence[tuple[Path, p.Infra.RopeSourceClass]],
         framing: tuple[Sequence[tuple[str, p.Infra.RopePyObject]], tuple[str, ...]],
+        *,
+        project_root: Path | None = None,
+        upstream_last: bool = False,
     ) -> p.Result[tuple[list[tuple[str, p.Infra.RopePyObject]], tuple[str, ...]]]:
         """Retain uncovered bases and append each maximal admitted provider.
 
@@ -2057,6 +2158,10 @@ class FlextInfraUtilitiesFacadeComponents:
         the base precedence its family root facade already declares: bases that
         facade names keep its order ahead of the rest, so the stale root stays
         linearizable until it is re-rendered in the same pass.
+
+        ``upstream_last`` composes a nested namespace class: providers imported
+        from outside the project keep the canonical owner position last, while
+        the project parts stay ahead so the composed surface wins the MRO.
 
         Returns:
             The retained base expressions and the provider bindings to import, or
@@ -2108,7 +2213,9 @@ class FlextInfraUtilitiesFacadeComponents:
                 and not stale_import
                 and not cls._same_facade_target(occupied.get_object(), provider)
             ):
-                message = f"Occupied facade provider binding: {path}:{binding}"
+                resource = module.get_resource()
+                location = resource.real_path if resource is not None else "<virtual>"
+                message = f"Occupied facade provider binding: {location}:{binding}"
                 return r[
                     tuple[list[tuple[str, p.Infra.RopePyObject]], tuple[str, ...]]
                 ].fail(message)
@@ -2120,14 +2227,44 @@ class FlextInfraUtilitiesFacadeComponents:
                 ]
             bindings.append(binding)
             retained.append((binding, provider))
-        retained.sort(
-            key=lambda item: (
-                precedence.index(item[1].get_name())
-                if FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(item[1])
-                and item[1].get_name() in precedence
-                else len(precedence)
+
+        names = module.get_scope().get_names()
+
+        def origin_path(
+            expression: str, base: p.Infra.RopePyObject
+        ) -> t.Infra.RopeSourcePath | None:
+            binding = names.get(expression.split(".", maxsplit=1)[0])
+            elected = binding.get_object() if binding is not None else base
+            resolved = (
+                elected.pyobject
+                if isinstance(elected, p.Infra.RopeUnresolvedBase)
+                and elected.pyobject is not None
+                else elected
             )
-        )
+            holder = resolved.get_module()
+            resource = holder.get_resource() if holder is not None else None
+            return Path(resource.real_path) if resource is not None else None
+
+        def rank(item: tuple[str, p.Infra.RopePyObject]) -> tuple[int, int]:
+            origin = origin_path(item[0], item[1])
+            upstream = int(
+                upstream_last
+                and project_root is not None
+                and origin is not None
+                and not origin.is_relative_to(project_root)
+            )
+            name = (
+                item[1].get_name()
+                if isinstance(item[1], p.Infra.RopeNamedObject)
+                else item[0].rsplit(".", maxsplit=1)[-1]
+            )
+            ordered = (
+                FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(item[1])
+                and name in precedence
+            )
+            return upstream, precedence.index(name) if ordered else len(precedence)
+
+        retained.sort(key=rank)
         return r[tuple[list[tuple[str, p.Infra.RopePyObject]], tuple[str, ...]]].ok((
             retained,
             tuple(bindings),

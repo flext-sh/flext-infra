@@ -31,11 +31,8 @@ install_lazy_exports(
         "TestsFlextInfraProtocolsSemanticCutover": ".semantic_cutover",
     },
     public_exports=__all__,
-    deferred_members={
-        "TestsFlextInfraProtocolsBase": (
-            "AstGrepFixtureSnapshots",
-            "PytestDiagOptions",
-        ),
-        "TestsFlextInfraProtocolsSemanticCutover": ("SemanticCutoverScenario",),
-    },
+    deferred_members=(
+        "TestsFlextInfraProtocolsBase",
+        "TestsFlextInfraProtocolsSemanticCutover",
+    ),
 )

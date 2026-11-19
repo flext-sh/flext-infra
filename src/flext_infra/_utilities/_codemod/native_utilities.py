@@ -378,11 +378,23 @@ class FlextInfraUtilitiesCodemodNative:
 
     @staticmethod
     def _store_rendering(path: Path, rendered: m.Infra.CodemodNativeGenerated) -> None:
-        """Publish one rendering to its cache without exposing a partial file."""
+        """Publish one rendering to its cache without exposing a partial file.
+
+        The cache is content-addressed, so concurrent writers of one digest
+        produce identical bytes; each stages its own temporary file and the
+        last atomic replace wins.
+        """
         path.parent.mkdir(parents=True, exist_ok=True)
-        temporary = path.with_suffix(".tmp")
-        temporary.write_text(rendered.model_dump_json(), encoding=c.DEFAULT_ENCODING)
-        temporary.replace(path)
+        with tempfile.NamedTemporaryFile(
+            "w",
+            encoding=c.DEFAULT_ENCODING,
+            dir=path.parent,
+            prefix=f"{path.stem}.",
+            suffix=".tmp",
+            delete=False,
+        ) as staged:
+            staged.write(rendered.model_dump_json())
+        Path(staged.name).replace(path)
 
     @staticmethod
     def _selected_catalog_documents(

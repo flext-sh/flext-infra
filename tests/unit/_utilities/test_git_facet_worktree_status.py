@@ -184,7 +184,12 @@ class TestsFlextInfraGitFacetWorktreeStatus:
 
     @staticmethod
     def test_missing_git_binary_fails_closed(tmp_path: Path) -> None:
-        """Missing git on PATH must Result.fail without raising."""
+        """A Git binary that leaves PATH after first use must Result.fail.
+
+        The facet is used once first, so the scenario does not depend on which
+        test happens to load the Git library first in its worker.
+        """
+        tm.ok(u.Infra.refresh_binary())
         empty_path = tmp_path / "empty-path"
         empty_path.mkdir()
         with tm.scope(env={"PATH": str(empty_path)}):
@@ -199,10 +204,11 @@ class TestsFlextInfraGitFacetWorktreeStatus:
         tm.ok(refreshed)
         tm.ok(refreshed.value)
 
-    def test_remove_clean_worktree_refuses_missing_lifecycle_proof(
+    def test_remove_clean_worktree_retires_a_clean_superproject_lane(
         self,
         tmp_path: Path,
     ) -> None:
+        """A proven-clean lane with submodules retires; the primary is untouched."""
         repository = u.Tests.git_repository(tmp_path)
         source = u.Tests.git_repository(tmp_path, "member-source")
         self._add_submodule(repository, source, "member")
@@ -222,14 +228,9 @@ class TestsFlextInfraGitFacetWorktreeStatus:
             ),
         )
 
-        u.Tests.git_run(repository, "fetch", "--quiet", "origin")
+        tm.ok(u.Infra.git_remove_clean_worktree(repository, lane))
 
-        tm.fail(
-            u.Infra.git_remove_clean_worktree(repository, lane),
-            has="retirement refused",
-        )
-
-        tm.that(lane.is_dir(), truth=True)
+        tm.that(lane.exists(), truth=False)
         tm.that((repository / "member").is_dir(), truth=True)
         tm.that(
             (repository / ".gitmodules").read_text(encoding="utf-8") == gitmodules,
@@ -288,6 +289,60 @@ class TestsFlextInfraGitFacetWorktreeStatus:
         tm.that(lane.is_dir(), truth=True)
 
     @staticmethod
+    def test_remove_clean_worktree_removes_a_clean_registered_lane(
+        tmp_path: Path,
+    ) -> None:
+        """A registered, unlocked, clean lane is removed; its branch stays."""
+        repository = u.Tests.git_repository(tmp_path)
+        lane = u.Tests.git_linked_lane(tmp_path, repository, "clean-lane")
+
+        tm.ok(u.Infra.git_remove_clean_worktree(repository, lane))
+
+        tm.that(lane.exists(), truth=False)
+        tm.that(u.Tests.git_ref_exists(repository, "refs/heads/clean-lane"), eq=True)
+        tm.that(
+            tm.ok(
+                u.Infra.git_list_worktrees(
+                    m.Infra.GitRepoRequest(repo_root=repository),
+                ),
+            ).porcelain.count("worktree "),
+            eq=1,
+        )
+
+    @staticmethod
+    @c.Tests.MARK.parametrize("layer", ["untracked", "staged"])
+    def test_remove_clean_worktree_refuses_dirty_worktree(
+        tmp_path: Path,
+        layer: str,
+    ) -> None:
+        """Uncommitted bytes in any layer keep the lane and its content."""
+        repository = u.Tests.git_repository(tmp_path)
+        lane = u.Tests.git_linked_lane(tmp_path, repository, "dirty-lane")
+        retained = lane / "retained.txt"
+        retained.write_text("retained WIP\n", encoding="utf-8")
+        if layer == "staged":
+            _ = u.Tests.git_run(lane, "add", "--", retained.name)
+
+        result = u.Infra.git_remove_clean_worktree(repository, lane)
+
+        tm.fail(result, has="dirty worktree")
+        tm.that(retained.read_text(encoding="utf-8"), eq="retained WIP\n")
+
+    @staticmethod
+    def test_remove_clean_worktree_refuses_unregistered_directory(
+        tmp_path: Path,
+    ) -> None:
+        """A directory Git does not register as a worktree is never removed."""
+        repository = u.Tests.git_repository(tmp_path)
+        plain = tmp_path / "plain-directory"
+        plain.mkdir()
+
+        result = u.Infra.git_remove_clean_worktree(repository, plain)
+
+        tm.fail(result, has="unregistered worktree")
+        tm.that(plain.is_dir(), truth=True)
+
+    @staticmethod
     def test_is_ancestor_proves_any_pair_and_defaults_to_head(
         tmp_path: Path,
     ) -> None:
@@ -343,6 +398,49 @@ class TestsFlextInfraGitFacetWorktreeStatus:
         tm.ok(defaulted.value)
 
     @staticmethod
+    def test_merge_conflict_is_listed_aborted_or_concluded_as_a_merge(
+        tmp_path: Path,
+    ) -> None:
+        """An open merge is listed, aborted cleanly, or concluded with two parents."""
+        repository = u.Tests.git_repository(tmp_path)
+        shared = repository / "shared.txt"
+        shared.write_text("base\n", encoding="utf-8")
+        _ = u.Tests.git_run(repository, "add", "shared.txt")
+        _ = u.Tests.git_run(repository, "commit", "-m", "base")
+        _ = u.Tests.git_run(repository, "switch", "-c", "incoming")
+        shared.write_text("incoming\n", encoding="utf-8")
+        _ = u.Tests.git_run(repository, "commit", "-am", "incoming")
+        _ = u.Tests.git_run(repository, "switch", "-")
+        shared.write_text("local\n", encoding="utf-8")
+        _ = u.Tests.git_run(repository, "commit", "-am", "local")
+        local = tm.ok(
+            u.Infra.git_repository_head(m.Infra.GitRepoRequest(repo_root=repository)),
+        ).oid
+        request = m.Infra.GitRepoRequest(repo_root=repository)
+        merge = m.Infra.GitCommitishRequest(repo_root=repository, commitish="incoming")
+
+        tm.fail(u.Infra.git_merge_no_edit(merge))
+        tm.that(tm.ok(u.Infra.git_conflicted_paths(request)), eq=("shared.txt",))
+        tm.ok(u.Infra.git_merge_abort(request))
+        tm.that(tm.ok(u.Infra.git_conflicted_paths(request)), eq=())
+        tm.that(shared.read_text(encoding="utf-8"), eq="local\n")
+
+        tm.fail(u.Infra.git_merge_no_edit(merge))
+        paths = m.Infra.GitPathsRequest(repo_root=repository, paths=("shared.txt",))
+        tm.ok(u.Infra.git_checkout_theirs(paths))
+        tm.ok(u.Infra.git_merge_conclude(paths))
+
+        tm.that(shared.read_text(encoding="utf-8"), eq="incoming\n")
+        parents = tm.ok(
+            u.Cli.capture(
+                (c.Infra.GIT, "rev-list", "--parents", "-n", "1", "HEAD"),
+                cwd=repository,
+            ),
+        ).split()
+        tm.that(len(parents), eq=3)
+        tm.that(parents[1], eq=local)
+
+    @staticmethod
     def test_is_ancestor_fails_on_unknown_commitish(tmp_path: Path) -> None:
         """An unresolvable side is a failure, never a silent negative."""
         repository = u.Tests.git_repository(tmp_path)
@@ -380,3 +478,43 @@ class TestsFlextInfraGitFacetWorktreeStatus:
             ),
         )
         tm.fail(tm.ok(u.Infra.git_has_staged_changes(request)).value)
+
+    @staticmethod
+    def test_add_paths_stages_a_tracked_deletion(tmp_path: Path) -> None:
+        """A tracked deletion is staged by the same path operation as a write."""
+        repository = u.Tests.git_repository(tmp_path)
+        retired = repository / "retired.txt"
+        retired.write_text("retired\n", encoding="utf-8")
+        tm.ok(
+            u.Cli.run_checked(
+                [c.Infra.GIT, "add", "retired.txt"],
+                cwd=repository,
+            ),
+        )
+        tm.ok(
+            u.Cli.run_checked(
+                [c.Infra.GIT, "commit", "-m", "retired"],
+                cwd=repository,
+            ),
+        )
+        retired.unlink()
+        tm.ok(
+            u.Infra.git_add_paths(
+                m.Infra.GitPathsRequest(repo_root=repository, paths=("retired.txt",))
+            )
+        )
+        tm.ok(
+            u.Infra.git_has_staged_changes(
+                m.Infra.GitRepoRequest(repo_root=repository)
+            )
+        )
+        tm.fail(
+            tm.ok(
+                u.Infra.git_is_tracked(
+                    m.Infra.GitRelativePathRequest(
+                        repo_root=repository,
+                        relative_path="retired.txt",
+                    )
+                )
+            ).value
+        )

@@ -8,15 +8,11 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from pathlib import Path
-from typing import Annotated, ClassVar, Literal, Self
+from typing import Annotated, ClassVar
 
 from flext_cli import m
 
 from flext_infra import t
-from flext_infra._models import (
-    FlextInfraModelsGitLaneInputs,
-    FlextInfraModelsGitLaneOwnership,
-)
 from flext_infra._models._git import (
     FlextInfraModelsGitIdentity,
     FlextInfraModelsGitWorktreeFacts,
@@ -25,7 +21,6 @@ from flext_infra._models._git import (
 
 
 class FlextInfraModelsGit(
-    FlextInfraModelsGitLaneOwnership,
     FlextInfraModelsGitIdentity,
     FlextInfraModelsGitWorktreeFacts,
     FlextInfraModelsGitWorktreeState,
@@ -90,79 +85,6 @@ class FlextInfraModelsGit(
                 description="Native origin, scope and raw outcome for every setting"
             ),
         ]
-
-    class GitLaneEvidence(m.ContractModel):
-        """Repository-bound coordinator receipt, never a cleanup instruction."""
-
-        repo_root: Annotated[Path, m.Field(description="Receipt repository identity")]
-        captured_at: Annotated[
-            t.AwareDatetime,
-            m.Field(description="Receipt capture time"),
-        ]
-        pull_requests: Annotated[
-            tuple[
-                FlextInfraModelsGitLaneInputs.GitLanePullRequest,
-                ...,
-            ]
-            | None,
-            m.Field(description="Observed PRs; None means not selected/unknown"),
-        ] = None
-        beads: Annotated[
-            tuple[
-                FlextInfraModelsGitLaneOwnership.GitLaneBead,
-                ...,
-            ]
-            | None,
-            m.Field(description="Observed Beads; None means not selected/unknown"),
-        ] = None
-
-    class GitLaneReport(m.ContractModel):
-        """Full read-only inventory and all refusals from one invocation."""
-
-        repo_root: Annotated[Path, m.Field(description="Inspected repository")]
-        integration_branch: Annotated[
-            str,
-            m.Field(description="Resolved integration branch"),
-        ] = ""
-        integration_oid: Annotated[
-            str,
-            m.Field(description="Proven live integration tip"),
-        ] = ""
-        inventory: Annotated[
-            tuple[str, ...],
-            m.Field(description="Full exact Git artifact inventory"),
-        ] = ()
-        findings: Annotated[
-            tuple[str, ...],
-            m.Field(description="All refusals and inconclusive evidence"),
-        ] = ()
-        violations: Annotated[
-            tuple[
-                FlextInfraModelsGitLaneInputs.GitLaneViolation,
-                ...,
-            ],
-            m.Field(description="Classified violations from the single evaluator"),
-        ] = ()
-
-    class GitLaneFacts(m.ContractModel):
-        """Native stash/ref observations; no base selection or classification."""
-
-        repo_root: Annotated[Path, m.Field(description="Inspected Git repository")]
-        stash_oids: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(description="All stash commit identities"),
-        ] = ()
-        refs: Annotated[
-            tuple[
-                FlextInfraModelsGitLaneInputs.GitLaneRef,
-                ...,
-            ],
-            m.Field(description="All observed local and configured remote references"),
-        ] = ()
-        read_errors: Annotated[
-            tuple[str, ...],
-            m.Field(description="Exact first failures per native read"),
-        ] = ()
 
     class GitStatusRequest(GitRepoRequest):
         """Request porcelain status for one repository."""
@@ -331,71 +253,6 @@ class FlextInfraModelsGit(
             t.NonEmptyStr | None,
             m.Field(description="Remote tip the mutation is leased on"),
         ] = None
-
-    class GitLaneOwnershipRequest(GitRemoteRequest):
-        """Authenticate an existing retained checkpoint, without publishing state."""
-
-        checkpoint_ref: Annotated[
-            t.NonEmptyStr, m.Field(description="Existing dedicated checkpoint ref")
-        ]
-        expected_tip: Annotated[
-            t.NonEmptyStr | None,
-            m.Field(description="Previously observed integration tip, when selected"),
-        ] = None
-
-    class GitLaneVerificationRequest(GitRemoteRequest):
-        """Read-only admission and census against the live integration tip."""
-
-        declared: Annotated[
-            str | None, m.Field(description="Governing integration declaration")
-        ] = None
-        evidence_file: Annotated[
-            Path | None, m.Field(description="Coordinator ownership receipt")
-        ] = None
-        governance_file: Annotated[
-            Path | None, m.Field(description="Coordination governance SSOT")
-        ] = None
-        read_pull_requests: Annotated[
-            bool, m.Field(description="Authorize public PR ownership reads")
-        ] = False
-        read_beads: Annotated[
-            bool, m.Field(description="Authorize declared Beads ownership reads")
-        ] = False
-        operation: Annotated[
-            Literal["verify", "create", "retire"],
-            m.Field(description="Boundary being verified, not an effect selector"),
-        ] = "verify"
-        candidate: Annotated[
-            t.NonEmptyStr, m.Field(description="Commit requiring integration ancestry")
-        ] = "HEAD"
-        expected_tip: Annotated[
-            t.NonEmptyStr | None, m.Field(description="Previously observed tip")
-        ] = None
-        ownership: Annotated[
-            FlextInfraModelsGitWorktreeState.GitLaneOwnershipReceipt | None,
-            m.Field(
-                description="Required integrated preservation receipt for creation"
-            ),
-        ] = None
-
-        @m.model_validator(mode="after")
-        def _validate_ownership_selection(self) -> Self:
-            """Reject competing receipt and live ownership evidence sources.
-
-            Returns:
-                The validated instance.
-
-            Raises:
-                ValueError: If an ownership receipt competes with authorized
-                    live sources.
-
-            """
-            if self.evidence_file is not None and (
-                self.read_pull_requests or self.read_beads
-            ):
-                msg = "select either an ownership receipt or authorized live sources"
-                raise ValueError(msg)
-            return self
 
     class GitRefHeadsRequest(GitRepoRequest):
         """List every ref below one namespace.

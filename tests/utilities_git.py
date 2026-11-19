@@ -137,7 +137,6 @@ class TestsFlextInfraUtilitiesGit:
         # The checkout carries the provider-declared integration branch, so the
         # bare origin publishes that same line as its default target.
         branch = TestsFlextInfraUtilitiesGit.integration_branch(repo_root)
-        # Initial remote construction is fixture bootstrap, not lane admission.
         bootstrap(
             repo_root,
             ("push", "-u", c.Infra.GIT_ORIGIN, f"HEAD:refs/heads/{branch}"),

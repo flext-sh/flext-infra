@@ -11,10 +11,8 @@ import runpy
 import sys
 import tokenize
 from collections.abc import Sequence
-from functools import partial
 from pathlib import Path
 
-from flext_infra.services import FlextInfraModHandlers
 from tests import c, m, p, tm, u
 
 
@@ -437,15 +435,12 @@ class TestsFlextInfraRopeContractBindings:
             rule
             for rule in u.Infra.declared_contract_rules(workspace.repository_root)
             if rule.id.startswith("pydantic-")
+            # The envelope rule is proven by test_model_envelope_contracts; here
+            # it would stage a native checker run per case.
+            and rule.operation
+            != c.Infra.RopeContractOperation.NORMALIZE_MODEL_ENVELOPES
         )
         tm.that(rules, empty=False)
-        # The fixture runtime carries no checker: the envelope gate runs on the
-        # generator's own runtime, through the workspace's checker port.
-        workspace.model_envelope_checker = partial(
-            FlextInfraModHandlers.model_envelope_diagnostics,
-            workspace.repository_root,
-            runtime_root=Path(sys.prefix).parent,
-        )
         path.write_text(source, encoding=c.DEFAULT_ENCODING)
         before = runpy.run_path(str(path))["evidence"]
         edits = tm.ok(u.Infra.plan_contract_rules(workspace, {path: source}, rules))
@@ -688,6 +683,16 @@ class TestsFlextInfraRopeContractBindings:
         tm.that(runpy.run_path(str(path))["evidence"], eq=before)
 
     @staticmethod
+    @c.Tests.MARK.parametrize(
+        "rope_contract_consumer",
+        [
+            {
+                "distribution": "flext-grpc",
+                "module": "flext_grpc.config_models",
+            }
+        ],
+        indirect=True,
+    )
     def test_metadata_destination_cannot_capture_a_generic_parameter(
         rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
     ) -> None:
@@ -739,6 +744,16 @@ class TestsFlextInfraRopeContractBindings:
         tm.ok(runpy.run_path(str(path))["evidence"])
 
     @staticmethod
+    @c.Tests.MARK.parametrize(
+        "rope_contract_consumer",
+        [
+            {
+                "distribution": "flext-grpc",
+                "module": "flext_grpc.config_models",
+            }
+        ],
+        indirect=True,
+    )
     @c.Tests.MARK.parametrize(
         ("source", "diagnostic"),
         [

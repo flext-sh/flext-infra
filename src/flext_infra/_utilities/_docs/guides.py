@@ -231,6 +231,8 @@ class FlextInfraUtilitiesDocsGuides:
             for root in (source_root, destination_root)
         )
         for plan in declared_files:
+            if plan.path.parent != source_root:
+                continue
             if plan.desired_content is None:
                 sources.pop(plan.path, None)
             else:

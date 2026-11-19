@@ -77,3 +77,50 @@ class TestsFlextInfraFacadeComponentSource:
         ast.parse(rendered)
         tm.that(rendered, has="class FlextSampleConstants")
         tm.that("provider-only-marker" in rendered, eq=False)
+
+    @staticmethod
+    def test_upstream_letter_rebase_keeps_comments_and_layout(
+        tmp_path: Path,
+    ) -> None:
+        """Rebasing on the upstream letter edits names only, never the layout.
+
+        Premise (flext-7snh0): the canonicalizer re-rendered the whole facade,
+        dropping every comment and emitting unwrapped lines that the
+        generator's own lint then rejected in the consumer.
+        """
+        root, package = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-sample",
+            package_name="flext_sample",
+        )
+        family = u.Infra.facade_family_declared_by(c.Infra.CONSTANTS_PY)
+        directory = package / family.directory
+        (package / c.Infra.INIT_PY).write_text("", encoding=c.DEFAULT_ENCODING)
+        directory.mkdir(parents=True, exist_ok=True)
+        (directory / c.Infra.INIT_PY).write_text("", encoding=c.DEFAULT_ENCODING)
+        facade = package / c.Infra.CONSTANTS_PY
+        facade.write_text(
+            '"""Sample facade."""\n\n'
+            "from flext_core import FlextConstants\n\n\n"
+            "class FlextSampleConstants(FlextConstants):\n"
+            "    # Authored note that must survive the canonical projection.\n"
+            "    class FlextSample:\n"
+            "        MARKER = 'kept'\n\n\n"
+            "c = FlextSampleConstants\n"
+            "__all__ = ['FlextSampleConstants', 'c']\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        with FlextInfraRopeWorkspace.open_workspace(root) as rope:
+            rendered = tm.ok(
+                u.Infra.facade_component_source(
+                    rope.rope_project,
+                    facade,
+                    directory,
+                    family=c.Infra.FacadeFamily.C,
+                )
+            )
+        ast.parse(rendered)
+        tm.that(rendered, has="# Authored note that must survive")
+        tm.that(rendered, has="from flext_core import c")
+        tm.that(rendered, has="class FlextSampleConstants(c):")
+        tm.that(rendered, has="    class Sample:")

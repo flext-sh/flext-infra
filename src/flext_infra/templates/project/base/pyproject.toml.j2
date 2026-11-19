@@ -27,7 +27,7 @@ exclude = [
 {% endif %}
 only-include = [
   "src/{{ package_name }}",
-{% for package in root_packages %}
+{% for package in root_packages if package != package_name %}
   {{ ("src/" ~ package) | tojson }},
 {% endfor %}
 {% for data_path in packaged_data_paths %}
@@ -130,7 +130,7 @@ path = {{ hatch_build_hook_path | tojson }}
 
 [tool.hatch.build.targets.wheel.sources]
 {{ ("src/" ~ package_name) | tojson }} = {{ package_name | tojson }}
-{% for package in root_packages %}
+{% for package in root_packages if package != package_name %}
 {{ ("src/" ~ package) | tojson }} = {{ package | tojson }}
 {% endfor %}
 {% for data_path in packaged_data_paths %}

@@ -10,11 +10,8 @@ from pathlib import Path
 
 from git import GitCommandError, Repo
 
-from flext_infra import c, m, p, r
-from flext_infra._utilities._git import (
-    FlextInfraUtilitiesGitRepo,
-    FlextInfraUtilitiesGitSemanticRefs,
-)
+from flext_infra import c, p, r
+from flext_infra._utilities._git import FlextInfraUtilitiesGitRepo
 
 
 class FlextInfraUtilitiesGitWorktreeRemoval(FlextInfraUtilitiesGitRepo):
@@ -106,7 +103,11 @@ class FlextInfraUtilitiesGitWorktreeRemoval(FlextInfraUtilitiesGitRepo):
         source_root: Path,
         worktree_root: Path,
     ) -> p.Result[bool]:
-        """Retire only the selected worktree after its shared admission proof.
+        """Remove the selected worktree once it is registered, unlocked and clean.
+
+        Git refuses to remove a worktree that contains submodules unless
+        forced; the preflight has already proven it and every nested
+        submodule clean, so only such a superproject worktree is forced.
 
         Returns:
             The resulting ``p.Result[bool]``.
@@ -115,16 +116,9 @@ class FlextInfraUtilitiesGitWorktreeRemoval(FlextInfraUtilitiesGitRepo):
         preflight = cls._preflight_clean_worktree(source_root, worktree_root)
         if preflight.failure:
             return r[bool].from_failure(preflight)
-        admitted = FlextInfraUtilitiesGitSemanticRefs.git_verify_lane(
-            m.Infra.GitLaneVerificationRequest(
-                repo_root=worktree_root,
-                operation="retire",
-            ),
-        )
-        if admitted.failure:
-            return r[bool].from_failure(admitted)
+        force = ("--force",) if (worktree_root / ".gitmodules").is_file() else ()
         try:
-            preflight.value.git.worktree("remove", str(worktree_root))
+            preflight.value.git.worktree("remove", *force, str(worktree_root))
         except GitCommandError as exc:
             return r[bool].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:

@@ -735,10 +735,24 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             return result.from_failure(parsed)
         source, project_name = parsed.value[0], parsed.value[1]
         provenance = options if options is not None else cls.PyprojectConformOptions()
+        document_requirements = tuple(
+            line
+            for path, key in FlextInfraUtilitiesDependencies.requirement_arrays(
+                parsed.value[2]
+            )
+            for raw in (
+                (u.Cli.toml_mapping_path(parsed.value[2], path) or {}).get(key),
+            )
+            for line in (raw if isinstance(raw, list) else ())
+            if isinstance(line, str)
+        )
         origins = cls._declared_requirement_sources(
             project_name=project_name,
             workspace=workspace,
-            required_dev_dependencies=required_dev_dependencies,
+            required_dev_dependencies=(
+                *document_requirements,
+                *required_dev_dependencies,
+            ),
             flext_line=provenance.flext_line,
         )
         if origins.failure:

@@ -24,7 +24,13 @@ class FlextInfraPytestRunnerBase(s[int]):
 
     started_at_monotonic: Annotated[
         float,
-        m.Field(gt=0, description="Clock captured before FLEXT imports."),
+        m.Field(
+            gt=0,
+            description=(
+                "Suite clock: captured before FLEXT imports and re-armed when "
+                "the testmon lease is acquired."
+            ),
+        ),
     ]
     target: Annotated[Path, m.Field(description="Repository-relative test root.")]
     target_file: Annotated[
@@ -39,7 +45,21 @@ class FlextInfraPytestRunnerBase(s[int]):
     reports: Annotated[Path, m.Field(description="Repository-relative report root.")]
     testmon_db: Annotated[
         Path | None,
-        m.Field(description="External SQLite database for incremental Testmon runs."),
+        m.Field(
+            description=(
+                "This checkout's external SQLite database for incremental "
+                "Testmon runs; each checkout owns its database and lease."
+            ),
+        ),
+    ] = None
+    testmon_seed_db: Annotated[
+        Path | None,
+        m.Field(
+            description=(
+                "The project's canonical database, owned by the primary "
+                "worktree, that seeds a linked worktree's absent database."
+            ),
+        ),
     ] = None
     run_timeout_seconds: Annotated[
         int,
@@ -143,6 +163,7 @@ class FlextInfraPytestRunnerBase(s[int]):
         make = u.Infra.load_codegen_inputs(root).unwrap().spec.make
         cache = make.testmon_cache
         database: Path | None = None
+        seed: Path | None = None
         if execution_mode.is_incremental:
             cache_home_value = u.Infra.env_value(cache.data_home_environment_variable)
             cache_home = (
@@ -154,12 +175,25 @@ class FlextInfraPytestRunnerBase(s[int]):
             if not cache_home.is_absolute():
                 msg = "pytest persistent cache anchor must be absolute"
                 raise ValueError(msg)
-            database = (
+            # testmon keeps one fingerprint set per test, so worktrees on
+            # different commits that shared one database overwrote each
+            # other's records and every run reselected most of the suite.
+            # The primary worktree owns the project's canonical database; a
+            # linked worktree owns its own, seeded from the canonical one.
+            canonical = (
                 cache_home
                 / cache.external_storage_directory
                 / context.target.canonical_project_name
                 / cache.database_filename
             )
+            identity = context.identity
+            if identity.git_dir == identity.common_dir:
+                database = canonical
+            else:
+                database = (
+                    canonical.parent / identity.git_dir.name / cache.database_filename
+                )
+                seed = canonical
         run_timeout_seconds, termination_grace_seconds = cls._elected_pytest_deadline(
             root
         )
@@ -172,6 +206,7 @@ class FlextInfraPytestRunnerBase(s[int]):
             target_file=target_file,
             reports=cache.reports_directory,
             testmon_db=database,
+            testmon_seed_db=seed,
             ci_context=u.Infra.env_value(make.ci.variable) == make.ci.value,
             profile_enabled=settings.Infra.profile,
         )

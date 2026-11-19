@@ -240,6 +240,18 @@ class FlextInfraUtilitiesImportLawPolicyNamespace:
                 continue
             stem = part.lstrip("_")
             layer = families.get(stem, stem)
+            if layer not in order and index == 0:
+                # A root-level declaration helper keeps the import layer of its
+                # root singleton prefix: ``settings_models`` ranks with settings,
+                # not as ``other``, so the reverse-import window keeps its order.
+                layer = next(
+                    (
+                        role
+                        for role in c.Infra.IMPORT_LAW_ROOT_SINGLETONS
+                        if stem.startswith(f"{role}_")
+                    ),
+                    layer,
+                )
             if layer in order:
                 return order.index(layer)
         return order.index(c.Infra.IMPORT_LAW_OTHER_LAYER)
@@ -304,61 +316,15 @@ class FlextInfraUtilitiesImportLawPolicyNamespace:
         return "consumer"
 
     @classmethod
-    def import_source_role(
-        cls,
-        project: p.Infra.RopeProject,
-        module: p.Infra.RopePyModule,
-        source: Path,
-    ) -> Literal["layer0", "family", "consumer"]:
-        """Resolve declaration roles by native ancestry, not consumer imports.
-
-        Returns:
-            The lexical family role or the source-defined configuration role.
-
-        """
-        role = cls.import_module_role(
-            FlextInfraUtilitiesProjectDiscovery.module_name_for_file(
-                source, project_root=Path(project.root.real_path)
-            ),
-        )
-        if role != "consumer":
-            return role
-        runtime = FlextInfraUtilitiesRopeRuntime
-        types = FlextInfraUtilitiesRopeRuntime
-        roots = tuple(
-            runtime.qualified_name(project, name, module_name="flext_core").get_object()
-            for name in ("FlextConfig", "FlextSettings")
-        )
-        pending = [
-            value
-            for attribute in module.get_attributes().values()
-            if types.py_class(value := attribute.get_object())
-            and value.get_module() is module
-        ]
-        visited: set[int] = set()
-        while pending:
-            declaration = pending.pop()
-            if id(declaration) in visited:
-                continue
-            visited.add(id(declaration))
-            if any(declaration is root for root in roots):
-                return "layer0"
-            pending.extend(
-                base for base in declaration.get_superclasses() if types.py_class(base)
-            )
-        return role
-
-    @classmethod
     def import_direct_module(
         cls, namespace_dir: Path, file_path: Path, *, namespace: str
     ) -> bool:
         """Return whether one module keeps direct leaf imports.
 
-        A layer-zero settings/config module and a family
-        ``base.py`` (a ``base.py`` inside a private ``_<family>/`` package)
-        retain their upstream/direct providers instead of re-entering the
-        namespace's lazy root. This routing constraint does not exempt them
-        from import-boundary validation.
+        The lazy loader (layer zero) and a family ``base.py`` (a ``base.py``
+        inside a private ``_<family>/`` package) retain their direct providers
+        instead of re-entering the namespace's lazy root. This routing
+        constraint does not exempt them from import-boundary validation.
 
         Returns:
             Whether the module is exempt from root-alias and lazy routing.
@@ -627,7 +593,10 @@ class FlextInfraUtilitiesImportLawPolicyNamespace:
             route = routes.get(alias_name)
             if route is None:
                 alias_name, _declaration = cls._declared_binding(
-                    ast.parse(source), alias_name
+                    FlextInfraUtilitiesRopeRuntime.require_parsed_module(
+                        project.get_module(module_name)
+                    ).get_ast(),
+                    alias_name,
                 )
                 binding = provider.get_attributes().get(alias_name)
                 if not isinstance(binding, p.Infra.RopeImportedName):

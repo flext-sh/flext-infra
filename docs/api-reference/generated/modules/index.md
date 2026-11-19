@@ -17,7 +17,6 @@ These pages are generated from public modules and their docstrings.
 - [flext_infra.constants](constants.md)
 - [flext_infra.cprofile](cprofile.md)
 - [flext_infra.git](git.md)
-- [flext_infra.git_lanes](git_lanes.md)
 - [flext_infra.make_contract](make_contract.md)
 - [flext_infra.models](models.md)
 - [flext_infra.preview](preview.md)

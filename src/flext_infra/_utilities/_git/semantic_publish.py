@@ -9,10 +9,7 @@ from __future__ import annotations
 from git import GitCommandError
 
 from flext_infra import c, m, p, r
-from flext_infra._utilities._git import (
-    FlextInfraUtilitiesGitRepo,
-    FlextInfraUtilitiesGitSemanticRefs,
-)
+from flext_infra._utilities._git import FlextInfraUtilitiesGitRepo
 
 
 class FlextInfraUtilitiesGitSemanticPublish(FlextInfraUtilitiesGitRepo):
@@ -42,6 +39,109 @@ class FlextInfraUtilitiesGitSemanticPublish(FlextInfraUtilitiesGitRepo):
         return r[p.Infra.GitTextReport].ok(m.Infra.GitTextReport(text=text))
 
     @classmethod
+    def git_conflicted_paths(
+        cls,
+        request: p.Infra.GitRepoRequest,
+    ) -> p.Result[tuple[str, ...]]:
+        """List the unmerged paths of an open merge.
+
+        Returns:
+            The conflicted paths, empty when nothing is unmerged.
+
+        """
+        try:
+            listed = cls._repo(request.repo_root).git.diff(
+                "--name-only",
+                "--diff-filter=U",
+                "-z",
+            )
+        except GitCommandError as exc:
+            return r[tuple[str, ...]].fail(str(exc), exception=exc)
+        except (OSError, ValueError) as exc:
+            return r[tuple[str, ...]].fail(
+                f"failed to list conflicted paths: {exc}",
+                exception=exc,
+            )
+        return r[tuple[str, ...]].ok(tuple(path for path in listed.split("\0") if path))
+
+    @classmethod
+    def git_merge_abort(
+        cls,
+        request: p.Infra.GitRepoRequest,
+    ) -> p.Result[p.Infra.GitBoolReport]:
+        """Abort the open merge, restoring the pre-merge worktree and index.
+
+        Returns:
+            The resulting ``p.Result[p.Infra.GitBoolReport]``.
+
+        """
+        try:
+            cls._repo(request.repo_root).git.merge("--abort")
+        except GitCommandError as exc:
+            return r[p.Infra.GitBoolReport].fail(str(exc), exception=exc)
+        except (OSError, ValueError) as exc:
+            return r[p.Infra.GitBoolReport].fail(
+                f"merge abort failed: {exc}",
+                exception=exc,
+            )
+        return r[p.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
+
+    @classmethod
+    def git_checkout_theirs(
+        cls,
+        request: p.Infra.GitPathsRequest,
+    ) -> p.Result[p.Infra.GitBoolReport]:
+        """Take the merged-in side of conflicted ``paths`` in the worktree.
+
+        Returns:
+            The resulting ``p.Result[p.Infra.GitBoolReport]``.
+
+        """
+        try:
+            cls._repo(request.repo_root).git.checkout(
+                "--theirs",
+                "--",
+                *request.paths,
+            )
+        except GitCommandError as exc:
+            return r[p.Infra.GitBoolReport].fail(str(exc), exception=exc)
+        except (OSError, ValueError) as exc:
+            return r[p.Infra.GitBoolReport].fail(
+                f"failed to take the merged-in side: {exc}",
+                exception=exc,
+            )
+        return r[p.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
+
+    @classmethod
+    def git_merge_conclude(
+        cls,
+        request: p.Infra.GitPathsRequest,
+    ) -> p.Result[p.Infra.GitBoolReport]:
+        """Stage ``paths`` as they stand and commit the open merge.
+
+        The commit keeps ``MERGE_HEAD`` as its second parent, so the merge is
+        recorded as a merge, never squashed into a single-parent commit. A
+        conflicted gitlink stages the member checkout's current HEAD.
+
+        Returns:
+            The resulting ``p.Result[p.Infra.GitBoolReport]``.
+
+        """
+        try:
+            git = cls._repo(request.repo_root).git
+            if request.paths:
+                git.add("--", *request.paths)
+            git.commit("--no-edit")
+        except GitCommandError as exc:
+            return r[p.Infra.GitBoolReport].fail(str(exc), exception=exc)
+        except (OSError, ValueError) as exc:
+            return r[p.Infra.GitBoolReport].fail(
+                f"failed to conclude the merge: {exc}",
+                exception=exc,
+            )
+        return r[p.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
+
+    @classmethod
     def git_delete_ref(
         cls,
         request: p.Infra.GitDeleteRefRequest,
@@ -52,16 +152,6 @@ class FlextInfraUtilitiesGitSemanticPublish(FlextInfraUtilitiesGitRepo):
             The resulting ``p.Result[p.Infra.GitBoolReport]``.
 
         """
-        if request.reference.startswith(c.Infra.GIT_REFS_HEADS):
-            admitted = FlextInfraUtilitiesGitSemanticRefs.git_verify_lane(
-                m.Infra.GitLaneVerificationRequest(
-                    repo_root=request.repo_root,
-                    operation="retire",
-                    candidate=request.expected_oid,
-                ),
-            )
-            if admitted.failure:
-                return r[p.Infra.GitBoolReport].from_failure(admitted)
         try:
             repo = cls._repo(request.repo_root)
             repo.git.update_ref("-d", request.reference, request.expected_oid)
@@ -110,21 +200,12 @@ class FlextInfraUtilitiesGitSemanticPublish(FlextInfraUtilitiesGitRepo):
             The resulting ``p.Result[p.Infra.GitTextReport]``.
 
         """
-        admitted = FlextInfraUtilitiesGitSemanticRefs.git_verify_lane(
-            m.Infra.GitLaneVerificationRequest(
-                repo_root=request.repo_root,
-                remote=request.remote,
-                candidate=request.source,
-            ),
-        )
-        if admitted.failure:
-            return r[p.Infra.GitTextReport].from_failure(admitted)
         try:
             repo = cls._repo(request.repo_root)
             text = repo.git.push(
                 "-u",
                 request.remote,
-                f"{request.source}:refs/heads/{request.branch}",
+                f"{request.source}:{c.Infra.GIT_REFS_HEADS}{request.branch}",
             )
         except GitCommandError as exc:
             return r[p.Infra.GitTextReport].fail(str(exc), exception=exc)
@@ -199,17 +280,7 @@ class FlextInfraUtilitiesGitSemanticPublish(FlextInfraUtilitiesGitRepo):
             return r[p.Infra.GitBoolReport].fail(
                 "remote branch retirement requires its observed object identity",
             )
-        admitted = FlextInfraUtilitiesGitSemanticRefs.git_verify_lane(
-            m.Infra.GitLaneVerificationRequest(
-                repo_root=request.repo_root,
-                remote=request.remote,
-                operation="retire",
-                candidate=request.expected_oid,
-            ),
-        )
-        if admitted.failure:
-            return r[p.Infra.GitBoolReport].from_failure(admitted)
-        ref = f"refs/heads/{request.branch}"
+        ref = f"{c.Infra.GIT_REFS_HEADS}{request.branch}"
         lease = (f"--force-with-lease={ref}:{request.expected_oid}",)
         try:
             repo = cls._repo(request.repo_root)
@@ -260,15 +331,6 @@ class FlextInfraUtilitiesGitSemanticPublish(FlextInfraUtilitiesGitRepo):
             The resulting ``p.Result[p.Infra.GitBoolReport]``.
 
         """
-        admitted = FlextInfraUtilitiesGitSemanticRefs.git_verify_lane(
-            m.Infra.GitLaneVerificationRequest(
-                repo_root=request.repo_root,
-                operation="create",
-                candidate=request.start,
-            ),
-        )
-        if admitted.failure:
-            return r[p.Infra.GitBoolReport].from_failure(admitted)
         try:
             repo = cls._repo(request.repo_root)
             if request.switch:
@@ -303,40 +365,6 @@ class FlextInfraUtilitiesGitSemanticPublish(FlextInfraUtilitiesGitRepo):
         except (OSError, ValueError) as exc:
             return r[p.Infra.GitBoolReport].fail(
                 f"failed to switch to {request.branch}: {exc}",
-                exception=exc,
-            )
-        return r[p.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
-
-    @classmethod
-    def git_stash_drop(
-        cls,
-        request: p.Infra.GitStashDropRequest,
-    ) -> p.Result[p.Infra.GitBoolReport]:
-        """Drop exactly the stash entry whose commit is ``oid``.
-
-        Stash indexes shift on every drop, so the entry is located by its
-        commit; an oid no longer stashed is a failure, never a guess.
-
-        Returns:
-            The resulting ``p.Result[p.Infra.GitBoolReport]``.
-
-        """
-        listed = FlextInfraUtilitiesGitSemanticRefs.git_stash_oids(
-            m.Infra.GitRepoRequest(repo_root=request.repo_root)
-        )
-        if listed.failure:
-            return r[p.Infra.GitBoolReport].from_failure(listed)
-        if request.oid not in listed.value.oids:
-            return r[p.Infra.GitBoolReport].fail(f"stash entry {request.oid} not found")
-        index = list(listed.value.oids).index(request.oid)
-        try:
-            repo = cls._repo(request.repo_root)
-            repo.git.stash("drop", f"stash@{{{index}}}")
-        except GitCommandError as exc:
-            return r[p.Infra.GitBoolReport].fail(str(exc), exception=exc)
-        except (OSError, ValueError) as exc:
-            return r[p.Infra.GitBoolReport].fail(
-                f"failed to drop stash {request.oid}: {exc}",
                 exception=exc,
             )
         return r[p.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))

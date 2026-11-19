@@ -290,9 +290,10 @@ Make, its shared runtime reader, setup and
 direnv consume the same configured native selection without a host-PATH fallback,
 custom lock parser or second resolver. Setup always bootstraps and never fails on
 lock drift (operator order 2026-10-24): `uv sync --frozen` installs the committed
-`uv.lock` without re-resolving or rewriting it, and plain `mise install` honors
-every `mise.lock` entry and records only missing ones. Check reports drift through
-`uv lock --check`; upgrade alone advances versions and writes the native locks.
+`uv.lock` without re-resolving or rewriting it, and a locked `mise install`
+installs the committed `mise.lock` entries without recording new ones. Check
+reports drift through `uv lock --check`; upgrade alone advances versions and
+writes the native locks, through the declared self-managed Mise release.
 
 Within one Make evaluation or direnv activation, the shared readers authenticate
 the physical project and its Git root once. The bootstrap reader receives that
@@ -585,14 +586,9 @@ copied into the audited stage. Required build assets must belong to the committe
 source or be produced by its build backend inside the isolated build, not injected
 from unauthenticated checkout outputs. Release metadata and snapshotted build
 policy retain their existing explicit rendering and attestation boundaries.
-Release-version takes no ownership receipt: the release lane admits through the
-read-only lane verification and a clean checkout on the integration branch (see
-[Durable Git state capture, Lane admission](git-state-capture.md#lane-admission)).
-The public `workspace lane-ownership` command still reconstructs a checkpoint's
-original metadata and index parent, verifies the full repository scope, live
-remote retention, and inclusion in the current integration tip, and emits the
-typed receipt for agent-lane ownership. It never captures, publishes, integrates,
-switches branches, or modifies current staged, unstaged, or untracked work.
+Release-version starts its lane from a clean checkout on the integration branch
+(see [Durable Git state capture, Git primitives and lane
+publication](git-state-capture.md#git-primitives-and-lane-publication)).
 The scoped Git API separates `prepare_publication`, `publication_scope`, and
 `commit_publications`. Its live admission binds the prior ownership, integration
 tip, caller ref and exact original index. Native producers retain their original
@@ -2519,6 +2515,12 @@ extras and markers: the transformer does not infer a Git source from a name
 prefix. Generated internal floors use their declared provider provenance;
 explicit member Git references retain the existing URL validation. Preserving a
 requirement during conformance does not prove its resolution or installation.
+
+A requirement declared in `codegen.scaffold.project.dev` owns its distribution by
+name: a project requirement with the same name, extras, marker and origin but
+another version constraint, such as a typing-stub floor raised by Dependabot in a
+generated `pyproject.toml`, is replaced by the declared one, so each distribution
+appears once. The declared floor advances in `codegen.yaml`, never in a projection.
 
 Member contributions carry per-occurrence provenance in both managed development
 groups. CUSTOM entries retain their full constraints and origins; removing a

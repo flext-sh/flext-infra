@@ -68,6 +68,13 @@
 *.bak
 config/build-constraints.txt
 
+# Local runtime and transient state (never source)
+/.build/
+/.runtime/
+/.test-tmp/
+/.zcode/
+/.mise-lock-transaction.lock
+
 # Aider AI data
 .aider/
 .aider.conf.yml

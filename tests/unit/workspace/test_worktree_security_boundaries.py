@@ -70,11 +70,9 @@ class TestsFlextInfraWorktreeSecurityBoundaries:
         )
 
     def test_unresolved_base_fails_before_lane_mutation(self, tmp_path: Path) -> None:
-        """An unresolvable base is refused by admission before any lane effect.
+        """An unresolvable base is refused before any lane effect.
 
-        Admission proves the requested base contains the live integration tip
-        before the service resolves the base itself, so the refusal carries
-        Git's own unresolved-ref diagnostic for the requested name.
+        The service names the base it could not resolve to a commit.
         """
         repository = self._repository(tmp_path)
 
@@ -82,20 +80,26 @@ class TestsFlextInfraWorktreeSecurityBoundaries:
             repository,
             "feature/missing-base",
             base="missing/base",
-            reason="Ref 'missing/base' did not resolve",
+            reason="cannot resolve worktree base: missing/base",
         )
 
-    @c.Tests.MARK.parametrize("entry", ["epic", "container"])
+    @c.Tests.MARK.parametrize(
+        ("entry", "reason"),
+        [
+            ("epic", "epic lane worktree is a symlink"),
+            ("container", "epic worktree container is a symlink"),
+        ],
+    )
     def test_symlinked_epic_topology_fails_closed(
         self,
         tmp_path: Path,
         entry: str,
+        reason: str,
     ) -> None:
         """A child ADD under a symlinked epic topology never writes outside.
 
-        Admission refuses the child ADD (bead flext-itpd1.3.26) before the
-        symlink checks run; the success path is unreachable until admission
-        opens and the symlink target stays empty either way.
+        The service refuses the symlinked epic lane or container by name and
+        the symlink target stays empty.
         """
         repository = self._repository(tmp_path)
         epic = u.Tests.WorktreeFixture.native_lane(repository, "feature/secure-epic")
@@ -107,14 +111,7 @@ class TestsFlextInfraWorktreeSecurityBoundaries:
                 target_is_directory=True,
             )
         else:
-            # Retirement admission is closed, so the epic is unregistered
-            # natively before its path is replaced by a symlink.
-            tm.ok(
-                u.Cli.run_checked(
-                    [c.Infra.GIT, "worktree", "remove", str(epic)],
-                    cwd=repository,
-                ),
-            )
+            tm.ok(u.Infra.git_remove_clean_worktree(repository, epic))
             epic.symlink_to(outside, target_is_directory=True)
 
         try:
@@ -122,6 +119,7 @@ class TestsFlextInfraWorktreeSecurityBoundaries:
                 repository,
                 f"feature/{entry}-child",
                 epic_lane=epic,
+                reason=reason,
             )
 
             tm.that(list(outside.iterdir()), eq=[])
@@ -129,19 +127,25 @@ class TestsFlextInfraWorktreeSecurityBoundaries:
             if epic.is_symlink():
                 epic.unlink()
 
-    @c.Tests.MARK.parametrize("epic", ["unregistered", "foreign"])
+    @c.Tests.MARK.parametrize(
+        ("epic", "reason"),
+        [
+            ("unregistered", "registered epic lane is required"),
+            ("foreign", "worktree branch is already registered"),
+        ],
+    )
     def test_child_add_under_an_unowned_epic_is_refused(
         self,
         tmp_path: Path,
         epic: str,
+        reason: str,
     ) -> None:
         """A child ADD is refused under an unregistered or a foreign epic lane.
 
         ``unregistered`` names a real directory Git does not register;
         ``foreign`` names a registered epic while the child branch is already
-        checked out under another epic. Admission refuses both (bead
-        flext-itpd1.3.26) before the registry checks run, leaving no lane, ref,
-        or registration behind.
+        checked out under another epic. Both refusals leave no lane, ref, or
+        registration behind.
         """
         repository = self._repository(tmp_path)
         native = u.Tests.WorktreeFixture.native_lane
@@ -158,4 +162,5 @@ class TestsFlextInfraWorktreeSecurityBoundaries:
             repository,
             child,
             epic_lane=epic_lane,
+            reason=reason,
         )

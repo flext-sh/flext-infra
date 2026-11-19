@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_core.lazy import install_lazy_exports
+from flext_core.lazy import defer_lazy_instances, install_lazy_exports
 
 if TYPE_CHECKING:
     from flext_cli import d, e, h, r, x
@@ -36,7 +36,6 @@ if TYPE_CHECKING:
     from flext_infra.constants import FlextInfraConstants, c
     from flext_infra.cprofile import FlextInfraFlextInfraCprofile
     from flext_infra.git import FlextInfraGitService
-    from flext_infra.git_lanes import FlextInfraGitLanes
     from flext_infra.models import FlextInfraModels, m
     from flext_infra.preview import FlextInfraFlextInfraPreview
     from flext_infra.promoted import FlextInfraPromoted
@@ -58,7 +57,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraFlextInfraCprofile",
     "FlextInfraFlextInfraPreview",
     "FlextInfraFlextInfraPytest",
-    "FlextInfraGitLanes",
     "FlextInfraGitService",
     "FlextInfraModels",
     "FlextInfraProjectSelectionServiceBase",
@@ -108,7 +106,6 @@ install_lazy_exports(
         "FlextInfraFlextInfraCprofile": ".cprofile",
         "FlextInfraFlextInfraPreview": ".preview",
         "FlextInfraFlextInfraPytest": ".pytest",
-        "FlextInfraGitLanes": ".git_lanes",
         "FlextInfraGitService": ".git",
         "FlextInfraModels": ".models",
         "FlextInfraProjectSelectionServiceBase": ".base_selection",
@@ -144,6 +141,13 @@ install_lazy_exports(
         "x": "flext_cli",
     },
     public_exports=__all__,
+)
+
+defer_lazy_instances(
+    __name__,
+    globals(),
+    {"config": "._config", "settings": "._settings"},
+    ("config", "settings"),
 )
 
 if not TYPE_CHECKING:

@@ -408,39 +408,23 @@ class FlextInfraUtilitiesDependencies(
         ])
 
     @staticmethod
-    def fleet_requirement(requirement: str) -> str:
-        """Return a fleet requirement without an embedded source URL.
-
-        A fleet package is sourced exactly once: the workspace elects the
-        editable checkout, a standalone consumer takes the locked git source.
-        A ``@ git+...`` inside the requirement blocks that election - uv then
-        sees two URLs for the same package (``file:///.../flext-cli`` editable
-        and ``git+...@0.12.0-dev``) and refuses to resolve, which is what
-        stopped ``make upg`` and ``make gen`` for flext-infra.
-
-        Returns:
-            The plain distribution name for a fleet package, the input
-            otherwise.
-
-        """
-        name, separator, _ = requirement.partition(" @ ")
-        if separator and name.startswith("flext-") and "git+" in requirement:
-            return name
-        return requirement
-
-    @staticmethod
     def project_development_requirements(
         scaffold: p.Infra.ScaffoldProjectSpec,
         *,
         distribution: str,
         declared: Sequence[str] = (),
+        standalone: bool = False,
     ) -> Sequence[str]:
         """Compose development policy over the target's own requirement declarations.
 
         Existing requirement spellings, marker variants and sources stay intact.
-        The fleet codegen/test development suppliers belong to the workspace root
-        (``c.Infra.PKG_ROOT``) and never to a member: a member's own group must
-        not redeclare them beside the workspace's editable sources. Installed
+        A policy requirement owns its distribution by name: a declaration with
+        the same name, extras, marker and origin but another constraint yields
+        to it, so each distribution appears once. The fleet codegen/test
+        development suppliers belong to a workspace root
+        (``c.Infra.PKG_ROOT``) or to a standalone checkout that is its own root,
+        and never to a workspace member: a member's own group must not
+        redeclare them beside the workspace's editable sources. Installed
         packages and project names do not elect any other policy.
 
         Returns:
@@ -448,7 +432,7 @@ class FlextInfraUtilitiesDependencies(
 
         """
         own = canonicalize_name(distribution)
-        is_root = own == canonicalize_name(c.Infra.PKG_ROOT)
+        is_root = standalone or own == canonicalize_name(c.Infra.PKG_ROOT)
         root_suppliers = (
             set()
             if is_root
@@ -457,18 +441,32 @@ class FlextInfraUtilitiesDependencies(
                 for item in scaffold.required_flext_dev
             }
         )
-        authored: list[str] = []
-        retained: set[Requirement] = set()
-        for item in declared:
-            parsed = Requirement(item)
-            if parsed in retained or canonicalize_name(parsed.name) in root_suppliers:
-                continue
-            retained.add(parsed)
-            authored.append(item)
         policy = (
             *scaffold.dev,
             *(scaffold.required_flext_dev if is_root else ()),
         )
+        owned = {
+            FlextInfraUtilitiesDependencies.requirement_variant_identity(item): (
+                Requirement(item)
+            )
+            for item in policy
+        }
+        authored: list[str] = []
+        retained: set[Requirement] = set()
+        for item in declared:
+            parsed = Requirement(item)
+            if (
+                parsed in retained
+                or canonicalize_name(parsed.name) in root_suppliers
+                or owned.get(
+                    FlextInfraUtilitiesDependencies.requirement_variant_identity(item),
+                    parsed,
+                )
+                != parsed
+            ):
+                continue
+            retained.add(parsed)
+            authored.append(item)
         additions: list[str] = []
         for requirement in policy:
             parsed = Requirement(requirement)

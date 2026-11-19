@@ -325,6 +325,67 @@ class TestsProtocolHolderComposition:
         )
 
     @classmethod
+    def test_rendered_holder_replaces_its_stale_disk_copy_in_the_aggregate(
+        cls, tmp_path: Path
+    ) -> None:
+        """A rendered path owns its holder; a holder only on disk still composes."""
+        root, package = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-derived-sample",
+            package_name="flext_derived_sample",
+        )
+        name = package.name
+        cls._write(
+            package,
+            {
+                "models.py": (
+                    f"from {name}._models.payload import "
+                    "FlextDerivedSampleModelsPayload\n"
+                    "class FlextDerivedSampleModels("
+                    "FlextDerivedSampleModelsPayload): pass\n"
+                    "m = FlextDerivedSampleModels\n"
+                ),
+                "protocols.py": (
+                    f"from {name}._protocols.authored import "
+                    "FlextDerivedSampleProtocolsAuthored\n"
+                    f"from {name}._protocols.payload import "
+                    "FlextDerivedSampleProtocolsLegacyPayload\n"
+                    "class FlextDerivedSampleProtocols("
+                    "FlextDerivedSampleProtocolsAuthored, "
+                    "FlextDerivedSampleProtocolsLegacyPayload): pass\n"
+                    "p = FlextDerivedSampleProtocols\n"
+                ),
+                "_models/payload.py": (
+                    "from pydantic import BaseModel\n"
+                    "class FlextDerivedSampleModelsPayload:\n"
+                    "    class Request(BaseModel):\n        name: str\n"
+                ),
+                "_protocols/__init__.py": "",
+                "_protocols/authored.py": (
+                    "class FlextDerivedSampleProtocolsAuthored: pass\n"
+                    "__all__ = ['FlextDerivedSampleProtocolsAuthored']\n"
+                ),
+                "_protocols/payload.py": (
+                    "class FlextDerivedSampleProtocolsLegacyPayload: pass\n"
+                    "__all__ = ['FlextDerivedSampleProtocolsLegacyPayload']\n"
+                ),
+            },
+        )
+        with u.Infra.facade_source_project(root) as binding:
+            planned = tm.ok(
+                u.Infra.protocol_model_sources_from_source(root, binding[0])
+            )
+        facade = planned[(package / "protocols.py").relative_to(root)]
+        bases = cls._class_bases(facade, "FlextDerivedSampleProtocols")
+        tm.that(bases, has="FlextDerivedSampleProtocolsPayload")
+        tm.that(bases, has="FlextDerivedSampleProtocolsAuthored")
+        tm.fail("FlextDerivedSampleProtocolsLegacyPayload" in facade)
+        tm.ok(
+            f"from {name}._protocols.authored import "
+            "FlextDerivedSampleProtocolsAuthored" in facade
+        )
+
+    @classmethod
     @c.Tests.MARK.parametrize("upstream", [None, ("flext_cli", "FlextCliProtocols")])
     def test_copy_port_base_derives_from_facade_composition(
         cls, tmp_path: Path, upstream: tuple[str, str] | None

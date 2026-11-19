@@ -43,7 +43,10 @@ Infra:
     # from CLI and editor alike, so its ignore projection is too.
     - path: .markdownlintignore
       evidence: '# @flext-regenerate: make gen'
-    - .github/scripts/install-git-hooks.sh
+    # Pre-marker generations carry no banner; the retired installer's own
+    # header proves machine provenance so consumers keep no stale copy.
+    - path: .github/scripts/install-git-hooks.sh
+      evidence: "Install the Beads git hooks at the composition root"
     - .github/scripts/flext-law-loop.sh
     # The unread per-id projection of generated ast-grep utilities and rules
     # (make mod renders them in memory): a retired directory removes every
@@ -318,7 +321,7 @@ Infra:
       # override-dependencies bind only this project's own resolution, never
       # the metadata an installer of this distribution resolves.
       uv_override_dependencies:
-      - rope @ git+https://github.com/marlon-costa-dc/rope.git@3a0cb69024fb5f17ba32064bf6c294d016c7d9d8
+      - rope @ git+https://github.com/marlon-costa-dc/rope.git@09806ca918b69994ac3a880c92cde9689f480f46
       # Moving selectors consumed by generated .mise.toml and CI. Only
       # `make upg` resolves them to the newest release and writes mise.lock;
       # setup installs exactly what the committed lock pins, and only these
@@ -574,11 +577,6 @@ Infra:
     # Nothing here catalogs organizations, and nothing resolves a provider by
     # matching a Git origin against configured rows.
     branch_policy:
-      lane_remote: origin
-      lane_pr_limit: 1000
-      lane_governance_file:
-      lane_temporary_roots:
-      - /tmp
       # Pushes to these branches trigger the generated CI workflow. The renderer
       # adds the repository's own integration branch to this list; it never
       # hardcodes a fleet branch name.
@@ -811,6 +809,7 @@ Infra:
       - VIRTUAL_ENV
       - PYTHONHOME
       - PYTHONPATH
+      - PYTHONDONTWRITEBYTECODE
       setup_timeout_seconds: 118
       # The check route wall-time bound is not declared here: the Makefile
       # render spec derives it from the largest declared budget of the check
@@ -1874,6 +1873,19 @@ Infra:
         patterns:
         - "*.bak"
         - "config/build-constraints.txt"
+      # Root-anchored local runtime state written by canonical verbs, tests and
+      # the project's build/publish lifecycle. A fresh checkout never needs
+      # these and a run removes its own files; the paths stay per-machine until
+      # then. Anchoring keeps a same-named source directory inside the governed
+      # trees from ever being swallowed.
+      - name: "Local runtime and transient state (never source)"
+        profiles: [ workspace, standalone ]
+        patterns:
+        - "/.build/"
+        - "/.runtime/"
+        - "/.test-tmp/"
+        - "/.zcode/"
+        - "/.mise-lock-transaction.lock"
       - name: "Aider AI data"
         patterns:
         - ".aider/"
