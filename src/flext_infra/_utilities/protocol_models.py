@@ -78,17 +78,47 @@ class FlextInfraUtilitiesModelsProtocol:
     @classmethod
     def protocol_model_sources(
         cls, workspace: p.Infra.RopeWorkspaceDsl
-    ) -> p.Result[Mapping[Path, str | None]]:
+    ) -> p.Result[Mapping[Path, str]]:
         """Return protocol sources without importing or publishing the target.
 
         Returns:
-            Relative generated declarations (``None`` retires a projection whose
-            models are gone), or the inventory's original failure.
+            Relative generated declarations, or the inventory's original failure.
             An absent declared facade/layout has no applicable projection.
 
         """
         return cls.protocol_model_sources_from_source(
             workspace.repository_root, workspace.rope_project
+        )
+
+    @classmethod
+    def protocol_model_projection_from_source(
+        cls,
+        repository_root: Path,
+        source_project: p.Infra.RopeProject,
+        *,
+        package_name: str | None = None,
+    ) -> p.Result[tuple[Mapping[Path, str], frozenset[Path]]]:
+        """Plan protocol mirrors and the generated modules no model owns anymore.
+
+        Generation is the single writer under deletion: the retired modules
+        are hidden from the projection that renders the sources, so no facade
+        or export composes them.
+
+        Returns:
+            Relative protocol mirror sources and the relative modules to retire,
+            or the source inventory failure.
+
+        """
+        projection = cls._ModelProtocolProjection(
+            repository_root, source_project, package_name=package_name
+        )
+        return projection.sources().map(
+            lambda rendered: (
+                cls._with_mirror_package_initializers(
+                    rendered, repository_root, source_project
+                ),
+                projection.retired_projections,
+            )
         )
 
     @classmethod
@@ -99,7 +129,7 @@ class FlextInfraUtilitiesModelsProtocol:
         *,
         domain_owner: p.Infra.SourceClassReference | None = None,
         package_name: str | None = None,
-    ) -> p.Result[Mapping[Path, str | None]]:
+    ) -> p.Result[Mapping[Path, str]]:
         """Plan protocol mirrors directly from an overlaid source project.
 
         This public bootstrap entry intentionally does not construct a Rope
@@ -149,10 +179,10 @@ class FlextInfraUtilitiesModelsProtocol:
     @classmethod
     def _with_mirror_package_initializers(
         cls,
-        rendered: Mapping[Path, str | None],
+        rendered: Mapping[Path, str],
         repository_root: Path,
         source_project: p.Infra.RopeProject,
-    ) -> Mapping[Path, str | None]:
+    ) -> Mapping[Path, str]:
         """Seed the initializer of every protocol mirror package it creates.
 
         A mirror of a nested model package lands in a ``_protocols``
@@ -171,8 +201,7 @@ class FlextInfraUtilitiesModelsProtocol:
             package = relative.parent
             initializer = package / c.Infra.INIT_PY
             if (
-                text is None
-                or relative.name == c.Infra.INIT_PY
+                relative.name == c.Infra.INIT_PY
                 or "_protocols" not in package.parent.parts
                 or initializer in rendered
                 or source_project.source_query(repository_root / initializer, "isfile")
@@ -663,14 +692,9 @@ class FlextInfraUtilitiesModelsProtocol:
                 ]
                 | None
             ].from_failure(planned)
-        # Retiring a projection belongs to the conform stage, which republishes
-        # the lazy exports over the retirement in the same candidate.
-        projected = {
-            path: text for path, text in planned.value.items() if text is not None
-        }
         updates = {
             **normalized,
-            **{root / path: text for path, text in projected.items()},
+            **{root / path: text for path, text in planned.value.items()},
         }
         for path in updates:
             if path not in originals:
@@ -692,7 +716,7 @@ class FlextInfraUtilitiesModelsProtocol:
                     node.name for node in holder.body if isinstance(node, ast.ClassDef)
                 ),
             )
-            for relative, text in projected.items()
+            for relative, text in planned.value.items()
             for holder in ast.parse(text).body
             if isinstance(holder, ast.ClassDef)
         ]
@@ -707,7 +731,7 @@ class FlextInfraUtilitiesModelsProtocol:
                 Sequence[tuple[str, str, tuple[str, ...]]],
             ]
             | None
-        ].ok((package, projected, updates, originals, inputs, members))
+        ].ok((package, planned.value, updates, originals, inputs, members))
 
     @classmethod
     def _publish_bootstrap_protocol_facades(
@@ -822,6 +846,8 @@ class FlextInfraUtilitiesModelsProtocol:
             self.source_protocol_retirements: dict[
                 Path, tuple[tuple[str, str], ...]
             ] = {}
+            # Generated protocol modules whose models are all gone.
+            self.retired_projections: frozenset[Path] = frozenset()
             self.source_protocol_rewrites: dict[
                 Path, tuple[p.Infra.SourceRewrite, ...]
             ] = {}
@@ -884,12 +910,12 @@ class FlextInfraUtilitiesModelsProtocol:
                 )
             return self._documentation_language
 
-        def sources(self) -> p.Result[Mapping[Path, str | None]]:
+        def sources(self) -> p.Result[Mapping[Path, str]]:
             """Inventory declaring model sources before any semantic module opens.
 
             Returns:
-                Generated data contracts (``None`` retires a projected module),
-                or the inventory or render failure.
+                Generated data contracts, or the inventory or render failure;
+                ``retired_projections`` names the modules this run retires.
 
             """
             # Pydantic evaluates annotations while Rope opens a semantic module.
@@ -1161,21 +1187,20 @@ class FlextInfraUtilitiesModelsProtocol:
             self._source_index_model_protocols(package_dir, package_name, grouped)
             return package_dir, package_name, grouped
 
-        def _source_model_sources(self) -> p.Result[Mapping[Path, str | None]]:
+        def _source_model_sources(self) -> p.Result[Mapping[Path, str]]:
             """Project local Pydantic declarations using only the source view.
 
             The source inventory deliberately does not consult ``m`` or ``p``.
             Those facades are consumers of this projection and may be incomplete
             during bootstrap. Projections whose models are gone retire in the
             same candidate, hidden from the rest of the projection so no facade
-            composes them.
+            composes them; ``retired_projections`` records the retired modules.
 
             Returns:
-                Same-path protocol mirror sources derived from local model files;
-                ``None`` retires a projected module.
+                Same-path protocol mirror sources derived from local model files.
 
             """
-            result_type = r[Mapping[Path, str | None]]
+            result_type = r[Mapping[Path, str]]
             inventory = self.source_model_inventory()
             if inventory is None:
                 return result_type.ok({})
@@ -1199,7 +1224,17 @@ class FlextInfraUtilitiesModelsProtocol:
                 rendered = self._source_rendered_model_sources(
                     package_dir, package_name, grouped
                 )
-            return result_type.ok({**retired, **rendered})
+            self.retired_projections = frozenset(
+                relative for relative, source in retired.items() if source is None
+            )
+            return result_type.ok({
+                **{
+                    relative: source
+                    for relative, source in retired.items()
+                    if source is not None
+                },
+                **rendered,
+            })
 
         def _source_retired_projections(
             self,
@@ -1224,6 +1259,7 @@ class FlextInfraUtilitiesModelsProtocol:
             if not self.project.source_query(protocols, "isdir"):
                 return retired
             owned = {destination.resolve() for destination in grouped}
+            normalize = FlextInfraUtilitiesProtectedEditLinting.normalize_python_text
             for directory, _children, files in self.project.source_walk(protocols):
                 # Private families (service ports, external capabilities) are
                 # authored, never model mirrors, exactly as the aggregate skips.
@@ -1252,12 +1288,11 @@ class FlextInfraUtilitiesModelsProtocol:
                         for node in holder.body
                         if isinstance(node, ast.ClassDef)
                     ]
+                    generated = source.startswith(c.Infra.AUTOGEN_HEADER)
                     retired[relative] = (
                         None
-                        if source.startswith(c.Infra.AUTOGEN_HEADER) and not contracts
-                        else FlextInfraUtilitiesProtectedEditLinting.normalize_python_text(
-                            path, pruned
-                        ).unwrap()
+                        if generated and not contracts
+                        else normalize(path, pruned).unwrap()
                     )
             return retired
 
