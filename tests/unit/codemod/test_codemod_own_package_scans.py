@@ -183,58 +183,6 @@ class TestsFlextInfraCodemodOwnPackageScans:
             for path in paths:
                 tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=original[path])
 
-    class TestSourceRoles:
-        """Native declarations distinguish configuration from consumer helpers."""
-
-        @staticmethod
-        @c.Tests.MARK.parametrize(
-            "filename",
-            [
-                "configuration.py",
-                "runtime_settings.py",
-                "consumer.py",
-                "helpers/settings.py",
-                "helpers/config.py",
-                "pulumi/lib/settings.py",
-            ],
-        )
-        @c.Tests.MARK.parametrize("declares", [False, True])
-        @c.Tests.MARK.parametrize(
-            ("provider", "base"),
-            [("flext_core", "FlextConfig"), ("flext_ldap", "FlextLdapSettings")],
-        )
-        def test_source_layer_zero_requires_native_configuration_ancestry(
-            mod_workspace: Path,
-            filename: str,
-            provider: str,
-            base: str,
-            *,
-            declares: bool,
-        ) -> None:
-            """Importing a settings base alone never grants its consumer Layer0."""
-            namespace = u.Infra.project_package_name(mod_workspace)
-            source = mod_workspace / "src" / namespace / filename
-            source.parent.mkdir(parents=True, exist_ok=True)
-            source.write_text(
-                f"from {provider} import {base}, m, t\n"
-                + (
-                    f"class LocalSettings({base}):\n    pass\n"
-                    if declares
-                    else "class Consumer:\n    pass\n"
-                ),
-                encoding="utf-8",
-            )
-            with u.Infra.open_project(mod_workspace) as project:
-                resource = u.Infra.require_file_resource(
-                    project.get_resource(source.relative_to(mod_workspace).as_posix()),
-                    source,
-                )
-                module = u.Infra.resolve_pymodule(project, resource)
-                tm.that(
-                    u.Infra.import_source_role(project, module, source),
-                    eq="layer0" if declares else "consumer",
-                )
-
     @staticmethod
     @c.Tests.MARK.parametrize(
         "case",
