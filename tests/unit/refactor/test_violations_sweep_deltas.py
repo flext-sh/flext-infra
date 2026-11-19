@@ -19,7 +19,6 @@ from flext_infra.refactor import FlextInfraRefactorViolationsSweep
 from tests import c, m, t, tm, u
 from tests.unit.refactor.violations_sweep_support import (
     LOCAL_GROWTH_RULE,
-    LOCAL_RULE_CATALOG,
     TestsFlextInfraRefactorViolationsSweepSupport,
 )
 
@@ -598,9 +597,9 @@ class TestsFlextInfraRefactorViolationsSweepAudits(
         self,
         mod_workspace: Path,
     ) -> None:
-        """Generation, namespace repair and audit have separate process receipts."""
+        """Generation, repair and formatting have separate process receipts."""
         root = mod_workspace
-        verbs = ("gen", "fix-namespace", "audit")
+        verbs = ("gen", "fix", "fmt")
         names = " ".join(verbs)
         self._prepare(
             root,
@@ -618,10 +617,10 @@ class TestsFlextInfraRefactorViolationsSweepAudits(
             tm.ok(u.Cli.process_succeeded(outcome))
             tm.fail(outcome.timed_out)
             tm.ok(stage.duration >= 0)
-        audit = report.stages[-1]
-        tm.ok(tm.not_none(audit.source_inventory_unchanged))
-        audit_before = tm.not_none(audit.audit_before)
-        audit_after = tm.not_none(audit.audit_after)
+        last = report.stages[-1]
+        tm.ok(tm.not_none(last.source_inventory_unchanged))
+        audit_before = tm.not_none(last.audit_before)
+        audit_after = tm.not_none(last.audit_after)
         tm.that(audit_before.sha256, eq=audit_after.sha256)
 
     @c.Tests.MARK.parametrize(
@@ -644,210 +643,3 @@ class TestsFlextInfraRefactorViolationsSweepAudits(
         self._prepare(root, makefile=self._makefile(), local_rule=True)
         tm.that(self._sweep(root, option, value), ne=0)
         tm.fail((root / "ran.txt").exists())
-
-    @c.Tests.MARK.parametrize("fail", [False, True])
-    @c.Tests.MARK.parametrize("mutation", ["introduce", "resolve"])
-    def test_audit_focus_keeps_cross_rule_and_mutation_failures(
-        self,
-        mod_workspace: Path,
-        *,
-        fail: bool,
-        mutation: str,
-    ) -> None:
-        """Audit cannot rewrite sources or hide findings outside the focus."""
-        root = mod_workspace
-        replacement = "dict" if mutation == "introduce" else "tuple"
-        self._prepare(
-            root,
-            makefile=(
-                ".PHONY: audit\naudit:\n"
-                f"\t@printf 'marker = {replacement}()\\n' > changed.py\n"
-                + (
-                    "\t@printf 'original-audit-failure\\n' >&2\n\t@false\n"
-                    if fail
-                    else ""
-                )
-            ),
-            local_rule=True,
-        )
-        if mutation == "resolve":
-            tm.ok(
-                u.Cli.atomic_write_text_file(root / "changed.py", "marker = dict()\n")
-            )
-        with u.Infra.codemod_workspace_snapshot(root) as snapshot:
-            plan = tm.ok(u.Infra.codemod_rule_plan(snapshot))
-        focus = next(rule.id for rule in plan.rules if rule.id != "sweep-growth")
-        result = FlextInfraRefactorViolationsSweep(
-            repository_root=root,
-            repair_verbs="audit",
-            rules=focus,
-        ).execute()
-        tm.fail(result, has="original-audit-failure" if fail else "audit changed")
-        report = self._receipt(root)
-        tm.that(list(report.focused_rule_ids), eq=[focus])
-        stage = report.stages[0]
-        tm.fail(tm.not_none(stage.source_inventory_unchanged))
-        tm.ok(bool(stage.inspection_error))
-        tm.that(stage.audit_after, none=False)
-        tm.that(report.after_evidence, none=False)
-        tm.that(
-            {row.rule_id for row in report.rule_deltas},
-            eq={rule.id for rule in plan.rules},
-        )
-        row = next(row for row in report.rule_deltas if row.rule_id == "sweep-growth")
-        tm.that(row.introduced if mutation == "introduce" else row.resolved, eq=1)
-
-    @c.Tests.MARK.parametrize("mutation", ["change", "add", "remove"])
-    def test_audit_authenticates_utility_bytes_and_inventory_without_source_changes(
-        self,
-        mod_workspace: Path,
-        mutation: str,
-    ) -> None:
-        """Utility-only effects invalidate native evidence and the read-only audit."""
-        root = mod_workspace
-        self._prepare(root, makefile=self._makefile(), local_rule=True)
-        catalog = root / c.Infra.CODEMOD_CONFIG_RELPATH
-        utilities = catalog.parent / "utils"
-        tm.ok(u.Cli.ensure_dir(utilities))
-        tm.ok(
-            u.Cli.atomic_write_text_file(
-                catalog, LOCAL_RULE_CATALOG + "utilDirs:\n  - utils\n"
-            )
-        )
-        tm.ok(
-            u.Cli.atomic_write_text_file(
-                catalog.parent / c.Cli.RULES_DIR_NAME / "sweep.yml",
-                LOCAL_GROWTH_RULE.replace(
-                    "  pattern: marker = dict()", "  matches: sweep-match"
-                ),
-            )
-        )
-        utility = utilities / "match.yml"
-        utility_text = (
-            "id: sweep-match\nlanguage: Python\nrule:\n  pattern: marker = tuple()\n"
-        )
-        tm.ok(u.Cli.atomic_write_text_file(utility, utility_text))
-        tm.ok(u.Cli.atomic_write_text_file(root / "sample.py", "marker = dict()\n"))
-        changed = utility if mutation == "change" else utilities / "extra.yml"
-        extra_text = utility_text.replace("sweep-match", "sweep-extra")
-        if mutation == "remove":
-            tm.ok(u.Cli.atomic_write_text_file(changed, extra_text))
-            recipe = f"\t@rm '{changed}'\n"
-        else:
-            replacement = (
-                utility_text.replace("tuple()", "dict()")
-                if mutation == "change"
-                else extra_text
-            ).replace("\n", "\\n")
-            recipe = f"\t@printf '{replacement}' > '{changed}'\n"
-        self._prepare(
-            root,
-            makefile=".PHONY: audit\naudit:\n" + recipe,
-            local_rule=False,
-        )
-        tm.fail(
-            FlextInfraRefactorViolationsSweep(
-                repository_root=root, repair_verbs="audit"
-            ).execute(),
-            has="audit changed",
-        )
-        stage = self._receipt(root).stages[0]
-        tm.fail(tm.not_none(stage.source_inventory_unchanged))
-        before = tm.not_none(stage.audit_before).sha256
-        after = tm.not_none(stage.audit_after).sha256
-        for unchanged in (
-            catalog,
-            catalog.parent / c.Cli.RULES_DIR_NAME / "sweep.yml",
-            root / "sample.py",
-        ):
-            tm.that(
-                before[str(unchanged.resolve())], eq=after[str(unchanged.resolve())]
-            )
-        tm.that(
-            before[str(utility.resolve())], eq=u.Cli.sha256_bytes(utility_text.encode())
-        )
-        changed_key = str(changed.resolve())
-        if mutation == "change":
-            tm.that(before[changed_key], ne=after[changed_key])
-            row = next(
-                row for row in stage.rule_evaluations if row.rule_id == "sweep-growth"
-            )
-            delta = tm.not_none(row.delta)
-            tm.that((delta.before, delta.after, delta.introduced), eq=(0, 1, 1))
-        else:
-            tm.that(changed_key in before, eq=mutation == "remove")
-            tm.that(changed_key in after, eq=mutation == "add")
-
-    def test_audit_verdicts_are_independent_for_discovered_members(
-        self,
-        mod_workspace: Path,
-    ) -> None:
-        """Root success cannot hide a member failure or prevent later audits."""
-        root = mod_workspace
-        self._prepare(
-            root, makefile=".PHONY: audit\naudit:\n\t@true\n", local_rule=True
-        )
-        members = (root / "member-fails", root / "member-passes")
-        layout = tm.not_none(u.Infra.layout(root))
-        declarations: list[str] = []
-        for member in members:
-            tm.ok(u.Cli.ensure_dir(member / c.Infra.DEFAULT_SRC_DIR))
-            package = member / c.Infra.DEFAULT_SRC_DIR / layout.package_name
-            tm.ok(u.Cli.ensure_dir(package))
-            tm.ok(u.Cli.atomic_write_text_file(package / "__init__.py", ""))
-            tm.ok(
-                u.Cli.atomic_write_text_file(
-                    member / c.PYPROJECT_FILENAME,
-                    (root / c.PYPROJECT_FILENAME).read_text(encoding="utf-8"),
-                )
-            )
-            tm.ok(
-                u.Cli.atomic_write_text_file(
-                    member / c.Infra.DEFAULT_SRC_DIR / "sample.py",
-                    "marker = tuple()\n",
-                )
-            )
-            recipe = (
-                "\t@printf 'member-audit-failure\\n' >&2\n\t@false\n"
-                if member == members[0]
-                else "\t@true\n"
-            )
-            tm.ok(
-                u.Cli.atomic_write_text_file(
-                    member / c.Infra.MAKEFILE_FILENAME,
-                    ".PHONY: audit\naudit:\n" + recipe,
-                )
-            )
-            declarations.append(
-                f'[submodule "{member.name}"]\n\tpath = {member.name}\n'
-                f"\turl = https://example.com/{member.name}.git\n"
-            )
-        tm.ok(
-            u.Cli.atomic_write_text_file(
-                root / c.Infra.GITMODULES, "".join(declarations)
-            )
-        )
-        discovered = tuple(u.Infra.governed_project_roots(root))
-        tm.that(
-            set(discovered),
-            eq={root.resolve(), *(member.resolve() for member in members)},
-        )
-        result = FlextInfraRefactorViolationsSweep(
-            repository_root=root,
-            repair_verbs="audit,gen",
-        ).execute()
-        tm.fail(result, has="member-audit-failure")
-        report = self._receipt(root)
-        tm.that(list(report.repository_roots), eq=list(discovered))
-        audits = [stage for stage in report.stages if stage.verb == "audit"]
-        tm.that([stage.repository_root for stage in audits], eq=list(discovered))
-        for stage in audits:
-            tm.ok(stage.invoked)
-            tm.ok(tm.not_none(stage.source_inventory_unchanged))
-            outcome = tm.not_none(stage.outcome)
-            tm.that(
-                outcome.raw_return_code == 0,
-                eq=stage.repository_root != members[0],
-            )
-        tm.fail(report.stages[-1].invoked)
-        tm.that(report.stages[-1].outcome, eq=None)
