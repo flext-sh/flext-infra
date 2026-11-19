@@ -13,9 +13,11 @@ from typing import ClassVar
 
 from flext_core import c
 
-from flext_infra._constants import FlextInfraConstantsSourceCode
-from flext_infra._constants.make import FlextInfraConstantsMake
-from flext_infra._constants.validate import FlextInfraConstantsSharedInfra
+from flext_infra._constants import (
+    FlextInfraConstantsMake,
+    FlextInfraConstantsSharedInfra,
+    FlextInfraConstantsSourceCode,
+)
 
 
 class FlextInfraConstantsBase(

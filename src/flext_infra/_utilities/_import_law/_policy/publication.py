@@ -21,17 +21,15 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesWorkspaceSnapshot,
 )
-from flext_infra._utilities._import_law._policy.namespace import (
+from flext_infra._utilities._import_law._policy import (
     FlextInfraUtilitiesImportLawPolicyNamespace,
 )
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeAnalysis,
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntime,
-    FlextInfraUtilitiesRopeSourceBasesRuntime,
-)
-from flext_infra._utilities._rope.runtime_types import (
     FlextInfraUtilitiesRopeRuntimeTypes,
+    FlextInfraUtilitiesRopeSourceBasesRuntime,
 )
 
 

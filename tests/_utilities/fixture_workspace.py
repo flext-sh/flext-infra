@@ -12,13 +12,15 @@ import runpy
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
-from flext_infra import FlextInfraWorktreeService, config, infra, u
+from flext_infra import FlextInfraWorktreeService, u
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-from tests import c, m, p, t, tm
-from tests.utilities_codegen import TestsFlextInfraUtilitiesCodegen
-from tests.utilities_fixture_project import TestsFlextInfraUtilitiesProjectFixture
-from tests.utilities_fixture_tooling import TestsFlextInfraUtilitiesToolingFixture
-from tests.utilities_git import TestsFlextInfraUtilitiesGit
+from tests import c, config, infra, m, p, t, tm
+from tests._utilities import (
+    TestsFlextInfraUtilitiesCodegen,
+    TestsFlextInfraUtilitiesGit,
+    TestsFlextInfraUtilitiesProjectFixture,
+    TestsFlextInfraUtilitiesToolingFixture,
+)
 
 
 class TestsFlextInfraUtilitiesWorkspaceFixture:
@@ -1321,8 +1323,6 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
                 ),
             )
             return tree, status
-
-    __all__: tuple[str, ...] = ("WorktreeFixture",)
 
 
 __all__: list[str] = ["TestsFlextInfraUtilitiesWorkspaceFixture"]

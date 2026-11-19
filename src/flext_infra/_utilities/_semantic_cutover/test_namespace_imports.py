@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from flext_infra import c, p, t
 from flext_infra._utilities import FlextInfraUtilitiesProjectManagedArtifacts
-from flext_infra._utilities._semantic_cutover.edits import (
+from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverEdits,
 )
 
