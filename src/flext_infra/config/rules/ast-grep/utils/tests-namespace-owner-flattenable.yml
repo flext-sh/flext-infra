@@ -2,7 +2,10 @@
 # mechanically (ENFORCE-054): its body holds only its docstring, comments and
 # one `class Tests`; that `Tests` body holds no multi-line data string (whose
 # continuation lines a re-indent would change); and no sibling in the facade
-# is or owns another `class Tests` (two flattened classes would shadow).
+# is or owns another `class Tests` (two flattened classes would shadow); and
+# the owner is the facade's only route to nothing: it has no base, or its base
+# `<Owner>.<Project>` names an `<Owner>` the facade itself composes, so removing
+# it keeps `<facade>.<Project>.*` reachable through the facade's own MRO.
 id: tests-namespace-owner-flattenable
 language: python
 utils:
@@ -57,6 +60,24 @@ rule:
         precedes:
           stopBy: end
           matches: owns-tests
+  any:
+    - not:
+        has: {field: superclasses, kind: argument_list}
+    # `all` orders the base capture before the facade lookup that reuses it.
+    - all:
+        - has:
+            field: superclasses
+            has:
+              pattern: $OWNER_BASE.$OWNER_PROJECT
+        - inside:
+            kind: block
+            inside:
+              kind: class_definition
+              has:
+                field: superclasses
+                has:
+                  kind: identifier
+                  pattern: $OWNER_BASE
   inside:
     kind: block
     inside:

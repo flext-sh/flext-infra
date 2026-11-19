@@ -333,6 +333,55 @@ snapshots:
       style: secondary
       start: 162
       end: 167
+    - source: FlextLdapTypes.Ldap
+      style: secondary
+      start: 94
+      end: 113
+    - source: FlextLdapTypes.Ldap
+      style: secondary
+      start: 94
+      end: 113
+    - source: FlextLdapTypes
+      style: secondary
+      start: 43
+      end: 57
+    - source: FlextLdapTypes
+      style: secondary
+      start: 43
+      end: 57
+    - source: |-
+        class TestsFlextLdapTypes(FlextTestsTypes, FlextLdapTypes):
+            """Facade."""
+
+            class Ldap(FlextLdapTypes.Ldap):
+                """LDAP test types."""
+
+                class Tests(FlextTestsTypes.Tests):
+                    """Use t.Ldap.Tests.* for all test types."""
+
+                    type LdapContainerDict = Mapping[
+                        str,
+                        FlextLdapTypes.Scalar,
+                    ]
+      style: secondary
+      start: 0
+      end: 369
+    - source: |-
+        """Facade."""
+
+            class Ldap(FlextLdapTypes.Ldap):
+                """LDAP test types."""
+
+                class Tests(FlextTestsTypes.Tests):
+                    """Use t.Ldap.Tests.* for all test types."""
+
+                    type LdapContainerDict = Mapping[
+                        str,
+                        FlextLdapTypes.Scalar,
+                    ]
+      style: secondary
+      start: 64
+      end: 369
     - source: |
         class TestsFlextLdapTypes(FlextTestsTypes, FlextLdapTypes):
             """Facade."""

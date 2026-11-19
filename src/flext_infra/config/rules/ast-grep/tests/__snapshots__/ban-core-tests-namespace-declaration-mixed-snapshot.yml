@@ -71,6 +71,74 @@ snapshots:
       start: 127
       end: 132
   ? |
+    class TestsFlextMeltanoConstants(FlextTestsConstants):
+        class Meltano(FlextMeltanoConstants.Meltano):
+            """Meltano domain namespace."""
+
+            class Tests(FlextTestsConstants.Tests):
+                HOST = "localhost"
+  : labels:
+    - source: |-
+        class Tests(FlextTestsConstants.Tests):
+                    HOST = "localhost"
+      style: primary
+      start: 154
+      end: 224
+    - source: |
+        class TestsFlextMeltanoConstants(FlextTestsConstants):
+            class Meltano(FlextMeltanoConstants.Meltano):
+                """Meltano domain namespace."""
+
+                class Tests(FlextTestsConstants.Tests):
+                    HOST = "localhost"
+      style: secondary
+      start: 0
+      end: 225
+    - source: |-
+        class TestsFlextMeltanoConstants(FlextTestsConstants):
+            class Meltano(FlextMeltanoConstants.Meltano):
+                """Meltano domain namespace."""
+
+                class Tests(FlextTestsConstants.Tests):
+                    HOST = "localhost"
+      style: secondary
+      start: 0
+      end: 224
+    - source: |-
+        class Meltano(FlextMeltanoConstants.Meltano):
+                """Meltano domain namespace."""
+
+                class Tests(FlextTestsConstants.Tests):
+                    HOST = "localhost"
+      style: secondary
+      start: 59
+      end: 224
+    - source: Meltano
+      style: secondary
+      start: 65
+      end: 72
+    - source: |-
+        class Meltano(FlextMeltanoConstants.Meltano):
+                """Meltano domain namespace."""
+
+                class Tests(FlextTestsConstants.Tests):
+                    HOST = "localhost"
+      style: secondary
+      start: 59
+      end: 224
+    - source: |-
+        """Meltano domain namespace."""
+
+                class Tests(FlextTestsConstants.Tests):
+                    HOST = "localhost"
+      style: secondary
+      start: 113
+      end: 224
+    - source: Tests
+      style: secondary
+      start: 160
+      end: 165
+  ? |
     class TestsFlextMeltanoTypes(FlextTestsTypes, FlextMeltanoTypes):
         class Meltano(FlextMeltanoTypes.Meltano):
             type ComponentCase = tuple[str, str]

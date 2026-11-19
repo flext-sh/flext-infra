@@ -43,3 +43,10 @@ invalid:
         class Ldap(FlextLdapTypes.Ldap):
             class Tests(FlextTestsTypes.Tests):
                 B = 2
+  - |
+    class TestsFlextMeltanoConstants(FlextTestsConstants):
+        class Meltano(FlextMeltanoConstants.Meltano):
+            """Meltano domain namespace."""
+
+            class Tests(FlextTestsConstants.Tests):
+                HOST = "localhost"

@@ -80,6 +80,37 @@ snapshots:
       style: secondary
       start: 126
       end: 131
+    - source: FlextInfraConstants.Infra
+      style: secondary
+      start: 84
+      end: 109
+    - source: FlextInfraConstants.Infra
+      style: secondary
+      start: 84
+      end: 109
+    - source: FlextInfraConstants
+      style: secondary
+      start: 46
+      end: 65
+    - source: FlextInfraConstants
+      style: secondary
+      start: 46
+      end: 65
+    - source: |-
+        class TestsFlextInfraConstants(flext_tests_c, FlextInfraConstants):
+            class Infra(FlextInfraConstants.Infra):
+                class Tests:
+                    LIMIT = 3
+      style: secondary
+      start: 0
+      end: 154
+    - source: |-
+        class Infra(FlextInfraConstants.Infra):
+                class Tests:
+                    LIMIT = 3
+      style: secondary
+      start: 72
+      end: 154
     - source: |
         class TestsFlextInfraConstants(flext_tests_c, FlextInfraConstants):
             class Infra(FlextInfraConstants.Infra):
@@ -262,6 +293,61 @@ snapshots:
       style: secondary
       start: 172
       end: 177
+    - source: FlextLdapModels.Ldap
+      style: secondary
+      start: 102
+      end: 122
+    - source: FlextLdapModels.Ldap
+      style: secondary
+      start: 102
+      end: 122
+    - source: FlextLdapModels
+      style: secondary
+      start: 27
+      end: 42
+    - source: FlextLdapModels
+      style: secondary
+      start: 27
+      end: 42
+    - source: |-
+        class TestsFlextLdapModels(FlextLdapModels, FlextTestsModels):
+            """Test models."""
+
+            class Ldap(FlextLdapModels.Ldap):
+                """LDAP test models."""
+
+                class Tests:
+                    """Test fixture models namespace."""
+
+                    FAIL_ERROR_MESSAGE = "nope"
+
+                    class FailService(TestsFlextLdapServiceBase[bool]):
+                        def execute(self) -> p.Result[bool]:
+                            return r[bool].fail(
+                                TestsFlextLdapModels.Ldap.Tests.FAIL_ERROR_MESSAGE,
+                            )
+      style: secondary
+      start: 0
+      end: 525
+    - source: |-
+        """Test models."""
+
+            class Ldap(FlextLdapModels.Ldap):
+                """LDAP test models."""
+
+                class Tests:
+                    """Test fixture models namespace."""
+
+                    FAIL_ERROR_MESSAGE = "nope"
+
+                    class FailService(TestsFlextLdapServiceBase[bool]):
+                        def execute(self) -> p.Result[bool]:
+                            return r[bool].fail(
+                                TestsFlextLdapModels.Ldap.Tests.FAIL_ERROR_MESSAGE,
+                            )
+      style: secondary
+      start: 67
+      end: 525
     - source: |
         class TestsFlextLdapModels(FlextLdapModels, FlextTestsModels):
             """Test models."""
