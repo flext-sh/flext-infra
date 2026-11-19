@@ -10,8 +10,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_tests import m as flext_tests_m
-
 from flext_infra import FlextInfraModels
 from tests._models import (
     TestsFlextInfraModelsBase,
@@ -23,7 +21,6 @@ class TestsFlextInfraModels(FlextInfraModels):
     """Infra test models composed from the production model facade."""
 
     class Tests(
-        flext_tests_m.Tests,
         TestsFlextInfraModelsBase,
         TestsFlextInfraModelsSemanticCutover,
     ):
