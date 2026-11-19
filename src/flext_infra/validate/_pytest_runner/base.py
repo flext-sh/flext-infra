@@ -223,22 +223,14 @@ class FlextInfraPytestRunnerBase(s[int]):
         )
 
     @classmethod
-    def _elected_pytest_deadline(
-        cls,
-        repository_root: Path,
-        *,
-        execution_mode: c.Infra.PytestExecutionMode = (
-            c.Infra.PytestExecutionMode.GLOBAL_INCREMENTAL
-        ),
-    ) -> tuple[int, int]:
-        """Elect the repository's suite deadline from its governed YAML layers.
+    def _elected_pytest_policy(cls, repository_root: Path) -> p.Infra.PytestConfig:
+        """Elect the repository's pytest policy from its governed YAML layers.
 
         The election always merges the packaged fleet defaults as its base, so
-        one source decides the deadline for every repository. The harness
-        scope elects its own suite clock from the same section.
+        the suite clock and the marker policy share this single source.
 
         Returns:
-            The elected run timeout and termination grace in seconds.
+            The repository-elected pytest policy.
 
         Raises:
             ValueError: If the repository tooling election fails.
@@ -250,13 +242,39 @@ class FlextInfraPytestRunnerBase(s[int]):
         if tooling.failure:
             msg = f"repository pytest tooling election failed: {tooling.error}"
             raise ValueError(msg)
-        pytest_section = tooling.value.document.tools.pytest
+        return tooling.value.document.tools.pytest
+
+    @classmethod
+    def _elected_pytest_deadline(
+        cls,
+        repository_root: Path,
+        *,
+        execution_mode: c.Infra.PytestExecutionMode = (
+            c.Infra.PytestExecutionMode.GLOBAL_INCREMENTAL
+        ),
+    ) -> tuple[int, int]:
+        """Elect the suite deadline; the harness scope owns its own clock.
+
+        Returns:
+            The elected run timeout and termination grace in seconds.
+
+        """
+        pytest_section = cls._elected_pytest_policy(repository_root)
         return (
             pytest_section.harness_run_timeout_seconds
             if execution_mode == c.Infra.PytestExecutionMode.HARNESS
             else pytest_section.run_timeout_seconds,
             pytest_section.termination_grace_seconds,
         )
+
+    def pytest_policy(self) -> p.Infra.PytestConfig:
+        """Return the pytest policy of this runner's repository.
+
+        Returns:
+            The policy elected from the same document as the suite deadline.
+
+        """
+        return self._elected_pytest_policy(self.repository_root)
 
     @classmethod
     def from_environment(

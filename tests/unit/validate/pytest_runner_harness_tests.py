@@ -185,3 +185,36 @@ class TestsFlextInfraPytestRunnerHarness:
                 "exit=0",
             ],
         )
+
+    @staticmethod
+    def test_project_document_owns_the_gate_markers(
+        cached_runner_project: Path,
+    ) -> None:
+        """A project's harness-gate-markers change its global marker scope.
+
+        The suite clock is elected from the project's tooling document, so
+        the marker policy is read from that same document, never from the
+        packaged settings of the installed runner.
+        """
+        policy = config.Infra.tooling.tools.pytest
+        declared = policy.external_gate_markers
+        tm.that(set(declared) != set(policy.harness_gate_markers), truth=True)
+        overlay = cached_runner_project / "config" / "tooling.yaml"
+        overlay.parent.mkdir()
+        overlay.write_text(
+            "Infra:\n  tooling:\n    tools:\n      pytest:\n"
+            f"        harness-gate-markers: [ {', '.join(declared)} ]\n",
+            encoding="utf-8",
+        )
+        runner = u.Tests.PytestRunner.runner_for(cached_runner_project)
+        report = cached_runner_project / runner.reports
+        mode = c.Infra.PytestExecutionMode.GLOBAL_INCREMENTAL
+        tm.that(
+            runner.not_executed_external_gates(execution_mode=mode),
+            eq=declared,
+        )
+        expression = TestsFlextInfraPytestRunnerHarness._marker_expression(
+            runner.build_command(report, execution_mode=mode)
+        )
+        tm.that(expression, has=[f"not ({' or '.join(declared)})"])
+        tm.that(runner.harness_markers(), eq=declared)
