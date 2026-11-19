@@ -576,7 +576,7 @@ class TestsFlextInfraRefactorViolationsSweepAudits(
             "id: sweep-match\nlanguage: Python\nrule:\n  pattern: marker = tuple()\n"
         )
         tm.ok(u.Cli.atomic_write_text_file(utility, utility_text))
-        tm.ok(u.Cli.atomic_write_text_file(root / "sample.py", "marker = dict()\n"))
+        tm.ok(u.Cli.atomic_write_text_file(root / "sample.py", "marker = tuple()\n"))
         self._sweep(root, "--audit-rules")
         tm.fail((root / "ran.txt").exists())
         stage = self._receipt(root).stages[0]
