@@ -9,8 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Final
 
-from flext_infra import FlextInfraCli
-from tests import c, p, tm, u
+from tests import FlextInfraCli, c, p, tm, u
 
 
 @c.Tests.MARK.slow

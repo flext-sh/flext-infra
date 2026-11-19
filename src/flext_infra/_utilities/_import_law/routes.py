@@ -805,8 +805,13 @@ class FlextInfraUtilitiesImportLawRoutes(
         renamed_external = alias.name != bound and not published.startswith(
             f"{scope.namespace}.",
         )
+        # A root re-exporting an external package's name also routes the
+        # imports from that package's submodules; native identity decides.
+        external_member = not published.startswith(
+            f"{scope.namespace}."
+        ) and module.startswith(f"{published}.")
         different_provider = (bound not in aliases or alias.name != bound) and (
-            published != module
+            published != module and not external_member
         )
         if renamed_external or different_provider:
             return None
