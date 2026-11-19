@@ -240,6 +240,20 @@ class FlextInfraUtilitiesImportLawPolicyNamespace:
                 continue
             stem = part.lstrip("_")
             layer = families.get(stem, stem)
+            if layer not in order and index == 0:
+                # A root-level declaration helper keeps its layer by prefix,
+                # exactly as ``import_module_role`` classifies it (ADR-005
+                # admits a source-proven layer-zero helper of the own package).
+                # Without this, ``settings_models`` would rank as ``other`` and
+                # the reverse-import window would ban the direct leaf import.
+                layer = next(
+                    (
+                        role
+                        for role in c.Infra.IMPORT_LAW_LAYER_ZERO_ROOTS
+                        if stem.startswith(f"{role}_")
+                    ),
+                    layer,
+                )
             if layer in order:
                 return order.index(layer)
         return order.index(c.Infra.IMPORT_LAW_OTHER_LAYER)
