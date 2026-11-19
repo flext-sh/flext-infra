@@ -11,9 +11,9 @@ from collections.abc import Mapping, Sequence
 from functools import cache
 from pathlib import Path
 
-from flext_infra import config, u
-from tests import c, m, t, tm
-from tests._utilities.fixture_project import TestsFlextInfraUtilitiesProjectFixture
+from flext_infra import u
+from tests import c, config, m, t, tm
+from tests._utilities import TestsFlextInfraUtilitiesProjectFixture
 
 
 class TestsFlextInfraUtilitiesGit:

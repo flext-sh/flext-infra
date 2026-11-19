@@ -1321,8 +1321,14 @@ class FlextInfraUtilitiesLazyInitPlan:
     ) -> tuple[Path, ...]:
         """Return the sibling namespaces the tests facade publishes.
 
+        A ``_<family>`` child package holds facade parts, which reach consumers
+        only through their letter, exactly as in the source package; the root
+        republishing them would route a part's sibling imports to its own
+        facade package.
+
         Returns:
-            The source packages, ``scripts`` and ``examples`` directories.
+            The source packages, ``scripts`` and ``examples`` directories, and
+            the tests child packages that are not facade family packages.
 
         """
         directories = [
@@ -1344,7 +1350,11 @@ class FlextInfraUtilitiesLazyInitPlan:
             for child in sorted(
                 run.model.source_project.source_children(context.pkg_dir)
             )
-            if run.model.source_project.source_query(child, "isdir")
+            if FlextInfraUtilitiesCodegenNamespace.facade_family_of_directory(
+                child.name
+            )
+            is None
+            and run.model.source_project.source_query(child, "isdir")
             and run.model.source_project.source_query(child / c.Infra.INIT_PY, "isfile")
             and str(child) in run.index.packages_by_dir
         )

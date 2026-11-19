@@ -10,12 +10,14 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import infra, u
+from flext_infra import u
 from flext_infra.deps import FlextInfraConfigFixer
-from tests import c, m, p, tm
-from tests._utilities.fixture_tooling import TestsFlextInfraUtilitiesToolingFixture
-from tests._utilities.git import TestsFlextInfraUtilitiesGit
-from tests._utilities.hermetic_git import TestsFlextInfraUtilitiesHermeticGit
+from tests import c, infra, m, p, tm
+from tests._utilities import (
+    TestsFlextInfraUtilitiesGit,
+    TestsFlextInfraUtilitiesHermeticGit,
+    TestsFlextInfraUtilitiesToolingFixture,
+)
 
 if TYPE_CHECKING:
     from flext_infra.gates import FlextInfraGates

@@ -698,8 +698,13 @@ class FlextInfraUtilitiesImportLawRoutes(
                 for alias in node.names:
                     bound = alias.asname or alias.name
                     published = state.root_exports.get(bound)
-                    if published is not None and published.startswith(
-                        f"{scope.namespace}."
+                    # A family part keeps its upstream letter, and a module the
+                    # root publishes the name from never imports it from itself.
+                    if (
+                        published is not None
+                        and published.startswith(f"{scope.namespace}.")
+                        and bound != scope.family_letter
+                        and published != scope.module
                     ):
                         root_bindings.append(bound)
                     else:

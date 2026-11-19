@@ -20,11 +20,13 @@ from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlsplit
 
-from flext_infra import config, u
+from flext_infra import u
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-from tests import c, m, p, t, tm
-from tests._utilities.fixture_project import TestsFlextInfraUtilitiesProjectFixture
-from tests._utilities.toml_documents import TestsFlextInfraUtilitiesToml
+from tests import c, config, m, p, t, tm
+from tests._utilities import (
+    TestsFlextInfraUtilitiesProjectFixture,
+    TestsFlextInfraUtilitiesToml,
+)
 
 
 class TestsFlextInfraUtilitiesHermeticGit:
