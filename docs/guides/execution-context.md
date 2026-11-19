@@ -1236,8 +1236,9 @@ helper, cache, detector or registry when the correct domain owner already exists
 
 Before publication, apply FLEXT law **Architecture and imports** and **Sources,
 generation, and commands**: preserve facade MRO `c -> t -> p -> m -> u`, inward
-imports, pure declarations and explicit dependency composition. Config/settings
-are layer-zero and import no own namespace. Models resolve at their declaring
+imports, pure declarations and explicit dependency composition. Layer zero is the
+lazy loader alone and imports no own namespace; settings and config import
+through the lazy initializer. Models resolve at their declaring
 owner and payloads cross typed Pydantic boundaries once. Repair cycles at the
 declaration/dependency owner, not through local-import demotion, fallback,
 compatibility exports or suppressions. Generated surfaces change only through

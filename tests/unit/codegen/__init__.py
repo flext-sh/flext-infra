@@ -32,6 +32,9 @@ if TYPE_CHECKING:
     from tests.unit.codegen.test_facade_published_object import (
         TestsFlextInfraFacadePublishedObject,
     )
+    from tests.unit.codegen.test_protocol_retired_model_projection import (
+        TestsProtocolRetiredModelProjection,
+    )
 
 
 __all__: tuple[str, ...] = (
@@ -43,6 +46,7 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraFacadeForeignPublication",
     "TestsFlextInfraFacadePublishedObject",
     "TestsFlextInfraLazyInitTestNamespace",
+    "TestsProtocolRetiredModelProjection",
 )
 
 install_lazy_exports(
@@ -57,6 +61,9 @@ install_lazy_exports(
         "TestsFlextInfraFacadeForeignPublication": ".test_facade_foreign_publication",
         "TestsFlextInfraFacadePublishedObject": ".test_facade_published_object",
         "TestsFlextInfraLazyInitTestNamespace": ".lazy_init_test_namespace_tests",
+        "TestsProtocolRetiredModelProjection": (
+            ".test_protocol_retired_model_projection"
+        ),
     },
     public_exports=__all__,
 )

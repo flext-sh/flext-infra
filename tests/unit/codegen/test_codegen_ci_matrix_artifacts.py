@@ -58,6 +58,25 @@ class TestsFlextInfraCodegenCiMatrixArtifacts(TestsFlextInfraCodegenCiMatrixSupp
                 tm.that((root / retired).exists(), eq=False)
 
     @staticmethod
+    def test_rendering_key_is_independent_of_the_checkout_directory_name(
+        rendered_project: Path,
+        tmp_path: Path,
+    ) -> None:
+        """Identical content in a differently named checkout shares one rendering."""
+        source = rendered_project.absolute()
+        renamed = tmp_path / f"{source.name}-renamed-checkout"
+        u.Tests.reflink_copy_tree(source, renamed)
+        keys: list[str] = []
+        for root in (source, renamed):
+            with u.Infra.codemod_workspace_snapshot(root) as snapshot:
+                u.Infra.codemod_native_generated(
+                    snapshot, root, config.Infra.codegen.ast_grep
+                )
+                keys.extend(digest for _, digest in snapshot.codemod_renderings)
+        tm.that(len(keys), eq=2)
+        tm.that(keys[0], eq=keys[1])
+
+    @staticmethod
     def test_selected_static_rule_skips_generated_scope_producers(
         mod_workspace: Path,
         monkeypatch: t.Tests.MonkeyPatch,

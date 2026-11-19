@@ -567,14 +567,14 @@ class FlextInfraUtilitiesCodemodNative:
             ),
         )
         # A rendering holds root-relative paths and names generated rules after
-        # the member directory, never its location: the key names each source
-        # from the member's parent, so identical content under the same member
-        # name shares one rendering across checkouts, and every byte still
-        # authenticates it.
+        # the project's package, never its checkout: the key names each source
+        # from the workspace (the project itself when standalone), so identical
+        # content shares one rendering across checkouts of any directory name,
+        # and every byte still authenticates it.
         for member_root in members:
             for path in snapshots.workspace_python_files(snapshot, member_root):
                 digest.update(
-                    path.relative_to(root.parent).as_posix().encode(c.DEFAULT_ENCODING)
+                    path.relative_to(workspace).as_posix().encode(c.DEFAULT_ENCODING)
                 )
                 digest.update(b"\0")
                 digest.update(path.read_bytes())
