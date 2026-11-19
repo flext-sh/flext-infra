@@ -120,11 +120,13 @@ class TestsFlextInfraPytestRunnerZeroTest:
 
         """
         cache = config.Infra.codegen.make.testmon_cache
-        policy = config.Infra.tooling.tools.pytest
+        tooling = u.Infra.load_tooling_inputs(project_root).unwrap().document
+        policy = tooling.tools.pytest
         testmon_db = tmp_path / ".testmon-cache" / cache.database_filename
         testmon_db.parent.mkdir(parents=True, exist_ok=True)
         return FlextInfraPytestRunner(
             repository_root=project_root,
+            tooling=tooling,
             started_at_monotonic=time.monotonic() - elapsed_seconds,
             target=cache.target_directory,
             reports=cache.reports_directory,

@@ -12,7 +12,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import ClassVar
 
-from flext_infra import c, config, p, t, u
+from flext_infra import c, p, t, u
 from flext_infra._pytest import FlextInfraPytestCollection
 from flext_infra.validate._pytest_runner import FlextInfraPytestRunnerBase
 from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance
@@ -74,7 +74,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             The resulting ``float``.
 
         """
-        pytest = config.Infra.tooling.tools.pytest
+        pytest = self.pytest_policy()
         if self.carries_slow_items(execution_mode):
             reserve = (
                 pytest.slow_serial_suite_stop_reserve_seconds
@@ -99,7 +99,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
 
         """
         if self.ci_context and not execution_mode.is_global:
-            return config.Infra.tooling.tools.pytest.ci_excluded_markers
+            return self.pytest_policy().ci_excluded_markers
         return ()
 
     def not_executed_external_gates(
@@ -123,7 +123,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             The external gate markers deselected by this run.
 
         """
-        pytest = config.Infra.tooling.tools.pytest
+        pytest = self.pytest_policy()
         if execution_mode == c.Infra.PytestExecutionMode.HARNESS:
             selected = self.harness_markers()
             return tuple(
@@ -148,7 +148,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
                 the narrowing marker is not one of them.
 
         """
-        declared = config.Infra.tooling.tools.pytest.harness_gate_markers
+        declared = self.pytest_policy().harness_gate_markers
         if not declared:
             msg = "pytest harness scope requires declared harness-gate-markers"
             raise ValueError(msg)
@@ -235,7 +235,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         """
         if self.target_file is not None:
             return ""
-        pytest = config.Infra.tooling.tools.pytest
+        pytest = self.pytest_policy()
         excluded = tuple(
             dict.fromkeys((
                 *self.not_executed_external_gates(execution_mode=execution_mode),
@@ -267,10 +267,8 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
 
         """
         expression = self._marker_expression(execution_mode)
-        tool_config = (
-            u.Infra.load_tooling_inputs(self.repository_root).unwrap().document
-        )
-        pytest = tool_config.tools.pytest
+        tool_config = self.tooling
+        pytest = self.pytest_policy()
         fixture_scope = u.Infra.native_tool_setting(
             tool_config, "pytest.ini_options", "asyncio_default_fixture_loop_scope", str
         )
@@ -404,7 +402,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             The resulting ``tuple[str, ...],``.
 
         """
-        pytest = config.Infra.tooling.tools.pytest
+        pytest = self.pytest_policy()
         selection = selection_plan.node_ids if selection_plan is not None else None
         # An empty selection needs no workers, and a selection smaller than the
         # worker budget never needs more workers than items: every extra worker
@@ -492,7 +490,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             The resulting ``tuple[str, ...],``.
 
         """
-        pytest = config.Infra.tooling.tools.pytest
+        pytest = self.pytest_policy()
         workers = (
             c.ParserBooleanToken.ZERO
             if serialize
@@ -551,8 +549,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             The resulting ``tuple[str, ...],``.
 
         """
-        pytest = config.Infra.tooling.tools.pytest
-        tooling = u.Infra.load_tooling_inputs(self.repository_root).unwrap()
+        pytest = self.pytest_policy()
         return (
             sys.executable,
             *(
@@ -580,7 +577,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             # pre-dispatched chunk, so the declared max-failures stop only took
             # effect after every worker drained its assigned items at fleet
             # scale. A one-item dispatch step makes that stop immediate.
-            *tooling.document.tools.pytest.parallel_arguments,
+            *pytest.parallel_arguments,
             "--benchmark-disable",
         )
 

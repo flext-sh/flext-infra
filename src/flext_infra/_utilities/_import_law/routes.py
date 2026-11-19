@@ -797,8 +797,9 @@ class FlextInfraUtilitiesImportLawRoutes(
             anchor = statement.end_lineno or statement.lineno
         return anchor
 
-    @staticmethod
+    @classmethod
     def _import_law_root_alias_source(
+        cls,
         state: p.Infra.ImportLawPass,
         module: str,
         alias: ast.alias,
@@ -838,7 +839,14 @@ class FlextInfraUtilitiesImportLawRoutes(
         different_provider = (bound not in aliases or alias.name != bound) and (
             published != module and not external_member
         )
-        if renamed_external or different_provider:
+        # An own letter published by a later layer is a reverse import: the
+        # upstream provider stays.
+        reverse = (
+            published == scope.namespace or published.startswith(f"{scope.namespace}.")
+        ) and cls.module_import_layer(
+            published, namespace=scope.namespace
+        ) > scope.layer
+        if renamed_external or different_provider or reverse:
             return None
         if (
             bound in scope.own_exports
