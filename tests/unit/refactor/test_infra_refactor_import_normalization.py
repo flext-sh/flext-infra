@@ -884,3 +884,43 @@ class TestsFlextInfraNamespaceImportNormalization(
                 )
         tm.that((project / namespace / c.Infra.INIT_PY).exists(), eq=False)
         tm.that(target.read_text(encoding=c.DEFAULT_ENCODING), eq=sources[target])
+
+    @classmethod
+    @c.Tests.MARK.parametrize(
+        ("children", "moves"),
+        [
+            (("helpers",), True),
+            (("helpers", "support"), False),
+            (("_support",), False),
+        ],
+    )
+    def test_root_import_of_child_owned_name_moves_to_the_child_package(
+        cls, tmp_path: Path, children: tuple[str, ...], *, moves: bool
+    ) -> None:
+        """A root import of a child-owned name binds through its one public owner."""
+        project, _package = cls._project(tmp_path)
+        tests_root = project / c.Infra.DIR_TESTS
+        cls._lazy_init(tests_root, {"c": ".constants"})
+        (tests_root / "constants.py").write_text(
+            "from flext_cli import c\n__all__ = ['c']\n", encoding=c.DEFAULT_ENCODING
+        )
+        for child in children:
+            cls._lazy_init(tests_root / child, {"DemoHelper": ".harness"})
+            (tests_root / child / "harness.py").write_text(
+                "class DemoHelper:\n    pass\n__all__ = ['DemoHelper']\n",
+                encoding=c.DEFAULT_ENCODING,
+            )
+        source = "from tests import DemoHelper, c\n\nvalue = (DemoHelper, c)\n"
+        normalized = tm.ok(
+            u.Infra.normalize_import_source(
+                project_root=project,
+                file_path=tests_root / "test_demo.py",
+                source=source,
+            )
+        )
+        if not moves:
+            tm.that(normalized, eq=source)
+            return
+        tm.that(normalized, has="from tests import c\n")
+        tm.that(normalized, has="from tests.helpers import DemoHelper\n")
+        tm.that(normalized, lacks="from tests import DemoHelper")

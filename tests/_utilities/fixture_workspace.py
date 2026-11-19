@@ -171,6 +171,8 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
         package_dir.mkdir(parents=True, exist_ok=True)
         (package_dir / "__init__.py").write_text("", encoding="utf-8")
         (project_dir / c.PYPROJECT_FILENAME).write_text(pyproject, encoding="utf-8")
+        # Git owns Python source discovery: the project is a real checkout.
+        TestsFlextInfraUtilitiesGit.git_bootstrap(project_dir, ("init", "--quiet"))
         return package_dir
 
     @staticmethod

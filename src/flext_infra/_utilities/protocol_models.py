@@ -4633,12 +4633,18 @@ class FlextInfraUtilitiesModelsProtocol:
                     *destination.relative_to(self.package).with_suffix("").parts,
                 ))
             )
+            # The destination's own holder is declared here even before this
+            # run records it as a family class (d0873050dd).
             declared_here = frozenset(
                 name
                 for name, (_family, module, _declared) in (
                     self.source_family_classes.items()
                 )
                 if module == declaring
+            ) | (
+                frozenset()
+                if destination is None
+                else {self._source_destination_holder(destination)}
             )
             type_imports.extend(
                 f"from {family} import {name}"
@@ -7728,7 +7734,18 @@ class FlextInfraUtilitiesModelsProtocol:
                     f"authored protocol holder has no source extent: {destination}"
                 )
                 raise ValueError(message)
-            lines.insert(holder.end_lineno, "\n" + "\n".join(additions).rstrip() + "\n")
+            end = holder.end_lineno
+            inline = holder.body[0]
+            if inline.lineno == holder.lineno:
+                # A one-line suite (``class X: pass``) takes no indented body.
+                head = lines[inline.lineno - 1]
+                lines[inline.lineno - 1] = (
+                    head[: inline.col_offset].rstrip()
+                    + "\n"
+                    + " " * (holder.col_offset + 4)
+                    + head[inline.col_offset :]
+                )
+            lines.insert(end, "\n" + "\n".join(additions).rstrip() + "\n")
             updated = "".join(lines)
             header = FlextInfraUtilitiesTransformerHeader
             for name in ("Protocol", "runtime_checkable"):

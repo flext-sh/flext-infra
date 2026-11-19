@@ -444,13 +444,14 @@ class FlextInfraConstantsRefactor:
     CODEMOD_COMPAT_MESSAGE_PATTERN: ClassVar[str] = (
         r"^compat: (?P<old>[A-Za-z_][\w.]*) -> (?P<new>[A-Za-z_][\w.]*); fix: .+$"
     )
-    # Generated shapes of the layer-zero import boundary: a settings/config
-    # module imports neither its own root facade nor its own modules.
+    # Generated shapes of the layer-zero import boundary: a layer-zero
+    # (lazy loader) module imports neither its own root facade nor its own
+    # modules.
     CODEMOD_LAYER_ZERO_FACADE_IMPORT_SHAPE: ClassVar[str] = (
-        "ban-settings-config-own-facade-import"
+        "ban-layer-zero-own-facade-import"
     )
     CODEMOD_LAYER_ZERO_MODULE_IMPORT_SHAPE: ClassVar[str] = (
-        "ban-settings-config-own-module-import"
+        "ban-layer-zero-own-module-import"
     )
     # Role the import-law classifier gives a layer-zero module.
     IMPORT_LAW_LAYER_ZERO_ROLE: ClassVar[str] = "layer0"

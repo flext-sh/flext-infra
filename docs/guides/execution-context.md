@@ -1236,8 +1236,9 @@ helper, cache, detector or registry when the correct domain owner already exists
 
 Before publication, apply FLEXT law **Architecture and imports** and **Sources,
 generation, and commands**: preserve facade MRO `c -> t -> p -> m -> u`, inward
-imports, pure declarations and explicit dependency composition. Config/settings
-are layer-zero and import no own namespace. Models resolve at their declaring
+imports, pure declarations and explicit dependency composition. Layer zero is the
+lazy loader alone and imports no own namespace; settings and config import
+through the lazy initializer. Models resolve at their declaring
 owner and payloads cross typed Pydantic boundaries once. Repair cycles at the
 declaration/dependency owner, not through local-import demotion, fallback,
 compatibility exports or suppressions. Generated surfaces change only through
@@ -4268,8 +4269,10 @@ The ordinary `tests` operation uses incremental Testmon selection
 The explicit `tests-full` operation executes the applicable suite once without
 Testmon, an incremental pre-run or database access. Marker applicability remains
 owned by the declared execution context; neither operation invents exclusions.
-The incremental filesystem cache lives at the typed XDG/HOME-derived project path
-and full execution leaves it untouched.
+The incremental filesystem cache is one database per project, shared by every
+checkout and worktree of it, under the real account home's cache directory; a
+redirected `HOME` or `XDG_CACHE_HOME` never moves it, and full execution leaves it
+untouched.
 The explicit single-file operation runs incremental selection followed by complete
 execution of that file, including its declared slow tests, on the same database.
 No empty marker phase is invoked or converted to success. Zero execution is accepted
