@@ -601,12 +601,20 @@ class FlextInfra(
         FULL executes the complete applicable suite once in each project context
         without Testmon, an incremental pre-run or database access.
         A declared file selects only this repository through that same runner.
+        A declared marker narrows only the harness scope to that harness gate.
 
         Returns:
             The first failing native test status, or zero after every success.
 
         """
         started_at_monotonic = monotonic()
+        if (
+            request.marker is not None
+            and execution_mode != c.Infra.PytestExecutionMode.HARNESS
+        ):
+            return r[int].fail(
+                f"tests marker narrows only the harness scope: {execution_mode}"
+            )
         context = FlextInfra.project_context(request.repository_root).unwrap()
         if context.identity is None or context.runtime is None:
             return r[int].fail(f"tests require a project context: {context.cwd}")
@@ -626,6 +634,7 @@ class FlextInfra(
                         else execution_mode
                     ),
                     target_file=request.file,
+                    harness_marker=request.marker,
                 )
             )
         observed = workspace.FlextInfraWorkspaceDetector.load_workspace_spec(
@@ -659,6 +668,7 @@ class FlextInfra(
                 project,
                 started_at_monotonic=monotonic(),
                 execution_mode=execution_mode,
+                harness_marker=request.marker,
             )
             u.Cli.info(f"tests: repository {distribution} exit={outcome}")
             if outcome:

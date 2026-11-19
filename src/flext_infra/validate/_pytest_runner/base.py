@@ -104,6 +104,15 @@ class FlextInfraPytestRunnerBase(s[int]):
             ),
         ),
     ] = False
+    harness_marker: Annotated[
+        str | None,
+        m.Field(
+            description=(
+                "One declared harness gate marker narrowing the harness scope; "
+                "absent selects every harness gate marker."
+            ),
+        ),
+    ] = None
 
     @staticmethod
     def _environment_value(name: str) -> str:
@@ -136,6 +145,7 @@ class FlextInfraPytestRunnerBase(s[int]):
         execution_mode: c.Infra.PytestExecutionMode = (
             c.Infra.PytestExecutionMode.GLOBAL_INCREMENTAL
         ),
+        harness_marker: str | None = None,
     ) -> Self:
         """Bind the native runner to one repository's typed policy and identity.
 
@@ -195,7 +205,7 @@ class FlextInfraPytestRunnerBase(s[int]):
                 )
                 seed = canonical
         run_timeout_seconds, termination_grace_seconds = cls._elected_pytest_deadline(
-            root
+            root, execution_mode=execution_mode
         )
         return cls(
             repository_root=root,
@@ -209,20 +219,18 @@ class FlextInfraPytestRunnerBase(s[int]):
             testmon_seed_db=seed,
             ci_context=u.Infra.env_value(make.ci.variable) == make.ci.value,
             profile_enabled=settings.Infra.profile,
+            harness_marker=harness_marker,
         )
 
     @classmethod
-    def _elected_pytest_deadline(
-        cls,
-        repository_root: Path,
-    ) -> tuple[int, int]:
-        """Elect the repository's suite deadline from its governed YAML layers.
+    def _elected_pytest_policy(cls, repository_root: Path) -> p.Infra.PytestConfig:
+        """Elect the repository's pytest policy from its governed YAML layers.
 
         The election always merges the packaged fleet defaults as its base, so
-        one source decides the deadline for every repository.
+        the suite clock and the marker policy share this single source.
 
         Returns:
-            The elected run timeout and termination grace in seconds.
+            The repository-elected pytest policy.
 
         Raises:
             ValueError: If the repository tooling election fails.
@@ -234,11 +242,39 @@ class FlextInfraPytestRunnerBase(s[int]):
         if tooling.failure:
             msg = f"repository pytest tooling election failed: {tooling.error}"
             raise ValueError(msg)
-        pytest_section = tooling.value.document.tools.pytest
+        return tooling.value.document.tools.pytest
+
+    @classmethod
+    def _elected_pytest_deadline(
+        cls,
+        repository_root: Path,
+        *,
+        execution_mode: c.Infra.PytestExecutionMode = (
+            c.Infra.PytestExecutionMode.GLOBAL_INCREMENTAL
+        ),
+    ) -> tuple[int, int]:
+        """Elect the suite deadline; the harness scope owns its own clock.
+
+        Returns:
+            The elected run timeout and termination grace in seconds.
+
+        """
+        pytest_section = cls._elected_pytest_policy(repository_root)
         return (
-            pytest_section.run_timeout_seconds,
+            pytest_section.harness_run_timeout_seconds
+            if execution_mode == c.Infra.PytestExecutionMode.HARNESS
+            else pytest_section.run_timeout_seconds,
             pytest_section.termination_grace_seconds,
         )
+
+    def pytest_policy(self) -> p.Infra.PytestConfig:
+        """Return the pytest policy of this runner's repository.
+
+        Returns:
+            The policy elected from the same document as the suite deadline.
+
+        """
+        return self._elected_pytest_policy(self.repository_root)
 
     @classmethod
     def from_environment(

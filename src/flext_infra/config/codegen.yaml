@@ -994,6 +994,9 @@ Infra:
         description: Run native incremental tests through the persistent Testmon selection.
       - name: tests-full
         description: Run the complete selected inventory once without Testmon.
+      - name: tests-harness
+        description: Run only the harness gate tests, through the persistent Testmon selection, under the harness that provides their inputs; MARKER=<harness gate marker> narrows the run to one.
+        arguments: [ MARKER ]
       - name: help
         description: Discover the declared public interface without effects.
       - name: build
