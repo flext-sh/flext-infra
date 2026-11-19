@@ -117,6 +117,31 @@ class FlextInfraUtilitiesRopeRuntimeAliasIndices(
         return dict(aliases)
 
     @staticmethod
+    def lazy_deferred_exports(path: Path, source: str) -> frozenset[str]:
+        """Return the exports an initializer publishes as stand-ins.
+
+        The generator defers an export only when no import-time code of its
+        package reads it (ADR-018 stand-in composition, rule 5), so requesting
+        it never loads its provider while a module imports.
+
+        Returns:
+            The names of the installer's ``deferred_members`` argument.
+
+        """
+        if path.name != c.Infra.INIT_PY or "deferred_members" not in source:
+            return frozenset()
+        return frozenset(
+            element.value
+            for node in ast.walk(ast.parse(source))
+            if isinstance(node, ast.Call)
+            for keyword in node.keywords
+            if keyword.arg == "deferred_members"
+            and isinstance(keyword.value, ast.Tuple)
+            for element in keyword.value.elts
+            if isinstance(element, ast.Constant) and isinstance(element.value, str)
+        )
+
+    @staticmethod
     def _lazy_initializer(
         project: p.Infra.RopeProject,
         source: str,

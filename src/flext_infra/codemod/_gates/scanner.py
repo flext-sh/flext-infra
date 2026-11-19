@@ -16,9 +16,11 @@ from itertools import islice
 from pathlib import Path
 
 from flext_infra import c, config, p, r, u
-from flext_infra._codemod.scan_cache import FlextInfraCodemodScanCache
-from flext_infra.codemod._gates.findings import FlextInfraModGateFindings
-from flext_infra.codemod._gates.fixtures import FlextInfraModGateFixtures
+from flext_infra._codemod import FlextInfraCodemodScanCache
+from flext_infra.codemod._gates import (
+    FlextInfraModGateFindings,
+    FlextInfraModGateFixtures,
+)
 
 
 class FlextInfraModGateScanner(FlextInfraModGateFixtures, FlextInfraModGateFindings):
@@ -425,7 +427,7 @@ class FlextInfraModGateScanner(FlextInfraModGateFixtures, FlextInfraModGateFindi
         """
         targets, context = selection
         digest = FlextInfraCodemodScanCache.ruleset_digest(
-            ruleset.config, u.Infra.managed_mise_binary(c.Infra.SG, root).unwrap()
+            ruleset.config, u.Infra.codemod_tool_binary(c.Infra.SG)
         )
         keys = {
             path: FlextInfraCodemodScanCache.source_key(

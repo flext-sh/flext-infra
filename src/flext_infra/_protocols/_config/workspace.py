@@ -1,6 +1,13 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from collections.abc import Mapping, Sequence
+from pathlib import Path
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
+
+from flext_cli import FlextCliProtocols
+
+from flext_infra._constants import FlextInfraConstantsConfig
+from flext_infra._protocols._config import FlextInfraProtocolsConfigContract
 
 if TYPE_CHECKING:
     from typing import Literal
@@ -13,16 +20,6 @@ if TYPE_CHECKING:
         FlextInfraProtocolsConfigMake,
         FlextInfraProtocolsConfigRepository,
     )
-
-
-from collections.abc import Mapping, Sequence
-from pathlib import Path
-from typing import Protocol, runtime_checkable
-
-from flext_cli import FlextCliProtocols
-
-from flext_infra._constants.config import FlextInfraConstantsConfig
-from flext_infra._protocols._config.contract import FlextInfraProtocolsConfigContract
 
 # Copyright (c) 2026 FLEXT Team. All rights reserved.
 # SPDX-License-Identifier: MIT

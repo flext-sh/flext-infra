@@ -25,7 +25,7 @@ from pydantic.warnings import UnsupportedFieldAttributeWarning
 from typing_extensions import TypeForm
 
 from flext_infra import c, config, m, p, r, s, settings, t, u
-from flext_infra.workspace._environment.provenance_module_source import (
+from flext_infra.workspace._environment import (
     FlextInfraWorkspaceEnvironmentProvenanceModuleSource,
 )
 
@@ -45,9 +45,7 @@ class FlextInfraValidateFreshImport(s[bool]):
                 "undeclared, the target checkout's own environment"
             ),
         ),
-    ] = m.Field(
-        default_factory=lambda: type(settings).fetch_global().Infra.runtime_root
-    )
+    ] = m.Field(default_factory=lambda: settings.fetch_global().Infra.runtime_root)
 
     def build_report(
         self,

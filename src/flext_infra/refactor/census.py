@@ -10,7 +10,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import override
 
-from flext_infra import m, p, r, t
+from flext_infra import m, p, r, t, u
 from flext_infra.refactor._census import (
     FlextInfraRefactorCensusCollectHelpers,
     FlextInfraRefactorCensusRender,
@@ -62,13 +62,33 @@ class FlextInfraRefactorCensus(
 
     @override
     def execute(self) -> p.Result[p.Infra.WorkspaceReport]:
-        """Run the census and return the report through the result boundary.
+        """Run the census, export its maps, and apply its removals.
+
+        The impact map reads the pre-apply report: it records what the run
+        planned to change, not the inventory left after the changes; the JSON
+        report is the final inventory.
 
         Returns:
             The resulting ``p.Result[p.Infra.WorkspaceReport]``.
 
         """
-        return r[p.Infra.WorkspaceReport].ok(self.build_report())
+        with self.workspace_factory(self.repository_root, None) as rope:
+            report = self._collect_report(rope, source_preview=self.source_preview)
+            if self.impact_map_output_path is not None:
+                written = u.Infra.write_impact_map(
+                    self._impact_map_results(report), self.impact_map_output_path
+                )
+                if written.failure:
+                    return r[p.Infra.WorkspaceReport].from_failure(written)
+            if (
+                self.apply_changes
+                and not self.effective_dry_run
+                and self._apply_removal_candidates(rope, report)
+            ):
+                report = self._collect_report(rope, source_preview=self.source_preview)
+        if self.json_output_path is not None:
+            u.Infra.export_pydantic_json(report, self.json_output_path)
+        return r[p.Infra.WorkspaceReport].ok(report)
 
 
 __all__: list[str] = ["FlextInfraRefactorCensus"]

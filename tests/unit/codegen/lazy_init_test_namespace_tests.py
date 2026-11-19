@@ -112,5 +112,41 @@ class TestsFlextInfraLazyInitTestNamespace:
         tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
         tm.that(u.Tests.generated_init(tests_root), eq=first)
 
+    @staticmethod
+    def test_tests_root_inherits_public_src_subpackage_names(
+        tmp_path: Path,
+    ) -> None:
+        """Public src subpackages serve the tests root; others never do.
+
+        Private, tests-child and same-depth ambiguous names stay out.
+        """
+        repository_root, package_root = u.Tests.demo_lazy_init_workspace(tmp_path)
+        tests_root = repository_root / c.Infra.DIR_TESTS
+        modules = {
+            package_root / "models.py": "FlextDemoA",
+            package_root / "services" / "runner.py": "FlextDemoService",
+            package_root / "services" / "shared.py": "FlextDemoShared",
+            package_root / "workers" / "shared.py": "FlextDemoShared",
+            package_root / "_models" / "part.py": "FlextDemoModelsPart",
+            tests_root / "helpers" / "harness.py": "DemoHelper",
+        }
+        for module, class_name in modules.items():
+            module.parent.mkdir(parents=True, exist_ok=True)
+            module.parent.joinpath(c.Infra.INIT_PY).touch(exist_ok=True)
+            u.Tests.write_lazy_init_namespace_module(
+                module, class_name=class_name, alias=class_name.lower()
+            )
+        tests_root.joinpath(c.Infra.INIT_PY).touch(exist_ok=True)
+
+        tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
+        first = u.Tests.generated_init(tests_root)
+        tm.that(first, has='"FlextDemoA": "flext_demo"')
+        tm.that(first, has='"FlextDemoService": "flext_demo.services"')
+        tm.that(first, lacks="FlextDemoShared")
+        tm.that(first, lacks="FlextDemoModelsPart")
+        tm.that(first, lacks="DemoHelper")
+        tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
+        tm.that(u.Tests.generated_init(tests_root), eq=first)
+
 
 __all__: list[str] = ["TestsFlextInfraLazyInitTestNamespace"]

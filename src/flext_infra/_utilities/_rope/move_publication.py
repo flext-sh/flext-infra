@@ -12,7 +12,7 @@ from collections.abc import Mapping, Set as AbstractSet
 from flext_cli import u
 
 from flext_infra import c, p, r
-from flext_infra._models.transformers import FlextInfraModelsTransformers
+from flext_infra._models import FlextInfraModelsTransformers
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
     FlextInfraUtilitiesRopeRuntimeTypes,

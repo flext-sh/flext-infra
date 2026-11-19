@@ -10,7 +10,7 @@ from collections.abc import MutableSequence, Sequence
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, config, m, r, t, u
-from flext_infra.gates.ruff_base import FlextInfraGatesRuffGate
+from flext_infra.gates import FlextInfraGatesRuffGate
 
 if TYPE_CHECKING:
     from pathlib import Path
