@@ -8,8 +8,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from flext_infra import FlextInfraConfig
 from flext_infra.codegen import FlextInfraCodegenLayout, FlextInfraCodegenMakeBootstrap
-from tests import FlextInfraConfig, c, config, m, t, tm, u
+from tests import c, config, m, t, tm, u
 from tests.unit.codegen import TestsFlextInfraCodegenLayoutSupport
 
 

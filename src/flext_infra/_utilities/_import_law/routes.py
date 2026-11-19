@@ -168,7 +168,6 @@ class FlextInfraUtilitiesImportLawRoutes(
             )
 
         own_family = cls._import_law_own_family_provider(state)
-        namespace = state.scope.namespace
         # A runtime provider wins over an identical typing-only declaration.
         imports = sorted(
             cls._import_law_iter_imports(state.tree),
@@ -192,20 +191,6 @@ class FlextInfraUtilitiesImportLawRoutes(
                     # The declaration relocation owner likewise must move the
                     # dependency; lazy routing cannot make an own-namespace
                     # edge legal.
-                    routed.setdefault(node.module, []).append(
-                        cls._import_law_clause(alias)
-                    )
-                    continue
-                published = state.root_exports.get(alias.name)
-                if (
-                    namespace == c.Infra.DIR_TESTS
-                    and node.module == namespace
-                    and published is not None
-                    and published.startswith(f"{namespace}.")
-                ):
-                    # A local name the namespace root already publishes binds
-                    # through the root; the provider route would oscillate with
-                    # the root-binding rule.
                     routed.setdefault(node.module, []).append(
                         cls._import_law_clause(alias)
                     )
@@ -647,14 +632,11 @@ class FlextInfraUtilitiesImportLawRoutes(
                     ),
                 ),
             )
-        tests_edits, root_bindings = cls._import_law_tests_root_bindings(state, lines)
-        edits.extend(tests_edits)
-        missing = (
+        root_names = (
             ()
-            if scope.direct_imports and scope.namespace != c.Infra.DIR_TESTS
+            if scope.direct_imports
             else tuple(sorted(cls._import_law_unbound_root_aliases(state)))
         )
-        root_names = tuple(sorted(set(missing) | set(root_bindings)))
         if root_names:
             anchor = cls._import_law_import_anchor(state.tree)
             edits.append(
@@ -665,66 +647,6 @@ class FlextInfraUtilitiesImportLawRoutes(
                 ),
             )
         return edits
-
-    @classmethod
-    def _import_law_tests_root_bindings(
-        cls,
-        state: p.Infra.ImportLawPass,
-        lines: Sequence[str],
-    ) -> tuple[Sequence[tuple[int, int, Sequence[str]]], list[str]]:
-        """Root-bind tests-tier names the tests root already publishes.
-
-        Returns:
-            The edits and the bound root names.
-
-        """
-        scope = state.scope
-        edits: MutableSequence[tuple[int, int, Sequence[str]]] = []
-        root_bindings: list[str] = []
-        if scope.namespace == c.Infra.DIR_TESTS:
-            # The tests tier root is the canonical package root for its own
-            # consumers: a bound name the root publishes from a local provider
-            # binds through the root, never the provider module.
-            for node in cls._import_law_iter_imports(state.tree):
-                if (
-                    not isinstance(node, ast.ImportFrom)
-                    or node.level
-                    or not node.module
-                    or node.module == scope.namespace
-                    or cls._import_law_enclosing_scope(node, state.parents) is not None
-                ):
-                    continue
-                kept: list[ast.alias] = []
-                for alias in node.names:
-                    bound = alias.asname or alias.name
-                    published = state.root_exports.get(bound)
-                    # A family part keeps its upstream letter. A module inside the
-                    # root child the root routes the name through (itself
-                    # included) keeps its nearer provider: through the root it
-                    # would re-enter that child while it is still importing.
-                    if (
-                        published is not None
-                        and published.startswith(f"{scope.namespace}.")
-                        and bound != scope.family_letter
-                        and published.split(".")[:2] != scope.module.split(".")[:2]
-                    ):
-                        root_bindings.append(bound)
-                    else:
-                        kept.append(alias)
-                if len(kept) == len(node.names):
-                    continue
-                indent = cls._import_law_line_indent(lines[node.lineno - 1])
-                clauses = ", ".join(cls._import_law_clause(alias) for alias in kept)
-                edits.append(
-                    (
-                        node.lineno,
-                        cls._import_law_end_line(node),
-                        (f"{indent}from {node.module} import {clauses}",)
-                        if kept
-                        else (),
-                    ),
-                )
-        return edits, root_bindings
 
     @classmethod
     def _import_law_unbound_root_aliases(

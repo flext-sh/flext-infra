@@ -20,7 +20,8 @@ from pathlib import Path
 import pytest
 
 from flext_infra import FlextInfraConfig
-from tests import TestsFlextInfraGateAdmissionHolder, c, m, p, tm, u
+from tests import c, m, p, tm, u
+from tests.fixtures import TestsFlextInfraGateAdmissionHolder
 
 _WAIT_SECONDS = 180.0
 

@@ -12,9 +12,9 @@ import runpy
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
-from flext_infra import u
+from flext_infra import FlextInfraWorktreeService, u
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-from tests import FlextInfraWorktreeService, c, config, infra, m, p, t, tm
+from tests import c, config, infra, m, p, t, tm
 from tests._utilities import (
     TestsFlextInfraUtilitiesCodegen,
     TestsFlextInfraUtilitiesGit,
