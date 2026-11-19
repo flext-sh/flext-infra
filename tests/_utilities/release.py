@@ -31,7 +31,7 @@ class TestsFlextInfraUtilitiesRelease:
 
         """
         return (
-            Path(__file__).resolve().parents[1]
+            Path(__file__).resolve().parents[2]
             / "src"
             / "flext_infra"
             / "templates"
