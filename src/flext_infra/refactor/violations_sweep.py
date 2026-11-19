@@ -295,22 +295,13 @@ class FlextInfraRefactorViolationsSweep(s[p.Infra.ViolationsSweepReport]):
             inventory = catalog.value if catalog.success else None
         for verb in verbs:
             blocked = repair_failure is not None
-            for project in projects if verb == "audit" else (root,):
+            for project in projects if self.audit_rules else (root,):
                 if blocked:
                     stages.append(
                         m.Infra.ViolationsSweepStage(
                             repository_root=project.resolve(),
                             cwd=root.resolve(),
-                            command=(
-                                (
-                                    c.Infra.MAKE,
-                                    "-f",
-                                    str(project / c.Infra.MAKEFILE_FILENAME),
-                                    verb,
-                                )
-                                if verb == "audit"
-                                else (c.Infra.MAKE, verb)
-                            ),
+                            command=(c.Infra.MAKE, verb),
                             verb=verb,
                             duration=0,
                             invoked=False,
@@ -361,11 +352,7 @@ class FlextInfraRefactorViolationsSweep(s[p.Infra.ViolationsSweepReport]):
             The process receipt and its causal verdict.
 
         """
-        command = (
-            (c.Infra.MAKE, "-f", str(project / c.Infra.MAKEFILE_FILENAME), verb)
-            if verb == "audit"
-            else (c.Infra.MAKE, verb)
-        )
+        command = (c.Infra.MAKE, verb)
         before = cls._source_snapshot(project, observe=True, previous=previous)
         started = monotonic()
         executed = (
