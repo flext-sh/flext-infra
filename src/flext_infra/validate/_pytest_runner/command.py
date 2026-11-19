@@ -267,10 +267,8 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
 
         """
         expression = self._marker_expression(execution_mode)
-        tool_config = (
-            u.Infra.load_tooling_inputs(self.repository_root).unwrap().document
-        )
-        pytest = tool_config.tools.pytest
+        tool_config = self.tooling
+        pytest = self.pytest_policy()
         fixture_scope = u.Infra.native_tool_setting(
             tool_config, "pytest.ini_options", "asyncio_default_fixture_loop_scope", str
         )
