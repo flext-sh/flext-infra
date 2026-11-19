@@ -102,7 +102,7 @@ class FlextInfraPytestRunnerExecution(
             overrides.update(dict.fromkeys(testmon_keys, str(database)))
         if self.profile_enabled or self.collection_command_prefix:
             overrides[c.Infra.PYTEST_PROFILE_PROCESS_DIRECTORY_ENV] = (
-                config.Infra.tooling.tools.pytest.profile_process_directory
+                self.pytest_policy().profile_process_directory
             )
         remove_keys = (
             *c.Infra.PYTEST_INHERITED_ENV_REMOVE_KEYS,
@@ -393,7 +393,7 @@ class FlextInfraPytestRunnerExecution(
             raw_log=report_dir / "pytest.log",
         )
         if self.profile_enabled:
-            policy = config.Infra.tooling.tools.pytest
+            policy = self.pytest_policy()
             suite_profile = report_dir / policy.profile_suite_filename
             # The process owner has reaped the child before binding its native
             # checkpoints. An interrupted run retains its failure and real data.
@@ -885,7 +885,7 @@ class FlextInfraPytestRunnerExecution(
         if database is None:
             msg = "incremental pytest requires its external Testmon database"
             raise ValueError(msg)
-        slow_marker = config.Infra.tooling.tools.pytest.slow_marker
+        slow_marker = self.pytest_policy().slow_marker
         if self.slow_phase and slow_marker in self.ci_excluded_markers(
             execution_mode=execution_mode,
         ):
