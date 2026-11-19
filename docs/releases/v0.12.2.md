@@ -12,6 +12,8 @@
 
 ## Pull requests since last release
 
+- fix(make): regenerate the Makefile so every verb admits at load5 20 (flext-kugv4)
+  (#2710)
 - fix(sweep): violations-sweep is repository-scoped; members observed by their own plans
   (flext-oja0z) (#2709)
 - fix(validate): the fresh-import probe deadline is the target's typed policy
