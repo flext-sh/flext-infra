@@ -776,104 +776,6 @@ class FlextInfraUtilitiesFacadeComponents:
             {} if unpublished is None else {path: unpublished}
         )
 
-    @staticmethod
-    def _canonical_facade_source(
-        source: str,
-        family: c.Infra.FacadeFamily,
-        *,
-        own_package: str,
-    ) -> str:
-        """Project the upstream letter base and the domain nested class.
-
-        Each edit replaces only its own name span in the original text, so
-        every comment and the layout of the facade survive.
-
-        Returns:
-            The canonical facade source, unchanged when it already conforms.
-
-        """
-        tree = ast.parse(source)
-        upstream = {
-            alias.asname or alias.name: node.module
-            for node in tree.body
-            if isinstance(node, ast.ImportFrom)
-            and node.module is not None
-            and node.module.startswith("flext_")
-            and node.module.partition(".")[0] != own_package
-            for alias in node.names
-        }
-        lines = source.encode().splitlines(keepends=True)
-        edits: dict[tuple[int, int, int, int], str] = {}
-        for node in tree.body:
-            if isinstance(node, ast.ClassDef):
-                FlextInfraUtilitiesFacadeComponents._strip_nested_prefix(
-                    node, lines, edits
-                )
-                FlextInfraUtilitiesFacadeComponents._rebase_upstream_letter(
-                    tree, node, (upstream, family), edits
-                )
-        for (line, start, end_line, end), text in sorted(edits.items(), reverse=True):
-            lines[line - 1 : end_line] = [
-                lines[line - 1][:start] + text.encode() + lines[end_line - 1][end:]
-            ]
-        return b"".join(lines).decode()
-
-    @staticmethod
-    def _strip_nested_prefix(
-        facade: ast.ClassDef,
-        lines: Sequence[bytes],
-        edits: MutableMapping[tuple[int, int, int, int], str],
-    ) -> None:
-        """Name each nested namespace by its domain stem, never ``Flext<Domain>``."""
-        for child in facade.body:
-            if isinstance(child, ast.ClassDef) and child.name.startswith("Flext"):
-                start = lines[child.lineno - 1].index(
-                    child.name.encode(), child.col_offset
-                )
-                span = (child.lineno, start, child.lineno, start + len(child.name))
-                edits[span] = child.name.removeprefix("Flext")
-
-    @staticmethod
-    def _rebase_upstream_letter(
-        tree: ast.Module,
-        facade: ast.ClassDef,
-        target: tuple[Mapping[str, str], c.Infra.FacadeFamily],
-        edits: MutableMapping[tuple[int, int, int, int], str],
-    ) -> None:
-        """Replace the first upstream facade base and its import by the letter.
-
-        A facade already based on the letter keeps every other base, so a
-        sister facade composed beside it is never removed.
-
-        Raises:
-            ValueError: If a rebound name carries no source end location.
-
-        """
-        upstream, family = target
-        base = next(
-            (
-                item
-                for item in facade.bases
-                if isinstance(item, ast.Name) and item.id in upstream
-            ),
-            None,
-        )
-        if base is None or base.id == family.value:
-            return
-        rebound = [base] + [
-            alias
-            for node in tree.body
-            if isinstance(node, ast.ImportFrom) and node.module == upstream[base.id]
-            for alias in node.names
-            if (alias.asname or alias.name) == base.id
-        ]
-        for item in rebound:
-            if item.end_lineno is None or item.end_col_offset is None:
-                msg = f"{ast.dump(item)} has no source end location"
-                raise ValueError(msg)
-            span = (item.lineno, item.col_offset, item.end_lineno, item.end_col_offset)
-            edits[span] = family.value
-
     @classmethod
     def _facade_foreign_publications(
         cls,
@@ -1825,7 +1727,8 @@ class FlextInfraUtilitiesFacadeComponents:
         bases: list[tuple[str, p.Infra.RopePyObject]] = []
         for (start, end), binding in layout.base_bindings:
             if binding is None:
-                if rendered:
+                base_name = source[start:end].rsplit(".", maxsplit=1)[-1]
+                if rendered and base_name in declared_names:
                     continue
                 message = f"Unresolved facade base: {path}:{source[start:end]}"
                 return r[
@@ -2386,6 +2289,15 @@ class FlextInfraUtilitiesFacadeComponents:
                     )
                 )
                 for _expression, base in retained
+            ):
+                continue
+            resource = provider.get_module().get_resource()
+            source_root = (
+                Path(project.root.real_path)
+                / config.Infra.tooling.tools.pyrefly.path_rules.source_dir
+            )
+            if resource is not None and not Path(resource.real_path).is_relative_to(
+                source_root
             ):
                 continue
             module = FlextInfraUtilitiesProjectDiscovery.module_name_for_provider(
