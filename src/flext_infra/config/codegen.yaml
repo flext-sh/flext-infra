@@ -174,12 +174,12 @@ Infra:
       - name: codemod_compat_rules
         shapes: [ compat-read ]
       # Layer-zero import boundary rendered from the import-law classifier:
-      # a settings/config module imports neither its own root facade nor
-      # its own modules.
+      # a layer-zero (lazy loader) module imports neither its own root
+      # facade nor its own modules.
       - name: codemod_layer_zero_rules
         shapes:
-        - ban-settings-config-own-facade-import
-        - ban-settings-config-own-module-import
+        - ban-layer-zero-own-facade-import
+        - ban-layer-zero-own-module-import
       # Facade boundary (ADR-028): a library import outside the c/t/p/m/u
       # families; stdlib, own and FLEXT facade packages are derived
       # (ENFORCE-070/093, c.Infra.CODEMOD_EXTERNAL_IMPORT_SHAPE).

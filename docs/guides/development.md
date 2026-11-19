@@ -67,7 +67,8 @@ Testmon; a direct test-runner invocation is invalid evidence.
 - Search and reuse domain-owned public helpers first. SSOT, YAGNI, DRY, and SOLID
   prohibit speculative abstractions and parallel/divergent implementations.
 - Inject `p` ports at the `api` composition root; keep Clean Architecture dependencies
-  inward and config/settings at layer zero, with no runtime import of build tooling.
+  inward, layer zero is the lazy loader alone (settings and config import through the
+  lazy initializer), and no runtime import of build tooling.
 - Tests use public facades, `tm`, the unified `conftest.py`, and typed shared fixtures.
 - Mocks, fakes, stubs, patching, private construction, duplicated setup, and hardcoded
   project-owned values are prohibited.
