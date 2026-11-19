@@ -149,6 +149,23 @@ class FlextInfraUtilitiesLazyInitLetters:
             cls._lazy_init_inherited_facets(run, context, lazy_map, local_owners)
 
     @classmethod
+    def lazy_init_inherit_source(
+        cls,
+        run: p.Infra.LazyInitRun,
+        context: p.Infra.LazyInitPackageContext,
+        lazy_map: t.MutableLazyAliasMap,
+    ) -> None:
+        """Re-export from ``src`` each public name the tests root does not redeclare."""
+        entry = run.index.packages_by_dir.get(str(context.pkg_dir))
+        project = entry.project_root if entry is not None else None
+        source = (
+            run.index.project_package_by_root.get(str(project), "") if project else ""
+        )
+        for name in sorted(cls._lazy_init_package_names(run, source) if source else ()):
+            if not name.startswith("_"):
+                lazy_map.setdefault(name, (source, name))
+
+    @classmethod
     def _lazy_init_inherited_facets(
         cls,
         run: p.Infra.LazyInitRun,

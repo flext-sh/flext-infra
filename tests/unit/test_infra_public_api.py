@@ -9,8 +9,8 @@ from __future__ import annotations
 from pathlib import Path
 
 import flext_infra
-from flext_infra import FlextInfra, FlextInfraCli, codegen
-from tests import c, infra, m, settings, tm, u
+from flext_infra import codegen
+from tests import FlextInfra, FlextInfraCli, c, infra, m, settings, tm, u
 
 
 class TestsFlextInfraPublicApi:
