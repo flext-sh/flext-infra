@@ -80,20 +80,65 @@
 	set +f
 {%- endmacro %}
 
-{#- Native installation preserves valid pins. Setup fills absent lock entries;
-    upgrade installs the exact pins its preceding resolution published. -#}
-{% macro mise_install(project_root, install_tools, bin_dir, locked=true) -%}
+{#- Native installation preserves valid pins: setup installs current committed
+    locks and never writes them, while upgrade installs the pins its preceding
+    resolution published. The caller elects the executable: every lock write
+    belongs to the declared self-managed release, never to the host bootstrap. -#}
+{% macro mise_install(project_root, install_tools, bin_dir, mise, locked=true) -%}
 	export MISE_SHIMS_DIR="{{ project_root }}/{{ bin_dir }}/shims"; \
 	export MISE_LOCKED={{ "1" if locked else "0" }}; \
 	bootstrap_stage=tool-install; \
-	"$(BOOTSTRAP_MISE)" -C "{{ project_root }}" install --yes{% for tool in install_tools %} "{{ tool }}"{% endfor %};
+	{{ mise }} -C "{{ project_root }}" install --yes{% for tool in install_tools %} "{{ tool }}"{% endfor %};
 {%- endmacro %}
 
-{#- Setup acquires the declared Mise and lets its native installer complete
-    incomplete lock inputs before the runtime reader consumes them. -#}
+{#- Setup never writes a lock: the committed mise.lock is the only authority.
+    The self-managed entry is provisioned from that pin, and a lock that pins
+    none stops before provisioning with the upgrade remedy. The resolved reader
+    must report the release that lock pins; a genuine release that does not is
+    replaced from that same pin before any tool install or lifecycle. -#}
+{% macro mise_locked_reader(project_root, toolchain) -%}
+	bootstrap_stage=lock-pin; \
+	if MISE_LOCKED=1 "$(BOOTSTRAP_MISE)" -C "{{ project_root }}" install --yes "{{ toolchain.mise_selector }}"; then :; else \
+		printf 'ERROR: mise.lock pins no usable {{ toolchain.mise_selector }} release for this tree; run make upg\n' >&2; \
+		exit 2; \
+	fi; \
+	mise_pin="$$(MISE_LOCKED=1 "$(BOOTSTRAP_MISE)" -C "{{ project_root }}" tool "{{ toolchain.mise_selector }}" --active)"; \
+	if [ -z "$$mise_pin" ]; then \
+		printf 'ERROR: mise.lock pins no active {{ toolchain.mise_selector }} release for this tree; run make upg\n' >&2; \
+		exit 2; \
+	fi; \
+	mise_reader="$$(MISE_LOCKED=1 "$(BOOTSTRAP_MISE)" -C "{{ project_root }}" which mise)"; \
+	if [ "$${OS:-}" = Windows_NT ]; then mise_reader="$$(cygpath --unix "$$mise_reader")"; fi; \
+	bootstrap_stage=release-verification; \
+	case "$$(MISE_LOCKFILE=0 "$$mise_reader" --version)" in \
+		"$$mise_pin "*) : ;; \
+		*) printf 'setup: installed Mise %s does not report the locked %s; re-provisioning the pinned release\n' "$$mise_reader" "$$mise_pin"; \
+			MISE_LOCKED=1 "$(BOOTSTRAP_MISE)" -C "{{ project_root }}" install --force --yes "{{ toolchain.mise_selector }}"; \
+			mise_reader="$$(MISE_LOCKED=1 "$(BOOTSTRAP_MISE)" -C "{{ project_root }}" which mise)"; \
+			if [ "$${OS:-}" = Windows_NT ]; then mise_reader="$$(cygpath --unix "$$mise_reader")"; fi; \
+			case "$$(MISE_LOCKFILE=0 "$$mise_reader" --version)" in \
+				"$$mise_pin "*) : ;; \
+				*) printf 'ERROR: installed Mise %s still does not report the locked %s after the locked reinstall\n' "$$mise_reader" "$$mise_pin" >&2; exit 2 ;; \
+			esac ;; \
+	esac; \
+{%- endmacro %}
+
+{% macro mise_declared_reader(project_root, toolchain) -%}
+	MISE_LOCKFILE=0 "$(BOOTSTRAP_MISE)" -C "{{ project_root }}" install --yes "{{ toolchain.mise_selector }}"; \
+	mise_reader="$$(MISE_LOCKFILE=0 "$(BOOTSTRAP_MISE)" -C "{{ project_root }}" which mise)"; \
+	if [ "$${OS:-}" = Windows_NT ]; then mise_reader="$$(cygpath --unix "$$mise_reader")"; fi; \
+{% if toolchain.mise_version != "latest" %}	case "$$(MISE_LOCKFILE=0 "$$mise_reader" --version)" in \
+		"{{ toolchain.mise_version }} "*) : ;; \
+		*) printf 'ERROR: the resolved Mise reader %s does not report the declared {{ toolchain.mise_version }}; run make upg\n' "$$mise_reader" >&2; exit 2 ;; \
+	esac; \
+{%- endif %}{%- endmacro %}
+
+{#- Setup acquires the declared Mise, provisions the committed self pin, and
+    installs the declared toolchain from that pin before the lifecycle. -#}
 {% macro mise_toolchain_provision(project_root, toolchain, install_tools, bin_dir) -%}
 {{ mise_acquisition(project_root, toolchain) }} \
-	{{ mise_install(project_root, install_tools, bin_dir, locked=false) }}
+	{{ mise_locked_reader(project_root, toolchain) }}
+	{{ mise_install(project_root, install_tools, bin_dir, locked=true, mise='"$$mise_reader"') }}
 {%- endmacro %}
 
 {#- Syntax preflight of one committed TOML lock (a projection never
@@ -186,9 +231,8 @@ if [ "$$("{{ mise }}" -C {{ lock_root }} lock --bump --dry-run --json)" = "[]" ]
 	else bootstrap_git_status=$$?; fi; \
 	{{ mise_network_admission() }} \
 	{{ mise_toolchain_provision(project_root, toolchain, install_tools, make.bootstrap_bin_dir) }} \
-	mise_active="$$("$(BOOTSTRAP_MISE)" -C "{{ project_root }}" tool "{{ mise_selector }}" --active)"; \
-	mise_binary="$$("$(BOOTSTRAP_MISE)" -C "{{ project_root }}" which mise)"; \
-	if [ "$${OS:-}" = Windows_NT ]; then mise_binary="$$(cygpath --unix "$${mise_binary}")"; fi; \
+	mise_active="$$(MISE_LOCKED=1 "$${mise_reader}" -C "{{ project_root }}" tool "{{ mise_selector }}" --active)"; \
+	mise_binary="$${mise_reader}"; \
 	{#- A hosted runner hands later steps only the GITHUB_PATH entries. They are
 	    the installed tool directories, as the local activation (.envrc) puts
 	    them on PATH; a shim resolves its version from the caller's working
