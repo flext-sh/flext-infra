@@ -36,6 +36,7 @@ class TestsFlextInfraUtilitiesToolingFixture:
             profile_collection: bool = False,
             slow_phase: bool = False,
             target_file: Path | None = None,
+            harness_marker: str | None = None,
         ) -> validate.FlextInfraPytestRunner:
             """Bind a runner to its config-owned persistent cache and reports.
 
@@ -66,6 +67,7 @@ class TestsFlextInfraUtilitiesToolingFixture:
                 reports=cache.reports_directory,
                 testmon_db=testmon_db,
                 slow_phase=slow_phase,
+                harness_marker=harness_marker,
                 run_timeout_seconds=policy.run_timeout_seconds,
                 termination_grace_seconds=policy.termination_grace_seconds,
             )
@@ -424,25 +426,26 @@ class TestsFlextInfraUtilitiesToolingFixture:
         )
         if created.failure:
             return created
-        fixture_site = next(environment.glob("lib/python*/site-packages"), None)
-        runtime_bound = (
-            u.Cli.files_write_text(
-                fixture_site / "flext-fixture-runtime.pth",
-                f"{Path(sysconfig.get_paths()['purelib'])}\n",
+        if dependency_projects:
+            # The installed wheels bring their own dependency closure; binding
+            # the generator runtime as well would give a distribution two
+            # installations, which the codemod rule plan refuses.
+            return TestsFlextInfraUtilitiesToolingFixture._install_dependency_wheels(
+                binary.value,
+                root,
+                environment,
+                dependency_projects,
+                session_runtime,
             )
-            if fixture_site is not None
-            else r[bool].ok(value=True)
-        )
-        if runtime_bound.failure:
-            return r[bool].from_failure(runtime_bound)
-        if not dependency_projects:
+        # Without fixture wheels, Rope resolves pydantic and the other runtime
+        # libraries through the generator runtime (uv ignores
+        # --system-site-packages when the parent is itself a uv venv).
+        fixture_site = next(environment.glob("lib/python*/site-packages"), None)
+        if fixture_site is None:
             return created
-        return TestsFlextInfraUtilitiesToolingFixture._install_dependency_wheels(
-            binary.value,
-            root,
-            environment,
-            dependency_projects,
-            session_runtime,
+        return u.Cli.files_write_text(
+            fixture_site / "flext-fixture-runtime.pth",
+            f"{Path(sysconfig.get_paths()['purelib'])}\n",
         )
 
     @staticmethod

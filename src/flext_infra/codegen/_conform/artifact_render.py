@@ -1003,6 +1003,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 ),
                 "system_packages": (tuple(codegen.ci_system_packages.get(dist, ()))),
                 "packages_read": (dist in codegen.ci_package_registry_read),
+                "docs_site_publish": (dist not in codegen.docs_site_unpublished),
                 "superproject": (None if superproject is None else superproject.value),
             }),
         )

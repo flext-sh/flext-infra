@@ -116,18 +116,51 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         services, so those cases are reported as not executed instead of being
         skipped at setup. Local incremental and FULL runs execute the complete
         applicable population: both deselect the harness gates, whose suites
-        run only under the harness that provides their inputs.
+        run only under the harness that provides their inputs. The harness
+        scope deselects every external gate it does not select.
 
         Returns:
             The external gate markers deselected by this run.
 
         """
         pytest = config.Infra.tooling.tools.pytest
+        if execution_mode == c.Infra.PytestExecutionMode.HARNESS:
+            selected = self.harness_markers()
+            return tuple(
+                marker
+                for marker in pytest.external_gate_markers
+                if marker not in selected
+            )
         if not execution_mode.is_global or (
             self.ci_context and execution_mode.is_incremental
         ):
             return pytest.external_gate_markers
         return pytest.harness_gate_markers
+
+    def harness_markers(self) -> t.StrTuple:
+        """Return the harness gate markers the harness scope selects.
+
+        Returns:
+            The narrowing marker, or every declared harness gate marker.
+
+        Raises:
+            ValueError: If the repository declares no harness gate marker, or
+                the narrowing marker is not one of them.
+
+        """
+        declared = config.Infra.tooling.tools.pytest.harness_gate_markers
+        if not declared:
+            msg = "pytest harness scope requires declared harness-gate-markers"
+            raise ValueError(msg)
+        if self.harness_marker is None:
+            return declared
+        if self.harness_marker not in declared:
+            msg = (
+                f"pytest harness marker {self.harness_marker!r} is not a declared"
+                f" harness-gate-marker: {', '.join(declared)}"
+            )
+            raise ValueError(msg)
+        return (self.harness_marker,)
 
     def testmon_environment(self, execution_mode: c.Infra.PytestExecutionMode) -> str:
         """Name the testmon environment of one marker scope on this toolchain.
@@ -193,7 +226,8 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         """Return the native pytest marker expression of one execution scope.
 
         The phase split is a marker expression: the budgeted phase deselects
-        the slow marker, the slow phase selects only it.
+        the slow marker, the slow phase selects only it, and the harness
+        scope selects only its harness gate markers.
 
         Returns:
             The native pytest marker expression of one execution scope.
@@ -213,13 +247,13 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
                 ),
             )),
         )
-        if self.slow_phase:
-            return (
-                f"{pytest.slow_marker} and not ({' or '.join(excluded)})"
-                if excluded
-                else pytest.slow_marker
-            )
-        return f"not ({' or '.join(excluded)})" if excluded else ""
+        if execution_mode == c.Infra.PytestExecutionMode.HARNESS:
+            selected = f"({' or '.join(self.harness_markers())})"
+        elif self.slow_phase:
+            selected = pytest.slow_marker
+        else:
+            return f"not ({' or '.join(excluded)})" if excluded else ""
+        return f"{selected} and not ({' or '.join(excluded)})" if excluded else selected
 
     def _plugin_policy_args(
         self,
