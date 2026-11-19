@@ -427,7 +427,7 @@ class FlextInfraModGateScanner(FlextInfraModGateFixtures, FlextInfraModGateFindi
         """
         targets, context = selection
         digest = FlextInfraCodemodScanCache.ruleset_digest(
-            ruleset.config, u.Infra.managed_mise_binary(c.Infra.SG, root).unwrap()
+            ruleset.config, u.Infra.codemod_tool_binary(c.Infra.SG)
         )
         keys = {
             path: FlextInfraCodemodScanCache.source_key(
