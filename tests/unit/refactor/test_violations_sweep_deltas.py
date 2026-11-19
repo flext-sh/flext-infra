@@ -72,13 +72,20 @@ class TestsFlextInfraRefactorViolationsSweepDeltas(
             )
         )
         tm.ok(u.Cli.atomic_write_text_file(second_source, "marker = tuple()\n"))
-        before = tm.ok(FlextInfraModGateEngine.scan(root, fix=False))
+        # Plans are repository-scoped: each member is observed by its own scan.
+        before = {
+            project: tm.ok(FlextInfraModGateEngine.scan(project, fix=False))
+            for project in (first, second)
+        }
         tm.ok(u.Cli.atomic_write_text_file(first_source, "marker = tuple()\n"))
         tm.ok(u.Cli.atomic_write_text_file(second_source, "marker = dict()\n"))
-        after = tm.ok(FlextInfraModGateEngine.scan(root, fix=False))
         rows = {
             (row.repository, row.rule_id): row
-            for row in u.Infra.rule_deltas(before, after)
+            for project in (first, second)
+            for row in u.Infra.rule_deltas(
+                before[project],
+                tm.ok(FlextInfraModGateEngine.scan(project, fix=False)),
+            )
         }
         tm.that(rows[first.name, "sweep-growth"].resolved, eq=2)
         tm.that(rows[second.name, "sweep-growth"].introduced, eq=1)
@@ -102,7 +109,10 @@ class TestsFlextInfraRefactorViolationsSweepDeltas(
                     rule_text,
                 )
             )
-        tm.that(self._sweep(root, "--audit-rules"), ne=0)
+        # A declared owner exclusion is policy, not an observation failure: the
+        # member row reports not_applicable with its reason (3d692b9d88 made
+        # each project audit through its own plan).
+        tm.that(self._sweep(root, "--audit-rules"), eq=0)
         report = self._receipt(root)
         rows = {(row.repository, row.rule_id): row for row in report.rule_evaluations}
         scanned = rows[root.name, "sweep-growth"]
