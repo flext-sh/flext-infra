@@ -17,7 +17,7 @@ from typing import cast
 from flext_cli import u
 
 from flext_infra import c, m, p, r, t
-from flext_infra._models.transformers import FlextInfraModelsTransformers
+from flext_infra._models import FlextInfraModelsTransformers
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeRuntimeMatching,
     FlextInfraUtilitiesRopeRuntimeModuleQueries,

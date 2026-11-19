@@ -10,7 +10,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from flext_infra import c, m, p, t, u
-from flext_infra.check.gate_registry import FlextInfraGateRegistry
+from flext_infra.check import FlextInfraGateRegistry
 from flext_infra.deps import FlextInfraExtraPathsManager
 from flext_infra.deps.phases import FlextInfraToolTablesPhase
 from flext_infra.workspace import FlextInfraWorkspaceDetector

@@ -23,8 +23,10 @@ from typing import ClassVar, Literal
 
 from flext_core import c
 
-from flext_infra._constants import FlextInfraConstantsSharedInfra
-from flext_infra._constants.config import FlextInfraConstantsConfig
+from flext_infra._constants import (
+    FlextInfraConstantsConfig,
+    FlextInfraConstantsSharedInfra,
+)
 
 
 class FlextInfraConstantsCodegenProject(FlextInfraConstantsConfig):

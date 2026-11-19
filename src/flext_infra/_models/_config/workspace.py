@@ -14,7 +14,7 @@ from typing import Annotated, ClassVar, Literal, Self
 from flext_cli import m
 
 from flext_infra import c, p, t
-from flext_infra._constants.config import FlextInfraConstantsConfig
+from flext_infra._constants import FlextInfraConstantsConfig
 from flext_infra._models._config import (
     FlextInfraModelsConfigBeads,
     FlextInfraModelsConfigContexts,

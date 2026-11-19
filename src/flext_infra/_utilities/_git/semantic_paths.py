@@ -17,8 +17,8 @@ from flext_infra import m, p, r
 from flext_infra._utilities._git import (
     FlextInfraUtilitiesGitStateFiles,
     FlextInfraUtilitiesGitStateSnapshot,
+    FlextInfraUtilitiesGitStateTrees,
 )
-from flext_infra._utilities._git.state_trees import FlextInfraUtilitiesGitStateTrees
 
 
 class FlextInfraUtilitiesGitSemanticPaths(FlextInfraUtilitiesGitStateFiles):
