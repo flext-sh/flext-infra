@@ -42,9 +42,9 @@ def rope_sibling_scopes(
     )
 
 
-@pytest.fixture(params=[None])
+@pytest.fixture(scope="module")
 def rope_contract_consumer(
-    tmp_path: Path,
+    tmp_path_factory: pytest.TempPathFactory,
     session_runtime: p.Tests.SessionRuntime,
     request: pytest.FixtureRequest,
 ) -> Iterator[tuple[p.Infra.RopeWorkspaceDsl, Path]]:
@@ -54,11 +54,13 @@ def rope_contract_consumer(
         The live workspace and its isolated consumer source path.
 
     """
-    if request.param is None:
+    tmp_path = tmp_path_factory.mktemp("rope-contract")
+    target_param = getattr(request, "param", None)
+    if target_param is None:
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         path = package / "consumer.py"
     else:
-        target = m.Infra.RopeContractScopeTarget.model_validate(request.param)
+        target = m.Infra.RopeContractScopeTarget.model_validate(target_param)
         root, package = u.Tests.create_lazy_init_workspace(
             tmp_path,
             project_name=target.distribution,

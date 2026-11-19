@@ -379,7 +379,7 @@ class UtilityFacadePublication(UtilityFacadeOwnerPublication):
         import_alias: bool,
         owner_state: tuple[bool, bool],
     ) -> None:
-        """Both source forms import and expose the real structural protocol."""
+        """Real organizers compose; a Protocol organizer is rejected by the law."""
         shadow, inherited_owner = owner_state
         root, package = u.Tests.create_lazy_init_workspace(
             tmp_path,
@@ -452,6 +452,10 @@ class UtilityFacadePublication(UtilityFacadeOwnerPublication):
             + "\np = FlextSampleProtocols\n\n"
             + '__all__ = ["FlextSampleProtocols", "p"]\n',
         )
+        if organizer_protocol:
+            with u.Tests.raises(ValueError, match="cannot be a stand-in"):
+                u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root))
+            return
 
         service = u.Tests.create_lazy_init_service(root)
         family = u.Infra.facade_family_declared_by(facade.name)
@@ -818,6 +822,7 @@ class UtilityFacadePublication(UtilityFacadeOwnerPublication):
             tm.not_none(u.Infra.render_utility_facade(package, family="m")), eq=rendered
         )
 
+    @c.Tests.MARK.slow
     @c.Tests.MARK.parametrize("family", ["p", "m"])
     @c.Tests.MARK.parametrize("compact", [False, True])
     @c.Tests.MARK.parametrize("generated", [False, True])
@@ -830,7 +835,11 @@ class UtilityFacadePublication(UtilityFacadeOwnerPublication):
         compact: bool,
         generated: bool,
     ) -> None:
-        """C3 beats the left base's inherited alias and keeps adjacent statements."""
+        """C3 beats the left base's inherited alias and keeps adjacent statements.
+
+        Measured 2.0 s call (timed out at the ordinary budget): Rope resolves
+        the generated diamond source.
+        """
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         module = c.Infra.PROTOCOLS_PY if family == "p" else c.Infra.MODELS_PY
         directory = u.Infra.facade_family_declared_by(module).directory

@@ -15,7 +15,7 @@ from pathlib import Path
 
 from flext_infra import config
 from flext_infra.validate import FlextInfraPytestRunner
-from tests import c, m, t, tm, u
+from tests import c, m, p, t, tm, u
 
 
 class TestsFlextInfraPytestRunnerSuiteStop:
@@ -30,6 +30,11 @@ class TestsFlextInfraPytestRunnerSuiteStop:
 
         """
         return tm.ok(u.Cli.files_read_text(path))
+
+    @staticmethod
+    def _git_checkout(project: Path) -> None:
+        """Initialize the checkout the runner's source discovery requires."""
+        u.Tests.git_bootstrap(project, ("init", "-b", c.Infra.GIT_MAIN))
 
     @staticmethod
     def _spent_runner(project: Path, *, serial: bool) -> FlextInfraPytestRunner:
@@ -52,6 +57,7 @@ class TestsFlextInfraPytestRunnerSuiteStop:
             if serial
             else policy.slow_suite_stop_reserve_seconds
         )
+        TestsFlextInfraPytestRunnerSuiteStop._git_checkout(project)
         runner = u.Tests.PytestRunner.runner_for(project, slow_phase=True)
         return runner.model_copy(
             update={
@@ -123,6 +129,7 @@ class TestsFlextInfraPytestRunnerSuiteStop:
             "returncode=pytest.ExitCode.INTERRUPTED)\n",
             encoding=c.DEFAULT_ENCODING,
         )
+        TestsFlextInfraPytestRunnerSuiteStop._git_checkout(cached_runner_project)
         runner = u.Tests.PytestRunner.runner_for(cached_runner_project)
 
         result = runner.execute()
@@ -198,6 +205,7 @@ class TestsFlextInfraPytestRunnerSuiteStop:
         pytest must report a red incomplete run, and the testmon database must
         hold every executed test, so the next selection excludes them.
         """
+        TestsFlextInfraPytestRunnerSuiteStop._git_checkout(cached_runner_project)
         if distributed:
             u.Tests.PytestRunner.declare_parallel_project(cached_runner_project)
         runner = u.Tests.PytestRunner.runner_for(cached_runner_project)
@@ -297,4 +305,65 @@ class TestsFlextInfraPytestRunnerSuiteStop:
                 "failed=0",
                 "exit=0",
             ],
+        )
+
+    @c.Tests.MARK.slow
+    def test_deadline_inside_a_fixture_publishes_the_executed_prefix(
+        self,
+        cached_runner_project: Path,
+        fixture_tree: p.Tests.FixtureTree,
+    ) -> None:
+        """A fixture still running at the deadline ends through pytest's interrupt.
+
+        A setup fixture is not bounded by the per-item call timeout, so the
+        process deadline's interruption lands inside it. The suite must still
+        write its JUnit report and durable Testmon prefix while remaining
+        red, never ``executed=unknown``.
+        """
+        target = config.Infra.codegen.make.testmon_cache.target_directory
+        fixture_tree(
+            "pytest-runner-hanging-fixture",
+            destination=cached_runner_project / target,
+        )
+        TestsFlextInfraPytestRunnerSuiteStop._git_checkout(cached_runner_project)
+        policy = config.Infra.tooling.tools.pytest
+        runner = u.Tests.PytestRunner.runner_for(cached_runner_project).model_copy(
+            update={
+                "started_at_monotonic": time.monotonic()
+                - policy.run_timeout_seconds
+                + policy.slow_timeout_seconds
+                - 3 * policy.termination_grace_seconds,
+            },
+        )
+
+        result = tm.ok(runner.execute())
+        tm.that(result, lt=0)
+
+        reports = config.Infra.codegen.make.testmon_cache.reports_directory
+        (bounded,) = (
+            path.parent
+            for path in (cached_runner_project / reports).glob("*/summary.txt")
+        )
+        outcome = m.Cli.ProcessOutcome.model_validate_json(
+            self._read(bounded / "suite-outcome.json"),
+        )
+        tm.that(outcome.raw_return_code, eq=result)
+        tm.that(outcome.timed_out, truth=True)
+        tm.that((bounded / "junit.xml").is_file(), truth=True)
+        summary = self._read(bounded / "summary.txt")
+        tm.that(summary, has="outcome=incomplete")
+        tm.that(summary, lacks="executed=unknown")
+        with closing(
+            sqlite3.connect(f"file:{runner.testmon_db}?mode=ro", uri=True),
+        ) as connection:
+            persisted = {
+                name
+                for (name,) in connection.execute(
+                    "SELECT test_name FROM test_execution"
+                    " WHERE failed = 0 AND duration IS NOT NULL",
+                )
+            }
+        tm.that(
+            "tests/test_hanging_fixture.py::test_a_completes" in persisted,
+            truth=True,
         )

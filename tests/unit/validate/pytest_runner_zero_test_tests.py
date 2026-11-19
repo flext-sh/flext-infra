@@ -26,11 +26,15 @@ class TestsFlextInfraPytestRunnerZeroTest:
 
     @staticmethod
     @contextmanager
-    def _held_elsewhere(lock: Path) -> Generator[None]:
+    def _held_elsewhere(
+        lock: Path, *, release_after: float | None = None
+    ) -> Generator[None]:
         """Hold the shared lock from another thread, as a concurrent run would.
 
         The shared lock is reentrant within its holding thread, so contention
-        is only observable from a different thread or process.
+        is only observable from a different thread or process. With
+        ``release_after`` the holder finishes on its own after that many
+        seconds, as a concurrent run that completes its suite.
 
         Yields:
             Control while the lock is held by the other thread.
@@ -42,7 +46,7 @@ class TestsFlextInfraPytestRunnerZeroTest:
         def hold() -> None:
             with u.Cli.file_changes_lock(lock):
                 acquired.set()
-                release.wait()
+                release.wait(timeout=release_after)
 
         holder = Thread(target=hold)
         holder.start()
@@ -313,6 +317,33 @@ class TestsFlextInfraPytestRunnerZeroTest:
                 eq=(before.st_dev, before.st_ino),
             )
         tm.fail(database.exists())
+
+    @c.Tests.MARK.slow
+    def test_testmon_lease_wait_does_not_consume_the_suite_budget(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """The lease is admission: the suite deadline is armed once it is held."""
+        project = self._zero_test_project(tmp_path)
+        runner = self._runner(project, tmp_path)
+        entered_at = runner.started_at_monotonic
+        policy = config.Infra.tooling.tools.pytest
+        held_seconds = 0.5
+        database = tm.not_none(runner.testmon_db)
+        lock = database.with_name(f"{database.name}.lock")
+        with self._held_elsewhere(lock, release_after=held_seconds):
+            outcome = tm.ok(runner.execute())
+
+        tm.that(outcome, eq=c.Tests.ExitCode.NO_TESTS_COLLECTED.value)
+        summary = self._latest_summary(project / runner.reports)
+        context = m.Infra.PytestRunContext.model_validate_json(
+            self._read(summary.parent / "run-context.json"),
+        )
+        tm.that(context.testmon_lease_acquired, eq=True)
+        tm.that(
+            context.deadline_monotonic,
+            gte=entered_at + policy.run_timeout_seconds + held_seconds,
+        )
 
     @c.Tests.MARK.slow
     def test_empty_slow_scope_remains_red_with_accounting(
