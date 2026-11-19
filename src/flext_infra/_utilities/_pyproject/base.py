@@ -9,8 +9,6 @@ from __future__ import annotations
 from flext_infra._utilities._pyproject import (
     FlextInfraUtilitiesPyprojectDocument,
     FlextInfraUtilitiesPyprojectOverlay,
-)
-from flext_infra._utilities._pyproject.toml_phases import (
     FlextInfraUtilitiesPyprojectTomlPhases,
 )
 

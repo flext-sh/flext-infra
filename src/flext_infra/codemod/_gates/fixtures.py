@@ -14,8 +14,8 @@ from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra.codemod._gates.runner import FlextInfraModGateRunner
-from flext_infra.codemod.snapshot_reconciler import FlextInfraCodemodSnapshotReconciler
+from flext_infra.codemod import FlextInfraCodemodSnapshotReconciler
+from flext_infra.codemod._gates import FlextInfraModGateRunner
 
 
 class FlextInfraModGateFixtures(FlextInfraModGateRunner):

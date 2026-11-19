@@ -17,9 +17,9 @@ from flext_infra._constants import (
     FlextInfraConstantsCodegenDetection,
     FlextInfraConstantsCodegenLazy,
     FlextInfraConstantsCodegenRenderNames,
+    FlextInfraConstantsConfig,
     FlextInfraConstantsWorkspace,
 )
-from flext_infra._constants.config import FlextInfraConstantsConfig
 
 if TYPE_CHECKING:
     from flext_infra import t

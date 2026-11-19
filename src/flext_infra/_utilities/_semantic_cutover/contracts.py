@@ -43,7 +43,7 @@ from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeSourceBasesRuntime,
     FlextInfraUtilitiesRopeStructure,
 )
-from flext_infra._utilities._rope._analysis.exports import (
+from flext_infra._utilities._rope._analysis import (
     FlextInfraUtilitiesRopeAnalysisExports,
 )
 from flext_infra._utilities._semantic_cutover import (
@@ -55,15 +55,11 @@ from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticDeclarationRetirement,
     FlextInfraUtilitiesSemanticDelegations,
     FlextInfraUtilitiesSemanticFamilyTypeReferences,
+    FlextInfraUtilitiesSemanticModelFieldContracts,
+    FlextInfraUtilitiesSemanticOpaquePorts,
 )
 from flext_infra._utilities._semantic_cutover.model_envelopes import (
     FlextInfraUtilitiesSemanticModelEnvelopes,
-)
-from flext_infra._utilities._semantic_cutover.model_field_contracts import (
-    FlextInfraUtilitiesSemanticModelFieldContracts,
-)
-from flext_infra._utilities._semantic_cutover.opaque_ports import (
-    FlextInfraUtilitiesSemanticOpaquePorts,
 )
 
 

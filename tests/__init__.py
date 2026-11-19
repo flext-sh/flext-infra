@@ -46,6 +46,7 @@ if TYPE_CHECKING:
         x,
     )
     from tests._constants import TestsFlextInfraConstantsSemanticCutover
+    from tests._constants.scan import TestsFlextInfraConstantsScan
     from tests._models import (
         TestsFlextInfraModelsBase,
         TestsFlextInfraModelsSemanticCutover,
@@ -73,7 +74,6 @@ if TYPE_CHECKING:
     from tests._utilities.workspace_env import TestsFlextInfraUtilitiesWorkspaceEnv
     from tests.base import TestsFlextInfraServiceBase, s
     from tests.constants import TestsFlextInfraConstants, c
-    from tests.constants_scan import TestsFlextInfraConstantsScan
     from tests.fixtures import (
         TestsFlextInfraGateAdmissionHolder,
         TestsImportedModelCollision,
@@ -187,7 +187,7 @@ install_lazy_exports(
         "FlextInfraVersion": "flext_infra",
         "FlextInfraWorktreeService": "flext_infra",
         "TestsFlextInfraConstants": ".constants",
-        "TestsFlextInfraConstantsScan": ".constants_scan",
+        "TestsFlextInfraConstantsScan": "._constants.scan",
         "TestsFlextInfraConstantsSemanticCutover": "._constants",
         "TestsFlextInfraGateAdmissionHolder": ".fixtures",
         "TestsFlextInfraModels": ".models",

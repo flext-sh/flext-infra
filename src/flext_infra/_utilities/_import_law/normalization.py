@@ -34,7 +34,7 @@ from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeSourceBasesAliases,
     FlextInfraUtilitiesRopeSourceBasesRuntime,
 )
-from flext_infra._utilities._semantic_cutover.own_mro import (
+from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverOwnMro,
 )
 

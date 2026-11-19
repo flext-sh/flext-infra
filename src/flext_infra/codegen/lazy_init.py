@@ -35,7 +35,7 @@ from flext_infra._utilities._rope._analysis import (
     FlextInfraUtilitiesRopeAnalysisWorkspace,
 )
 from flext_infra.codegen import FlextInfraCodegenExecution
-from flext_infra.deps.phases.tool_tables import FlextInfraToolTablesPhase
+from flext_infra.deps.phases import FlextInfraToolTablesPhase
 
 
 class FlextInfraCodegenLazyInit(

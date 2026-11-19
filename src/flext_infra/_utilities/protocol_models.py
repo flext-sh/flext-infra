@@ -31,10 +31,14 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesFacadeComponents,
     FlextInfraUtilitiesLazyInitRender,
     FlextInfraUtilitiesLintRecipes,
+    FlextInfraUtilitiesModelsProtocolContracts,
+    FlextInfraUtilitiesModelsProtocolRetirement,
     FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesProjectManagedArtifacts,
+    FlextInfraUtilitiesProtectedEditLinting,
     FlextInfraUtilitiesSemanticCutover,
     FlextInfraUtilitiesTransformerHeader,
+    FlextInfraUtilitiesWorkspaceSnapshot,
 )
 from flext_infra._utilities._docs import FlextInfraUtilitiesDocsScopeState
 from flext_infra._utilities._git import FlextInfraUtilitiesGitignore
@@ -50,18 +54,6 @@ from flext_infra._utilities._rope import (
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticDeclarationRelocation,
     FlextInfraUtilitiesSemanticFamilyTypeReferences,
-)
-from flext_infra._utilities.protected_edit_linting import (
-    FlextInfraUtilitiesProtectedEditLinting,
-)
-from flext_infra._utilities.protocol_contracts import (
-    FlextInfraUtilitiesModelsProtocolContracts,
-)
-from flext_infra._utilities.protocol_retirement import (
-    FlextInfraUtilitiesModelsProtocolRetirement,
-)
-from flext_infra._utilities.workspace_snapshot import (
-    FlextInfraUtilitiesWorkspaceSnapshot,
 )
 from flext_infra.protocols_bootstrap import (
     consolidate_protocol_owners,

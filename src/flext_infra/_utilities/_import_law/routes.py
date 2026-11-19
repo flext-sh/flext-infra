@@ -11,6 +11,7 @@ from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, p, t
+from flext_infra._utilities import FlextInfraUtilitiesCodegenNamespace
 from flext_infra._utilities._import_law import FlextInfraUtilitiesImportLawAst
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeCore,
@@ -20,7 +21,6 @@ from flext_infra._utilities._rope import (
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverBindings,
 )
-from flext_infra._utilities.namespace import FlextInfraUtilitiesCodegenNamespace
 
 if TYPE_CHECKING:
     from collections.abc import Callable

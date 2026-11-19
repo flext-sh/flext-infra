@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from flext_core import c
 
-from flext_infra._constants.config import FlextInfraConstantsConfig
+from flext_infra._constants import FlextInfraConstantsConfig
 from flext_infra._pytest import FlextInfraPytestProfileChild
 
 if TYPE_CHECKING:

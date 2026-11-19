@@ -25,7 +25,7 @@ from pydantic.warnings import UnsupportedFieldAttributeWarning
 from typing_extensions import TypeForm
 
 from flext_infra import c, config, m, p, r, s, settings, t, u
-from flext_infra.workspace._environment.provenance_module_source import (
+from flext_infra.workspace._environment import (
     FlextInfraWorkspaceEnvironmentProvenanceModuleSource,
 )
 

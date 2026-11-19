@@ -17,11 +17,11 @@ from typing import override
 from typing_extensions import TypeForm
 
 from flext_infra import c, config, m, p, r, t, u
+from flext_infra.validate import FlextInfraTestmonDbInspector
 from flext_infra.validate._pytest_runner import (
     FlextInfraPytestRunnerCommand,
     FlextInfraPytestRunnerReports,
 )
-from flext_infra.validate.testmon_db import FlextInfraTestmonDbInspector
 
 
 class FlextInfraPytestRunnerExecution(

@@ -160,6 +160,18 @@ class FlextInfraUtilitiesSemanticCutoverAliasCst:
 
             """
             if isinstance(node, c.Infra.Cst.Attribute):
+                # The rewritten receiver is a bare name: a non-import binding
+                # of it in the read's scope would capture the reference.
+                receiver = FlextInfraUtilitiesQualifiedNames.lexical_root(node)
+                receiver_scope = self.get_metadata(ScopeProvider, receiver, None)
+                head = target.partition(".")[0]
+                if isinstance(receiver_scope, Scope) and any(
+                    name.source is not QualifiedNameSource.IMPORT
+                    for assignment in receiver_scope[head]
+                    for name in assignment.get_qualified_names_for(head)
+                ):
+                    message = f"alias destination is shadowed: {head}"
+                    raise ValueError(message)
                 return target
             scope = self.get_metadata(ScopeProvider, node, None)
             if not isinstance(scope, Scope):
