@@ -1,6 +1,13 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from collections.abc import Mapping, MutableSequence, Sequence
+from pathlib import Path
+from typing import TYPE_CHECKING, Literal, Protocol, Self, runtime_checkable
+
+from flext_cli import FlextCliProtocols
+
+from flext_infra import t
+from flext_infra._protocols import FlextInfraProtocolsBase
 
 if TYPE_CHECKING:
     from collections.abc import MutableMapping
@@ -16,16 +23,6 @@ if TYPE_CHECKING:
         FlextInfraProtocolsCodegenPipeline,
         FlextInfraProtocolsCodegenTransaction,
     )
-
-
-from collections.abc import Mapping, MutableSequence, Sequence
-from pathlib import Path
-from typing import Literal, Protocol, Self, runtime_checkable
-
-from flext_cli import FlextCliProtocols
-
-from flext_infra import t
-from flext_infra._protocols.base import FlextInfraProtocolsBase
 
 """Application-level protocols for Rope-backed infra utilities.
 

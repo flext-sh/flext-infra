@@ -418,7 +418,10 @@ class FlextInfraUtilitiesDependencies(
         """Compose development policy over the target's own requirement declarations.
 
         Existing requirement spellings, marker variants and sources stay intact.
-        The fleet codegen/test development suppliers belong to a workspace root
+        A policy requirement owns its distribution by name: a declaration with
+        the same name, extras, marker and origin but another constraint yields
+        to it, so each distribution appears once. The fleet codegen/test
+        development suppliers belong to a workspace root
         (``c.Infra.PKG_ROOT``) or to a standalone checkout that is its own root,
         and never to a workspace member: a member's own group must not
         redeclare them beside the workspace's editable sources. Installed
@@ -438,18 +441,32 @@ class FlextInfraUtilitiesDependencies(
                 for item in scaffold.required_flext_dev
             }
         )
-        authored: list[str] = []
-        retained: set[Requirement] = set()
-        for item in declared:
-            parsed = Requirement(item)
-            if parsed in retained or canonicalize_name(parsed.name) in root_suppliers:
-                continue
-            retained.add(parsed)
-            authored.append(item)
         policy = (
             *scaffold.dev,
             *(scaffold.required_flext_dev if is_root else ()),
         )
+        owned = {
+            FlextInfraUtilitiesDependencies.requirement_variant_identity(item): (
+                Requirement(item)
+            )
+            for item in policy
+        }
+        authored: list[str] = []
+        retained: set[Requirement] = set()
+        for item in declared:
+            parsed = Requirement(item)
+            if (
+                parsed in retained
+                or canonicalize_name(parsed.name) in root_suppliers
+                or owned.get(
+                    FlextInfraUtilitiesDependencies.requirement_variant_identity(item),
+                    parsed,
+                )
+                != parsed
+            ):
+                continue
+            retained.add(parsed)
+            authored.append(item)
         additions: list[str] = []
         for requirement in policy:
             parsed = Requirement(requirement)

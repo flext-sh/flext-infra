@@ -149,6 +149,42 @@ class FlextInfraUtilitiesLazyInitLetters:
             cls._lazy_init_inherited_facets(run, context, lazy_map, local_owners)
 
     @classmethod
+    def lazy_init_inherit_source(
+        cls,
+        run: p.Infra.LazyInitRun,
+        context: p.Infra.LazyInitPackageContext,
+        lazy_map: t.MutableLazyAliasMap,
+    ) -> None:
+        """Re-export from ``src`` each public name the tests root does not redeclare.
+
+        Every public ``src`` package (the root and each subpackage without a
+        private segment) serves its published names, shallowest package first,
+        so a name the root publishes keeps the root as its provider.
+        """
+        entry = run.index.packages_by_dir.get(str(context.pkg_dir))
+        project = entry.project_root if entry is not None else None
+        source = (
+            run.index.project_package_by_root.get(str(project), "") if project else ""
+        )
+        if not source:
+            return
+        root_dir = run.index.package_dir_by_name.get(source)
+        root = run.index.packages_by_dir.get(str(root_dir)) if root_dir else None
+        subpackages = sorted(
+            (
+                package
+                for child in (root.descendant_child_dirs if root is not None else ())
+                if (package := run.index.packages_by_dir[str(child)].package_name)
+                and not any(part.startswith("_") for part in package.split("."))
+            ),
+            key=lambda package: (package.count("."), package),
+        )
+        for package in (source, *subpackages):
+            for name in sorted(cls._lazy_init_package_names(run, package)):
+                if not name.startswith("_"):
+                    lazy_map.setdefault(name, (package, name))
+
+    @classmethod
     def _lazy_init_inherited_facets(
         cls,
         run: p.Infra.LazyInitRun,

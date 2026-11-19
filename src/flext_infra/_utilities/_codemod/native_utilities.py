@@ -534,6 +534,20 @@ class FlextInfraUtilitiesCodemodNative:
             .unwrap()
             .encode(c.DEFAULT_ENCODING)
         )
+        # An exact selection renders from its catalog documents (whether it
+        # consumes file scopes is read from them), so an edited catalog rule
+        # must never reuse the rendering of its previous text.
+        if rule_ids is not None:
+            selected = FlextInfraUtilitiesCodemodNative._selected_catalog_documents(
+                root, rule_ids
+            )
+            catalog: t.JsonValue = [dict(document) for document in selected]
+            digest.update(
+                u.Cli
+                .json_dumps(catalog, sort_keys=True)
+                .unwrap()
+                .encode(c.DEFAULT_ENCODING)
+            )
         workspace = (
             root.parent if (root.parent / c.Infra.GITMODULES).is_file() else root
         )
@@ -553,14 +567,14 @@ class FlextInfraUtilitiesCodemodNative:
             ),
         )
         # A rendering holds root-relative paths and names generated rules after
-        # the member directory, never its location: the key names each source
-        # from the member's parent, so identical content under the same member
-        # name shares one rendering across checkouts, and every byte still
-        # authenticates it.
+        # the project's package, never its checkout: the key names each source
+        # from the workspace (the project itself when standalone), so identical
+        # content shares one rendering across checkouts of any directory name,
+        # and every byte still authenticates it.
         for member_root in members:
             for path in snapshots.workspace_python_files(snapshot, member_root):
                 digest.update(
-                    path.relative_to(root.parent).as_posix().encode(c.DEFAULT_ENCODING)
+                    path.relative_to(workspace).as_posix().encode(c.DEFAULT_ENCODING)
                 )
                 digest.update(b"\0")
                 digest.update(path.read_bytes())

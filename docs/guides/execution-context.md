@@ -1236,8 +1236,9 @@ helper, cache, detector or registry when the correct domain owner already exists
 
 Before publication, apply FLEXT law **Architecture and imports** and **Sources,
 generation, and commands**: preserve facade MRO `c -> t -> p -> m -> u`, inward
-imports, pure declarations and explicit dependency composition. Config/settings
-are layer-zero and import no own namespace. Models resolve at their declaring
+imports, pure declarations and explicit dependency composition. Layer zero is the
+lazy loader alone and imports no own namespace; settings and config import
+through the lazy initializer. Models resolve at their declaring
 owner and payloads cross typed Pydantic boundaries once. Repair cycles at the
 declaration/dependency owner, not through local-import demotion, fallback,
 compatibility exports or suppressions. Generated surfaces change only through
@@ -1395,6 +1396,12 @@ cannot invalidate the captured declaration offsets.
 The same rule covers imports from the package root and from its `protocols`
 module. Authored protocol extension inserts declarations against the captured
 holder extent before changing the import header, preserving class indentation.
+Generation is also the single writer under deletion (`flext-b4gw3.6`): a
+contract carrying the projection docstring whose model is gone retires from its
+authored holder, and a generated protocol module left without models retires
+whole. The retirement is hidden from the rest of the same candidate, so the `p`
+facade and the `_protocols` lazy exports drop the retired holder in that run and
+a second `make gen` writes nothing. Authored contracts are never retired.
 Persisted model fields name their concrete model directly (ADR-018 amendment
 2026-11-09), and consumers receive the `p` contract; the deferred
 `t.schema_for_model` form is no longer used at the field boundary. This is
@@ -2515,6 +2522,12 @@ extras and markers: the transformer does not infer a Git source from a name
 prefix. Generated internal floors use their declared provider provenance;
 explicit member Git references retain the existing URL validation. Preserving a
 requirement during conformance does not prove its resolution or installation.
+
+A requirement declared in `codegen.scaffold.project.dev` owns its distribution by
+name: a project requirement with the same name, extras, marker and origin but
+another version constraint, such as a typing-stub floor raised by Dependabot in a
+generated `pyproject.toml`, is replaced by the declared one, so each distribution
+appears once. The declared floor advances in `codegen.yaml`, never in a projection.
 
 Member contributions carry per-occurrence provenance in both managed development
 groups. CUSTOM entries retain their full constraints and origins; removing a

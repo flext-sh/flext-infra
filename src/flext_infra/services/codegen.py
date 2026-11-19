@@ -85,7 +85,7 @@ class FlextInfraCodegenHandlers:
 
         """
         requested = request.root.expanduser().resolve()
-        caller_root = type(settings).fetch_global().Infra.runtime_root
+        caller_root = settings.fetch_global().Infra.runtime_root
         if (
             caller_root is not None
             and not requested.is_relative_to(caller_root.resolve())

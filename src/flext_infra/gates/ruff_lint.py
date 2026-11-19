@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import ClassVar, override
 
 from flext_infra import c, config, m, p, u
-from flext_infra.gates.ruff_base import FlextInfraGatesRuffGate
+from flext_infra.gates import FlextInfraGatesRuffGate
 
 
 class FlextInfraGatesRuffLint(FlextInfraGatesRuffGate):

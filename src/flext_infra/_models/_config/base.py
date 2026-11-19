@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from flext_infra._models._config import (
+    FlextInfraExternalCacheDirectorySpec,
     FlextInfraModelsConfigArtifact,
     FlextInfraModelsConfigBeads,
     FlextInfraModelsConfigContexts,
@@ -20,9 +21,6 @@ from flext_infra._models._config import (
     FlextInfraModelsConfigStatic,
     FlextInfraModelsConfigTemplates,
     FlextInfraModelsConfigWorkspace,
-)
-from flext_infra._models._config.external_cache import (
-    FlextInfraExternalCacheDirectorySpec,
 )
 
 

@@ -13,7 +13,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import time
 from collections.abc import Generator, MutableMapping, Sequence
 from hashlib import sha256
 from importlib.metadata import version
@@ -30,7 +29,10 @@ from pytest_markdown_docs import plugin as markdown_plugin
 from pytest_markdown_docs.plugin import extract_fence_tests
 
 from flext_infra import c, m, p, t
-from flext_infra._utilities import FlextInfraUtilitiesPytest
+from flext_infra._utilities import (
+    FlextInfraUtilitiesPytest,
+    FlextInfraUtilitiesPytestSuiteStop,
+)
 
 
 class FlextInfraUtilitiesPytestCollection:
@@ -339,7 +341,11 @@ class FlextInfraUtilitiesPytestCollection:
             config.pluginmanager.register(cls.WarningAccounting(Path(report_log)))
         stop_at = config.getoption(c.Infra.PYTEST_SUITE_STOP_OPTION)
         if stop_at is not None and not hasattr(config, "workerinput"):
-            config.pluginmanager.register(cls.SuiteStop(stop_at_monotonic=stop_at))
+            config.pluginmanager.register(
+                FlextInfraUtilitiesPytestSuiteStop.SuiteStop(
+                    stop_at_monotonic=stop_at,
+                ),
+            )
 
     @classmethod
     def collection_selection_active(cls, config: t.Infra.Pytest.Config) -> bool:
@@ -640,90 +646,6 @@ class FlextInfraUtilitiesPytestCollection:
     ) -> None:
         """Publish the observed manifest through its existing atomic writer."""
         u.Cli.atomic_write_text_file(target, manifest.model_dump_json() + "\n").unwrap()
-
-    class SuiteStop:
-        """End the session gracefully at the runner's derived stop instant.
-
-        The controller stops dispatch through the same path as max-failures:
-        xdist queues the shutdown marker, so each worker's final item runs
-        with no successor and pytest-testmon flushes every batched result.
-        A stop therefore never waits for a flushed batch: testmon flushes only
-        at its batch size or on an item with no successor, so waiting for one
-        lets the run reach the process deadline, whose SIGTERM discards every
-        unflushed batch and every later run restarts from the same prefix. A
-        single-process session has no shutdown marker: the item after the
-        instant becomes the session's last item, testmon flushes on its
-        teardown, and the stop is requested there.
-
-        When every collected item has already completed, nothing is left to
-        stop and the stop request would only recolor a finished green suite
-        red, so the request is suppressed at that boundary.
-        """
-
-        def __init__(self, *, stop_at_monotonic: float) -> None:
-            self.stop_at_monotonic = stop_at_monotonic
-            self.session: t.Infra.Pytest.Session | None = None
-            self.completed_items: set[str] = set()
-            self.selected_count = 0
-
-        def pytest_sessionstart(self, session: t.Infra.Pytest.Session) -> None:
-            """Bind the controller session that owns the stop decision."""
-            self.session = session
-
-        @FlextInfraUtilitiesPytest.Pytest.hookimpl(trylast=True)
-        def pytest_collection_finish(self, session: t.Infra.Pytest.Session) -> None:
-            """Record the selected population before any stop shortens it."""
-            self.selected_count = len(session.items)
-
-        def pytest_runtest_logreport(self, report: t.Infra.Pytest.TestReport) -> None:
-            """Request the stop once a completed item crosses the instant.
-
-            The request is suppressed when this item was the last one still
-            pending: a suite that already finished must end green instead of
-            being interrupted after its own final result.
-
-            Raises:
-                TypeError: If the native distributed controller has no stop port.
-
-            """
-            session = self.session
-            if session is None or report.when != "teardown":
-                return
-            self.completed_items.add(report.nodeid)
-            # The instant is computed in the runner parent and handed to this
-            # process as a CLI option; a clock skew between the two (or a
-            # stale parent clock) must never stop a suite whose deadline has
-            # not actually passed on this process's own monotonic clock.
-            if time.monotonic() < self.stop_at_monotonic:
-                return
-            total_items = self.selected_count or len(session.items)
-            if total_items and len(self.completed_items) >= total_items:
-                return
-            reason = f"suite stop instant {self.stop_at_monotonic:.3f} reached"
-            controller = session.config.pluginmanager.getplugin("dsession")
-            if controller is None:
-                # pytest's loop reads ``session.items`` for each successor, so
-                # the next item runs with none and testmon flushes on its
-                # teardown; the stop is requested on that final teardown.
-                position = next(
-                    index
-                    for index, item in enumerate(session.items)
-                    if item.nodeid == report.nodeid
-                )
-                if position + 2 < len(session.items):
-                    del session.items[position + 2 :]
-                elif position + 1 == len(session.items) and not session.shouldstop:
-                    session.shouldstop = reason
-                return
-            if not isinstance(controller, p.Infra.PytestStopController):
-                msg = "native distributed pytest controller has no stop port"
-                raise TypeError(msg)
-            shouldstop = u.type_adapter(bool | str).validate_python(
-                controller.shouldstop,
-                strict=True,
-            )
-            if not shouldstop:
-                controller.shouldstop = reason
 
     class WarningAccounting:
         """Preserve the real class identity of every recorded warning."""

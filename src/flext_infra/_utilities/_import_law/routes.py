@@ -11,6 +11,7 @@ from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, p, t
+from flext_infra._utilities import FlextInfraUtilitiesCodegenNamespace
 from flext_infra._utilities._import_law import FlextInfraUtilitiesImportLawAst
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeCore,
@@ -20,7 +21,6 @@ from flext_infra._utilities._rope import (
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverBindings,
 )
-from flext_infra._utilities.namespace import FlextInfraUtilitiesCodegenNamespace
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -168,7 +168,6 @@ class FlextInfraUtilitiesImportLawRoutes(
             )
 
         own_family = cls._import_law_own_family_provider(state)
-        namespace = state.scope.namespace
         # A runtime provider wins over an identical typing-only declaration.
         imports = sorted(
             cls._import_law_iter_imports(state.tree),
@@ -192,20 +191,6 @@ class FlextInfraUtilitiesImportLawRoutes(
                     # The declaration relocation owner likewise must move the
                     # dependency; lazy routing cannot make an own-namespace
                     # edge legal.
-                    routed.setdefault(node.module, []).append(
-                        cls._import_law_clause(alias)
-                    )
-                    continue
-                published = state.root_exports.get(alias.name)
-                if (
-                    namespace == c.Infra.DIR_TESTS
-                    and node.module == namespace
-                    and published is not None
-                    and published.startswith(f"{namespace}.")
-                ):
-                    # A local name the namespace root already publishes binds
-                    # through the root; the provider route would oscillate with
-                    # the root-binding rule.
                     routed.setdefault(node.module, []).append(
                         cls._import_law_clause(alias)
                     )
@@ -305,11 +290,13 @@ class FlextInfraUtilitiesImportLawRoutes(
         where the name came from; the consumer moves to the deepest own package
         whose planned initializer publishes it, or to the declaring
         distribution root for a foreign provider, once native resolution proves
-        that owner binds the name.
+        that owner binds the name. Without that record, the one package of the
+        importer's own namespace whose candidate initializer publishes the
+        name owns it; none or several leave the import to the type checker.
 
         Returns:
             The owning package, or ``None`` when the candidate still publishes
-            the name or it never had an initializer route.
+            the name or no single owner binds it.
 
         """
         module, name = imported
@@ -319,7 +306,30 @@ class FlextInfraUtilitiesImportLawRoutes(
             return None
         provider = (cls.import_lazy_exports(root, module) or {}).get(name)
         if provider is None:
-            return None
+            namespace = state.scope.namespace
+            base = (
+                cls.import_package_dir(root, namespace, sources=sources)
+                if module == namespace or module.startswith(f"{namespace}.")
+                else None
+            )
+            owners = {
+                package
+                for init in sources or ()
+                if base is not None
+                and init.name == c.Infra.INIT_PY
+                and init.parent.is_relative_to(base)
+                and (
+                    package := ".".join((
+                        namespace,
+                        *init.parent.relative_to(base).parts,
+                    ))
+                )
+                != module
+                and name
+                in (cls.import_lazy_exports(root, package, sources=sources) or {})
+            }
+            owner = owners.pop() if len(owners) == 1 else None
+            return owner if owner and resolve(owner, name) is not None else None
         original = resolve(provider, name)
         if original is None:
             return None
@@ -647,14 +657,11 @@ class FlextInfraUtilitiesImportLawRoutes(
                     ),
                 ),
             )
-        tests_edits, root_bindings = cls._import_law_tests_root_bindings(state, lines)
-        edits.extend(tests_edits)
-        missing = (
+        root_names = (
             ()
-            if scope.direct_imports and scope.namespace != c.Infra.DIR_TESTS
+            if scope.direct_imports
             else tuple(sorted(cls._import_law_unbound_root_aliases(state)))
         )
-        root_names = tuple(sorted(set(missing) | set(root_bindings)))
         if root_names:
             anchor = cls._import_law_import_anchor(state.tree)
             edits.append(
@@ -665,59 +672,6 @@ class FlextInfraUtilitiesImportLawRoutes(
                 ),
             )
         return edits
-
-    @classmethod
-    def _import_law_tests_root_bindings(
-        cls,
-        state: p.Infra.ImportLawPass,
-        lines: Sequence[str],
-    ) -> tuple[Sequence[tuple[int, int, Sequence[str]]], list[str]]:
-        """Root-bind tests-tier names the tests root already publishes.
-
-        Returns:
-            The edits and the bound root names.
-
-        """
-        scope = state.scope
-        edits: MutableSequence[tuple[int, int, Sequence[str]]] = []
-        root_bindings: list[str] = []
-        if scope.namespace == c.Infra.DIR_TESTS:
-            # The tests tier root is the canonical package root for its own
-            # consumers: a bound name the root publishes from a local provider
-            # binds through the root, never the provider module.
-            for node in cls._import_law_iter_imports(state.tree):
-                if (
-                    not isinstance(node, ast.ImportFrom)
-                    or node.level
-                    or not node.module
-                    or node.module == scope.namespace
-                    or cls._import_law_enclosing_scope(node, state.parents) is not None
-                ):
-                    continue
-                kept: list[ast.alias] = []
-                for alias in node.names:
-                    bound = alias.asname or alias.name
-                    published = state.root_exports.get(bound)
-                    if published is not None and published.startswith(
-                        f"{scope.namespace}."
-                    ):
-                        root_bindings.append(bound)
-                    else:
-                        kept.append(alias)
-                if len(kept) == len(node.names):
-                    continue
-                indent = cls._import_law_line_indent(lines[node.lineno - 1])
-                clauses = ", ".join(cls._import_law_clause(alias) for alias in kept)
-                edits.append(
-                    (
-                        node.lineno,
-                        cls._import_law_end_line(node),
-                        (f"{indent}from {node.module} import {clauses}",)
-                        if kept
-                        else (),
-                    ),
-                )
-        return edits, root_bindings
 
     @classmethod
     def _import_law_unbound_root_aliases(
@@ -843,8 +797,9 @@ class FlextInfraUtilitiesImportLawRoutes(
             anchor = statement.end_lineno or statement.lineno
         return anchor
 
-    @staticmethod
+    @classmethod
     def _import_law_root_alias_source(
+        cls,
         state: p.Infra.ImportLawPass,
         module: str,
         alias: ast.alias,
@@ -876,10 +831,22 @@ class FlextInfraUtilitiesImportLawRoutes(
         renamed_external = alias.name != bound and not published.startswith(
             f"{scope.namespace}.",
         )
+        # A root re-exporting an external package's name also routes the
+        # imports from that package's submodules; native identity decides.
+        external_member = not published.startswith(
+            f"{scope.namespace}."
+        ) and module.startswith(f"{published}.")
         different_provider = (bound not in aliases or alias.name != bound) and (
-            published != module
+            published != module and not external_member
         )
-        if renamed_external or different_provider:
+        # An own letter published by a later layer is a reverse import: the
+        # upstream provider stays.
+        reverse = (
+            published == scope.namespace or published.startswith(f"{scope.namespace}.")
+        ) and cls.module_import_layer(
+            published, namespace=scope.namespace
+        ) > scope.layer
+        if renamed_external or different_provider or reverse:
             return None
         if (
             bound in scope.own_exports

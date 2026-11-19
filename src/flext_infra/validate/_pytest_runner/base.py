@@ -104,6 +104,24 @@ class FlextInfraPytestRunnerBase(s[int]):
             ),
         ),
     ] = False
+    tooling: Annotated[
+        m.Infra.ToolConfigDocument,
+        m.Field(
+            description=(
+                "The repository's tooling document, elected once at the runner "
+                "boundary; the deadline and every pytest policy read come from it."
+            ),
+        ),
+    ]
+    harness_marker: Annotated[
+        str | None,
+        m.Field(
+            description=(
+                "One declared harness gate marker narrowing the harness scope; "
+                "absent selects every harness gate marker."
+            ),
+        ),
+    ] = None
 
     @staticmethod
     def _environment_value(name: str) -> str:
@@ -136,6 +154,7 @@ class FlextInfraPytestRunnerBase(s[int]):
         execution_mode: c.Infra.PytestExecutionMode = (
             c.Infra.PytestExecutionMode.GLOBAL_INCREMENTAL
         ),
+        harness_marker: str | None = None,
     ) -> Self:
         """Bind the native runner to one repository's typed policy and identity.
 
@@ -194,12 +213,14 @@ class FlextInfraPytestRunnerBase(s[int]):
                     canonical.parent / identity.git_dir.name / cache.database_filename
                 )
                 seed = canonical
-        run_timeout_seconds, termination_grace_seconds = cls._elected_pytest_deadline(
-            root
+        tooling = cls._elect_tooling(root)
+        run_timeout_seconds, termination_grace_seconds = cls._elected_deadline(
+            tooling, execution_mode=execution_mode
         )
         return cls(
             repository_root=root,
             started_at_monotonic=started_at_monotonic,
+            tooling=tooling,
             run_timeout_seconds=run_timeout_seconds,
             termination_grace_seconds=termination_grace_seconds,
             target=cache.target_directory,
@@ -209,20 +230,19 @@ class FlextInfraPytestRunnerBase(s[int]):
             testmon_seed_db=seed,
             ci_context=u.Infra.env_value(make.ci.variable) == make.ci.value,
             profile_enabled=settings.Infra.profile,
+            harness_marker=harness_marker,
         )
 
     @classmethod
-    def _elected_pytest_deadline(
-        cls,
-        repository_root: Path,
-    ) -> tuple[int, int]:
-        """Elect the repository's suite deadline from its governed YAML layers.
+    def _elect_tooling(cls, repository_root: Path) -> m.Infra.ToolConfigDocument:
+        """Elect the repository's tooling document from its governed YAML layers.
 
-        The election always merges the packaged fleet defaults as its base, so
-        one source decides the deadline for every repository.
+        The election always merges the packaged fleet defaults as its base. It
+        runs once per runner, so the deadline and every pytest policy read share
+        one validated document that cannot change mid-run.
 
         Returns:
-            The elected run timeout and termination grace in seconds.
+            The repository-elected tooling document.
 
         Raises:
             ValueError: If the repository tooling election fails.
@@ -234,11 +254,36 @@ class FlextInfraPytestRunnerBase(s[int]):
         if tooling.failure:
             msg = f"repository pytest tooling election failed: {tooling.error}"
             raise ValueError(msg)
-        pytest_section = tooling.value.document.tools.pytest
+        return m.Infra.ToolConfigDocument.model_validate(tooling.value.document)
+
+    @staticmethod
+    def _elected_deadline(
+        tooling: m.Infra.ToolConfigDocument,
+        *,
+        execution_mode: c.Infra.PytestExecutionMode,
+    ) -> tuple[int, int]:
+        """Return the suite deadline; the harness scope owns its own clock.
+
+        Returns:
+            The elected run timeout and termination grace in seconds.
+
+        """
+        pytest_section = tooling.tools.pytest
         return (
-            pytest_section.run_timeout_seconds,
+            pytest_section.harness_run_timeout_seconds
+            if execution_mode == c.Infra.PytestExecutionMode.HARNESS
+            else pytest_section.run_timeout_seconds,
             pytest_section.termination_grace_seconds,
         )
+
+    def pytest_policy(self) -> p.Infra.PytestConfig:
+        """Return the pytest policy of this runner's elected tooling document.
+
+        Returns:
+            The policy elected with the suite deadline.
+
+        """
+        return self.tooling.tools.pytest
 
     @classmethod
     def from_environment(
@@ -268,11 +313,13 @@ class FlextInfraPytestRunnerBase(s[int]):
         if not repository_root.is_absolute():
             msg = "Make-owned pytest repository root must be absolute"
             raise ValueError(msg)
-        run_timeout_seconds, termination_grace_seconds = cls._elected_pytest_deadline(
-            repository_root
+        tooling = cls._elect_tooling(repository_root)
+        run_timeout_seconds, termination_grace_seconds = cls._elected_deadline(
+            tooling, execution_mode=execution_mode
         )
         return cls(
             repository_root=repository_root,
+            tooling=tooling,
             run_timeout_seconds=run_timeout_seconds,
             termination_grace_seconds=termination_grace_seconds,
             started_at_monotonic=started_at_monotonic,
@@ -402,17 +449,8 @@ class FlextInfraPytestRunnerBase(s[int]):
         Returns:
             The resulting ``int | m.Infra.PytestWorkerCeiling``.
 
-        Raises:
-            ValueError: If the repository tooling election fails.
-
         """
-        tooling = FlextInfraUtilitiesProjectManagedArtifacts.load_tooling_inputs(
-            self.repository_root,
-        )
-        if tooling.failure:
-            msg = f"repository pytest tooling election failed: {tooling.error}"
-            raise ValueError(msg)
-        elected = tooling.value.document.tools.pytest
+        elected = self.pytest_policy()
         name = self._declared_project_name()
         if name is None:
             return elected.parallel_workers
