@@ -28,8 +28,9 @@ files:
   - "examples/**/*.py"
   - "scripts/**/*.py"
   - "**/conftest.py"
-# The facade is any binding of a test facade (`c`, `tu`, `flext_tests_m`,
-# `TestsFlextLdapModels`, ...), never `self`/`cls` or a dotted tail. The path is
+# The facade is a family letter (`c`, `t`, `p`, `m`, `u`) or a `Tests*` facade
+# class (operator decision 2026-11-19: no wider binding match; other aliases
+# such as `tu` are rewired by hand in their member). The path is
 # matched as an expression, as a `case` value pattern (a dotted name, not an
 # attribute node) and inside docstrings (the first statement of a body) and
 # comments, so no stale spelling
@@ -37,27 +38,25 @@ files:
 # other refactors) and are never rewritten.
 rule:
   pattern: $REF
-  not:
-    regex: "\\b(self|cls)\\.[A-Z][A-Za-z0-9]*\\.Tests\\b"
   any:
     - kind: attribute
-      regex: "^([a-z_][A-Za-z0-9_]*|Tests[A-Z][A-Za-z0-9]*)\\.[A-Z][A-Za-z0-9]*\\.Tests$"
+      regex: "^([ctmpu]|Tests[A-Z][A-Za-z0-9]*)\\.[A-Z][A-Za-z0-9]*\\.Tests$"
     - kind: dotted_name
-      regex: "^([a-z_][A-Za-z0-9_]*|Tests[A-Z][A-Za-z0-9]*)\\.[A-Z][A-Za-z0-9]*\\.Tests\\b"
+      regex: "^([ctmpu]|Tests[A-Z][A-Za-z0-9]*)\\.[A-Z][A-Za-z0-9]*\\.Tests\\b"
     - kind: string_content
-      regex: "(^|[^.\\w])([a-z_][A-Za-z0-9_]*|Tests[A-Z][A-Za-z0-9]*)\\.[A-Z][A-Za-z0-9]*\\.Tests\\b"
+      regex: "(^|[^.\\w])([ctmpu]|Tests[A-Z][A-Za-z0-9]*)\\.[A-Z][A-Za-z0-9]*\\.Tests\\b"
       inside:
         kind: string
         inside:
           kind: expression_statement
           nthChild: 1
     - kind: comment
-      regex: "(^|[^.\\w])([a-z_][A-Za-z0-9_]*|Tests[A-Z][A-Za-z0-9]*)\\.[A-Z][A-Za-z0-9]*\\.Tests\\b"
+      regex: "(^|[^.\\w])([ctmpu]|Tests[A-Z][A-Za-z0-9]*)\\.[A-Z][A-Za-z0-9]*\\.Tests\\b"
 transform:
   FLAT:
     replace:
       source: $REF
-      replace: "(^|[^.\\w])([a-z_][A-Za-z0-9_]*|Tests[A-Z][A-Za-z0-9]*)\\.[A-Z][A-Za-z0-9]*\\.Tests\\b"
+      replace: "(^|[^.\\w])([ctmpu]|Tests[A-Z][A-Za-z0-9]*)\\.[A-Z][A-Za-z0-9]*\\.Tests\\b"
       by: "$1$2.Tests"
 fix: $FLAT
 message: >-

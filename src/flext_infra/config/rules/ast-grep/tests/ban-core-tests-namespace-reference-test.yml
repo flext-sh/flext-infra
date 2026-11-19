@@ -13,11 +13,11 @@ valid:
   - |
     value = registry.cases.Ldap.Tests
   - |
-    def build() -> None:
-        """Read self.Ldap.Tests before t.Ldap.Tests."""
+    runner = tu.DbtLdap.Tests.InMemoryDbtRunnerLdap(settings=settings)
 invalid:
   - |
-    runner = tu.DbtLdap.Tests.InMemoryDbtRunnerLdap(settings=settings)
+    def build() -> None:
+        """Read self.Ldap.Tests before t.Ldap.Tests."""
   - |
     def send(request: t.Core.Tests.DispatchRequest) -> p.Result[str]: ...
   - |

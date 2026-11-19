@@ -2,6 +2,25 @@ id: ban-core-tests-namespace-reference
 snapshots:
   ? |
     def build() -> None:
+        """Read self.Ldap.Tests before t.Ldap.Tests."""
+  : fixed: |
+      def build() -> None:
+          """Read self.Ldap.Tests before t.Tests."""
+    labels:
+    - source: Read self.Ldap.Tests before t.Ldap.Tests.
+      style: primary
+      start: 28
+      end: 69
+    - source: '"""Read self.Ldap.Tests before t.Ldap.Tests."""'
+      style: secondary
+      start: 25
+      end: 72
+    - source: '"""Read self.Ldap.Tests before t.Ldap.Tests."""'
+      style: secondary
+      start: 25
+      end: 72
+  ? |
+    def build() -> None:
         """Return ``t.DbtLdap.Tests.ServiceFactory``."""
   : fixed: |
       def build() -> None:
@@ -59,15 +78,6 @@ snapshots:
       style: primary
       start: 10
       end: 41
-  ? |
-    runner = tu.DbtLdap.Tests.InMemoryDbtRunnerLdap(settings=settings)
-  : fixed: |
-      runner = tu.Tests.InMemoryDbtRunnerLdap(settings=settings)
-    labels:
-    - source: tu.DbtLdap.Tests
-      style: primary
-      start: 9
-      end: 25
   ? |
     u.Ldap.Tests.that(result, eq=1)
   : fixed: |
