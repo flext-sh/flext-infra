@@ -50,7 +50,7 @@ class FlextInfraModGateRunner:
         stdout_file, stderr_file, artifact_root = outputs
         owner_root = u.Infra.runtime_environment_dir(
             Path.cwd(),
-            runtime_root=type(settings).fetch_global().Infra.runtime_root,
+            runtime_root=settings.fetch_global().Infra.runtime_root,
         ).parent
         binary = u.Infra.managed_mise_binary(command[0], owner_root)
         if binary.failure:
