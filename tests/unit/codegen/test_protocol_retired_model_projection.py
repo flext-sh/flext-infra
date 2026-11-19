@@ -3,8 +3,8 @@
 ``make gen`` is the single writer of model protocol projections, so it must
 stay idempotent under deletions too: once a source model disappears, the same
 stage removes its projected contract from an authored protocol module and
-retires a generated protocol module whose models are all gone, together with
-its lazy export. Regression for flext-b4gw3.6.
+retires a generated protocol module whose models are all gone, so the protocol
+facade and the lazy exports drop it. Regression for flext-b4gw3.6.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -12,171 +12,148 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
 
-from tests import c, p, tm, u
-from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
+from tests import c, tm, u
 
 
 class TestsProtocolRetiredModelProjection:
     """Delete a model, regenerate, and prove nothing of its projection stays."""
 
-    _DISTRIBUTION = "sample-library"
-
     _PAYLOAD_MODELS = (
-        '"""Payload models."""\n\n'
-        "from __future__ import annotations\n\n"
-        "from flext_core import m\n\n\n"
-        "class SampleLibraryModelsPayload:\n"
-        '    """Payload models."""\n\n'
+        "from flext_core import m\n"
+        "class FlextInfraModelsPayload:\n"
         "    class Packet(m.ContractModel):\n"
-        '        """Packet that stays."""\n\n'
-        "        visible: str\n\n"
+        "        visible: str\n"
         "{retired}"
-        '__all__: list[str] = ["SampleLibraryModelsPayload"]\n'
+        "__all__ = ['FlextInfraModelsPayload']\n"
     )
-
-    _RETIRED_MODEL = (
-        "    class Retired(m.ContractModel):\n"
-        '        """Model the test deletes."""\n\n'
-        "        name: str\n\n\n"
-    )
-
+    _RETIRED_MODEL = "    class Retired(m.ContractModel):\n        name: str\n"
     _LEGACY_MODELS = (
-        '"""Legacy models."""\n\n'
-        "from __future__ import annotations\n\n"
-        "from flext_core import m\n\n\n"
-        "class SampleLibraryModelsLegacy:\n"
-        '    """Legacy models."""\n\n'
+        "from flext_core import m\n"
+        "class FlextInfraModelsLegacy:\n"
         "    class Ledger(m.ContractModel):\n"
-        '        """Model whose whole module the test deletes."""\n\n'
-        "        total: int\n\n\n"
-        '__all__: list[str] = ["SampleLibraryModelsLegacy"]\n'
+        "        total: int\n"
+        "__all__ = ['FlextInfraModelsLegacy']\n"
     )
-
-    # An authored protocol module: its holder keeps the authored contract,
-    # and generation appends the projected ones beside it.
+    _MODEL_FACADE = (
+        "{imports}"
+        "class FlextInfraModels({bases}): pass\n"
+        "m = FlextInfraModels\n"
+        "__all__ = ['FlextInfraModels', 'm']\n"
+    )
+    # An authored protocol module: generation appends the projected contracts
+    # beside the authored one and never removes the authored one.
     _AUTHORED_PROTOCOLS = (
-        '"""Payload protocols."""\n\n'
-        "from __future__ import annotations\n\n"
-        "from typing import Protocol, runtime_checkable\n\n\n"
-        "class SampleLibraryProtocolsPayload:\n"
-        '    """Payload protocols."""\n\n'
+        "from typing import Protocol, runtime_checkable\n"
+        "class FlextInfraProtocolsPayload:\n"
+        '    """Payload protocols."""\n'
         "    @runtime_checkable\n"
         "    class Reader(Protocol):\n"
-        '        """Authored reader contract."""\n\n'
-        "        def read(self) -> str:\n"
-        '            """Read one payload."""\n'
-        "            ...\n\n\n"
-        '__all__: list[str] = ["SampleLibraryProtocolsPayload"]\n'
+        '        """Authored reader contract."""\n'
+        "        def read(self) -> str: ...\n"
+        "__all__ = ['FlextInfraProtocolsPayload']\n"
     )
 
-    @classmethod
-    def _project(cls, tmp_path: Path) -> Path:
-        """Create one governed repository owning models and protocols.
-
-        Returns:
-            The repository's package directory.
-
-        """
-        root = tmp_path / cls._DISTRIBUTION
-        u.Tests.WorktreeFixture.initialize_governed_project(
-            root,
-            cls._DISTRIBUTION,
-            beads=u.Tests.BeadsIdentity(
-                workspace=cls._DISTRIBUTION,
-                database=cls._DISTRIBUTION.replace("-", "_"),
-                issue_prefix=cls._DISTRIBUTION,
-            ),
-        )
-        project = u.Tests.project_spec(cls._DISTRIBUTION)
-        tm.ok(
-            u.Cli.yaml_dump(
-                root / "config" / c.Infra.CODEGEN_CONFIG_FILENAME,
-                {
-                    "Infra": {
-                        "codegen": {
-                            "repository": {"project": project.model_dump(mode="json")},
-                        },
-                    },
-                },
-            ),
-        )
-        package = root / c.Infra.DEFAULT_SRC_DIR / tm.not_none(project.package_name)
-        for path, content in {
-            package / "_models" / "payload.py": cls._PAYLOAD_MODELS.format(
-                retired=cls._RETIRED_MODEL
-            ),
-            package / "_models" / "legacy.py": cls._LEGACY_MODELS,
-            package / "_protocols" / "payload.py": cls._AUTHORED_PROTOCOLS,
-        }.items():
-            tm.ok(u.Cli.ensure_dir(path.parent))
-            tm.ok(u.Cli.atomic_write_text_file(path, content))
-        return package
+    @staticmethod
+    def _write(sources: Mapping[Path, str]) -> None:
+        # Fixture inputs need no durable atomic publication.
+        for path, source in sources.items():
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(source, encoding="utf-8")
 
     @classmethod
-    def _generate(cls, package: Path) -> p.Infra.CodegenResult:
-        """Run the public generation of the projected facades once.
+    def _models(cls, package: Path, *, legacy: bool) -> dict[Path, str]:
+        holders = ("Payload", "Legacy") if legacy else ("Payload",)
+        return {
+            package / "models.py": cls._MODEL_FACADE.format(
+                imports="".join(
+                    f"from flext_infra._models.{name.lower()} import "
+                    f"FlextInfraModels{name}\n"
+                    for name in holders
+                ),
+                bases=", ".join(f"FlextInfraModels{name}" for name in holders),
+            ),
+        }
+
+    @classmethod
+    def _generate(cls, root: Path) -> int:
+        """Publish one model protocol projection and its lazy exports.
 
         Returns:
-            The conform outcome, carrying every file the run wrote.
+            How many files the projection and the lazy exports changed.
 
         """
-        root = package.parents[1]
-        request = u.Tests.conform_request(
-            root,
-            what=c.Infra.CodegenConformSurface.FACADES,
-            scope=c.Infra.CodegenConformScope.SELF,
-            mode=c.Infra.CodegenConformMode.APPLY,
-        )
-        return tm.ok(
-            TestsFlextInfraConformSupport.conform_in_workspace(
-                request,
-                u.Tests.standalone_workspace(root, cls._DISTRIBUTION),
+        with u.Infra.facade_source_project(root) as binding:
+            sources, retired = tm.ok(
+                u.Infra.protocol_model_projection_from_source(root, binding[0])
             )
-        )
+        changed = [
+            relative
+            for relative, source in sources.items()
+            if not (root / relative).is_file()
+            or (root / relative).read_text(encoding="utf-8") != source
+        ]
+        cls._write({root / relative: sources[relative] for relative in changed})
+        for relative in retired:
+            (root / relative).unlink()
+        exported = u.Tests.run_lazy_init(root, check_only=True)
+        tm.that(u.Tests.run_lazy_init(root), eq=0)
+        return len(changed) + len(retired) + exported
 
     @c.Tests.MARK.slow
     def test_deleted_model_leaves_no_projection_and_converges(
         self, tmp_path: Path
     ) -> None:
         """A deleted model's contract, module and export retire in one run."""
-        package = self._project(tmp_path)
+        root, package = u.Tests.create_lazy_init_workspace(
+            tmp_path, project_name="flext-infra", package_name="flext_infra"
+        )
         authored = package / "_protocols" / "payload.py"
         generated = package / "_protocols" / "legacy.py"
-        initializer = package / "_protocols" / c.Infra.INIT_PY
-        self._generate(package)
+        self._write({
+            package / "_models" / "payload.py": self._PAYLOAD_MODELS.format(
+                retired=self._RETIRED_MODEL
+            ),
+            package / "_models" / "legacy.py": self._LEGACY_MODELS,
+            **self._models(package, legacy=True),
+            authored: self._AUTHORED_PROTOCOLS,
+            package / "protocols.py": (
+                "from flext_cli import FlextCliProtocols\n"
+                "class FlextInfraProtocols(FlextCliProtocols): pass\n"
+                "p = FlextInfraProtocols\n"
+                "__all__ = ['FlextInfraProtocols', 'p']\n"
+            ),
+        })
+        self._generate(root)
         tm.that(authored.read_text(encoding="utf-8"), has="class Retired(")
-        tm.that(authored.read_text(encoding="utf-8"), has="class Packet(")
         tm.ok(generated.is_file())
         tm.that(
-            initializer.read_text(encoding="utf-8"),
-            has="SampleLibraryProtocolsLegacy",
+            (package / "_protocols" / c.Infra.INIT_PY).read_text(encoding="utf-8"),
+            has="FlextInfraProtocolsLegacy",
         )
 
-        tm.ok(
-            u.Cli.atomic_write_text_file(
-                package / "_models" / "payload.py",
-                self._PAYLOAD_MODELS.format(retired=""),
-            )
-        )
+        self._write({
+            package / "_models" / "payload.py": self._PAYLOAD_MODELS.format(retired=""),
+            **self._models(package, legacy=False),
+        })
         (package / "_models" / "legacy.py").unlink()
-        self._generate(package)
+        self._generate(root)
 
         projection = authored.read_text(encoding="utf-8")
         tm.that(projection, lacks="Retired")
         tm.that(projection, has="class Packet(")
         tm.that(projection, has="class Reader(Protocol)")
         tm.fail(generated.exists())
-        tm.that(
-            initializer.read_text(encoding="utf-8"),
-            lacks="SampleLibraryProtocolsLegacy",
-        )
-        tm.that(
-            (package / "protocols.py").read_text(encoding="utf-8"),
-            lacks="SampleLibraryProtocolsLegacy",
-        )
-        tm.that(self._generate(package).written_files, eq=())
+        for facade in (
+            package / "_protocols" / c.Infra.INIT_PY,
+            package / "protocols.py",
+        ):
+            tm.that(
+                facade.read_text(encoding="utf-8"), lacks="FlextInfraProtocolsLegacy"
+            )
+        tm.that(self._generate(root), eq=0)
 
 
 __all__: list[str] = ["TestsProtocolRetiredModelProjection"]
