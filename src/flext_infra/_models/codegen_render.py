@@ -313,6 +313,16 @@ class FlextInfraModelsCodegenRender(FlextInfraModelsCodegenLazyInit):
                 ),
             ),
         ] = False
+        docs_site_publish: Annotated[
+            bool,
+            m.Field(
+                default=True,
+                description=(
+                    "Upload the built docs site and deploy it to GitHub Pages "
+                    "from main; False keeps the docs workflow a build-only proof"
+                ),
+            ),
+        ] = True
         superproject: Annotated[
             FlextInfraModelsConfigProvider.CiSuperprojectCheckoutSpec | None,
             m.Field(

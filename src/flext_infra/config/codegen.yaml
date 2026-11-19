@@ -535,6 +535,10 @@ Infra:
     # packages: read; every other distribution and job stays contents-only.
     # Org repositories declare themselves in their own config/codegen.yaml.
     ci_package_registry_read: []
+    # Distributions whose docs must stay private: the generated Docs workflow
+    # builds and checks the site but never uploads or deploys it to Pages.
+    # Repositories declare themselves in their own config/codegen.yaml.
+    docs_site_unpublished: []
     # Per-distribution private composed-project auth for CI. The default
     # GITHUB_TOKEN cannot clone sibling private repos; projects that need
     # private submodules declare read-only deploy-key secrets in their own
