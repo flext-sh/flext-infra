@@ -474,22 +474,25 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                 "model protocol projection requires the authenticated run snapshot"
             )
         with self._source_view(root, declared_files=declared_files) as binding:
-            rendered_sources: dict[Path, str | None] = {}
+            rendered_sources: dict[Path, str] = {}
+            retired: set[Path] = set()
             for package_name in u.Infra.protocol_model_package_names(root, binding[0]):
-                rendered = u.Infra.protocol_model_sources_from_source(
+                projected = u.Infra.protocol_model_projection_from_source(
                     root, binding[0], package_name=package_name
                 )
-                if rendered.failure:
-                    return result_type.from_failure(rendered)
-                rendered_sources.update(rendered.value)
+                if projected.failure:
+                    return result_type.from_failure(projected)
+                rendered_sources.update(projected.value[0])
+                retired.update(projected.value[1])
             plans: list[p.Infra.CodegenFilePlan] = []
             for path, content in rendered_sources.items():
-                # A projection whose models are gone retires in this candidate.
-                planned = (
-                    self._absent_file_plan(root, root / path)
-                    if content is None
-                    else self.file_plan(root, path.as_posix(), content)
-                )
+                planned = self.file_plan(root, path.as_posix(), content)
+                if planned.failure:
+                    return result_type.from_failure(planned)
+                plans.append(planned.value)
+            # A projection whose models are gone retires in this candidate.
+            for path in sorted(retired):
+                planned = self._absent_file_plan(root, root / path)
                 if planned.failure:
                     return result_type.from_failure(planned)
                 plans.append(planned.value)
