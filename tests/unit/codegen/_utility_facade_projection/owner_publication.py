@@ -95,6 +95,11 @@ class UtilityFacadeOwnerPublication:
             cwd=root,
         )
 
+    # Measured 2026-11-18: the native_consumer probe spawns a fresh interpreter
+    # (run_lazy_init_probe) by contract; 1.89 s call uncovered and 3.50 s under
+    # coverage at load 14.6, and the canonical gate timed out at the 2 s
+    # ordinary call budget while the child was still running.
+    @c.Tests.MARK.slow
     def test_initializer_retires_exports_moved_into_class_owners(
         self,
         tmp_path: Path,
@@ -172,14 +177,20 @@ class UtilityFacadeOwnerPublication:
             "from .vocabulary import OwnerVocabulary\n"
             "__all__ = ['OwnerBase', 'OwnerVocabulary']\n",
         )
+        value_type = "ClassVar[int]" if family == c.Infra.FacadeFamily.U else "int"
         for module, name in (("base", "OwnerBase"), ("vocabulary", "OwnerVocabulary")):
             self._write(
                 package / definition.directory / f"{module}.py",
                 "from pydantic import BaseModel\n"
                 + (
-                    f"class {name}(BaseModel):\n    value: int = 7\n"
+                    "from typing import ClassVar\n"
+                    if family == c.Infra.FacadeFamily.U
+                    else ""
+                )
+                + (
+                    f"class {name}(BaseModel):\n    value: {value_type} = 7\n"
                     if module == "base"
-                    else f"class {name}:\n    value = 7\n"
+                    else f"class {name}:\n    {module}_value = 7\n"
                 )
                 + f"    class {name}Entity:\n        pass\n"
                 f"__all__ = [{name!r}]\n",
@@ -232,8 +243,6 @@ class UtilityFacadeOwnerPublication:
             eq=rendered,
         )
         self._write(facade, rendered)
-        if publication[0] == "barrel":
-            self._write(package / definition.directory / "__init__.py", "")
         with u.Infra.facade_source_project(root) as (project, sources):
             repeated = tm.ok(
                 u.Infra.render_type_facade(package, facade, sources, project=project)
@@ -275,6 +284,7 @@ class UtilityFacadeOwnerPublication:
         )
         tm.that(u.Cli.process_succeeded(result.outcome), eq=True, msg=result.stderr)
 
+    @c.Tests.MARK.slow
     @c.Tests.MARK.parametrize("family", ["c", "m", "p", "u"])
     @c.Tests.MARK.parametrize("stale_base", [False, True])
     def test_explicit_class_bindings_preserve_authored_upstream_contract(
@@ -284,7 +294,11 @@ class UtilityFacadeOwnerPublication:
         *,
         stale_base: bool,
     ) -> None:
-        """Keep authored bindings and upstream bases without inventing publications."""
+        """Keep authored bindings and upstream bases without inventing publications.
+
+        Measured >2.0 s call: renders the facade and imports the generated
+        consumer on the slow budget.
+        """
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         spec = u.Infra.facade_families()[family]
         self._write(package / "__init__.py", "")
@@ -485,13 +499,17 @@ class UtilityFacadeOwnerPublication:
             cwd=root,
         )
 
+    @c.Tests.MARK.slow
     @c.Tests.MARK.parametrize("header", ["plain", "protocol", "commented"])
     def test_long_protocol_owner_bases_are_canonical_before_publication(
         self,
         tmp_path: Path,
         header: str,
     ) -> None:
-        """Long owner composition preserves comments, identities and a fixed point."""
+        """Long owner composition preserves comments, identities and a fixed point.
+
+        Measured >2.0 s call: renders and re-renders the long facade source.
+        """
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         self._write(package / "__init__.py", "")
         self._write(package / "_protocols" / "__init__.py", "")
