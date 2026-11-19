@@ -19,8 +19,8 @@ class TestsFlextInfraCodemodGeneratedBoundaryRules:
     """Layer-zero, facade and typings boundaries fail only where the law says."""
 
     SCENARIO = "import-boundary"
-    FACADE = "ban-settings-config-own-facade-import"
-    MODULE = "ban-settings-config-own-module-import"
+    FACADE = "ban-layer-zero-own-facade-import"
+    MODULE = "ban-layer-zero-own-module-import"
     EXTERNAL = "ban-external-import-outside-facade-family"
     LIBRARY = "ban-library-type-reference-outside-typings"
     SUPPORT: Mapping[str, Mapping[str, str]] = {
