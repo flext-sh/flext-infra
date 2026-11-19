@@ -475,12 +475,8 @@ class FlextInfraPytestRunnerExecution(
         """
         return (
             (
-                outcome.raw_return_code
-                in {
-                    c.Infra.PytestExitCode.TESTS_FAILED,
-                    c.Infra.PytestExitCode.INTERRUPTED,
-                }
-                or outcome.raw_return_code < 0
+                outcome.raw_return_code < 0
+                or outcome.raw_return_code in c.Infra.PYTEST_COMPLETED_FAILURES
             )
             and outcome.forwarded_signal is None
             and (report_dir / "junit.xml").is_file()

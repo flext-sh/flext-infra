@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import signal
 import time
-from collections.abc import Callable, Generator, MutableMapping, Sequence
+from collections.abc import Generator, MutableMapping, Sequence
 from hashlib import sha256
 from importlib.metadata import version
 from pathlib import Path
@@ -677,9 +677,7 @@ class FlextInfraUtilitiesPytestCollection:
             self.completed_items: set[str] = set()
             self.selected_count = 0
             self.stopping = False
-            self.previous_sigterm: (
-                Callable[[int, FrameType | None], object] | int | None
-            ) = signal.SIG_DFL
+            self.previous_sigterm: t.Infra.SignalHandler = signal.SIG_DFL
 
         def pytest_sessionstart(self, session: t.Infra.Pytest.Session) -> None:
             """Bind the controller session and its graceful wall interruption."""
@@ -695,13 +693,12 @@ class FlextInfraUtilitiesPytestCollection:
             self.stopping = True
 
         def pytest_unconfigure(self) -> None:
-            """Restore the SIGTERM action unless the interruption must stay terminal."""
-            if signal.getsignal(signal.SIGTERM) != self._interrupt:
-                return
-            if self.stopping:
-                signal.signal(signal.SIGTERM, signal.SIG_IGN)
-                return
-            signal.signal(signal.SIGTERM, self.previous_sigterm)
+            """Restore the SIGTERM action, or ignore it after an interruption."""
+            if signal.getsignal(signal.SIGTERM) == self._interrupt:
+                signal.signal(
+                    signal.SIGTERM,
+                    signal.SIG_IGN if self.stopping else self.previous_sigterm,
+                )
 
         def _interrupt(self, _signum: int, _frame: FrameType | None) -> None:
             """Unwind the session through pytest's native interruption path.
