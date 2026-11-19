@@ -51,9 +51,11 @@ class TestsFlextInfraUtilitiesToolingFixture:
                 / cache.database_filename
             )
             testmon_db.parent.mkdir(parents=True, exist_ok=True)
-            policy = config.Infra.tooling.tools.pytest
+            tooling = u.Infra.load_tooling_inputs(cached_runner_project).unwrap()
+            policy = tooling.document.tools.pytest
             return validate.FlextInfraPytestRunner(
                 repository_root=cached_runner_project,
+                tooling=tooling.document,
                 ci_context=ci_context,
                 collection_command_prefix=(
                     (sys.executable, "-c", c.Infra.PYTEST_PROFILE_LAUNCHER)
