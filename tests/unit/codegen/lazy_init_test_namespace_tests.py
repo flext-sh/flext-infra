@@ -116,12 +116,17 @@ class TestsFlextInfraLazyInitTestNamespace:
     def test_tests_root_inherits_public_src_subpackage_names(
         tmp_path: Path,
     ) -> None:
-        """Public src subpackages serve the tests root; private and child do not."""
+        """Public src subpackages serve the tests root; others never do.
+
+        Private, tests-child and same-depth ambiguous names stay out.
+        """
         repository_root, package_root = u.Tests.demo_lazy_init_workspace(tmp_path)
         tests_root = repository_root / c.Infra.DIR_TESTS
         modules = {
             package_root / "models.py": "FlextDemoA",
             package_root / "services" / "runner.py": "FlextDemoService",
+            package_root / "services" / "shared.py": "FlextDemoShared",
+            package_root / "workers" / "shared.py": "FlextDemoShared",
             package_root / "_models" / "part.py": "FlextDemoModelsPart",
             tests_root / "helpers" / "harness.py": "DemoHelper",
         }
@@ -137,6 +142,7 @@ class TestsFlextInfraLazyInitTestNamespace:
         first = u.Tests.generated_init(tests_root)
         tm.that(first, has='"FlextDemoA": "flext_demo"')
         tm.that(first, has='"FlextDemoService": "flext_demo.services"')
+        tm.that(first, lacks="FlextDemoShared")
         tm.that(first, lacks="FlextDemoModelsPart")
         tm.that(first, lacks="DemoHelper")
         tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
