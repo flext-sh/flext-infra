@@ -19,6 +19,7 @@ from flext_infra.refactor import FlextInfraRefactorViolationsSweep
 from tests import c, m, t, tm, u
 from tests.unit.refactor.violations_sweep_support import (
     LOCAL_GROWTH_RULE,
+    LOCAL_RULE_CATALOG,
     TestsFlextInfraRefactorViolationsSweepSupport,
 )
 
@@ -545,6 +546,50 @@ class TestsFlextInfraRefactorViolationsSweepAudits(
         tm.that(delta.persisted, eq=1)
         tm.that(delta.resolved, eq=0)
         tm.that(delta.introduced, eq=0)
+
+    def test_rule_audit_authenticates_utility_bytes_without_source_changes(
+        self,
+        mod_workspace: Path,
+    ) -> None:
+        """Utility files are authenticated inputs of the read-only rule audit."""
+        root = mod_workspace
+        self._prepare(root, makefile=self._makefile(), local_rule=True)
+        catalog = root / c.Infra.CODEMOD_CONFIG_RELPATH
+        utilities = catalog.parent / "utils"
+        tm.ok(u.Cli.ensure_dir(utilities))
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                catalog, LOCAL_RULE_CATALOG + "utilDirs:\n  - utils\n"
+            )
+        )
+        rule = catalog.parent / c.Cli.RULES_DIR_NAME / "sweep.yml"
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                rule,
+                LOCAL_GROWTH_RULE.replace(
+                    "  pattern: marker = dict()", "  matches: sweep-match"
+                ),
+            )
+        )
+        utility = utilities / "match.yml"
+        utility_text = (
+            "id: sweep-match\nlanguage: Python\nrule:\n  pattern: marker = tuple()\n"
+        )
+        tm.ok(u.Cli.atomic_write_text_file(utility, utility_text))
+        tm.ok(u.Cli.atomic_write_text_file(root / "sample.py", "marker = dict()\n"))
+        self._sweep(root, "--audit-rules")
+        tm.fail((root / "ran.txt").exists())
+        stage = self._receipt(root).stages[0]
+        tm.that(stage.verb, eq="audit-rules")
+        tm.ok(tm.not_none(stage.source_inventory_unchanged))
+        before = tm.not_none(stage.audit_before).sha256
+        after = tm.not_none(stage.audit_after).sha256
+        tm.that(
+            before[str(utility.resolve())], eq=u.Cli.sha256_bytes(utility_text.encode())
+        )
+        for observed in (catalog, rule, utility, root / "sample.py"):
+            key = str(observed.resolve())
+            tm.that(before[key], eq=after[key])
 
     def test_existing_ast_cli_applies_only_the_exact_selected_rule(
         self,
