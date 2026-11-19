@@ -1208,7 +1208,7 @@ class FlextInfraUtilitiesFacadeComponents:
                 if provider is not base
             )
         ]
-        aliases = cls._facade_namespace_aliases(index, namespace)
+        aliases = cls._facade_alias_targets(index, namespace)
         providers = cls._facade_admitted_providers(
             project,
             (
@@ -1958,6 +1958,53 @@ class FlextInfraUtilitiesFacadeComponents:
         }
 
     @classmethod
+    def _facade_alias_targets(
+        cls,
+        index: p.Infra.RopeSourceBindingIndex,
+        namespace: p.Infra.RopeSourceClass,
+    ) -> tuple[p.Infra.RopePyObject, ...]:
+        """Read every class an authored alias binds in the namespace's tree.
+
+        ``Base = Owner`` publishes ``Owner`` wherever it is authored inside the
+        facade namespace, including a nested namespace class
+        (``class Sample: Base = Owner``).
+
+        Returns:
+            The bound alias targets of the namespace and its nested classes.
+
+        """
+        nested = tuple(
+            scope.pyobject
+            for scope in namespace.get_scope().get_scopes()
+            if FlextInfraUtilitiesRopeRuntimeTypes.py_class(scope.pyobject)
+        )
+        return (
+            *cls._facade_namespace_aliases(index, namespace).values(),
+            *(
+                target
+                for owner in nested
+                for target in cls._facade_alias_targets(index, owner)
+            ),
+        )
+
+    @classmethod
+    def _facade_alias_reaches(
+        cls,
+        targets: Sequence[p.Infra.RopePyObject],
+        provider: p.Infra.RopeSourceClass,
+    ) -> bool:
+        """Whether an authored alias publishes the provider class.
+
+        A barrel re-export reaches the same class through another binding, so
+        identity follows the class origin (``_same_facade_target``).
+
+        Returns:
+            Whether any alias target denotes the provider.
+
+        """
+        return any(cls._same_facade_target(target, provider) for target in targets)
+
+    @classmethod
     def _facade_admitted_providers(
         cls,
         project: p.Infra.RopeProject,
@@ -1969,7 +2016,7 @@ class FlextInfraUtilitiesFacadeComponents:
         ],
         *,
         family: c.Infra.FacadeFamily,
-        aliases: Mapping[str, p.Infra.RopePyObject],
+        aliases: Sequence[p.Infra.RopePyObject],
         bases: Sequence[tuple[str, p.Infra.RopePyObject]],
     ) -> p.Result[
         tuple[
@@ -2022,7 +2069,7 @@ class FlextInfraUtilitiesFacadeComponents:
                 continue
             # A provider a namespace alias already publishes is never also
             # composed: the alias is its publication (``Base = Owner``).
-            if provider in aliases.values():
+            if cls._facade_alias_reaches(aliases, provider):
                 continue
             if family is c.Infra.FacadeFamily.U:
                 if cls._utility_provider_nominal(project, provider, bases):
@@ -2363,7 +2410,7 @@ class FlextInfraUtilitiesFacadeComponents:
         owner: p.Infra.RopeSourceClass,
         nominal: Sequence[p.Infra.RopeSourceClass],
         bound: tuple[
-            Mapping[str, p.Infra.RopePyObject],
+            Sequence[p.Infra.RopePyObject],
             Sequence[tuple[str, p.Infra.RopePyObject]],
         ],
     ) -> p.Result[bool]:
@@ -2382,7 +2429,7 @@ class FlextInfraUtilitiesFacadeComponents:
         aliases, retained = bound
         loose: list[str] = []
         for provider in nominal:
-            if provider in aliases.values() or any(
+            if cls._facade_alias_reaches(aliases, provider) or any(
                 base is provider
                 or (
                     FlextInfraUtilitiesRopeRuntimeTypes.py_class(base)

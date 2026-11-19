@@ -237,8 +237,6 @@ class UtilityFacadeOwnerPublication:
             eq=rendered,
         )
         self._write(facade, rendered)
-        if publication[0] == "barrel":
-            self._write(package / definition.directory / "__init__.py", "")
         with u.Infra.facade_source_project(root) as (project, sources):
             repeated = tm.ok(
                 u.Infra.render_type_facade(package, facade, sources, project=project)

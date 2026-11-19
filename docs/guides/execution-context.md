@@ -1395,6 +1395,12 @@ cannot invalidate the captured declaration offsets.
 The same rule covers imports from the package root and from its `protocols`
 module. Authored protocol extension inserts declarations against the captured
 holder extent before changing the import header, preserving class indentation.
+Generation is also the single writer under deletion (`flext-b4gw3.6`): a
+contract carrying the projection docstring whose model is gone retires from its
+authored holder, and a generated protocol module left without models retires
+whole. The retirement is hidden from the rest of the same candidate, so the `p`
+facade and the `_protocols` lazy exports drop the retired holder in that run and
+a second `make gen` writes nothing. Authored contracts are never retired.
 Persisted model fields name their concrete model directly (ADR-018 amendment
 2026-11-09), and consumers receive the `p` contract; the deferred
 `t.schema_for_model` form is no longer used at the field boundary. This is
