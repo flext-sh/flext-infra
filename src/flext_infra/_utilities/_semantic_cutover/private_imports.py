@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 from flext_infra import m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
+    FlextInfraUtilitiesImportLaw,
     FlextInfraUtilitiesPrivateImportAncestry,
     FlextInfraUtilitiesPrivateImportFacades,
     FlextInfraUtilitiesPrivateImportValidation,
@@ -269,6 +270,62 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImports(
         )
         return family is not None and family == consumer
 
+    @staticmethod
+    def _finding_is_layer_zero_helper(
+        root: Path,
+        file_path: Path,
+        private_module: str,
+    ) -> bool:
+        """Report whether a layer-zero module keeps its own layer-zero helper.
+
+        ADR-005 admits a config/settings module importing a source-proven
+        acyclic layer-zero helper of its own package. Routing that direct leaf
+        import through the namespace root would violate the layer-zero
+        boundary that owns the declaration, so the cross-owner cutover never
+        touches it.
+
+        Returns:
+            Whether both the consumer and the imported helper are layer-zero
+            modules of the same namespace.
+
+        """
+        namespace = FlextInfraUtilitiesProjectDiscovery.package_name_for_dir(
+            file_path.parent,
+            project_root=root,
+        )
+        if not namespace or not private_module.startswith(f"{namespace}."):
+            return False
+        consumer = FlextInfraUtilitiesProjectDiscovery.module_name_for_file(
+            file_path, project_root=root
+        )
+        role = FlextInfraUtilitiesImportLaw.import_module_role
+        return (
+            role(consumer, namespace=namespace) == "layer0"
+            and role(private_module, namespace=namespace) == "layer0"
+        )
+
+    @classmethod
+    def _finding_imports_layer_zero_helper(
+        cls,
+        root: Path,
+        finding: p.Infra.ModOccurrence,
+    ) -> bool:
+        """Report whether one finding is a layer-zero helper direct import.
+
+        Returns:
+            Whether the finding's statement is an absolute import of a
+            same-namespace layer-zero helper by a layer-zero module.
+
+        """
+        statement = cls._finding_statement(finding)
+        if not isinstance(statement, ast.ImportFrom) or statement.level:
+            return False
+        return cls._finding_is_layer_zero_helper(
+            root,
+            (root / finding.file).resolve(),
+            statement.module or "",
+        )
+
     @classmethod
     def _finding_import_specs(
         cls,
@@ -370,6 +427,7 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImports(
             finding
             for finding in findings
             if cls._finding_is_live(root, sources, finding)
+            and not cls._finding_imports_layer_zero_helper(root, finding)
         )
         cross_owner_statements = cls._cross_owner_statements(live_findings)
         facades, bindings = cls._resolved_facades(
