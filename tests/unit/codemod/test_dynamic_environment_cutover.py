@@ -11,7 +11,7 @@ import sys
 from os.path import commonpath
 from pathlib import Path
 
-from flext_infra import FlextInfraConfig, config, infra, settings
+from flext_infra import FlextInfraConfig, FlextInfraSettings, config, infra
 from flext_infra.workspace import FlextInfraRopeWorkspace
 from tests import c, m, p, tm, u
 
@@ -30,7 +30,7 @@ class TestsFlextInfraDynamicEnvironmentCutover:
             "os.environ.get(str(config.Infra.codegen.make.ruff_cache."
             "data_home_environment_variable))"
         )
-        current_owner = Path(inspect.getfile(type(settings)))
+        current_owner = Path(inspect.getfile(FlextInfraSettings))
         original = tm.ok(
             u.Cli.atomic_read_binary_file_state(current_owner, required=True)
         )
@@ -170,7 +170,7 @@ class TestsFlextInfraDynamicEnvironmentCutover:
             "else:\n"
             "    print(repr(read_value()))\n"
         )
-        settings_path = Path(inspect.getfile(type(settings)))
+        settings_path = Path(inspect.getfile(FlextInfraSettings))
         sources = {
             path: source,
             settings_path: settings_path.read_text(encoding="utf-8"),

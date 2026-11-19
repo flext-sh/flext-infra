@@ -12,7 +12,8 @@ from pathlib import Path
 from typing_extensions import TypeForm
 
 from flext_infra import check, codegen, infra, u
-from tests import TestsFlextInfraUtilitiesToml, c, config, m, p
+from tests import c, config, m, p
+from tests._utilities import TestsFlextInfraUtilitiesToml
 
 
 class TestsFlextInfraUtilitiesConform:

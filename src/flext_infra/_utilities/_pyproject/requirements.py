@@ -16,9 +16,7 @@ from packaging.utils import canonicalize_name
 
 from flext_infra import c, config, m, r, t
 from flext_infra._utilities import FlextInfraUtilitiesDependencies
-from flext_infra._utilities._git.requirement_source import (
-    FlextInfraUtilitiesGitRequirementSource,
-)
+from flext_infra._utilities._git import FlextInfraUtilitiesGitRequirementSource
 
 if TYPE_CHECKING:
     from flext_infra import p

@@ -11,7 +11,7 @@ from contextlib import closing
 from pathlib import Path
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra.codemod._gates.runner import FlextInfraModGateRunner
+from flext_infra.codemod._gates import FlextInfraModGateRunner
 
 
 class FlextInfraModGateFindings(FlextInfraModGateRunner):

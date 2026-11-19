@@ -25,7 +25,7 @@ from flext_infra._models import (
     FlextInfraModelsRope,
     FlextInfraModelsTransformers,
 )
-from flext_infra._models._codegen.transaction import FlextInfraModelsCodegenTransaction
+from flext_infra._models._codegen import FlextInfraModelsCodegenTransaction
 
 
 class FlextInfraModelsCensus:

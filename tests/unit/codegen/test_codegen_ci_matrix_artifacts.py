@@ -10,9 +10,8 @@ import re
 from collections.abc import Mapping
 from pathlib import Path
 
-from flext_infra import config
-from tests import c, p, t, tm, u
-from tests.unit.codegen.ci_matrix_support import TestsFlextInfraCodegenCiMatrixSupport
+from tests import c, config, p, t, tm, u
+from tests.unit.codegen import TestsFlextInfraCodegenCiMatrixSupport
 
 
 @c.Tests.MARK.slow

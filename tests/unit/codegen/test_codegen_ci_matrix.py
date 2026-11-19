@@ -9,9 +9,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from flext_infra import config
-from tests import c, tm, u
-from tests.unit.codegen.ci_matrix_support import TestsFlextInfraCodegenCiMatrixSupport
+from tests import c, config, tm, u
+from tests.unit.codegen import TestsFlextInfraCodegenCiMatrixSupport
 
 
 @c.Tests.MARK.slow

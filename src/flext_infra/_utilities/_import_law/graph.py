@@ -225,8 +225,12 @@ class FlextInfraUtilitiesImportLawGraph(FlextInfraUtilitiesImportLawPolicy):
         source = resource.read()
         package = name if path.name == c.Infra.INIT_PY else name.rpartition(".")[0]
         pymodule = FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource)
-        # Requesting a lazy export loads its elected provider module. Merely
-        # installing the map does not load every provider in the package.
+        # Requesting a real lazy export loads its elected provider module;
+        # requesting a stand-in (a deferred export) loads nothing until a
+        # member is read, so it adds no runtime edge to its provider.
+        deferred = FlextInfraUtilitiesRopeRuntimeModules.lazy_deferred_exports(
+            path, source
+        )
         return m.Infra.ImportGraphModuleFacts(
             name=name,
             imports=tuple(
@@ -239,9 +243,15 @@ class FlextInfraUtilitiesImportLawGraph(FlextInfraUtilitiesImportLawPolicy):
                     )
                 )
             ),
-            aliases=FlextInfraUtilitiesRopeSourceBasesAliases.lazy_module_aliases(
-                name, path, source, project=project, pymodule=pymodule
-            ),
+            aliases={
+                export: provider
+                for export, provider in (
+                    FlextInfraUtilitiesRopeSourceBasesAliases.lazy_module_aliases(
+                        name, path, source, project=project, pymodule=pymodule
+                    ).items()
+                )
+                if export not in deferred
+            },
         )
 
     @classmethod

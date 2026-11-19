@@ -10,11 +10,9 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import override
 
-from flext_infra import c, deps as dependency_services, m, p, r, u
+from flext_infra import c, deps, m, p, r, u
 from flext_infra.codegen import FlextInfraCodegenLazyInit, FlextInfraCodegenScaffolder
-from flext_infra.codegen._conform.existing_plan import (
-    FlextInfraCodegenConformExistingPlan,
-)
+from flext_infra.codegen._conform import FlextInfraCodegenConformExistingPlan
 
 
 class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan):
@@ -208,7 +206,7 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
                 or entry.destination in required_data_destinations
             )
         )
-        modernizer = dependency_services.FlextInfraPyprojectModernizer(
+        modernizer = deps.FlextInfraPyprojectModernizer(
             repository_root=root,
             skip_check=True,
             managed_artifacts=u.Infra.empty_snapshot().resolution,

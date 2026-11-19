@@ -20,12 +20,12 @@ from rope.base.fscommands import file_data_to_unicode
 
 from flext_infra import c, p, r, t
 from flext_infra._utilities import FlextInfraUtilitiesCodegenNamespace
-from flext_infra._utilities._rope import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities._rope._analysis.exports import (
-    FlextInfraUtilitiesRopeAnalysisExports,
-)
-from flext_infra._utilities._rope.runtime_types import (
+from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntimeTypes,
+)
+from flext_infra._utilities._rope._analysis import (
+    FlextInfraUtilitiesRopeAnalysisExports,
 )
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesDeclarationPayload,

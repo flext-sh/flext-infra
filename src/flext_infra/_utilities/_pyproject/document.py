@@ -20,13 +20,13 @@ from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesDependencies,
     FlextInfraUtilitiesManagedConflicts,
+    FlextInfraUtilitiesNativeTooling,
 )
 from flext_infra._utilities._git import FlextInfraUtilitiesGitWorktreeRoots
 from flext_infra._utilities._pyproject import (
     FlextInfraUtilitiesPyprojectOverlay,
     FlextInfraUtilitiesPyprojectUvSources,
 )
-from flext_infra._utilities.native_tooling import FlextInfraUtilitiesNativeTooling
 
 
 class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources):

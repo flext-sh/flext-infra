@@ -11,7 +11,7 @@ from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 
 from flext_infra import c, m, p, r
-from flext_infra._models.transformers import FlextInfraModelsTransformers
+from flext_infra._models import FlextInfraModelsTransformers
 from flext_infra._utilities import FlextInfraUtilitiesCodegenNamespace
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeCore,

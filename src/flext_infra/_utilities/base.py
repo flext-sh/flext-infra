@@ -15,8 +15,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from flext_cli import u
 
-from flext_infra import c, config, m
-from flext_infra._settings import FlextInfraSettings
+from flext_infra import FlextInfraSettings, c, config, m
 
 if TYPE_CHECKING:
     from flext_infra import p, t

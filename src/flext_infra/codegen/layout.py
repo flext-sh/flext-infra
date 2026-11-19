@@ -11,11 +11,11 @@ from pathlib import Path
 from typing import Annotated, override
 
 from flext_infra import m, p, r, u
+from flext_infra.codegen import FlextInfraCodegenExecution
 from flext_infra.codegen._layout import (
     FlextInfraCodegenLayoutApply,
     FlextInfraCodegenLayoutPlan,
 )
-from flext_infra.codegen.execution import FlextInfraCodegenExecution
 
 
 class FlextInfraCodegenLayout(
