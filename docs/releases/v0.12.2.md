@@ -12,6 +12,8 @@
 
 ## Pull requests since last release
 
+- fix(validate): the fresh-import probe deadline is the target's typed policy
+  (flext-s20br) (#2706)
 - fix(tests): fixture checkouts are created on main, never the host default branch
   (flext-v9vtm) (#2707)
 - docs(codemod): the checkout-name independence of the rendering key is… (#2704)
