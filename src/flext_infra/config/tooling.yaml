@@ -510,6 +510,12 @@ Infra:
         slow-timeout-seconds: 20
         slow-marker: slow
         run-timeout-seconds: 240
+        # Suite clock of `make tests-harness`: the harness tier pays for the
+        # provisioning its fixtures own (containers, remote sessions) inside
+        # this budget. The fleet default equals run-timeout-seconds; a
+        # consumer whose measured harness exceeds it declares its own value
+        # in its config/tooling.yaml overlay, never the incremental budget.
+        harness-run-timeout-seconds: 240
         termination-grace-seconds: 2
         # One failure stops the invocation. The next run starts from the
         # corrected owner instead of accumulating a backlog of unrelated
@@ -625,6 +631,8 @@ Infra:
         # (ai-hub `make runtime-acceptance` names its remote suite). Local
         # `make tests` and `make tests-full` deselect them and report them NOT
         # EXECUTED exactly as CI does; a named file still selects them.
+        # `make tests-harness` selects only them (MARKER=<one of them> narrows
+        # the run to one) and reports every other external gate NOT EXECUTED.
         harness-gate-markers: [ remote ]
         # A slow mark grants an item budget, never a CI exclusion.
         ci-excluded-markers: []

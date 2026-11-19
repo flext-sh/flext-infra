@@ -36,6 +36,7 @@ class TestsFlextInfraUtilitiesToolingFixture:
             profile_collection: bool = False,
             slow_phase: bool = False,
             target_file: Path | None = None,
+            harness_marker: str | None = None,
         ) -> validate.FlextInfraPytestRunner:
             """Bind a runner to its config-owned persistent cache and reports.
 
@@ -66,6 +67,7 @@ class TestsFlextInfraUtilitiesToolingFixture:
                 reports=cache.reports_directory,
                 testmon_db=testmon_db,
                 slow_phase=slow_phase,
+                harness_marker=harness_marker,
                 run_timeout_seconds=policy.run_timeout_seconds,
                 termination_grace_seconds=policy.termination_grace_seconds,
             )

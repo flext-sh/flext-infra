@@ -752,6 +752,7 @@ class FlextInfraPytestRunnerExecution(
         execution_mode: c.Infra.PytestExecutionMode = (
             c.Infra.PytestExecutionMode.GLOBAL_INCREMENTAL
         ),
+        harness_marker: str | None = None,
     ) -> int:
         """Execute the project's global suite; pytest owns its basetemp.
 
@@ -762,10 +763,7 @@ class FlextInfraPytestRunnerExecution(
             ValueError: Rejects nonglobal modes or changed inputs between suites.
 
         """
-        if execution_mode not in {
-            c.Infra.PytestExecutionMode.GLOBAL_INCREMENTAL,
-            c.Infra.PytestExecutionMode.FULL,
-        }:
+        if not execution_mode.is_global:
             msg = f"project context requires a global pytest mode: {execution_mode}"
             raise ValueError(msg)
         return (
@@ -775,6 +773,7 @@ class FlextInfraPytestRunnerExecution(
                 started_at_monotonic=started_at_monotonic,
                 target_file=target_file,
                 execution_mode=execution_mode,
+                harness_marker=harness_marker,
             )
             .execute_global(execution_mode=execution_mode)
             .unwrap()
