@@ -75,7 +75,7 @@ class TestsFlextInfraRefactorViolationsSweepSupport:
         """Declare real member identities through the existing Git manifest owner.
 
         Returns:
-            Fixture members with native project metadata and executable audits.
+            Fixture members with native project metadata and recording repairs.
 
         """
         distribution, _dependencies = tm.ok(u.Infra.project_requirements(root))
@@ -93,9 +93,7 @@ class TestsFlextInfraRefactorViolationsSweepSupport:
                     ),
                 )
             )
-            cls._prepare(
-                member, makefile=".PHONY: audit\naudit:\n\t@true\n", local_rule=True
-            )
+            cls._prepare(member, makefile=cls._makefile(), local_rule=True)
         tm.ok(
             u.Cli.atomic_write_text_file(
                 root / c.Infra.GITMODULES,

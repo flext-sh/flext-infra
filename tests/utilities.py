@@ -66,6 +66,7 @@ class TestsFlextInfraUtilities(FlextInfraUtilities):
 
                 system_packages: tuple[t.NonEmptyStr, ...] = ()
                 packages_read: bool = False
+                docs_site_publish: bool = True
                 custom_steps: str = ""
                 custom_post_steps: str = ""
                 has_devcontainer: bool = False
@@ -147,6 +148,7 @@ class TestsFlextInfraUtilities(FlextInfraUtilities):
                     "ci_trigger_branches": ci_trigger_branches,
                     "system_packages": overrides.system_packages,
                     "packages_read": overrides.packages_read,
+                    "docs_site_publish": overrides.docs_site_publish,
                     "python_version": codegen.toolchain.python_version,
                     "github_actions": codegen.github_actions,
                     "toolchain": codegen.toolchain,

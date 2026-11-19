@@ -591,6 +591,15 @@ class FlextInfraProtocolsConfigArtifact:
             ...
 
         @property
+        def docs_site_unpublished(self) -> tuple[t.NonEmptyStr, ...]:
+            """Structural member projected from the owning model.
+
+            Distributions whose generated docs workflow never publishes the built
+            site to GitHub Pages; every other distribution deploys it from main.
+            """
+            ...
+
+        @property
         def sonarcloud(self) -> FlextInfraProtocolsConfigRender.SonarcloudSpec:
             """Fleet SonarCloud automatic-analysis scope policy."""
             ...

@@ -102,7 +102,7 @@ class FlextInfraPytestRunnerExecution(
             overrides.update(dict.fromkeys(testmon_keys, str(database)))
         if self.profile_enabled or self.collection_command_prefix:
             overrides[c.Infra.PYTEST_PROFILE_PROCESS_DIRECTORY_ENV] = (
-                config.Infra.tooling.tools.pytest.profile_process_directory
+                self.pytest_policy().profile_process_directory
             )
         remove_keys = (
             *c.Infra.PYTEST_INHERITED_ENV_REMOVE_KEYS,
@@ -172,10 +172,16 @@ class FlextInfraPytestRunnerExecution(
             outcome.raw_return_code == c.Infra.PytestExitCode.NO_TESTS_COLLECTED
             and self._owns_no_tests()
         )
-        # A slow phase may own no slow item, and a declared file may sit
-        # entirely outside this phase's marker. Both are empty scopes. A
-        # whole-suite budgeted inventory that collects nothing stays a failure.
-        scope_may_be_empty = self.slow_phase or self.target_file is not None
+        # A slow phase may own no slow item, a harness scope may own no harness
+        # gate, and a declared file may sit entirely outside this phase's
+        # marker. All are empty scopes; the harness caller fails a run that
+        # executes no harness item at all. A whole-suite budgeted inventory
+        # that collects nothing stays a failure.
+        scope_may_be_empty = (
+            self.slow_phase
+            or self.target_file is not None
+            or execution_mode == c.Infra.PytestExecutionMode.HARNESS
+        )
         # The selection pass executes the collected items only to fingerprint
         # their dependencies. An item failure is the suite's outcome, not a
         # failed collection: the manifest is still complete, and the real suite
@@ -303,9 +309,7 @@ class FlextInfraPytestRunnerExecution(
         # project whose suites use another declared form (``*_tests.py``)
         # still owns its tests, and a hardcoded copy of the list here would
         # answer "owns no tests" for a live suite again.
-        tool_config = (
-            u.Infra.load_tooling_inputs(self.repository_root).unwrap().document
-        )
+        tool_config = self.tooling
         patterns = u.Infra.native_tool_setting(
             tool_config, "pytest.ini_options", "python_files", TypeForm(Sequence[str])
         )
@@ -393,7 +397,7 @@ class FlextInfraPytestRunnerExecution(
             raw_log=report_dir / "pytest.log",
         )
         if self.profile_enabled:
-            policy = config.Infra.tooling.tools.pytest
+            policy = self.pytest_policy()
             suite_profile = report_dir / policy.profile_suite_filename
             # The process owner has reaped the child before binding its native
             # checkpoints. An interrupted run retains its failure and real data.
@@ -752,6 +756,7 @@ class FlextInfraPytestRunnerExecution(
         execution_mode: c.Infra.PytestExecutionMode = (
             c.Infra.PytestExecutionMode.GLOBAL_INCREMENTAL
         ),
+        harness_marker: str | None = None,
     ) -> int:
         """Execute the project's global suite; pytest owns its basetemp.
 
@@ -762,23 +767,20 @@ class FlextInfraPytestRunnerExecution(
             ValueError: Rejects nonglobal modes or changed inputs between suites.
 
         """
-        if execution_mode not in {
-            c.Infra.PytestExecutionMode.GLOBAL_INCREMENTAL,
-            c.Infra.PytestExecutionMode.FULL,
-        }:
+        if not execution_mode.is_global:
             msg = f"project context requires a global pytest mode: {execution_mode}"
             raise ValueError(msg)
-        return (
-            cls
-            .from_project_context(
-                context,
-                started_at_monotonic=started_at_monotonic,
-                target_file=target_file,
-                execution_mode=execution_mode,
-            )
-            .execute_global(execution_mode=execution_mode)
-            .unwrap()
+        runner = cls.from_project_context(
+            context,
+            started_at_monotonic=started_at_monotonic,
+            target_file=target_file,
+            execution_mode=execution_mode,
+            harness_marker=harness_marker,
         )
+        if execution_mode == c.Infra.PytestExecutionMode.HARNESS:
+            # Reject an undeclared narrowing marker before any collection.
+            runner.harness_markers()
+        return runner.execute_global(execution_mode=execution_mode).unwrap()
 
     def execute_full(self) -> p.Result[int]:
         """Run the complete suite once independently of quality-check receipts.
@@ -886,7 +888,7 @@ class FlextInfraPytestRunnerExecution(
         if database is None:
             msg = "incremental pytest requires its external Testmon database"
             raise ValueError(msg)
-        slow_marker = config.Infra.tooling.tools.pytest.slow_marker
+        slow_marker = self.pytest_policy().slow_marker
         if self.slow_phase and slow_marker in self.ci_excluded_markers(
             execution_mode=execution_mode,
         ):

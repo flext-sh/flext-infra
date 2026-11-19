@@ -350,6 +350,11 @@ class FlextInfraProtocolsWorkspace:
             """Test all governed repositories or only this repository."""
             ...
 
+        @property
+        def marker(self) -> str | None:
+            """One declared harness gate marker narrowing the harness tests."""
+            ...
+
     @runtime_checkable
     class FlextEditableRequest(WorkspaceRequest, Protocol):
         """Structural data contract projected from the owning model."""
