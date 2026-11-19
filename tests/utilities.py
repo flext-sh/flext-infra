@@ -40,7 +40,6 @@ class TestsFlextInfraUtilities(FlextInfraUtilities):
 
     class Tests(
         flext_tests_u.Tests,
-        TestsFlextInfraUtilitiesToml,
         TestsFlextInfraUtilitiesCodegen,
         TestsFlextInfraUtilitiesDeps,
         TestsFlextInfraUtilitiesDocsFixture,
