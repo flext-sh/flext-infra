@@ -95,21 +95,6 @@ class FlextInfraTestmonDbInspector(s[p.Infra.TestmonCacheState]):
             msg = "testmon schema empty"
             raise RuntimeError(msg)
 
-    @staticmethod
-    def seed_file(source: Path, destination: Path) -> None:
-        """Seed an absent checkout database from the canonical one.
-
-        SQLite's backup API reads one consistent snapshot, its WAL included,
-        into a staging file that then replaces the destination atomically.
-        """
-        staging = destination.with_name(f"{destination.name}.seed")
-        with (
-            closing(sqlite3.connect(f"file:{source}?mode=ro", uri=True)) as origin,
-            closing(sqlite3.connect(staging)) as target,
-        ):
-            origin.backup(target)
-        staging.replace(destination)
-
     def _inspect_existing(self) -> p.Result[p.Infra.TestmonCacheState]:
         """Validate one on-disk DB after pytest has closed it.
 
