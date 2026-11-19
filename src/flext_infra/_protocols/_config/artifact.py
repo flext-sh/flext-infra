@@ -492,6 +492,11 @@ class FlextInfraProtocolsConfigArtifact:
             ...
 
         @property
+        def fresh_import_timeout_seconds(self) -> int:
+            """Deadline of one fresh-import subprocess, in seconds."""
+            ...
+
+        @property
         def lint_snapshot_workers(self) -> int:
             """Concurrent protected-edit lint snapshot threads."""
             ...
