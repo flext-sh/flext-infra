@@ -1250,8 +1250,6 @@ class FlextInfraUtilitiesFacadeComponents:
                 if owner_name is not None
                 else (),
             ),
-            project_root=Path(project.root.real_path),
-            upstream_last=namespace is not owner,
         ).flat_map(
             lambda retained: cls._facade_member_collisions(
                 project, retained[0], namespace.get_name()
@@ -2148,9 +2146,6 @@ class FlextInfraUtilitiesFacadeComponents:
         module: p.Infra.RopeSourceModule,
         admitted: Sequence[tuple[Path, p.Infra.RopeSourceClass]],
         framing: tuple[Sequence[tuple[str, p.Infra.RopePyObject]], tuple[str, ...]],
-        *,
-        project_root: Path | None = None,
-        upstream_last: bool = False,
     ) -> p.Result[tuple[list[tuple[str, p.Infra.RopePyObject]], tuple[str, ...]]]:
         """Retain uncovered bases and append each maximal admitted provider.
 
@@ -2158,10 +2153,6 @@ class FlextInfraUtilitiesFacadeComponents:
         the base precedence its family root facade already declares: bases that
         facade names keep its order ahead of the rest, so the stale root stays
         linearizable until it is re-rendered in the same pass.
-
-        ``upstream_last`` composes a nested namespace class: providers imported
-        from outside the project keep the canonical owner position last, while
-        the project parts stay ahead so the composed surface wins the MRO.
 
         Returns:
             The retained base expressions and the provider bindings to import, or
@@ -2228,31 +2219,7 @@ class FlextInfraUtilitiesFacadeComponents:
             bindings.append(binding)
             retained.append((binding, provider))
 
-        names = module.get_scope().get_names()
-
-        def origin_path(
-            expression: str, base: p.Infra.RopePyObject
-        ) -> t.Infra.RopeSourcePath | None:
-            binding = names.get(expression.split(".", maxsplit=1)[0])
-            elected = binding.get_object() if binding is not None else base
-            resolved = (
-                elected.pyobject
-                if isinstance(elected, p.Infra.RopeUnresolvedBase)
-                and elected.pyobject is not None
-                else elected
-            )
-            holder = resolved.get_module()
-            resource = holder.get_resource() if holder is not None else None
-            return Path(resource.real_path) if resource is not None else None
-
-        def rank(item: tuple[str, p.Infra.RopePyObject]) -> tuple[int, int]:
-            origin = origin_path(item[0], item[1])
-            upstream = int(
-                upstream_last
-                and project_root is not None
-                and origin is not None
-                and not origin.is_relative_to(project_root)
-            )
+        def rank(item: tuple[str, p.Infra.RopePyObject]) -> int:
             name = (
                 item[1].get_name()
                 if isinstance(item[1], p.Infra.RopeNamedObject)
@@ -2262,7 +2229,7 @@ class FlextInfraUtilitiesFacadeComponents:
                 FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(item[1])
                 and name in precedence
             )
-            return upstream, precedence.index(name) if ordered else len(precedence)
+            return precedence.index(name) if ordered else len(precedence)
 
         retained.sort(key=rank)
         return r[tuple[list[tuple[str, p.Infra.RopePyObject]], tuple[str, ...]]].ok((
