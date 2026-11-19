@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import sys
 from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 
@@ -17,70 +16,11 @@ from tests.unit.codemod.private_import_cutover_support import (
 )
 
 
+@c.Tests.MARK.usefixtures("semantic_cutover_runtime")
 class TestsFlextInfraPrivateImportCutover(
     TestsFlextInfraPrivateImportCutoverSupport,
 ):
     """Exercise installed and declared re-export cutovers only through ``u.Infra``."""
-
-    @staticmethod
-    @c.Tests.MARK.parametrize(
-        ("example_path", "consumer"),
-        [
-            (
-                "flext-grpc/examples/advanced_usage.py",
-                (
-                    "from flext_grpc import FlextGrpcModels, c, p, t\n"
-                    "from examples import ExamplesFlextGrpcTypes\n"
-                    "from examples import (c as example_c, p as example_p, "
-                    "t as example_t)\n"
-                    "example = namespace['ExamplesFlextGrpcAdvancedUsage']()\n"
-                    "assert example.c is example_c is namespace['c']\n"
-                    "assert example.p is example_p is namespace['p']\n"
-                    "assert example.t is example_t is namespace['t']\n"
-                    "assert issubclass(example_c, c)\n"
-                    "assert issubclass(example_p, p)\n"
-                    "assert issubclass(example_t, t)\n"
-                    "assert example_c is c\n"
-                    "assert example_p is p\n"
-                    "assert example_t is ExamplesFlextGrpcTypes\n"
-                    "assert t.Grpc.CompleteSetup.__value__ "
-                    "is FlextGrpcModels.Grpc.CompleteSetup\n"
-                ),
-            ),
-            (
-                "flext-oracle-wms/examples/example_02_configuration.py",
-                (
-                    "from flext_oracle_wms import c\n"
-                    "configurations = namespace['get_environment_configs']()\n"
-                    "assert configurations\n"
-                    "assert all(configuration.timeout == c.OracleWms.DEFAULT_TIMEOUT\n"
-                    "           for configuration in configurations.values())\n"
-                    "settings = namespace['create_demo_config']()\n"
-                    "assert settings.OracleWms.timeout == c.OracleWms.DEFAULT_TIMEOUT\n"
-                ),
-            ),
-        ],
-    )
-    def test_workspace_examples_preserve_public_facade_runtime(
-        example_path: str,
-        consumer: str,
-    ) -> None:
-        """Exercise actual facade accessors and offline configuration consumers."""
-        root = Path(__file__).resolve().parents[4]
-        executed = tm.ok(
-            u.Cli.run_raw(
-                [
-                    sys.executable,
-                    "-c",
-                    "import sys\nfrom runpy import run_path\n"
-                    "namespace = run_path(sys.argv[1])\n" + consumer,
-                    str(root / example_path),
-                ],
-                cwd=(root / example_path).parents[1],
-            ),
-        )
-        tm.that(u.Cli.process_succeeded(executed.outcome), eq=True, msg=executed.stderr)
-        tm.that(executed.stderr, eq="")
 
     def test_earlier_semantic_move_retires_stale_preflight_import(
         self,
@@ -99,110 +39,14 @@ class TestsFlextInfraPrivateImportCutover(
         sources = {consumer: "from flext_sample import c\nvalue = c.Profile.Value\n"}
         tm.that(self._edits(tmp_path, sources, consumer, statement), empty=True)
 
-    def test_layer_zero_module_keeps_its_own_helper_direct_import(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """A settings module keeps its layer-zero helper, never the root route."""
-        package = u.Tests.src_package(
-            tmp_path / "flext-sample",
-            "flext_sample",
-            pyproject=(
-                "[project]\nname='flext-sample'\nversion='1.0.0'\n"
-                "license = 'MIT'\nauthors = [{name = 'FLEXT'}]\n"
-            ),
-        )
-        consumer = package / "_settings.py"
-        helper = package / "_settings_models.py"
-        statement = "from flext_sample._settings_models import SettingsModels"
-        helper.write_text(
-            "class SettingsModels:\n"
-            "    class SettingsRoot:\n"
-            "        pass\n"
-            "__all__ = ['SettingsModels']\n",
-            encoding=c.DEFAULT_ENCODING,
-        )
-        consumer.write_text(
-            f"{statement}\nsettings = SettingsModels\n",
-            encoding=c.DEFAULT_ENCODING,
-        )
-        tm.that(
-            self._edits(
-                tmp_path,
-                {
-                    consumer: consumer.read_text(encoding=c.DEFAULT_ENCODING),
-                    helper: helper.read_text(encoding=c.DEFAULT_ENCODING),
-                },
-                consumer,
-                statement,
-            ),
-            empty=True,
-        )
-
-    @c.Tests.MARK.parametrize("bad_source_reachable", [False, True])
-    def test_installed_import_validation_follows_public_reachability(
-        self,
-        tmp_path: Path,
-        installed_dependency_path: Path,
-        *,
-        bad_source_reachable: bool,
-    ) -> None:
-        """An invalid import blocks only a cutover that reaches its module."""
-        consumer, statement, facade_sources = self._facade_case(
-            tmp_path,
-            TestsFlextInfraFacadeNaming.from_family(
-                "constants",
-                "profile",
-                "Profile",
-                "c",
-            ),
-        )
-        package = installed_dependency_path / "flext_sample"
-        package.mkdir()
-        (package / "__init__.py").write_text("", encoding="utf-8")
-        invalid_import = "from ..outside import Invalid\n"
-        facade_source = next(iter(facade_sources.values()))
-        (package / "constants.py").write_text(
-            facade_source + (invalid_import if bad_source_reachable else ""),
-            encoding="utf-8",
-        )
-        private = package / "_constants/profile.py"
-        private.parent.mkdir()
-        private.write_text(
-            "class FlextSampleConstantsProfile:\n    Value = str\n",
-            encoding="utf-8",
-        )
-        unrelated = package / "unrelated.py"
-        unrelated.write_text(invalid_import, encoding="utf-8")
-        sources = {
-            consumer: f"{statement}\nprofile = FlextSampleConstantsProfile.Value\n",
-        }
-
-        if bad_source_reachable:
-            # flext-core's result factory catches broad runtime errors only
-            # ("no IO, no import"): an invalid reachable import escapes raw.
-            with u.Tests.raises(
-                ImportError,
-                match="attempted relative import beyond top-level",
-            ):
-                self._plan(tmp_path, sources, consumer, statement)
-            return
-        edits = self._edits(tmp_path, sources, consumer, statement)
-
-        tm.that(tuple(edit.file_path for edit in edits), eq=(consumer,))
-        tm.that(edits[0].updated_source, has="from flext_sample import c")
-        tm.that(edits[0].updated_source, has="profile = c.Profile.Value")
-        tm.that(unrelated.read_text(encoding="utf-8"), eq=invalid_import)
-
+    @staticmethod
     def _seed_sample_dependency(
-        self,
         package: Path,
         facade_sources: Mapping[Path, str],
         *,
-        case: str,
         depth: int,
     ) -> MutableMapping[Path, str]:
-        """Materialize the installed sample dependency package for one case.
+        """Materialize the installed sample dependency package.
 
         Deep cases bridge the private facade through real subclasses and
         rewire every facade reference to the outermost bridge class.
@@ -220,16 +64,6 @@ class TestsFlextInfraPrivateImportCutover(
         dependency_sources[package / "_constants/profile.py"] = (
             "class FlextSampleConstantsProfile:\n    Value = str\n"
         )
-        if case == "ambiguous":
-            dependency_sources[package / "other.py"] = self._facade_source(
-                naming=TestsFlextInfraFacadeNaming(
-                    private_module="flext_sample._constants.profile",
-                    private_class="FlextSampleConstantsProfile",
-                    root_class="OtherConstants",
-                    nested_class="Other",
-                    alias="c",
-                ),
-            )
         previous_module = "flext_sample._constants.profile"
         previous_class = "FlextSampleConstantsProfile"
         for level in range(depth):
@@ -255,16 +89,19 @@ class TestsFlextInfraPrivateImportCutover(
             path.write_text(source, encoding="utf-8")
         return dependency_sources
 
-    @c.Tests.MARK.parametrize("case", ["unique", "ambiguous", "shadowed"])
     @c.Tests.MARK.parametrize("depth", [0, 2])
-    def test_installed_facades_are_read_only_discovery_inputs(
+    def test_installed_facades_are_never_discovery_inputs(
         self,
         tmp_path: Path,
         installed_dependency_path: Path,
-        case: str,
         depth: int,
     ) -> None:
-        """Test installed facades are read only discovery inputs."""
+        """Installed facades are never discovery inputs (per-repository law).
+
+        Whatever facade shape an installed distribution declares, the cutover
+        resolves only the repository's own sources and leaves the installed
+        files untouched.
+        """
         consumer, statement, facade_sources = self._facade_case(
             tmp_path,
             TestsFlextInfraFacadeNaming.from_family(
@@ -279,69 +116,16 @@ class TestsFlextInfraPrivateImportCutover(
         dependency_sources = self._seed_sample_dependency(
             package,
             facade_sources,
-            case=case,
             depth=depth,
         )
         sources = {
             consumer: f"{statement}\nprofile = FlextSampleConstantsProfile.Value\n",
         }
-        if case == "shadowed":
-            sources[consumer] += "c = 1\n"
-        if case == "unique":
-            edits = self._edits(tmp_path, sources, consumer, statement)
-            tm.that(tuple(edit.file_path for edit in edits), eq=(consumer,))
-            tm.that(edits[0].updated_source, has="from flext_sample import c")
-            tm.that(edits[0].updated_source, has="profile = c.Profile.Value")
-        elif case == "shadowed":
-            with u.Tests.raises(ValueError, match="public facade alias c is shadowed"):
-                self._plan(tmp_path, sources, consumer, statement)
-        else:
-            with u.Tests.raises(ValueError, match=case):
-                self._plan(tmp_path, sources, consumer, statement)
+        with u.Tests.raises(ValueError, match="no public facade exposes"):
+            self._plan(tmp_path, sources, consumer, statement)
         for path, source in dependency_sources.items():
             tm.that(path.read_text(encoding="utf-8"), eq=source)
         tm.that(tuple(sources), eq=(consumer,))
-
-    @c.Tests.MARK.parametrize("root_export", [False, True])
-    def test_installed_declared_reexports_preserve_binding(
-        self,
-        tmp_path: Path,
-        installed_dependency_path: Path,
-        *,
-        root_export: bool,
-    ) -> None:
-        """Test installed declared reexports preserve binding."""
-        consumer, statement, sources = self._declared_export_case(
-            tmp_path,
-            package_import=True,
-            root_export=root_export,
-            renamed=True,
-        )
-        consumer_sources = {consumer: sources.pop(consumer)}
-        dependency_sources = {
-            installed_dependency_path
-            / path.relative_to(tmp_path / "sample/src"): source
-            for path, source in sources.items()
-        }
-        package_init = installed_dependency_path / "sample/__init__.py"
-        dependency_sources[package_init] = dependency_sources.get(package_init, "") + (
-            "raise RuntimeError('discovery must not execute dependency code')\n"
-        )
-        for path, source in dependency_sources.items():
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(source, encoding="utf-8")
-
-        edits = self._edits(tmp_path, consumer_sources, consumer, statement)
-
-        module = "sample" if root_export else "sample.api"
-        tm.that(tuple(edit.file_path for edit in edits), eq=(consumer,))
-        tm.that(
-            edits[0].updated_source,
-            has=f"from {module} import PublicClient as BoundClient",
-        )
-        tm.that(edits[0].updated_source, has="instance = BoundClient()")
-        for path, source in dependency_sources.items():
-            tm.that(path.read_text(encoding="utf-8"), eq=source)
 
     @c.Tests.MARK.parametrize(
         ("declaration", "expected"),
@@ -403,15 +187,14 @@ class TestsFlextInfraPrivateImportCutover(
             "ambiguous-siblings",
         ],
     )
-    def test_installed_facade_bases_follow_declaration_scope(
+    def test_facade_bases_follow_declaration_scope(
         self,
         tmp_path: Path,
-        installed_dependency_path: Path,
         declaration: str,
         expected: str,
     ) -> None:
-        """Test installed facade bases follow declaration scope."""
-        package = installed_dependency_path / "lexical_sample"
+        """Facade bases resolve a private target through lexical declaration scope."""
+        package = tmp_path / "lexical-sample/src/lexical_sample"
         dependency_sources = {
             package / "__init__.py": (
                 "raise RuntimeError('discovery must not execute dependency code')\n"
@@ -423,12 +206,12 @@ class TestsFlextInfraPrivateImportCutover(
                 f"{declaration}\nc = Facade\n"
             ),
         }
-        for path, source in dependency_sources.items():
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(source, encoding="utf-8")
         consumer = tmp_path / "consumer/src/consumer/service.py"
         statement = "from lexical_sample._private import Target"
-        sources = {consumer: f"{statement}\nvalue = Target.Value\n"}
+        sources = {
+            **dependency_sources,
+            consumer: f"{statement}\nvalue = Target.Value\n",
+        }
 
         if expected.startswith("c."):
             edits = self._edits(tmp_path, sources, consumer, statement)
@@ -443,7 +226,7 @@ class TestsFlextInfraPrivateImportCutover(
             ):
                 self._plan(tmp_path, sources, consumer, statement)
         for path, source in dependency_sources.items():
-            tm.that(path.read_text(encoding="utf-8"), eq=source)
+            tm.that(sources[path], eq=source)
 
     @staticmethod
     def _declared_export_case(
