@@ -18,6 +18,7 @@ from tests.unit.codemod.private_import_cutover_support import (
 )
 
 
+@c.Tests.MARK.slow
 class TestsFlextInfraPrivateImportCutoverRewrites(
     TestsFlextInfraPrivateImportCutoverSupport,
 ):
