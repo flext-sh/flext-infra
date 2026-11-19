@@ -235,7 +235,7 @@ class TestsFlextInfraUtilitiesToolingFixture:
             The absolute UV executable the committed toolchain pins.
 
         """
-        checkout = Path(__file__).resolve().parents[1]
+        checkout = tm.not_none(u.Infra.project_root(Path(__file__)))
         return str(tm.ok(u.Infra.managed_mise_binary(c.Infra.UV, checkout)))
 
     @staticmethod
@@ -254,7 +254,7 @@ class TestsFlextInfraUtilitiesToolingFixture:
         # A linked worktree is never a registered submodule: its primary
         # checkout names the superproject that owns the sibling sources. The
         # checkout under test stays its own source, never the primary's copy.
-        checkout = Path(__file__).resolve().parents[1]
+        checkout = tm.not_none(u.Infra.project_root(Path(__file__)))
         primary = tm.ok(
             u.Infra.git_primary_worktree_root(
                 m.Infra.GitRepoRequest(repo_root=checkout)
@@ -544,7 +544,7 @@ class TestsFlextInfraUtilitiesToolingFixture:
             The installation result or the original environment failure.
 
         """
-        checkout = Path(__file__).resolve().parents[1]
+        checkout = tm.not_none(u.Infra.project_root(Path(__file__)))
         dependency_projects = tuple(
             dict.fromkeys((
                 checkout,
@@ -645,7 +645,9 @@ class TestsFlextInfraUtilitiesToolingFixture:
         reuses the shared Mise executable; it never copies it.
         """
         source_root = (
-            Path(__file__).resolve().parents[1] if source_root is None else source_root
+            tm.not_none(u.Infra.project_root(Path(__file__)))
+            if source_root is None
+            else source_root
         )
         for relative in (
             c.Infra.MISE_TOML_FILENAME,
@@ -655,7 +657,9 @@ class TestsFlextInfraUtilitiesToolingFixture:
             destination = root / relative
             destination.parent.mkdir(parents=True, exist_ok=True)
             _ = shutil.copy2(source, destination)
-        reader = tm.ok(u.Infra.managed_mise_self(Path(__file__).resolve().parents[1]))
+        reader = tm.ok(
+            u.Infra.managed_mise_self(tm.not_none(u.Infra.project_root(Path(__file__))))
+        )
         tm.ok(
             u.Cli.run_checked(
                 (str(reader), "trust", str(root / c.Infra.MISE_TOML_FILENAME)),
