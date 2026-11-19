@@ -1114,16 +1114,6 @@ class FlextInfraPytestRunnerExecution(
             selection_plan.model_dump_json(indent=2) + "\n",
         ).unwrap()
         if (
-            selection_plan.whole_target
-            and selection_plan.node_ids
-            and not selection_plan.inventory_collected
-        ):
-            sys.stderr.write(
-                f"pytest selection: all {len(selection_plan.node_ids)} items "
-                "selected; a cold Testmon environment is warmed by running "
-                "`make tests-full` once\n",
-            )
-        if (
             not selection_plan.node_ids
             and not cache_restored
             and not selection_plan.owns_no_tests
