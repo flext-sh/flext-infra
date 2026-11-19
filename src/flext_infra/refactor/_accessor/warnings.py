@@ -25,7 +25,7 @@ class FlextInfraRefactorAccessorWarnings:
         return u.type_adapter(Sequence[m.Infra.AccessorMigrationRule]).validate_python(
             u.Yaml.safe_load(
                 (
-                    type(config).ssot_config_dir().parent
+                    config.ssot_config_dir().parent
                     / c.Infra.CODEMOD_ROPE_ACCESSOR_MIGRATIONS_RELPATH
                 ).read_text(encoding=c.DEFAULT_ENCODING)
             ),

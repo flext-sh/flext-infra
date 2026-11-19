@@ -54,7 +54,7 @@ class FlextInfraUtilitiesCodemodNativeCascade:
         """
         owner_root = FlextInfraUtilitiesProjectDiscovery.runtime_environment_dir(
             Path.cwd(),
-            runtime_root=type(settings).fetch_global().Infra.runtime_root,
+            runtime_root=settings.fetch_global().Infra.runtime_root,
         ).parent
         return FlextInfraUtilitiesMiseBinary.managed_mise_binary(name, owner_root)
 

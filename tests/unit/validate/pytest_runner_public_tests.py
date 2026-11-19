@@ -331,24 +331,38 @@ class TestsFlextInfraPytestRunner:
 
     @staticmethod
     @c.Tests.MARK.slow
-    @c.Tests.MARK.parametrize("profile_collection", [False, True])
+    @c.Tests.MARK.parametrize(
+        ("profile_collection", "linked_checkout"),
+        [(False, False), (True, False), (False, True)],
+    )
     def test_warm_cache_deselects_the_unchanged_suite(
         cached_runner_project: Path,
         *,
         profile_collection: bool,
+        linked_checkout: bool,
     ) -> None:
-        """A second run restores the seeded cache and executes nothing."""
+        """A second run restores the seeded cache and executes nothing.
+
+        A linked checkout has no database of its own yet: it is seeded from
+        the canonical one and starts warm instead of a full inventory.
+        """
         runner = u.Tests.PytestRunner.runner_for(cached_runner_project)
         tm.that(tm.ok(runner.execute()), eq=0)
         reports_root = cached_runner_project / runner.reports
-
-        second_exit = tm.ok(
-            u.Tests.PytestRunner.runner_for(
-                cached_runner_project,
-                profile_collection=profile_collection,
-            ).execute(),
+        canonical = tm.not_none(runner.testmon_db)
+        checkout = canonical.parent / "linked-checkout" / canonical.name
+        second = u.Tests.PytestRunner.runner_for(
+            cached_runner_project,
+            profile_collection=profile_collection,
         )
+        if linked_checkout:
+            second = second.model_copy(
+                update={"testmon_db": checkout, "testmon_seed_db": canonical}
+            )
+
+        second_exit = tm.ok(second.execute())
         tm.that(second_exit, eq=0)
+        tm.that(checkout.is_file(), eq=linked_checkout)
         second_summary = u.Tests.PytestRunner.summary(reports_root)
         tm.that(
             second_summary,

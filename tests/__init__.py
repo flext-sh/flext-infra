@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_core.lazy import install_lazy_exports
+from flext_core.lazy import defer_lazy_instances, install_lazy_exports
 
 if TYPE_CHECKING:
     from flext_tests import td, tf, tk, tm
@@ -255,4 +255,11 @@ install_lazy_exports(
         "TestsFlextInfraUtilitiesWorkspaceEnv",
         "TestsFlextInfraUtilitiesWorkspaceFixture",
     ),
+)
+
+defer_lazy_instances(
+    __name__,
+    globals(),
+    {"config": "flext_infra", "settings": "flext_infra"},
+    ("config", "settings"),
 )
