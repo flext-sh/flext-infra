@@ -6,6 +6,8 @@ valid:
     union = t.Core.Types
   - |
     value = self.Ldap.Tests
+  - |
+    """Read self.Ldap.Tests and t.Tests.Value."""
 invalid:
   - |
     def send(request: t.Core.Tests.DispatchRequest) -> p.Result[str]: ...
@@ -15,3 +17,12 @@ invalid:
     u.Ldap.Tests.that(result, eq=1)
   - |
     message = TestsFlextLdapModels.Ldap.Tests.FAIL_ERROR_MESSAGE
+  - |
+    match case:
+        case c.Ldap.Tests.AttrToStrListCase.EMPTY:
+            pass
+  - |
+    def build() -> None:
+        """Return ``t.DbtLdap.Tests.ServiceFactory``."""
+  - |
+    value = 1  # read from c.Ldap.Tests.HOST

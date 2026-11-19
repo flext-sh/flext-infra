@@ -24,20 +24,33 @@ files:
   - "examples/**/*.py"
   - "scripts/**/*.py"
   - "**/conftest.py"
+# The path is matched as an expression, as a `case` value pattern (a dotted
+# name, not an attribute node) and inside docstrings and comments, so no stale
+# spelling survives the flattening.
 rule:
-  pattern: $FACADE.$PROJ.Tests
-constraints:
-  FACADE:
-    regex: "^([ctmpu]|Tests[A-Z][A-Za-z0-9]*)$"
-  PROJ:
-    regex: "^[A-Z][A-Za-z0-9]*$"
-fix: $FACADE.Tests
+  pattern: $REF
+  any:
+    - kind: attribute
+      regex: "^([ctmpu]|Tests[A-Z][A-Za-z0-9]*)\\.[A-Z][A-Za-z0-9]*\\.Tests$"
+    - kind: dotted_name
+      regex: "^([ctmpu]|Tests[A-Z][A-Za-z0-9]*)\\.[A-Z][A-Za-z0-9]*\\.Tests\\b"
+    - kind: string_content
+      regex: "\\b([ctmpu]|Tests[A-Z][A-Za-z0-9]*)\\.[A-Z][A-Za-z0-9]*\\.Tests\\b"
+    - kind: comment
+      regex: "\\b([ctmpu]|Tests[A-Z][A-Za-z0-9]*)\\.[A-Z][A-Za-z0-9]*\\.Tests\\b"
+transform:
+  FLAT:
+    replace:
+      source: $REF
+      replace: "\\b([ctmpu]|Tests[A-Z][A-Za-z0-9]*)\\.[A-Z][A-Za-z0-9]*\\.Tests\\b"
+      by: "$1.Tests"
+fix: $FLAT
 message: >-
-  `$FACADE.$PROJ.Tests` is the deprecated nested test namespace: read the flat
-  `$FACADE.Tests` member.
+  `<facade>.<Project>.Tests` is the deprecated nested test namespace: read the
+  flat `<facade>.Tests` member.
 note: >-
   Where: this reference. Why: the test tier exposes one flat `Tests` namespace
-  per facade. How: read `$FACADE.Tests.<member>`; the declaration rules
+  per facade. How: read `<facade>.Tests.<member>`; the declaration rules
   flatten the owning `class <Project>: class Tests` in the same transaction.
 metadata:
   enforce: [ENFORCE-054]
