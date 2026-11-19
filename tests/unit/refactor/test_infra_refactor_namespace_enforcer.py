@@ -201,6 +201,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         alias_source = "from __future__ import annotations\n\ntype LocalAlias = str\n"
         _ = alias_file.write_text(alias_source, encoding="utf-8")
 
+        u.Tests.provision_checkout(workspace)
         report = FlextInfraNamespaceEnforcer(repository_root=workspace).enforce(
             apply=False,
         )
@@ -227,6 +228,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
             encoding="utf-8",
         )
 
+        u.Tests.provision_checkout(workspace)
         report = FlextInfraNamespaceEnforcer(repository_root=workspace).enforce(
             apply=False,
         )

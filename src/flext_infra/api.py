@@ -655,7 +655,10 @@ class FlextInfra(
             return r[int].fail(
                 "tests workspace declarations differ from governed roots"
             )
-        status = 0
+        # A member owning no harness gate is an empty harness scope; the run
+        # still fails when no member executed a harness item.
+        harness = execution_mode == c.Infra.PytestExecutionMode.HARNESS
+        status, executed = 0, not harness
         for distribution in ordered:
             selected = by_distribution[distribution]
             u.Cli.info(f"tests: repository {distribution} root={selected}")
@@ -671,12 +674,17 @@ class FlextInfra(
                 harness_marker=request.marker,
             )
             u.Cli.info(f"tests: repository {distribution} exit={outcome}")
+            if harness and outcome == c.Infra.PytestExitCode.NO_TESTS_COLLECTED:
+                continue
+            executed = True
             if outcome:
                 if outcome != c.Infra.Pytest.ExitCode.TESTS_FAILED:
                     return r[int].ok(outcome)
                 if not status:
                     status = outcome
-        return r[int].ok(status)
+        return r[int].ok(
+            status if executed else int(c.Infra.PytestExitCode.NO_TESTS_COLLECTED)
+        )
 
     @staticmethod
     def project_context(cwd: Path) -> p.Result[p.Infra.WorkspaceProjectContext]:

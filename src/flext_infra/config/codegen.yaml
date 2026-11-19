@@ -707,6 +707,9 @@ Infra:
           fmt: {max_load5: 80}
           check: {max_load5: 160}
           tests: {max_load5: 80}
+          # Controller ruling 2026-11-19 (operator blanket authorization):
+          # the harness tier is a selected incremental subset, not a full form.
+          tests-harness: {max_load5: 80}
           help: {max_load5: 80}
           build: {max_load5: 80}
           clean: {max_load5: 80}

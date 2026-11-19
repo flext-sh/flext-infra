@@ -1260,14 +1260,10 @@ class FlextInfraUtilitiesModelsProtocol:
                 return retired
             owned = {destination.resolve() for destination in grouped}
             normalize = FlextInfraUtilitiesProtectedEditLinting.normalize_python_text
+            # Nested mirror packages (``_protocols/_config``) are walked too: an
+            # authored port never carries the projection docstring, so only
+            # projected contracts retire wherever they live.
             for directory, _children, files in self.project.source_walk(protocols):
-                # Private families (service ports, external capabilities) are
-                # authored, never model mirrors, exactly as the aggregate skips.
-                if any(
-                    part.startswith("_")
-                    for part in directory.relative_to(protocols).parts
-                ):
-                    continue
                 for name in files:
                     path = directory / name
                     if (

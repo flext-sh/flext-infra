@@ -79,7 +79,7 @@ class TestsFlextInfraCliRepositoryRootContract:
             for route in FlextInfraCliRouteService.route_table_for(group)
             if route.name == command
         )
-        fields = route.model_cls.model_fields
+        fields = route.resolved_model_cls.model_fields
         tm.that(tuple(fields), has="repository_root")
         tm.that(tuple(fields), lacks="workspace")
         scope = fields["repository_root"]

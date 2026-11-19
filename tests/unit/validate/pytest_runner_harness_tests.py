@@ -185,3 +185,78 @@ class TestsFlextInfraPytestRunnerHarness:
                 "exit=0",
             ],
         )
+
+    @staticmethod
+    def test_project_document_owns_the_gate_markers(
+        cached_runner_project: Path,
+    ) -> None:
+        """A project's harness-gate-markers change its global marker scope.
+
+        The suite clock is elected from the project's tooling document, so
+        the marker policy is read from that same document, never from the
+        packaged settings of the installed runner.
+        """
+        policy = config.Infra.tooling.tools.pytest
+        declared = policy.external_gate_markers
+        tm.that(set(declared) != set(policy.harness_gate_markers), truth=True)
+        overlay = cached_runner_project / "config" / "tooling.yaml"
+        overlay.parent.mkdir()
+        overlay.write_text(
+            "Infra:\n  tooling:\n    tools:\n      pytest:\n"
+            f"        harness-gate-markers: [ {', '.join(declared)} ]\n",
+            encoding="utf-8",
+        )
+        runner = u.Tests.PytestRunner.runner_for(cached_runner_project)
+        report = cached_runner_project / runner.reports
+        mode = c.Infra.PytestExecutionMode.GLOBAL_INCREMENTAL
+        tm.that(
+            runner.not_executed_external_gates(execution_mode=mode),
+            eq=declared,
+        )
+        expression = TestsFlextInfraPytestRunnerHarness._marker_expression(
+            runner.build_command(report, execution_mode=mode)
+        )
+        tm.that(expression, has=[f"not ({' or '.join(declared)})"])
+        tm.that(runner.harness_markers(), eq=declared)
+
+    @staticmethod
+    def test_runner_elects_its_tooling_document_once(
+        cached_runner_project: Path,
+    ) -> None:
+        """A run keeps the document elected at its boundary; no mid-run re-read."""
+        policy = config.Infra.tooling.tools.pytest
+        runner = u.Tests.PytestRunner.runner_for(cached_runner_project)
+        elected = runner.tooling
+        overlay = cached_runner_project / "config" / "tooling.yaml"
+        overlay.parent.mkdir()
+        declared = ", ".join(policy.external_gate_markers)
+        overlay.write_text(
+            "Infra:\n  tooling:\n    tools:\n      pytest:\n"
+            f"        harness-gate-markers: [ {declared} ]\n",
+            encoding="utf-8",
+        )
+        mode = c.Infra.PytestExecutionMode.GLOBAL_INCREMENTAL
+        tm.that(
+            runner.not_executed_external_gates(execution_mode=mode),
+            eq=policy.harness_gate_markers,
+        )
+        tm.that(runner.pytest_policy(), eq=elected.tools.pytest)
+        tm.that(runner.tooling is elected, truth=True)
+
+    @staticmethod
+    @c.Tests.MARK.slow
+    def test_empty_harness_scope_reports_no_tests_collected(
+        cached_runner_project: Path,
+    ) -> None:
+        """A project owning no harness gate is an empty scope, typed, not a crash."""
+        runner = u.Tests.PytestRunner.runner_for(cached_runner_project)
+
+        exit_code = tm.ok(
+            runner.execute_global(execution_mode=c.Infra.PytestExecutionMode.HARNESS)
+        )
+
+        tm.that(exit_code, eq=c.Infra.PytestExitCode.NO_TESTS_COLLECTED)
+        tm.that(
+            u.Tests.PytestRunner.summary(cached_runner_project / runner.reports),
+            has=["executed=0", "failed=0"],
+        )
