@@ -797,7 +797,7 @@ class FlextInfraRefactorViolationsSweep(s[p.Infra.ViolationsSweepReport]):
         )
         paths.update(configs)
         for config_path in configs:
-            directories = FlextInfraCodemodSnapshotReconciler.fixture_directories(
+            directories = FlextInfraCodemodSnapshotReconciler.scanner_directories(
                 config_path.parent,
             )
             paths.update(
