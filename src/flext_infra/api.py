@@ -658,7 +658,6 @@ class FlextInfra(
         # A member owning no harness gate is an empty harness scope; the run
         # still fails when no member executed a harness item.
         harness = execution_mode == c.Infra.PytestExecutionMode.HARNESS
-        empty = c.Infra.PytestExitCode.NO_TESTS_COLLECTED
         status, executed = 0, not harness
         for distribution in ordered:
             selected = by_distribution[distribution]
@@ -675,7 +674,7 @@ class FlextInfra(
                 harness_marker=request.marker,
             )
             u.Cli.info(f"tests: repository {distribution} exit={outcome}")
-            if harness and outcome == empty:
+            if harness and outcome == c.Infra.PytestExitCode.NO_TESTS_COLLECTED:
                 continue
             executed = True
             if outcome:
@@ -683,7 +682,9 @@ class FlextInfra(
                     return r[int].ok(outcome)
                 if not status:
                     status = outcome
-        return r[int].ok(status if executed else int(empty))
+        return r[int].ok(
+            status if executed else int(c.Infra.PytestExitCode.NO_TESTS_COLLECTED)
+        )
 
     @staticmethod
     def project_context(cwd: Path) -> p.Result[p.Infra.WorkspaceProjectContext]:

@@ -254,7 +254,7 @@ class FlextInfraPytestRunnerBase(s[int]):
         if tooling.failure:
             msg = f"repository pytest tooling election failed: {tooling.error}"
             raise ValueError(msg)
-        return tooling.value.document
+        return m.Infra.ToolConfigDocument.model_validate(tooling.value.document)
 
     @staticmethod
     def _elected_deadline(
