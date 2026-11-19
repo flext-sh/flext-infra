@@ -691,6 +691,48 @@ class TestsFlextInfraRefactorImportNormalization(
         tm.that(normalized, has="from demo_pkg import t\n")
         tm.that(normalized, lacks="from flext_core import r")
 
+    @classmethod
+    def test_settings_layer_module_keeps_upstream_letter_import(
+        cls, tmp_path: Path
+    ) -> None:
+        """A settings-layer module keeps its upstream letters; own ones are later."""
+        project, package = cls._project(tmp_path)
+        source = (
+            "from __future__ import annotations\n"
+            "\n"
+            "from flext_cli import m, u\n"
+            "\n"
+            "\n"
+            "def run() -> object:\n"
+            "    return m, u\n"
+        )
+        result = u.Infra.normalize_import_source(
+            project_root=project,
+            file_path=package / "_settings.py",
+            source=source,
+        )
+
+        tm.ok(result, eq=source)
+
+    @classmethod
+    def test_services_layer_module_binds_own_letters(cls, tmp_path: Path) -> None:
+        """A services-layer module still binds upstream letters through its root."""
+        project, package = cls._project(tmp_path)
+        normalized = cls._normalize(
+            project,
+            package / "services" / "worker.py",
+            "from __future__ import annotations\n"
+            "\n"
+            "from flext_cli import m, u\n"
+            "\n"
+            "\n"
+            "def run() -> object:\n"
+            "    return m, u\n",
+        )
+
+        tm.that(normalized, has="from demo_pkg import m, u\n")
+        tm.that(normalized, lacks="from flext_cli import")
+
 
 class TestsFlextInfraNamespaceImportNormalization(
     TestsFlextInfraRefactorImportNormalizationSupport,
