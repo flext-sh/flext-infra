@@ -4633,12 +4633,18 @@ class FlextInfraUtilitiesModelsProtocol:
                     *destination.relative_to(self.package).with_suffix("").parts,
                 ))
             )
+            # The destination's own holder is declared here even before this
+            # run records it as a family class (d0873050dd).
             declared_here = frozenset(
                 name
                 for name, (_family, module, _declared) in (
                     self.source_family_classes.items()
                 )
                 if module == declaring
+            ) | (
+                frozenset()
+                if destination is None
+                else {self._source_destination_holder(destination)}
             )
             type_imports.extend(
                 f"from {family} import {name}"
