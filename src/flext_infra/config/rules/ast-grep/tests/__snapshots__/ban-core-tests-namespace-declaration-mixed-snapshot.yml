@@ -1,13 +1,7 @@
 id: ban-core-tests-namespace-declaration-mixed
 snapshots:
-  ? |
-    class TestsFlextLdapConstants(FlextTestsConstants, FlextLdapConstants):
-        class Ldap(FlextLdapConstants.Ldap):
-            class Tests(FlextTestsConstants.Tests):
-                LDIF = """dn: cn=a
-        objectClass: top
-    """
-  : labels:
+  "class TestsFlextLdapConstants(FlextTestsConstants, FlextLdapConstants):\n    class Ldap(FlextLdapConstants.Ldap):\n        class Tests(FlextTestsConstants.Tests):\n            LDIF = \"\"\"dn: cn=a\n    objectClass: top\n\"\"\"\n":
+    labels:
     - source: |-
         class Tests(FlextTestsConstants.Tests):
                     LDIF = """dn: cn=a
@@ -70,14 +64,8 @@ snapshots:
       style: secondary
       start: 127
       end: 132
-  ? |
-    class TestsFlextMeltanoConstants(FlextTestsConstants):
-        class Meltano(FlextMeltanoConstants.Meltano):
-            """Meltano domain namespace."""
-
-            class Tests(FlextTestsConstants.Tests):
-                HOST = "localhost"
-  : labels:
+  "class TestsFlextMeltanoConstants(FlextTestsConstants):\n    class Meltano(FlextMeltanoConstants.Meltano):\n        \"\"\"Meltano domain namespace.\"\"\"\n\n        class Tests(FlextTestsConstants.Tests):\n            HOST = \"localhost\"\n":
+    labels:
     - source: |-
         class Tests(FlextTestsConstants.Tests):
                     HOST = "localhost"
@@ -138,14 +126,8 @@ snapshots:
       style: secondary
       start: 160
       end: 165
-  ? |
-    class TestsFlextMeltanoTypes(FlextTestsTypes, FlextMeltanoTypes):
-        class Meltano(FlextMeltanoTypes.Meltano):
-            type ComponentCase = tuple[str, str]
-
-            class Tests(FlextTestsTypes.Tests):
-                """Aliases."""
-  : labels:
+  "class TestsFlextMeltanoTypes(FlextTestsTypes, FlextMeltanoTypes):\n    class Meltano(FlextMeltanoTypes.Meltano):\n        type ComponentCase = tuple[str, str]\n\n        class Tests(FlextTestsTypes.Tests):\n            \"\"\"Aliases.\"\"\"\n":
+    labels:
     - source: |-
         class Tests(FlextTestsTypes.Tests):
                     """Aliases."""
@@ -206,16 +188,8 @@ snapshots:
       style: secondary
       start: 172
       end: 177
-  ? |
-    class TestsFlextOtherConstants(FlextTestsConstants):
-        class Ldap(FlextLdapConstants.Ldap):
-            class Tests:
-                A = 1
-
-        class Ldif:
-            class Tests:
-                B = 2
-  : labels:
+  "class TestsFlextOtherConstants(FlextTestsConstants):\n    class Ldap(FlextLdapConstants.Ldap):\n        class Tests:\n            A = 1\n\n    class Ldif:\n        class Tests:\n            B = 2\n":
+    labels:
     - source: |-
         class Tests:
                     A = 1
@@ -278,15 +252,8 @@ snapshots:
       style: secondary
       start: 108
       end: 113
-  ? |
-    class TestsFlextOtherTypes(FlextTestsTypes):
-        class Tests(FlextTestsTypes.Tests):
-            A = 1
-
-        class Ldap(FlextLdapTypes.Ldap):
-            class Tests(FlextTestsTypes.Tests):
-                B = 2
-  : labels:
+  "class TestsFlextOtherTypes(FlextTestsTypes):\n    class Tests(FlextTestsTypes.Tests):\n        A = 1\n\n    class Ldap(FlextLdapTypes.Ldap):\n        class Tests(FlextTestsTypes.Tests):\n            B = 2\n":
+    labels:
     - source: |-
         class Tests(FlextTestsTypes.Tests):
                     B = 2

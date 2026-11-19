@@ -1,19 +1,12 @@
 id: ban-core-tests-namespace-declaration-bare
 snapshots:
-  ? |
-    class TestsFlextInfraConstants(flext_tests_c, FlextInfraConstants):
-        class Infra(FlextInfraConstants.Infra):
-            class Tests:
-                LIMIT = 3
-  : fixed: |
-      class TestsFlextInfraConstants(flext_tests_c, FlextInfraConstants):
-          class Tests(flext_tests_c.Tests):
-              LIMIT = 3
+  ? "class TestsFlextInfraConstants(flext_tests_c, FlextInfraConstants):\n    class
+    Infra(FlextInfraConstants.Infra):\n        class Tests:\n            LIMIT = 3\n"
+  : fixed: "class TestsFlextInfraConstants(flext_tests_c, FlextInfraConstants):\n
+      \   class Tests(flext_tests_c.Tests):\n        LIMIT = 3\n"
     labels:
-    - source: |-
-        class Infra(FlextInfraConstants.Infra):
-                class Tests:
-                    LIMIT = 3
+    - source: "class Infra(FlextInfraConstants.Infra):\n        class Tests:\n            LIMIT
+        = 3"
       style: primary
       start: 72
       end: 154
@@ -25,18 +18,14 @@ snapshots:
       style: secondary
       start: 31
       end: 44
-    - source: |-
-        class TestsFlextInfraConstants(flext_tests_c, FlextInfraConstants):
-            class Infra(FlextInfraConstants.Infra):
-                class Tests:
-                    LIMIT = 3
+    - source: "class TestsFlextInfraConstants(flext_tests_c, FlextInfraConstants):\n
+        \   class Infra(FlextInfraConstants.Infra):\n        class Tests:\n            LIMIT
+        = 3"
       style: secondary
       start: 0
       end: 154
-    - source: |-
-        class Infra(FlextInfraConstants.Infra):
-                class Tests:
-                    LIMIT = 3
+    - source: "class Infra(FlextInfraConstants.Infra):\n        class Tests:\n            LIMIT
+        = 3"
       style: secondary
       start: 72
       end: 154
@@ -44,15 +33,11 @@ snapshots:
       style: secondary
       start: 126
       end: 131
-    - source: |-
-        class Tests:
-                    LIMIT = 3
+    - source: "class Tests:\n            LIMIT = 3"
       style: secondary
       start: 120
       end: 154
-    - source: |-
-        class Tests:
-                    LIMIT = 3
+    - source: "class Tests:\n            LIMIT = 3"
       style: secondary
       start: 120
       end: 154
@@ -64,22 +49,14 @@ snapshots:
       style: secondary
       start: 126
       end: 131
-    - source: |-
-        class Tests:
-                    LIMIT = 3
+    - source: "class Tests:\n            LIMIT = 3"
       style: secondary
       start: 120
       end: 154
-    - source: |-
-        class Tests:
-                    LIMIT = 3
+    - source: "class Tests:\n            LIMIT = 3"
       style: secondary
       start: 120
       end: 154
-    - source: Tests
-      style: secondary
-      start: 126
-      end: 131
     - source: FlextInfraConstants.Infra
       style: secondary
       start: 84
@@ -96,77 +73,54 @@ snapshots:
       style: secondary
       start: 46
       end: 65
-    - source: |-
-        class TestsFlextInfraConstants(flext_tests_c, FlextInfraConstants):
-            class Infra(FlextInfraConstants.Infra):
-                class Tests:
-                    LIMIT = 3
+    - source: "class TestsFlextInfraConstants(flext_tests_c, FlextInfraConstants):\n
+        \   class Infra(FlextInfraConstants.Infra):\n        class Tests:\n            LIMIT
+        = 3"
       style: secondary
       start: 0
       end: 154
-    - source: |-
-        class Infra(FlextInfraConstants.Infra):
-                class Tests:
-                    LIMIT = 3
+    - source: "class Infra(FlextInfraConstants.Infra):\n        class Tests:\n            LIMIT
+        = 3"
       style: secondary
       start: 72
       end: 154
-    - source: |
-        class TestsFlextInfraConstants(flext_tests_c, FlextInfraConstants):
-            class Infra(FlextInfraConstants.Infra):
-                class Tests:
-                    LIMIT = 3
+    - source: "class TestsFlextInfraConstants(flext_tests_c, FlextInfraConstants):\n
+        \   class Infra(FlextInfraConstants.Infra):\n        class Tests:\n            LIMIT
+        = 3\n"
       style: secondary
       start: 0
       end: 155
-    - source: |-
-        class TestsFlextInfraConstants(flext_tests_c, FlextInfraConstants):
-            class Infra(FlextInfraConstants.Infra):
-                class Tests:
-                    LIMIT = 3
+    - source: "class TestsFlextInfraConstants(flext_tests_c, FlextInfraConstants):\n
+        \   class Infra(FlextInfraConstants.Infra):\n        class Tests:\n            LIMIT
+        = 3"
       style: secondary
       start: 0
       end: 154
-    - source: |-
-        class Infra(FlextInfraConstants.Infra):
-                class Tests:
-                    LIMIT = 3
+    - source: "class Infra(FlextInfraConstants.Infra):\n        class Tests:\n            LIMIT
+        = 3"
       style: secondary
       start: 72
       end: 154
-  ? |
-    class TestsFlextLdapModels(FlextLdapModels, FlextTestsModels):
-        """Test models."""
-
-        class Ldap(FlextLdapModels.Ldap):
-            """LDAP test models."""
-
-            class Tests:
-                """Test fixture models namespace."""
-
-                FAIL_ERROR_MESSAGE = "nope"
-
-                class FailService(TestsFlextLdapServiceBase[bool]):
-                    def execute(self) -> p.Result[bool]:
-                        return r[bool].fail(
-                            TestsFlextLdapModels.Ldap.Tests.FAIL_ERROR_MESSAGE,
-                        )
-  : fixed: "class TestsFlextLdapModels(FlextLdapModels, FlextTestsModels):\n    \"\"\"Test models.\"\"\"\n\n    class Tests(FlextTestsModels.Tests):\n        \"\"\"Test fixture models namespace.\"\"\"\n    \n        FAIL_ERROR_MESSAGE = \"nope\"\n    \n        class FailService(TestsFlextLdapServiceBase[bool]):\n            def execute(self) -> p.Result[bool]:\n                return r[bool].fail(\n                    TestsFlextLdapModels.Ldap.Tests.FAIL_ERROR_MESSAGE,\n                )\n"
+  ? "class TestsFlextLdapModels(FlextLdapModels, FlextTestsModels):\n    \"\"\"Test
+    models.\"\"\"\n\n    class Ldap(FlextLdapModels.Ldap):\n        \"\"\"LDAP test
+    models.\"\"\"\n\n        class Tests:\n            \"\"\"Test fixture models namespace.\"\"\"\n\n
+    \           FAIL_ERROR_MESSAGE = \"nope\"\n\n            class FailService(TestsFlextLdapServiceBase[bool]):\n
+    \               def execute(self) -> p.Result[bool]:\n                    return
+    r[bool].fail(\n                        TestsFlextLdapModels.Ldap.Tests.FAIL_ERROR_MESSAGE,\n
+    \                   )\n"
+  : fixed: "class TestsFlextLdapModels(FlextLdapModels, FlextTestsModels):\n    \"\"\"Test
+      models.\"\"\"\n\n    class Tests(FlextTestsModels.Tests):\n        \"\"\"Test
+      fixture models namespace.\"\"\"\n    \n        FAIL_ERROR_MESSAGE = \"nope\"\n
+      \   \n        class FailService(TestsFlextLdapServiceBase[bool]):\n            def
+      execute(self) -> p.Result[bool]:\n                return r[bool].fail(\n                    TestsFlextLdapModels.Ldap.Tests.FAIL_ERROR_MESSAGE,\n
+      \               )\n"
     labels:
-    - source: |-
-        class Ldap(FlextLdapModels.Ldap):
-                """LDAP test models."""
-
-                class Tests:
-                    """Test fixture models namespace."""
-
-                    FAIL_ERROR_MESSAGE = "nope"
-
-                    class FailService(TestsFlextLdapServiceBase[bool]):
-                        def execute(self) -> p.Result[bool]:
-                            return r[bool].fail(
-                                TestsFlextLdapModels.Ldap.Tests.FAIL_ERROR_MESSAGE,
-                            )
+    - source: "class Ldap(FlextLdapModels.Ldap):\n        \"\"\"LDAP test models.\"\"\"\n\n
+        \       class Tests:\n            \"\"\"Test fixture models namespace.\"\"\"\n\n
+        \           FAIL_ERROR_MESSAGE = \"nope\"\n\n            class FailService(TestsFlextLdapServiceBase[bool]):\n
+        \               def execute(self) -> p.Result[bool]:\n                    return
+        r[bool].fail(\n                        TestsFlextLdapModels.Ldap.Tests.FAIL_ERROR_MESSAGE,\n
+        \                   )"
       style: primary
       start: 91
       end: 525
@@ -178,42 +132,23 @@ snapshots:
       style: secondary
       start: 44
       end: 60
-    - source: |-
-        class TestsFlextLdapModels(FlextLdapModels, FlextTestsModels):
-            """Test models."""
-
-            class Ldap(FlextLdapModels.Ldap):
-                """LDAP test models."""
-
-                class Tests:
-                    """Test fixture models namespace."""
-
-                    FAIL_ERROR_MESSAGE = "nope"
-
-                    class FailService(TestsFlextLdapServiceBase[bool]):
-                        def execute(self) -> p.Result[bool]:
-                            return r[bool].fail(
-                                TestsFlextLdapModels.Ldap.Tests.FAIL_ERROR_MESSAGE,
-                            )
+    - source: "class TestsFlextLdapModels(FlextLdapModels, FlextTestsModels):\n    \"\"\"Test
+        models.\"\"\"\n\n    class Ldap(FlextLdapModels.Ldap):\n        \"\"\"LDAP
+        test models.\"\"\"\n\n        class Tests:\n            \"\"\"Test fixture
+        models namespace.\"\"\"\n\n            FAIL_ERROR_MESSAGE = \"nope\"\n\n            class
+        FailService(TestsFlextLdapServiceBase[bool]):\n                def execute(self)
+        -> p.Result[bool]:\n                    return r[bool].fail(\n                        TestsFlextLdapModels.Ldap.Tests.FAIL_ERROR_MESSAGE,\n
+        \                   )"
       style: secondary
       start: 0
       end: 525
-    - source: |-
-        """Test models."""
-
-            class Ldap(FlextLdapModels.Ldap):
-                """LDAP test models."""
-
-                class Tests:
-                    """Test fixture models namespace."""
-
-                    FAIL_ERROR_MESSAGE = "nope"
-
-                    class FailService(TestsFlextLdapServiceBase[bool]):
-                        def execute(self) -> p.Result[bool]:
-                            return r[bool].fail(
-                                TestsFlextLdapModels.Ldap.Tests.FAIL_ERROR_MESSAGE,
-                            )
+    - source: "\"\"\"Test models.\"\"\"\n\n    class Ldap(FlextLdapModels.Ldap):\n
+        \       \"\"\"LDAP test models.\"\"\"\n\n        class Tests:\n            \"\"\"Test
+        fixture models namespace.\"\"\"\n\n            FAIL_ERROR_MESSAGE = \"nope\"\n\n
+        \           class FailService(TestsFlextLdapServiceBase[bool]):\n                def
+        execute(self) -> p.Result[bool]:\n                    return r[bool].fail(\n
+        \                       TestsFlextLdapModels.Ldap.Tests.FAIL_ERROR_MESSAGE,\n
+        \                   )"
       style: secondary
       start: 67
       end: 525
@@ -221,31 +156,19 @@ snapshots:
       style: secondary
       start: 172
       end: 177
-    - source: |-
-        class Tests:
-                    """Test fixture models namespace."""
-
-                    FAIL_ERROR_MESSAGE = "nope"
-
-                    class FailService(TestsFlextLdapServiceBase[bool]):
-                        def execute(self) -> p.Result[bool]:
-                            return r[bool].fail(
-                                TestsFlextLdapModels.Ldap.Tests.FAIL_ERROR_MESSAGE,
-                            )
+    - source: "class Tests:\n            \"\"\"Test fixture models namespace.\"\"\"\n\n
+        \           FAIL_ERROR_MESSAGE = \"nope\"\n\n            class FailService(TestsFlextLdapServiceBase[bool]):\n
+        \               def execute(self) -> p.Result[bool]:\n                    return
+        r[bool].fail(\n                        TestsFlextLdapModels.Ldap.Tests.FAIL_ERROR_MESSAGE,\n
+        \                   )"
       style: secondary
       start: 166
       end: 525
-    - source: |-
-        class Tests:
-                    """Test fixture models namespace."""
-
-                    FAIL_ERROR_MESSAGE = "nope"
-
-                    class FailService(TestsFlextLdapServiceBase[bool]):
-                        def execute(self) -> p.Result[bool]:
-                            return r[bool].fail(
-                                TestsFlextLdapModels.Ldap.Tests.FAIL_ERROR_MESSAGE,
-                            )
+    - source: "class Tests:\n            \"\"\"Test fixture models namespace.\"\"\"\n\n
+        \           FAIL_ERROR_MESSAGE = \"nope\"\n\n            class FailService(TestsFlextLdapServiceBase[bool]):\n
+        \               def execute(self) -> p.Result[bool]:\n                    return
+        r[bool].fail(\n                        TestsFlextLdapModels.Ldap.Tests.FAIL_ERROR_MESSAGE,\n
+        \                   )"
       style: secondary
       start: 166
       end: 525
@@ -257,42 +180,22 @@ snapshots:
       style: secondary
       start: 172
       end: 177
-    - source: |-
-        class Tests:
-                    """Test fixture models namespace."""
-
-                    FAIL_ERROR_MESSAGE = "nope"
-
-                    class FailService(TestsFlextLdapServiceBase[bool]):
-                        def execute(self) -> p.Result[bool]:
-                            return r[bool].fail(
-                                TestsFlextLdapModels.Ldap.Tests.FAIL_ERROR_MESSAGE,
-                            )
+    - source: "class Tests:\n            \"\"\"Test fixture models namespace.\"\"\"\n\n
+        \           FAIL_ERROR_MESSAGE = \"nope\"\n\n            class FailService(TestsFlextLdapServiceBase[bool]):\n
+        \               def execute(self) -> p.Result[bool]:\n                    return
+        r[bool].fail(\n                        TestsFlextLdapModels.Ldap.Tests.FAIL_ERROR_MESSAGE,\n
+        \                   )"
       style: secondary
       start: 166
       end: 525
-    - source: |-
-        class Tests:
-                    """Test fixture models namespace."""
-
-                    FAIL_ERROR_MESSAGE = "nope"
-
-                    class FailService(TestsFlextLdapServiceBase[bool]):
-                        def execute(self) -> p.Result[bool]:
-                            return r[bool].fail(
-                                TestsFlextLdapModels.Ldap.Tests.FAIL_ERROR_MESSAGE,
-                            )
+    - source: "class Tests:\n            \"\"\"Test fixture models namespace.\"\"\"\n\n
+        \           FAIL_ERROR_MESSAGE = \"nope\"\n\n            class FailService(TestsFlextLdapServiceBase[bool]):\n
+        \               def execute(self) -> p.Result[bool]:\n                    return
+        r[bool].fail(\n                        TestsFlextLdapModels.Ldap.Tests.FAIL_ERROR_MESSAGE,\n
+        \                   )"
       style: secondary
       start: 166
       end: 525
-    - source: '"""LDAP test models."""'
-      style: secondary
-      start: 133
-      end: 156
-    - source: Tests
-      style: secondary
-      start: 172
-      end: 177
     - source: FlextLdapModels.Ldap
       style: secondary
       start: 102
@@ -309,101 +212,53 @@ snapshots:
       style: secondary
       start: 27
       end: 42
-    - source: |-
-        class TestsFlextLdapModels(FlextLdapModels, FlextTestsModels):
-            """Test models."""
-
-            class Ldap(FlextLdapModels.Ldap):
-                """LDAP test models."""
-
-                class Tests:
-                    """Test fixture models namespace."""
-
-                    FAIL_ERROR_MESSAGE = "nope"
-
-                    class FailService(TestsFlextLdapServiceBase[bool]):
-                        def execute(self) -> p.Result[bool]:
-                            return r[bool].fail(
-                                TestsFlextLdapModels.Ldap.Tests.FAIL_ERROR_MESSAGE,
-                            )
+    - source: "class TestsFlextLdapModels(FlextLdapModels, FlextTestsModels):\n    \"\"\"Test
+        models.\"\"\"\n\n    class Ldap(FlextLdapModels.Ldap):\n        \"\"\"LDAP
+        test models.\"\"\"\n\n        class Tests:\n            \"\"\"Test fixture
+        models namespace.\"\"\"\n\n            FAIL_ERROR_MESSAGE = \"nope\"\n\n            class
+        FailService(TestsFlextLdapServiceBase[bool]):\n                def execute(self)
+        -> p.Result[bool]:\n                    return r[bool].fail(\n                        TestsFlextLdapModels.Ldap.Tests.FAIL_ERROR_MESSAGE,\n
+        \                   )"
       style: secondary
       start: 0
       end: 525
-    - source: |-
-        """Test models."""
-
-            class Ldap(FlextLdapModels.Ldap):
-                """LDAP test models."""
-
-                class Tests:
-                    """Test fixture models namespace."""
-
-                    FAIL_ERROR_MESSAGE = "nope"
-
-                    class FailService(TestsFlextLdapServiceBase[bool]):
-                        def execute(self) -> p.Result[bool]:
-                            return r[bool].fail(
-                                TestsFlextLdapModels.Ldap.Tests.FAIL_ERROR_MESSAGE,
-                            )
+    - source: "\"\"\"Test models.\"\"\"\n\n    class Ldap(FlextLdapModels.Ldap):\n
+        \       \"\"\"LDAP test models.\"\"\"\n\n        class Tests:\n            \"\"\"Test
+        fixture models namespace.\"\"\"\n\n            FAIL_ERROR_MESSAGE = \"nope\"\n\n
+        \           class FailService(TestsFlextLdapServiceBase[bool]):\n                def
+        execute(self) -> p.Result[bool]:\n                    return r[bool].fail(\n
+        \                       TestsFlextLdapModels.Ldap.Tests.FAIL_ERROR_MESSAGE,\n
+        \                   )"
       style: secondary
       start: 67
       end: 525
-    - source: |
-        class TestsFlextLdapModels(FlextLdapModels, FlextTestsModels):
-            """Test models."""
-
-            class Ldap(FlextLdapModels.Ldap):
-                """LDAP test models."""
-
-                class Tests:
-                    """Test fixture models namespace."""
-
-                    FAIL_ERROR_MESSAGE = "nope"
-
-                    class FailService(TestsFlextLdapServiceBase[bool]):
-                        def execute(self) -> p.Result[bool]:
-                            return r[bool].fail(
-                                TestsFlextLdapModels.Ldap.Tests.FAIL_ERROR_MESSAGE,
-                            )
+    - source: "class TestsFlextLdapModels(FlextLdapModels, FlextTestsModels):\n    \"\"\"Test
+        models.\"\"\"\n\n    class Ldap(FlextLdapModels.Ldap):\n        \"\"\"LDAP
+        test models.\"\"\"\n\n        class Tests:\n            \"\"\"Test fixture
+        models namespace.\"\"\"\n\n            FAIL_ERROR_MESSAGE = \"nope\"\n\n            class
+        FailService(TestsFlextLdapServiceBase[bool]):\n                def execute(self)
+        -> p.Result[bool]:\n                    return r[bool].fail(\n                        TestsFlextLdapModels.Ldap.Tests.FAIL_ERROR_MESSAGE,\n
+        \                   )\n"
       style: secondary
       start: 0
       end: 526
-    - source: |-
-        class TestsFlextLdapModels(FlextLdapModels, FlextTestsModels):
-            """Test models."""
-
-            class Ldap(FlextLdapModels.Ldap):
-                """LDAP test models."""
-
-                class Tests:
-                    """Test fixture models namespace."""
-
-                    FAIL_ERROR_MESSAGE = "nope"
-
-                    class FailService(TestsFlextLdapServiceBase[bool]):
-                        def execute(self) -> p.Result[bool]:
-                            return r[bool].fail(
-                                TestsFlextLdapModels.Ldap.Tests.FAIL_ERROR_MESSAGE,
-                            )
+    - source: "class TestsFlextLdapModels(FlextLdapModels, FlextTestsModels):\n    \"\"\"Test
+        models.\"\"\"\n\n    class Ldap(FlextLdapModels.Ldap):\n        \"\"\"LDAP
+        test models.\"\"\"\n\n        class Tests:\n            \"\"\"Test fixture
+        models namespace.\"\"\"\n\n            FAIL_ERROR_MESSAGE = \"nope\"\n\n            class
+        FailService(TestsFlextLdapServiceBase[bool]):\n                def execute(self)
+        -> p.Result[bool]:\n                    return r[bool].fail(\n                        TestsFlextLdapModels.Ldap.Tests.FAIL_ERROR_MESSAGE,\n
+        \                   )"
       style: secondary
       start: 0
       end: 525
-    - source: |-
-        """Test models."""
-
-            class Ldap(FlextLdapModels.Ldap):
-                """LDAP test models."""
-
-                class Tests:
-                    """Test fixture models namespace."""
-
-                    FAIL_ERROR_MESSAGE = "nope"
-
-                    class FailService(TestsFlextLdapServiceBase[bool]):
-                        def execute(self) -> p.Result[bool]:
-                            return r[bool].fail(
-                                TestsFlextLdapModels.Ldap.Tests.FAIL_ERROR_MESSAGE,
-                            )
+    - source: "\"\"\"Test models.\"\"\"\n\n    class Ldap(FlextLdapModels.Ldap):\n
+        \       \"\"\"LDAP test models.\"\"\"\n\n        class Tests:\n            \"\"\"Test
+        fixture models namespace.\"\"\"\n\n            FAIL_ERROR_MESSAGE = \"nope\"\n\n
+        \           class FailService(TestsFlextLdapServiceBase[bool]):\n                def
+        execute(self) -> p.Result[bool]:\n                    return r[bool].fail(\n
+        \                       TestsFlextLdapModels.Ldap.Tests.FAIL_ERROR_MESSAGE,\n
+        \                   )"
       style: secondary
       start: 67
       end: 525

@@ -1,9 +1,7 @@
 id: ban-core-tests-namespace-reference
 snapshots:
-  ? |
-    def build() -> None:
-        """Read self.Ldap.Tests before t.Ldap.Tests."""
-  : fixed: |
+  "def build() -> None:\n    \"\"\"Read self.Ldap.Tests before t.Ldap.Tests.\"\"\"\n":
+    fixed: |
       def build() -> None:
           """Read self.Ldap.Tests before t.Tests."""
     labels:
@@ -11,18 +9,16 @@ snapshots:
       style: primary
       start: 28
       end: 69
-    - source: '"""Read self.Ldap.Tests before t.Ldap.Tests."""'
+    - source: "\"\"\"Read self.Ldap.Tests before t.Ldap.Tests.\"\"\""
       style: secondary
       start: 25
       end: 72
-    - source: '"""Read self.Ldap.Tests before t.Ldap.Tests."""'
+    - source: "\"\"\"Read self.Ldap.Tests before t.Ldap.Tests.\"\"\""
       style: secondary
       start: 25
       end: 72
-  ? |
-    def build() -> None:
-        """Return ``t.DbtLdap.Tests.ServiceFactory``."""
-  : fixed: |
+  "def build() -> None:\n    \"\"\"Return ``t.DbtLdap.Tests.ServiceFactory``.\"\"\"\n":
+    fixed: |
       def build() -> None:
           """Return ``t.Tests.ServiceFactory``."""
     labels:
@@ -30,28 +26,24 @@ snapshots:
       style: primary
       start: 28
       end: 70
-    - source: '"""Return ``t.DbtLdap.Tests.ServiceFactory``."""'
+    - source: "\"\"\"Return ``t.DbtLdap.Tests.ServiceFactory``.\"\"\""
       style: secondary
       start: 25
       end: 73
-    - source: '"""Return ``t.DbtLdap.Tests.ServiceFactory``."""'
+    - source: "\"\"\"Return ``t.DbtLdap.Tests.ServiceFactory``.\"\"\""
       style: secondary
       start: 25
       end: 73
-  ? |
-    def send(request: t.Core.Tests.DispatchRequest) -> p.Result[str]: ...
-  : fixed: |
+  "def send(request: t.Core.Tests.DispatchRequest) -> p.Result[str]: ...\n":
+    fixed: |
       def send(request: t.Tests.DispatchRequest) -> p.Result[str]: ...
     labels:
     - source: t.Core.Tests
       style: primary
       start: 18
       end: 30
-  ? |
-    match case:
-        case c.Ldap.Tests.AttrToStrListCase.EMPTY:
-            pass
-  : fixed: |
+  "match case:\n    case c.Ldap.Tests.AttrToStrListCase.EMPTY:\n        pass\n":
+    fixed: |
       match case:
           case c.Tests.AttrToStrListCase.EMPTY:
               pass
@@ -60,39 +52,35 @@ snapshots:
       style: primary
       start: 21
       end: 57
-  ? |
-    members = (t.Core.Tests.CentralizedUnion,)
-  : fixed: |
+  "members = (t.Core.Tests.CentralizedUnion,)\n":
+    fixed: |
       members = (t.Tests.CentralizedUnion,)
     labels:
     - source: t.Core.Tests
       style: primary
       start: 11
       end: 23
-  ? |
-    message = TestsFlextLdapModels.Ldap.Tests.FAIL_ERROR_MESSAGE
-  : fixed: |
+  "message = TestsFlextLdapModels.Ldap.Tests.FAIL_ERROR_MESSAGE\n":
+    fixed: |
       message = TestsFlextLdapModels.Tests.FAIL_ERROR_MESSAGE
     labels:
     - source: TestsFlextLdapModels.Ldap.Tests
       style: primary
       start: 10
       end: 41
-  ? |
-    u.Ldap.Tests.that(result, eq=1)
-  : fixed: |
+  "u.Ldap.Tests.that(result, eq=1)\n":
+    fixed: |
       u.Tests.that(result, eq=1)
     labels:
     - source: u.Ldap.Tests
       style: primary
       start: 0
       end: 12
-  ? |
-    value = 1  # read from c.Ldap.Tests.HOST
-  : fixed: |
+  "value = 1  # read from c.Ldap.Tests.HOST\n":
+    fixed: |
       value = 1  # read from c.Tests.HOST
     labels:
-    - source: '# read from c.Ldap.Tests.HOST'
+    - source: "# read from c.Ldap.Tests.HOST"
       style: primary
       start: 11
       end: 40
