@@ -689,30 +689,13 @@ Infra:
       # exceeds max_load5, and each recipe runs in a cgroup scope bounded by
       # memory_limit_gb and max_processes CPUs. overrides declares an explicit
       # exception per public verb. Every verb runs at idle CPU and IO weight,
-      # so agents use light processes instead of waiting for the load; only the
-      # full forms (tests-full, and mod without RULES or LAWS, named mod-full)
-      # keep max_load5. A selected mod is admitted through the mod override.
+      # so agents use light processes instead of waiting for the load.
       admission:
         max_load5: 20
         memory_limit_gb: 5
         max_processes: 2
-        # Operator 2026-11-14: host load from other actors sits at 85-113,
-        # so the provisioning path (setup, gen, check) admits to 160.
-        overrides:
-          setup: {max_load5: 160}
-          upg: {max_load5: 80}
-          gen: {max_load5: 160}
-          mod: {max_load5: 80}
-          fix: {max_load5: 80}
-          fmt: {max_load5: 80}
-          check: {max_load5: 160}
-          tests: {max_load5: 80}
-          # Controller ruling 2026-11-19 (operator blanket authorization):
-          # the harness tier is a selected incremental subset, not a full form.
-          tests-harness: {max_load5: 80}
-          help: {max_load5: 80}
-          build: {max_load5: 80}
-          clean: {max_load5: 80}
+        # Operator 2026-11-19: every verb admits at max_load5 20; no verb
+        # declares a higher load override.
         refusal_guidance:
         - Do not wait for the load to drop; run the lighter form now, it runs at idle priority.
         - Prefer make tests (incremental Testmon) over make tests-full; run tests-full only occasionally.
