@@ -27,66 +27,6 @@ override ADMISSION_VERB := $(if $(filter mod,$(ADMISSION_VERB)),$(if $(strip $(R
 override ADMISSION_MAX_LOAD5 := 20.0
 override ADMISSION_MEMORY_LIMIT_BYTES := 5368709120
 override ADMISSION_MAX_PROCESSES := 2
-ifeq ($(ADMISSION_VERB),setup)
-override ADMISSION_MAX_LOAD5 := 160.0
-override ADMISSION_MEMORY_LIMIT_BYTES := 5368709120
-override ADMISSION_MAX_PROCESSES := 2
-endif
-ifeq ($(ADMISSION_VERB),upg)
-override ADMISSION_MAX_LOAD5 := 80.0
-override ADMISSION_MEMORY_LIMIT_BYTES := 5368709120
-override ADMISSION_MAX_PROCESSES := 2
-endif
-ifeq ($(ADMISSION_VERB),gen)
-override ADMISSION_MAX_LOAD5 := 160.0
-override ADMISSION_MEMORY_LIMIT_BYTES := 5368709120
-override ADMISSION_MAX_PROCESSES := 2
-endif
-ifeq ($(ADMISSION_VERB),mod)
-override ADMISSION_MAX_LOAD5 := 80.0
-override ADMISSION_MEMORY_LIMIT_BYTES := 5368709120
-override ADMISSION_MAX_PROCESSES := 2
-endif
-ifeq ($(ADMISSION_VERB),fix)
-override ADMISSION_MAX_LOAD5 := 80.0
-override ADMISSION_MEMORY_LIMIT_BYTES := 5368709120
-override ADMISSION_MAX_PROCESSES := 2
-endif
-ifeq ($(ADMISSION_VERB),fmt)
-override ADMISSION_MAX_LOAD5 := 80.0
-override ADMISSION_MEMORY_LIMIT_BYTES := 5368709120
-override ADMISSION_MAX_PROCESSES := 2
-endif
-ifeq ($(ADMISSION_VERB),check)
-override ADMISSION_MAX_LOAD5 := 160.0
-override ADMISSION_MEMORY_LIMIT_BYTES := 5368709120
-override ADMISSION_MAX_PROCESSES := 2
-endif
-ifeq ($(ADMISSION_VERB),tests)
-override ADMISSION_MAX_LOAD5 := 80.0
-override ADMISSION_MEMORY_LIMIT_BYTES := 5368709120
-override ADMISSION_MAX_PROCESSES := 2
-endif
-ifeq ($(ADMISSION_VERB),tests-harness)
-override ADMISSION_MAX_LOAD5 := 80.0
-override ADMISSION_MEMORY_LIMIT_BYTES := 5368709120
-override ADMISSION_MAX_PROCESSES := 2
-endif
-ifeq ($(ADMISSION_VERB),help)
-override ADMISSION_MAX_LOAD5 := 80.0
-override ADMISSION_MEMORY_LIMIT_BYTES := 5368709120
-override ADMISSION_MAX_PROCESSES := 2
-endif
-ifeq ($(ADMISSION_VERB),build)
-override ADMISSION_MAX_LOAD5 := 80.0
-override ADMISSION_MEMORY_LIMIT_BYTES := 5368709120
-override ADMISSION_MAX_PROCESSES := 2
-endif
-ifeq ($(ADMISSION_VERB),clean)
-override ADMISSION_MAX_LOAD5 := 80.0
-override ADMISSION_MEMORY_LIMIT_BYTES := 5368709120
-override ADMISSION_MAX_PROCESSES := 2
-endif
 override ADMISSION_LOAD5 := $(shell awk -v limit=$(ADMISSION_MAX_LOAD5) '$$2 > limit { print $$2 }' /proc/loadavg)
 ifneq ($(.SHELLSTATUS),0)
 $(error Cannot read the 5-minute load average from /proc/loadavg)
@@ -925,7 +865,7 @@ VERB_ARGUMENTS_check := CHECK_PHASE
 VERB_DESCRIPTION_tests := Run native incremental tests through the persistent Testmon selection.
 VERB_ARGUMENTS_tests :=
 
-VERB_DESCRIPTION_tests-full := Run the complete selected inventory once without Testmon.
+VERB_DESCRIPTION_tests-full := Run the complete selected inventory once and record it in Testmon.
 VERB_ARGUMENTS_tests-full :=
 
 VERB_DESCRIPTION_tests-harness := Run only the harness gate tests, through the persistent Testmon selection, under the harness that provides their inputs; MARKER=<harness gate marker> narrows the run to one.
