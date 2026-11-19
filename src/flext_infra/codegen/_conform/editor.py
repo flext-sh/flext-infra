@@ -10,9 +10,7 @@ from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 
 from flext_infra import c, m, p, r, u
-from flext_infra.codegen._conform.artifact_render import (
-    FlextInfraCodegenConformArtifactRender,
-)
+from flext_infra.codegen._conform import FlextInfraCodegenConformArtifactRender
 from flext_infra.deps import FlextInfraPyprojectModernizer
 from flext_infra.services._codegen import FlextInfraCodegenVscode
 

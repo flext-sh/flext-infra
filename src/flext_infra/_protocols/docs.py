@@ -1,6 +1,12 @@
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
+from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
+
+from flext_cli import FlextCliProtocols
+
+from flext_infra._protocols import FlextInfraProtocolsBase
 
 if TYPE_CHECKING:
     from flext_cli import p
@@ -8,14 +14,6 @@ if TYPE_CHECKING:
     from flext_infra import t
     from flext_infra._protocols import FlextInfraProtocolsDocsGeneration
     from flext_infra._protocols._config import FlextInfraProtocolsConfigRepository
-
-
-from collections.abc import Mapping, Sequence
-from pathlib import Path
-
-from flext_cli import FlextCliProtocols
-
-from flext_infra._protocols.base import FlextInfraProtocolsBase
 
 """Structural documentation contracts for exact model transport.
 

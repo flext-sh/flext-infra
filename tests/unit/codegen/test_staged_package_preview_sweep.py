@@ -10,7 +10,7 @@ import os
 import time
 from pathlib import Path
 
-from flext_infra.codegen.staged_package import FlextInfraStagedPackage
+from flext_infra.codegen import FlextInfraStagedPackage
 
 
 def _preview(parent: Path, name: str, age_seconds: int) -> Path:

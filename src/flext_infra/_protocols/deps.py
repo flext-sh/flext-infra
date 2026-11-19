@@ -13,8 +13,8 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 from flext_cli import FlextCliProtocols
 
 from flext_infra import t
+from flext_infra._protocols import FlextInfraProtocolsMixins
 from flext_infra._protocols._config import FlextInfraProtocolsConfigArtifact
-from flext_infra._protocols.mixins import FlextInfraProtocolsMixins
 
 if TYPE_CHECKING:
     from flext_cli import p

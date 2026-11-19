@@ -19,18 +19,18 @@ from pathlib import Path
 from flext_cli import u
 
 from flext_infra import c, m, p, t
-from flext_infra._utilities import FlextInfraUtilitiesFacadeComponents
+from flext_infra._utilities import (
+    FlextInfraUtilitiesFacadeComponents,
+    FlextInfraUtilitiesLintRecipes,
+    FlextInfraUtilitiesProjectDiscovery,
+    FlextInfraUtilitiesWorkspaceSnapshot,
+)
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeAnalysis,
     FlextInfraUtilitiesRopeRuntime,
 )
-from flext_infra._utilities._semantic_cutover.declaration_relocation import (
+from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticDeclarationRelocation,
-)
-from flext_infra._utilities.lint_recipes import FlextInfraUtilitiesLintRecipes
-from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
-from flext_infra._utilities.workspace_snapshot import (
-    FlextInfraUtilitiesWorkspaceSnapshot,
 )
 
 

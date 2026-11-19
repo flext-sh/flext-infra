@@ -13,8 +13,10 @@ from typing import Annotated, Self
 from flext_cli import m
 
 from flext_infra import c, t
-from flext_infra._models.mise_toolchain import FlextInfraModelsMiseToolchain
-from flext_infra._models.mise_toolchain_base import FlextInfraModelsMiseToolchainBase
+from flext_infra._models import (
+    FlextInfraModelsMiseToolchain,
+    FlextInfraModelsMiseToolchainBase,
+)
 
 
 class FlextInfraModelsConfigContract(FlextInfraModelsMiseToolchain):
