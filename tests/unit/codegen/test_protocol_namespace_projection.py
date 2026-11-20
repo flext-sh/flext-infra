@@ -78,7 +78,11 @@ class TestsFlextInfraProtocolNamespaceProjection:
         }
         for path, source in files.items():
             path.parent.mkdir(parents=True, exist_ok=True)
-            tm.ok(u.Cli.atomic_write_text_file(path, source))
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    path, source, durability=c.Cli.WriteDurability.SCRATCH
+                )
+            )
             u.Tests.git_bootstrap(root, ("add", "--", str(path.relative_to(root))))
         service = u.Tests.create_lazy_init_service(root)
         service.module = f"{package.name}.{family.directory}"
@@ -165,7 +169,11 @@ class TestsFlextInfraProtocolNamespaceProjection:
         }
         for path, source in sources.items():
             path.parent.mkdir(parents=True, exist_ok=True)
-            tm.ok(u.Cli.atomic_write_text_file(path, source))
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    path, source, durability=c.Cli.WriteDurability.SCRATCH
+                )
+            )
             u.Tests.git_bootstrap(root, ("add", "--", str(path.relative_to(root))))
         service = u.Tests.create_lazy_init_service(root)
         service.module = f"{package.name}.{directory}"
@@ -173,7 +181,11 @@ class TestsFlextInfraProtocolNamespaceProjection:
         rendered = tm.ok(
             tm.not_none(u.Infra.render_utility_facade(package, family=family))
         )
-        tm.ok(u.Cli.atomic_write_text_file(facade, rendered))
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                facade, rendered, durability=c.Cli.WriteDurability.SCRATCH
+            )
+        )
         tm.ok(
             tm.not_none(u.Infra.render_utility_facade(package, family=family)),
             eq=rendered,
@@ -208,6 +220,7 @@ class TestsFlextInfraProtocolNamespaceProjection:
                 pyproject,
                 tm.ok(u.Cli.files_read_text(pyproject))
                 + '\n[tool.pyrefly]\nproject-includes = ["src"]\n',
+                durability=c.Cli.WriteDurability.SCRATCH,
             )
         )
         # The gate resolves pyrefly from the checkout's own environment.
@@ -266,7 +279,11 @@ class TestsFlextInfraProtocolNamespaceProjection:
         }
         for path, source in sources.items():
             path.parent.mkdir(parents=True, exist_ok=True)
-            tm.ok(u.Cli.atomic_write_text_file(path, source))
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    path, source, durability=c.Cli.WriteDurability.SCRATCH
+                )
+            )
             u.Tests.git_bootstrap(root, ("add", "--", str(path.relative_to(root))))
         service = u.Tests.create_lazy_init_service(root)
         service.module = f"{package.name}.{directory}"
@@ -328,7 +345,11 @@ class TestsFlextInfraProtocolNamespaceProjection:
         }
         for path, source in files.items():
             path.parent.mkdir(parents=True, exist_ok=True)
-            tm.ok(u.Cli.atomic_write_text_file(path, source))
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    path, source, durability=c.Cli.WriteDurability.SCRATCH
+                )
+            )
             u.Tests.git_bootstrap(root, ("add", "--", str(path.relative_to(root))))
         service = u.Tests.create_lazy_init_service(root)
         service.module = f"{package.name}.{family.directory}"
@@ -342,6 +363,7 @@ class TestsFlextInfraProtocolNamespaceProjection:
                     tm.ok(
                         tm.not_none(u.Infra.render_utility_facade(package, family="p"))
                     ),
+                    durability=c.Cli.WriteDurability.SCRATCH,
                 )
             )
             tm.fail(
@@ -361,7 +383,11 @@ class TestsFlextInfraProtocolNamespaceProjection:
             ),
             eq=1,
         )
-        tm.ok(u.Cli.atomic_write_text_file(facade, rendered))
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                facade, rendered, durability=c.Cli.WriteDurability.SCRATCH
+            )
+        )
         tm.ok(
             tm.not_none(u.Infra.render_utility_facade(package, family="p")), eq=rendered
         )
@@ -381,3 +407,51 @@ class TestsFlextInfraProtocolNamespaceProjection:
             "assert isinstance(Value(), p.Namespace.Payload)\n",
             cwd=root,
         )
+
+    @staticmethod
+    def test_override_alias_follows_native_c3_order(tmp_path: Path) -> None:
+        """An alias that overrides the C3 owner stays; ``Generic`` is no part."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        directory = u.Infra.facade_family_declared_by(c.Infra.MODELS_PY).directory
+        facade = package / c.Infra.MODELS_PY
+        sources = {
+            package / c.Infra.INIT_PY: "",
+            package / directory / "root.py": (
+                "class RootPart:\n    class Member:\n        pass\n"
+                "__all__ = ['RootPart']\n"
+            ),
+            package / directory / "left.py": (
+                f"from {package.name}.{directory}.root import RootPart\n"
+                "class LeftPart(RootPart):\n    pass\n__all__ = ['LeftPart']\n"
+            ),
+            package / directory / "right.py": (
+                f"from {package.name}.{directory}.root import RootPart\n"
+                "class RightPart(RootPart):\n    class Member:\n        pass\n"
+                "__all__ = ['RightPart']\n"
+            ),
+            facade: (
+                f"from {package.name}.{directory}.left import LeftPart\n"
+                f"from {package.name}.{directory}.right import RightPart\n"
+                f"from {package.name}.{directory}.root import RootPart\n"
+                "class Facade:\n    class Namespace(LeftPart, RightPart):\n"
+                "        Member = RootPart.Member\n"
+                "m = Facade\n__all__ = ['Facade', 'm']\n"
+            ),
+        }
+        for path, source in sources.items():
+            path.parent.mkdir(parents=True, exist_ok=True)
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    path, source, durability=c.Cli.WriteDurability.SCRATCH
+                )
+            )
+            u.Tests.git_bootstrap(root, ("add", "--", str(path.relative_to(root))))
+        service = u.Tests.create_lazy_init_service(root)
+        service.module = f"{package.name}.{directory}"
+        tm.ok(u.Tests.materialize_lazy_init(service))
+        # C3 resolves Member to RightPart.Member, so the authored alias is an
+        # override, never a redundant binding.
+        rendered = tm.ok(
+            tm.not_none(u.Infra.render_utility_facade(package, family="m"))
+        )
+        tm.that(rendered, has="Member = RootPart.Member")

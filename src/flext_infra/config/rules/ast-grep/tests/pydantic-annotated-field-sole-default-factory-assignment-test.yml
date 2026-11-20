@@ -10,6 +10,10 @@ valid:
         items: Annotated[Sequence[str], m.Field(default_factory=tuple, description="d")]
   - |
     """A docstring mentioning x: Annotated[X, m.Field(default_factory=X)]."""
+  - |
+    class Outer:
+        class Inner:
+            gates: Annotated[Outer.Gates, m.Field(default_factory=Outer.Gates)]
 # `invalid` MUST match: the factory is the whole Annotated metadata.
 invalid:
   - |

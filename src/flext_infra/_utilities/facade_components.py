@@ -1826,6 +1826,10 @@ class FlextInfraUtilitiesFacadeComponents:
             .get_attributes()["Protocol"]
             .get_object()
         )
+        typing_module = FlextInfraUtilitiesRopeRuntime.require_semantic_module(
+            project.get_module("typing")
+        )
+        markers = (protocol, typing_module.get_attributes()["Generic"].get_object())
         index = module.get_source_binding_index()
         source = module.source_code
         pending = [namespace]
@@ -1849,10 +1853,11 @@ class FlextInfraUtilitiesFacadeComponents:
                 expression
                 for expression, base in bases
                 if types.py_class(base)
+                and base.get_name() != "object"
                 and not any(
-                    types.py_class(protocol)
-                    and cls._same_facade_target(ancestor, protocol)
+                    types.py_class(marker) and cls._same_facade_target(ancestor, marker)
                     for ancestor in base.get_mro()
+                    for marker in markers
                 )
             ]
             if concrete and len(concrete) < len(bases):
@@ -3072,14 +3077,9 @@ class FlextInfraUtilitiesFacadeComponents:
 
         """
         types = FlextInfraUtilitiesRopeRuntimeTypes
-        ancestors = list(
-            dict.fromkeys(
-                ancestor
-                for _expression, base in retained
-                if types.abstract_class(base)
-                for ancestor in base.get_mro()
-            )
-        )
+        # The namespace's own native MRO is Python's C3 order: concatenated
+        # base MROs would let an earlier ancestor hide a later override.
+        ancestors = namespace.get_mro()[1:] if retained else []
         retired: set[tuple[int, int]] = set()
         for assignment in cls._facade_resolved_assignments(index, namespace):
             if (
