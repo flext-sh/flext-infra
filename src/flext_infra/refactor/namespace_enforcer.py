@@ -88,13 +88,14 @@ class FlextInfraNamespaceEnforcer(
         scoped = frozenset(
             path for paths in files_by_project.values() for path in paths
         )
-        plan_root = (
-            project_roots[0] if len(project_roots) == 1 else self._repository_root
-        )
-        with u.Infra.codemod_workspace_snapshot(plan_root) as snapshot:
-            before_plan = u.Infra.codemod_rule_plan(snapshot).unwrap()
+        # Each repository is planned and scanned on its own (ADR-028 D17);
+        # both observations bracket every repair, cross-project rewires included.
         source_files = tuple(sorted(scoped)) if module is not None else None
-        before = self._scan_scope(plan_root, before_plan, source_files, scoped)
+        before_plans = {root: self._plan(root) for root in files_by_project}
+        before = {
+            root: self._scan_scope(root, plan, source_files, scoped)
+            for root, plan in before_plans.items()
+        }
         if apply:
             for project_root, py_files in files_by_project.items():
                 if module is not None:
@@ -104,8 +105,8 @@ class FlextInfraNamespaceEnforcer(
                 if not py_files:
                     continue
                 current = (
-                    before
-                    if module is None and project_root == plan_root
+                    before[project_root]
+                    if module is None
                     else self._scan_relocations(project_root, py_files)
                 )
                 if current is None:
@@ -119,46 +120,59 @@ class FlextInfraNamespaceEnforcer(
                     py_files=py_files,
                     gates=gates,
                 )
-        after_plan = before_plan
-        if apply:
-            with u.Infra.codemod_workspace_snapshot(plan_root) as snapshot:
-                after_plan = u.Infra.codemod_rule_plan(snapshot).unwrap()
+        after_plans = (
+            {root: self._plan(root) for root in files_by_project}
+            if apply
+            else before_plans
+        )
         after = (
-            self._scan_scope(plan_root, after_plan, source_files, scoped)
+            {
+                root: self._scan_scope(root, plan, source_files, scoped)
+                for root, plan in after_plans.items()
+            }
             if apply
             else before
         )
-        rule_ids = tuple(
-            sorted({
-                rule.id for plan in (before_plan, after_plan) for rule in plan.rules
+        projects: list[p.Infra.ProjectEnforcementReport] = []
+        for root, py_files in files_by_project.items():
+            rule_ids = sorted({
+                rule.id
+                for plan in (before_plans[root], after_plans[root])
+                for rule in plan.rules
             })
-        )
-        deltas = u.Infra.rule_deltas(
-            before,
-            after,
-            options=m.Infra.RuleDeltaOptions(
-                inventory=tuple(
-                    (root.name, rule_id)
-                    for root in project_roots
-                    for rule_id in rule_ids
+            deltas = u.Infra.rule_deltas(
+                before[root],
+                after[root],
+                options=m.Infra.RuleDeltaOptions(
+                    inventory=tuple((root.name, rule_id) for rule_id in rule_ids),
                 ),
-            ),
-        )
-        return m.Infra.WorkspaceEnforcementReport(
-            workspace=str(self._repository_root),
-            projects=tuple(
+            )
+            projects.append(
                 self._enforce_project(
                     project_root=root,
                     py_files=py_files,
-                    before=before,
-                    after=after,
+                    before=before[root],
+                    after=after[root],
                     rule_deltas=tuple(
                         row for row in deltas if row.repository == root.name
                     ),
                 )
-                for root, py_files in files_by_project.items()
-            ),
+            )
+        return m.Infra.WorkspaceEnforcementReport(
+            workspace=str(self._repository_root),
+            projects=tuple(projects),
         )
+
+    @staticmethod
+    def _plan(root: Path) -> p.Infra.CodemodRulePlan:
+        """Compose one repository's own executable rule plan.
+
+        Returns:
+            The repository's rule plan.
+
+        """
+        with u.Infra.codemod_workspace_snapshot(root) as snapshot:
+            return u.Infra.codemod_rule_plan(snapshot).unwrap()
 
     @staticmethod
     def _scan_relocations(
