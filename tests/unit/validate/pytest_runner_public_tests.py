@@ -1127,6 +1127,7 @@ class TestsFlextInfraPytestRunnerDatabase:
             ),
         )
         context = tm.ok(infra.project_context(repository))
+        cache = config.Infra.codegen.make.testmon_cache
         expected = (
             u.Infra.real_account_home()
             / cache.home_cache_directory

@@ -161,6 +161,9 @@ class FlextInfraPytestRunnerBase(s[int]):
         Returns:
             The runner with independent persistent storage and operation clock.
 
+        Raises:
+            ValueError: If repository pytest tooling election fails.
+
         """
         # The suite runs on the submitted project, the root `make check` wrote
         # its receipt under; the Git toplevel is an ancestor when the project
@@ -209,7 +212,7 @@ class FlextInfraPytestRunnerBase(s[int]):
         return cls(
             repository_root=root,
             started_at_monotonic=started_at_monotonic,
-            tooling=tooling,
+            tooling=cls._elect_tooling(root),
             run_timeout_seconds=run_timeout_seconds,
             termination_grace_seconds=termination_grace_seconds,
             target=cache.target_directory,

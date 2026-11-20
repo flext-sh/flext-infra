@@ -1822,6 +1822,21 @@ class FlextInfraUtilitiesFacadeComponents:
                     ]
                 ].fail(message)
             base = binding.get_object()
+            types = FlextInfraUtilitiesRopeRuntimeTypes
+            # Reject builtin bases (object, str, Protocol, etc.) and non-declared owners
+            if isinstance(
+                base, types.runtime_type("rope.base.builtins", "BuiltinClass")
+            ):
+                message = (
+                    f"facade base origin is not a declared owner: "
+                    f"{path}:{source[start:end]}"
+                )
+                return r[
+                    tuple[
+                        p.Infra.RopeSourceClassLayout,
+                        list[tuple[str, p.Infra.RopePyObject]],
+                    ]
+                ].fail(message)
             if rendered:
                 if not FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(base):
                     continue
@@ -1830,9 +1845,30 @@ class FlextInfraUtilitiesFacadeComponents:
                 if (
                     resource is not None
                     and Path(resource.real_path).is_relative_to(directory)
+                    and isinstance(base, p.Infra.RopeNamedObject)
                     and base.get_name() in declared_names
                 ):
                     continue
+            else:
+                # Non-rendered (authored) facade: base must be a declared owner
+                base_module = base.get_module()
+                resource = None if base_module is None else base_module.get_resource()
+                if (
+                    resource is None
+                    or not Path(resource.real_path).is_relative_to(directory)
+                    or not isinstance(base, p.Infra.RopeNamedObject)
+                    or base.get_name() not in declared_names
+                ):
+                    message = (
+                        f"facade base origin is not a declared owner: "
+                        f"{path}:{source[start:end]}"
+                    )
+                    return r[
+                        tuple[
+                            p.Infra.RopeSourceClassLayout,
+                            list[tuple[str, p.Infra.RopePyObject]],
+                        ]
+                    ].fail(message)
             bases.append((source[start:end], base))
         return FlextInfraUtilitiesFacadeComponents._facade_namespace_bindings(
             module, index, namespace, path

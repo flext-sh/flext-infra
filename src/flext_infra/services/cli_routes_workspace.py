@@ -117,7 +117,9 @@ class FlextInfraWorkspaceRoutes:
         with u.Infra.gate_admitted(gate, params.repository_root, None) as ticket:
             completed = infra.workspace_tests(params, execution_mode=execution_mode)
         if completed.failure:
+            u.Infra.gate_health_record(params.repository_root, "tests", success=False)
             return r[int].from_failure(completed)
+        u.Infra.gate_health_record(params.repository_root, "tests", success=True)
         if completed.value:
             u.Cli.framework_exit(completed.value)
         if full:
@@ -259,6 +261,7 @@ class FlextInfraWorkspaceRoutes:
             result = cls._check_admitted(params, root, inputs)
         if complete and result.success:
             u.Infra.gate_repeat_record(ticket)
+        u.Infra.gate_health_record(root, "check", success=result.success)
         return result
 
     @classmethod

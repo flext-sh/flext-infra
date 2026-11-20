@@ -9,19 +9,38 @@ from __future__ import annotations
 import ast
 import importlib
 from pathlib import Path
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from flext_cli import u
 
 from flext_infra import c, p, r, t
 from flext_infra._utilities import FlextInfraUtilitiesWorkspaceSnapshot
 from flext_infra.protocols_bootstrap import (
+    is_source_bootstrap_owned,
     normalize_protocol_source,
     plan_protocol_facades,
 )
 
+if TYPE_CHECKING:
+    pass
+
 
 class FlextInfraUtilitiesModelsProtocolBootstrapPackage:
     """Own one declared package's prepared and installed bootstrap sources."""
+
+    _ModelProtocolProjection: ClassVar[Any]
+    protocol_model_sources_from_source: ClassVar[Any]
+
+    @staticmethod
+    def _is_bootstrap_owned_protocol_package(package_dir: Path) -> bool:
+        """Whether ``package_dir`` carries the source-bootstrap protocol facade.
+
+        Returns:
+            True when its ``_protocols`` initializer is source-bootstrap owned.
+
+        """
+        bootstrap_init = package_dir / "_protocols" / "__init__.py"
+        return bootstrap_init.is_file() and is_source_bootstrap_owned(bootstrap_init)
 
     @classmethod
     def _bootstrap_package_sources(
@@ -80,9 +99,7 @@ class FlextInfraUtilitiesModelsProtocolBootstrapPackage:
                 root, project, package_name=package_name
             )
         if planned.failure:
-            return r[
-                t.Infra.BootstrapProtocolPackage | None
-            ].from_failure(planned)
+            return r[t.Infra.BootstrapProtocolPackage | None].from_failure(planned)
         updates = {
             **normalized,
             **{root / path: text for path, text in planned.value.items()},
@@ -97,8 +114,11 @@ class FlextInfraUtilitiesModelsProtocolBootstrapPackage:
                     path = directory / name
                     inputs[path] = project.source_state(path)
         manifest = root / c.PYPROJECT_FILENAME
-        projector_owner = Path(__file__).resolve().parent.parent / "protocol_models.py"
-        for path in (manifest, package / "models.py", projector_owner):
+        for path in (
+            manifest,
+            package / "models.py",
+            Path(__file__).resolve().parent.parent / "protocol_models.py",
+        ):
             inputs[path] = project.source_state(path)
         members = [
             (
@@ -113,9 +133,14 @@ class FlextInfraUtilitiesModelsProtocolBootstrapPackage:
             if isinstance(holder, ast.ClassDef)
         ]
 
-        return r[t.Infra.BootstrapProtocolPackage | None].ok(
-            (package, planned.value, updates, originals, inputs, members)
-        )
+        return r[t.Infra.BootstrapProtocolPackage | None].ok((
+            package,
+            planned.value,
+            updates,
+            originals,
+            inputs,
+            members,
+        ))
 
     @classmethod
     def _publish_bootstrap_protocol_facades(
