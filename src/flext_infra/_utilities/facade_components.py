@@ -2627,6 +2627,96 @@ class FlextInfraUtilitiesFacadeComponents:
         ))
 
     @classmethod
+    def _facade_owner_prefix(
+        cls,
+        current: p.Infra.RopeSourceModule,
+        scope: p.Infra.RopeScope,
+        prefix: str,
+        dropped: frozenset[str],
+    ) -> tuple[str, frozenset[str]]:
+        """Drop unresolved bases from the header of the class holding the namespace.
+
+        A generated facade's headers are its previous projection. The elected
+        namespace re-derives its bases; the owner class that holds it is
+        copied with the prefix, so a base that no longer resolves to a class
+        there (the namespace rule) is removed with its separator, and its line
+        when it stands alone.
+
+        Returns:
+            The prefix with the owner header rewritten, and ``dropped`` (the
+            namespace's removed bases) joined with the owner's, whose imports
+            the caller prunes.
+
+        """
+        owner = scope.parent
+        if (
+            owner is None
+            or owner.get_kind() != "Class"
+            or not current.source_code.startswith(c.Infra.AUTOGEN_HEADER)
+        ):
+            return prefix, dropped
+        layout = current.get_source_binding_index().class_layout(owner)
+        stale = tuple(
+            span
+            for span, binding in layout.base_bindings
+            if span[1] <= len(prefix)
+            and (
+                binding is None
+                or not FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(
+                    binding.get_object()
+                )
+            )
+        )
+        removed = dropped | {prefix[first:last] for first, last in stale}
+        for span in reversed(stale):
+            prefix = cls._facade_without_base(prefix, span)
+        if len(stale) == len(layout.base_bindings) and not layout.keywords:
+            prefix = cls._facade_without_empty_bases(prefix, layout.name_region[1])
+        return prefix, removed
+
+    @staticmethod
+    def _facade_without_base(source: str, span: tuple[int, int]) -> str:
+        """Remove one base expression with its separator, and its emptied line.
+
+        Returns:
+            The source without that base.
+
+        """
+        blanks = " \t"
+        first, last = span
+        while last < len(source) and source[last] in blanks:
+            last += 1
+        if last < len(source) and source[last] == ",":
+            last += 1
+            while last < len(source) and source[last] in blanks:
+                last += 1
+        else:
+            while first > 0 and source[first - 1] in blanks:
+                first -= 1
+            if first > 0 and source[first - 1] == ",":
+                first -= 1
+        line_start = source.rfind("\n", 0, first) + 1
+        if not source[line_start:first].strip() and source[last : last + 1] == "\n":
+            first, last = line_start, last + 1
+        return source[:first] + source[last:]
+
+    @staticmethod
+    def _facade_without_empty_bases(source: str, opening: int) -> str:
+        """Remove the parentheses a class header keeps once every base is gone.
+
+        Returns:
+            The source without the empty base list.
+
+        """
+        closing = source.find(")", opening)
+        if (
+            source[opening : opening + 1] != "("
+            or source[opening + 1 : closing].strip()
+        ):
+            return source
+        return source[:opening] + source[closing + 1 :]
+
+    @classmethod
     def _facade_rendered_class(
         cls,
         projected: tuple[p.Infra.RopeSourceModule, p.Infra.RopeSourceClass],
@@ -2671,17 +2761,22 @@ class FlextInfraUtilitiesFacadeComponents:
         unchanged_header = desired_bases == tuple(
             source[first:last] for first, last in layout.bases
         )
-        dropped = frozenset(
-            source[first:last]
-            for first, last in layout.bases
-            if source[first:last] not in desired_bases
+        prefix, dropped = cls._facade_owner_prefix(
+            current,
+            scope,
+            source[: layout.region[0]],
+            frozenset(
+                source[first:last]
+                for first, last in layout.bases
+                if source[first:last] not in desired_bases
+            ),
         )
         context = m.Infra.ModuleSkeletonRenderContext(
             class_name=actual.get_name(),
             base_class=None,
             base_module=None,
             module_prefix=cls._facade_prune_dropped_imports(
-                source[: layout.region[0]],
+                prefix,
                 dropped,
                 source[layout.region[0] :].replace(
                     source[layout.region[0] : layout.header_end], ""
