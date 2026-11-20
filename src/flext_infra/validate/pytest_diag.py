@@ -61,6 +61,10 @@ class FlextInfraPytestDiagExtractor(
         Every reported node must show one setup and one teardown phase, plus a
         call phase whenever setup passed. A native failed worker-crash report
         explains missing phases only for that node; repeated phases still fail.
+        A stopped session (no SessionFinish after a kill, or an Interrupted
+        exit status after a max-failures stop or the deadline's interruption)
+        leaves its in-flight items with only a passed setup: those never ran
+        their call and are not a lifecycle defect.
 
         Returns:
             The updated diagnostics result.
@@ -75,10 +79,13 @@ class FlextInfraPytestDiagExtractor(
             msg = f"pytest report log contains no events: {report_log}"
             raise ValueError(msg)
         warnings: MutableSequence[p.Infra.PytestReportEvent] = []
+        status: int | None = None
         for line in lines:
             event = m.Infra.PytestReportEvent.model_validate_json(line)
             if event.report_type == "WarningMessage":
                 warnings.append(event)
+            elif event.report_type == "SessionFinish":
+                status = event.exitstatus
             else:
                 diag = cls._record_case_event(event, diag)
         identities = [
@@ -90,8 +97,11 @@ class FlextInfraPytestDiagExtractor(
         ]
         for event, identity in zip(warnings, identities, strict=True):
             cls._record_warning(event, identity, diag)
+        stopped = status is None or status == c.Infra.PytestExitCode.INTERRUPTED
         for nodeid, phases in diag.reported_phases.items():
-            if phases.get("???") == "failed":
+            if phases.get("???") == "failed" or (
+                stopped and dict(phases) == {"setup": "passed"}
+            ):
                 continue
             if (
                 "setup" not in phases
