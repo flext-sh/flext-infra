@@ -703,25 +703,25 @@ class FlextInfraModelsWorkspace:
 
         cwd: Annotated[Path, m.Field(description="Resolved submitted directory")]
         identity: Annotated[
-            FlextInfraModelsGitIdentity.GitIdentityReport | None,
-            m.Field(description="Observed Git identity, absent outside a repository"),
-        ] = None
+            FlextInfraModelsGitIdentity.GitIdentityReport,
+            m.Field(description="Observed Git identity of the containing checkout"),
+        ]
         workspace: Annotated[
             FlextInfraModelsConfig.WorkspaceSpec | None,
             m.Field(description="Governed workspace contract when declared"),
         ] = None
         target: Annotated[
-            FlextInfraModelsConfig.RepositoryConformTarget | None,
+            FlextInfraModelsConfig.RepositoryConformTarget,
             m.Field(description="Effective governed project properties"),
-        ] = None
+        ]
         governed: Annotated[
             bool,
             m.Field(description="Whether repository-local FLEXT governance exists"),
         ] = False
         runtime: Annotated[
-            FlextInfraModelsWorkspace.WorkspaceRuntimeContext | None,
+            FlextInfraModelsWorkspace.WorkspaceRuntimeContext,
             m.Field(description="Physical environment and native resolver ownership"),
-        ] = None
+        ]
 
     class DirectUrlDirectoryInfo(m.ContractModel):
         """PEP 610 directory metadata for one installed distribution."""

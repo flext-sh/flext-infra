@@ -640,8 +640,8 @@ class FlextInfraProtocolsWorkspace:
             ...
 
         @property
-        def identity(self) -> FlextInfraProtocolsGitIdentity.GitIdentityReport | None:
-            """Observed Git identity, absent outside a repository."""
+        def identity(self) -> FlextInfraProtocolsGitIdentity.GitIdentityReport:
+            """Observed Git identity of the containing checkout."""
             ...
 
         @property
@@ -652,7 +652,7 @@ class FlextInfraProtocolsWorkspace:
         @property
         def target(
             self,
-        ) -> FlextInfraProtocolsConfigRepository.RepositoryConformTarget | None:
+        ) -> FlextInfraProtocolsConfigRepository.RepositoryConformTarget:
             """Effective governed project properties."""
             ...
 
@@ -664,7 +664,7 @@ class FlextInfraProtocolsWorkspace:
         @property
         def runtime(
             self,
-        ) -> FlextInfraProtocolsWorkspace.WorkspaceRuntimeContext | None:
+        ) -> FlextInfraProtocolsWorkspace.WorkspaceRuntimeContext:
             """Physical environment and native resolver ownership."""
             ...
 

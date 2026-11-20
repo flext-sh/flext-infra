@@ -1128,7 +1128,11 @@ class TestsFlextInfraPytestRunnerDatabase:
         )
         context = tm.ok(infra.project_context(repository))
         expected = (
-            repository / config.Infra.codegen.make.testmon_cache.database_filename
+            u.Infra.real_account_home()
+            / cache.home_cache_directory
+            / cache.external_storage_directory
+            / context.target.canonical_project_name
+            / cache.database_filename
         )
         redirected = tmp_path / "redirected-home"
         monkeypatch.setenv("HOME", str(redirected))

@@ -217,6 +217,16 @@ class TestsFlextInfraRuntimeRoot:
         tm.that(observed.lock_path, eq=expected / c.Infra.UV_LOCK_FILENAME)
 
     @staticmethod
+    def test_project_context_fails_with_the_git_identity_cause(tmp_path: Path) -> None:
+        """A checkout without Git identity is a failure, never an empty context."""
+        outside = tmp_path / "not-a-repository"
+        outside.mkdir()
+
+        result = infra.project_context(outside)
+
+        tm.fail(result)
+
+    @staticmethod
     def test_project_context_exposes_the_same_runtime_election(tmp_path: Path) -> None:
         """The public project context shares the bootstrap-safe ownership model."""
         repository = tmp_path / "project"
