@@ -1,0 +1,114 @@
+"""Publish bootstrap protocol sources for every declared owning package.
+
+Copyright (c) 2026 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+from collections.abc import Sequence
+from pathlib import Path
+
+from flext_infra import p, r, t
+from flext_infra._utilities import FlextInfraUtilitiesWorkspaceSnapshot
+from flext_infra.protocols_bootstrap import is_source_bootstrap_owned
+
+if TYPE_CHECKING:
+    from flext_infra._utilities.protocol_models import (
+        FlextInfraUtilitiesModelsProtocol,
+    )
+
+
+class FlextInfraUtilitiesModelsProtocolBootstrapSources:
+    """Own the source-bootstrap entry point and prepared-package planning."""
+
+    @classmethod
+    def bootstrap_protocol_model_sources(
+        cls: "FlextInfraUtilitiesModelsProtocol", repository_root: Path, *, ports: p.Infra.CodegenConformPorts
+    ) -> p.Result[bool]:
+        """Publish bootstrap sources for every declared package owning models.
+
+        Every package prepares its sources in one source view and the candidate
+        is admitted once, so the fresh-import gate sees the complete projection.
+
+        Returns:
+            Whether the authenticated, normalized candidate changed live sources.
+
+        """
+        root = repository_root.expanduser().resolve()
+        with FlextInfraUtilitiesWorkspaceSnapshot.facade_source_project(
+            root
+        ) as binding:
+            project = binding[0]
+            projection = cls._ModelProtocolProjection(root, project)
+            primary = projection.source_layout()
+            # Only the source-bootstrap owner (flext-infra's own protocol family)
+            # projects ahead of the surfaces: its engine imports those holders.
+            # A consumer's projection is planned by the lazy-init surface, in the
+            # same ordered candidate as its regenerated initializers. A repository
+            # without a primary package (a consumer) owns no source bootstrap.
+            if primary is None or not cls._is_bootstrap_owned_protocol_package(
+                primary[0]
+            ):
+                return r[bool].ok(value=False)
+            prepared = cls._bootstrap_prepared_packages(
+                root,
+                project,
+                (
+                    *(
+                        (layout[2], True)
+                        for layout in projection.namespacesource_layouts()
+                    ),
+                    (primary[2], False),
+                ),
+            )
+            if prepared.failure:
+                return r[bool].from_failure(prepared)
+            if not prepared.value:
+                return r[bool].ok(value=False)
+            return cls._bootstrap_publish_prepared(root, project, ports, prepared.value)
+
+    @staticmethod
+    def _is_bootstrap_owned_protocol_package(package_dir: Path) -> bool:
+        """Whether ``package_dir`` carries the source-bootstrap protocol facade.
+
+        Returns:
+            True when its ``_protocols`` initializer is source-bootstrap owned.
+
+        """
+        bootstrap_init = package_dir / "_protocols" / "__init__.py"
+        return bootstrap_init.is_file() and is_source_bootstrap_owned(bootstrap_init)
+
+    @classmethod
+    def _bootstrap_prepared_packages(
+        cls: "FlextInfraUtilitiesModelsProtocol",
+        root: Path,
+        project: p.Infra.RopeProject,
+        packages: Sequence[tuple[str, bool]],
+    ) -> p.Result[Sequence[t.Infra.BootstrapProtocolPackage]]:
+        """Prepare every declared package's bootstrap sources in one source view.
+
+        Returns:
+            The prepared packages declaring a projection, or the first failure.
+
+        """
+        prepared: list[t.Infra.BootstrapProtocolPackage] = []
+        for package_name, namespace_package in packages:
+            part = cls._bootstrap_package_sources(
+                root,
+                project,
+                package_name=package_name,
+                namespace_package=namespace_package,
+            )
+            if part.failure:
+                return r[
+                    Sequence[t.Infra.BootstrapProtocolPackage]
+                ].from_failure(part)
+            if part.value is not None:
+                prepared.append(part.value)
+        return r[Sequence[t.Infra.BootstrapProtocolPackage]].ok(prepared)
+
+
+__all__: list[str] = ["FlextInfraUtilitiesModelsProtocolBootstrapSources"]
