@@ -6,26 +6,28 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from collections.abc import Mapping, Sequence
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_infra import c, config, m, p, r, t
+from flext_infra._utilities._protocol_models.bootstrap_package import (
+    FlextInfraUtilitiesModelsProtocolBootstrapPackage,
+)
 from flext_infra.protocols_bootstrap import consolidate_protocol_owners
 
 if TYPE_CHECKING:
-    from flext_infra._utilities.protocol_models import (
-        FlextInfraUtilitiesModelsProtocol,
-    )
+    pass
 
 
-class FlextInfraUtilitiesModelsProtocolBootstrapAdmission:
+class FlextInfraUtilitiesModelsProtocolBootstrapAdmission(
+    FlextInfraUtilitiesModelsProtocolBootstrapPackage,
+):
     """Own the guarded admission and publication of prepared package sources."""
 
     @classmethod
     def _bootstrap_publish_prepared(
-        cls: "FlextInfraUtilitiesModelsProtocol",
+        cls,
         root: Path,
         project: p.Infra.RopeProject,
         ports: p.Infra.CodegenConformPorts,
@@ -81,7 +83,7 @@ class FlextInfraUtilitiesModelsProtocolBootstrapAdmission:
 
     @classmethod
     def _bootstrap_admit_candidate(
-        cls: "FlextInfraUtilitiesModelsProtocol",
+        cls,
         owner: tuple[Path, p.Infra.CodegenConformPorts],
         merged: tuple[
             tuple[Path, ...],

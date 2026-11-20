@@ -6,27 +6,24 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from collections.abc import Sequence
 from pathlib import Path
 
 from flext_infra import p, r, t
 from flext_infra._utilities import FlextInfraUtilitiesWorkspaceSnapshot
-from flext_infra.protocols_bootstrap import is_source_bootstrap_owned
-
-if TYPE_CHECKING:
-    from flext_infra._utilities.protocol_models import (
-        FlextInfraUtilitiesModelsProtocol,
-    )
+from flext_infra._utilities._protocol_models.bootstrap_admission import (
+    FlextInfraUtilitiesModelsProtocolBootstrapAdmission,
+)
 
 
-class FlextInfraUtilitiesModelsProtocolBootstrapSources:
+class FlextInfraUtilitiesModelsProtocolBootstrapSources(
+    FlextInfraUtilitiesModelsProtocolBootstrapAdmission,
+):
     """Own the source-bootstrap entry point and prepared-package planning."""
 
     @classmethod
     def bootstrap_protocol_model_sources(
-        cls: "FlextInfraUtilitiesModelsProtocol", repository_root: Path, *, ports: p.Infra.CodegenConformPorts
+        cls, repository_root: Path, *, ports: p.Infra.CodegenConformPorts
     ) -> p.Result[bool]:
         """Publish bootstrap sources for every declared package owning models.
 
@@ -70,20 +67,9 @@ class FlextInfraUtilitiesModelsProtocolBootstrapSources:
                 return r[bool].ok(value=False)
             return cls._bootstrap_publish_prepared(root, project, ports, prepared.value)
 
-    @staticmethod
-    def _is_bootstrap_owned_protocol_package(package_dir: Path) -> bool:
-        """Whether ``package_dir`` carries the source-bootstrap protocol facade.
-
-        Returns:
-            True when its ``_protocols`` initializer is source-bootstrap owned.
-
-        """
-        bootstrap_init = package_dir / "_protocols" / "__init__.py"
-        return bootstrap_init.is_file() and is_source_bootstrap_owned(bootstrap_init)
-
     @classmethod
     def _bootstrap_prepared_packages(
-        cls: "FlextInfraUtilitiesModelsProtocol",
+        cls,
         root: Path,
         project: p.Infra.RopeProject,
         packages: Sequence[tuple[str, bool]],
@@ -103,9 +89,7 @@ class FlextInfraUtilitiesModelsProtocolBootstrapSources:
                 namespace_package=namespace_package,
             )
             if part.failure:
-                return r[
-                    Sequence[t.Infra.BootstrapProtocolPackage]
-                ].from_failure(part)
+                return r[Sequence[t.Infra.BootstrapProtocolPackage]].from_failure(part)
             if part.value is not None:
                 prepared.append(part.value)
         return r[Sequence[t.Infra.BootstrapProtocolPackage]].ok(prepared)

@@ -105,6 +105,7 @@ class FlextInfraUtilitiesModelsProtocol(
         )
 
     @classmethod
+    @override
     def protocol_model_sources_from_source(
         cls,
         repository_root: Path,
