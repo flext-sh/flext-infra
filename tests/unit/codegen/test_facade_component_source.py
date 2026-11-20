@@ -79,14 +79,103 @@ class TestsFlextInfraFacadeComponentSource:
         tm.that("provider-only-marker" in rendered, eq=False)
 
     @staticmethod
-    def test_upstream_letter_rebase_keeps_comments_and_layout(
+    @c.Tests.MARK.parametrize(
+        ("bases", "body"),
+        [
+            ("FlextConstants, FlextSampleConstantsBase", ""),
+            (
+                "FlextConstants, FlextSampleConstantsBase",
+                '\n    class Sample:\n        """Domain namespace."""\n',
+            ),
+            ("FlextConstants", ""),
+        ],
+        ids=["flat", "root-and-nested", "family-only"],
+    )
+    def test_own_parts_compose_the_nested_domain_namespace(
+        tmp_path: Path, bases: str, body: str
+    ) -> None:
+        """Own parts never flatten onto a facade composed on an upstream family.
+
+        Premise (flext-0in0k.32): with no inherited namespace the planner
+        composed the package parts on the outer class, so ``t.Sample`` did
+        not exist; a facade with both root and nested parts composed them
+        twice. The outer class keeps only the upstream family and the nested
+        domain class composes the parts, at a fixed point.
+        """
+        root, package = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-sample",
+            package_name="flext_sample",
+        )
+        family = u.Infra.facade_family_declared_by(c.Infra.CONSTANTS_PY)
+        directory = package / family.directory
+        (package / c.Infra.INIT_PY).write_text("", encoding=c.DEFAULT_ENCODING)
+        directory.mkdir(parents=True, exist_ok=True)
+        (directory / c.Infra.INIT_PY).write_text(
+            "from flext_sample._constants.base import FlextSampleConstantsBase\n"
+            "__all__ = ['FlextSampleConstantsBase']\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        (directory / "base.py").write_text(
+            '"""Sample part."""\n\n'
+            "from typing import ClassVar\n\n\n"
+            "class FlextSampleConstantsBase:\n"
+            "    MARKER: ClassVar[str] = 'part'\n\n\n"
+            "__all__ = ['FlextSampleConstantsBase']\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        facade = package / c.Infra.CONSTANTS_PY
+        facade.write_text(
+            '"""Sample facade."""\n\n'
+            "from flext_core import FlextConstants\n\n"
+            "from flext_sample._constants import FlextSampleConstantsBase\n\n\n"
+            f"class FlextSampleConstants({bases}):\n"
+            '    """Sample constants."""\n' + body + "\n\n"
+            "c = FlextSampleConstants\n"
+            "__all__ = ['FlextSampleConstants', 'c']\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        with FlextInfraRopeWorkspace.open_workspace(root) as rope:
+            rendered = tm.ok(
+                u.Infra.facade_component_source(
+                    rope.rope_project, facade, directory, family=c.Infra.FacadeFamily.C
+                )
+            )
+        tree = ast.parse(rendered)
+        outer = next(
+            node
+            for node in tree.body
+            if isinstance(node, ast.ClassDef) and node.name == "FlextSampleConstants"
+        )
+        tm.that([ast.unparse(base) for base in outer.bases], eq=["FlextConstants"])
+        nested = next(
+            node
+            for node in outer.body
+            if isinstance(node, ast.ClassDef) and node.name == "Sample"
+        )
+        tm.that(
+            [ast.unparse(base) for base in nested.bases],
+            eq=["FlextSampleConstantsBase"],
+        )
+        facade.write_text(rendered, encoding=c.DEFAULT_ENCODING)
+        with FlextInfraRopeWorkspace.open_workspace(root) as rope:
+            again = tm.ok(
+                u.Infra.facade_component_source(
+                    rope.rope_project, facade, directory, family=c.Infra.FacadeFamily.C
+                )
+            )
+        tm.that(again, eq=rendered)
+
+    @staticmethod
+    def test_upstream_base_keeps_comments_and_layout(
         tmp_path: Path,
     ) -> None:
-        """Rebasing on the upstream letter edits names only, never the layout.
+        """Composing on an upstream family keeps its class name and the layout.
 
         Premise (flext-7snh0): the canonicalizer re-rendered the whole facade,
-        dropping every comment and emitting unwrapped lines that the
-        generator's own lint then rejected in the consumer.
+        dropping every comment. The upstream base stays its class name
+        (ADR-028 Decision 10, ``facade-base-by-class-name``) and the authored
+        domain namespace survives with its note.
         """
         root, package = u.Tests.create_lazy_init_workspace(
             tmp_path,
@@ -101,11 +190,12 @@ class TestsFlextInfraFacadeComponentSource:
         facade = package / c.Infra.CONSTANTS_PY
         facade.write_text(
             '"""Sample facade."""\n\n'
+            "from typing import ClassVar\n\n"
             "from flext_core import FlextConstants\n\n\n"
             "class FlextSampleConstants(FlextConstants):\n"
             "    # Authored note that must survive the canonical projection.\n"
-            "    class FlextSample:\n"
-            "        MARKER = 'kept'\n\n\n"
+            "    class Sample:\n"
+            "        MARKER: ClassVar[str] = 'kept'\n\n\n"
             "c = FlextSampleConstants\n"
             "__all__ = ['FlextSampleConstants', 'c']\n",
             encoding=c.DEFAULT_ENCODING,
@@ -121,6 +211,6 @@ class TestsFlextInfraFacadeComponentSource:
             )
         ast.parse(rendered)
         tm.that(rendered, has="# Authored note that must survive")
-        tm.that(rendered, has="from flext_core import c")
-        tm.that(rendered, has="class FlextSampleConstants(c):")
+        tm.that(rendered, has="from flext_core import FlextConstants")
+        tm.that(rendered, has="class FlextSampleConstants(FlextConstants):")
         tm.that(rendered, has="    class Sample:")

@@ -775,107 +775,172 @@ class FlextInfraUtilitiesFacadeComponents:
             FlextInfraUtilitiesRopeRuntimeModules.file_resource_at(project, path),
             directory,
         )
-        return r[Mapping[Path, str]].ok(
-            {} if unpublished is None else {path: unpublished}
-        )
+        if unpublished is not None:
+            return r[Mapping[Path, str]].ok({path: unpublished})
+        nested = cls._facade_nested_domain_source(project, path, directory)
+        return r[Mapping[Path, str]].ok({} if nested is None else {path: nested})
 
     @staticmethod
-    def _canonical_facade_source(
-        source: str,
-        family: c.Infra.FacadeFamily,
-        *,
-        own_package: str,
-    ) -> str:
-        """Project the upstream letter base and the domain nested class.
-
-        Each edit replaces only its own name span in the original text, so
-        every comment and the layout of the facade survive.
+    def _facade_domain_name(path: Path) -> str | None:
+        """Name the domain namespace a package facade nests its own parts in.
 
         Returns:
-            The canonical facade source, unchanged when it already conforms.
+            The class stem without ``Flext`` (``flext_db_oracle`` -> ``DbOracle``),
+            or ``None`` for a path outside a ``flext_<domain>`` package.
 
         """
-        tree = ast.parse(source)
-        upstream = {
-            alias.asname or alias.name: node.module
-            for node in tree.body
-            if isinstance(node, ast.ImportFrom)
-            and node.module is not None
-            and node.module.startswith("flext_")
-            and node.module.partition(".")[0] != own_package
-            for alias in node.names
-        }
-        lines = source.encode().splitlines(keepends=True)
-        edits: dict[tuple[int, int, int, int], str] = {}
-        for node in tree.body:
-            if isinstance(node, ast.ClassDef):
-                FlextInfraUtilitiesFacadeComponents._strip_nested_prefix(
-                    node, lines, edits
+        package = path.parent.name
+        if not package.startswith("flext_"):
+            return None
+        return u.derive_class_stem(package).removeprefix("Flext") or None
+
+    @classmethod
+    def _facade_nested_domain_source(
+        cls, project: p.Infra.RopeProject, path: Path, directory: Path
+    ) -> str | None:
+        """Move a facade's own-package bases into its nested domain namespace.
+
+        A facade composed on an upstream FLEXT family inherits only that
+        family; the package's own parts compose the nested domain class
+        (``class FlextDbOracleTypes(t): class DbOracle(<parts>)``), never the
+        outer class (ADR-028 Decision 10; bead ``flext-0in0k.32``). Rope's
+        class layout and base bindings own every span and origin.
+
+        A facade whose family declares parts but which has no nested domain
+        class gains one, even with no own root base, so the planner composes
+        the family providers there in the same pass.
+
+        Returns:
+            The rewritten source, or ``None`` when the facade already composes
+            its parts only through its nested domain namespace.
+
+        """
+        domain = cls._facade_domain_name(path)
+        resource = FlextInfraUtilitiesRopeRuntimeModules.file_resource_at(project, path)
+        published = FlextInfraUtilitiesRopeAnalysisImportState.published_facade_owner(
+            project, resource
+        )
+        if domain is None or published is None:
+            return None
+        module = FlextInfraUtilitiesRopeRuntimeTypes.require_source_module(
+            project.get_pymodule(resource)
+        )
+        owner = module.get_attributes()[published[1]].get_object()
+        if not FlextInfraUtilitiesRopeRuntimeTypes.py_class(owner):
+            return None
+        layout = module.get_source_binding_index().class_layout(owner.get_scope())
+        parts, upstream = cls._facade_own_part_bases(layout, path.parent.name)
+        nested = domain in owner.get_scope().get_defined_names()
+        if (
+            not upstream
+            or layout.arguments_region is None
+            or (
+                not parts
+                and (
+                    nested or not cls.facade_component_declarations(project, directory)
                 )
-                FlextInfraUtilitiesFacadeComponents._rebase_upstream_letter(
-                    tree, node, (upstream, family), edits
-                )
-        for (line, start, end_line, end), text in sorted(edits.items(), reverse=True):
-            lines[line - 1 : end_line] = [
-                lines[line - 1][:start] + text.encode() + lines[end_line - 1][end:]
-            ]
-        return b"".join(lines).decode()
+            )
+        ):
+            return None
+        source = module.source_code
+        start, end = layout.arguments_region
+        names = [source[first:last] for first, last in parts]
+        insertion, text = (
+            cls._facade_namespace_base_insertion(module, owner, domain, names)
+            if nested
+            else (
+                layout.body[1],
+                cls._facade_namespace_class_text(
+                    domain,
+                    names,
+                    layout.region[0]
+                    - source.rfind("\n", 0, layout.region[0])
+                    - 1
+                    + cls._facade_indent_step(project),
+                ),
+            )
+        )
+        return "".join((
+            source[:start],
+            ", ".join(
+                source[first:last]
+                for first, last in (*layout.bases, *layout.keywords)
+                if (first, last) not in parts
+            ),
+            source[end:insertion],
+            text,
+            source[insertion:],
+        ))
 
     @staticmethod
-    def _strip_nested_prefix(
-        facade: ast.ClassDef,
-        lines: Sequence[bytes],
-        edits: MutableMapping[tuple[int, int, int, int], str],
-    ) -> None:
-        """Name each nested namespace by its domain stem, never ``Flext<Domain>``."""
-        for child in facade.body:
-            if isinstance(child, ast.ClassDef) and child.name.startswith("Flext"):
-                start = lines[child.lineno - 1].index(
-                    child.name.encode(), child.col_offset
-                )
-                span = (child.lineno, start, child.lineno, start + len(child.name))
-                edits[span] = child.name.removeprefix("Flext")
+    def _facade_namespace_class_text(
+        domain: str, names: Sequence[str], column: int
+    ) -> str:
+        """Render the nested domain class composing ``names`` at ``column``.
+
+        Returns:
+            The class block appended after the owner body.
+
+        """
+        margin = " " * column
+        return (
+            f"\n\n{margin}class {domain}"
+            f"{f'({", ".join(names)})' if names else ''}:\n"
+            f'{margin}    """Domain namespace of the package parts."""\n'
+        )
 
     @staticmethod
-    def _rebase_upstream_letter(
-        tree: ast.Module,
-        facade: ast.ClassDef,
-        target: tuple[Mapping[str, str], c.Infra.FacadeFamily],
-        edits: MutableMapping[tuple[int, int, int, int], str],
-    ) -> None:
-        """Replace the first upstream facade base and its import by the letter.
+    def _facade_namespace_base_insertion(
+        module: p.Infra.RopeSourceModule,
+        owner: p.Infra.RopeSourceClass,
+        domain: str,
+        names: Sequence[str],
+    ) -> tuple[int, str]:
+        """Plan the outer parts the existing nested namespace does not compose.
 
-        A facade already based on the letter keeps every other base, so a
-        sister facade composed beside it is never removed.
+        Returns:
+            The offset and text that append the missing parts to its bases.
 
         Raises:
-            ValueError: If a rebound name carries no source end location.
+            TypeError: If the domain name is bound to a non-class.
 
         """
-        upstream, family = target
-        base = next(
-            (
-                item
-                for item in facade.bases
-                if isinstance(item, ast.Name) and item.id in upstream
-            ),
-            None,
-        )
-        if base is None or base.id == family.value:
-            return
-        rebound = [base] + [
-            alias
-            for node in tree.body
-            if isinstance(node, ast.ImportFrom) and node.module == upstream[base.id]
-            for alias in node.names
-            if (alias.asname or alias.name) == base.id
-        ]
-        for item in rebound:
-            if item.end_lineno is None or item.end_col_offset is None:
-                msg = f"{ast.dump(item)} has no source end location"
-                raise ValueError(msg)
-            span = (item.lineno, item.col_offset, item.end_lineno, item.end_col_offset)
-            edits[span] = family.value
+        nested = owner.get_attributes()[domain].get_object()
+        if not FlextInfraUtilitiesRopeRuntimeTypes.py_class(nested):
+            msg = (
+                f"{owner.get_name()}.{domain} is bound to a non-class; the domain "
+                "namespace must be a class composing the package parts"
+            )
+            raise TypeError(msg)
+        inner = module.get_source_binding_index().class_layout(nested.get_scope())
+        source = module.source_code
+        present = {source[first:last] for first, last in inner.bases}
+        missing = [name for name in names if name not in present]
+        if inner.arguments_region is None:
+            return inner.name_region[1], f"({', '.join(missing)})" if missing else ""
+        return inner.arguments_region[1], "".join(f", {name}" for name in missing)
+
+    @staticmethod
+    def _facade_own_part_bases(
+        layout: p.Infra.RopeSourceClassLayout, package: str
+    ) -> tuple[tuple[tuple[int, int], ...], bool]:
+        """Split a facade's bound bases into own parts and an upstream family.
+
+        Returns:
+            The base spans declared inside ``package`` and whether another
+            FLEXT package supplies a base.
+
+        """
+        parts: list[tuple[int, int]] = []
+        upstream = False
+        for span, binding in layout.base_bindings:
+            origin = None if binding is None else binding.get_object().get_module()
+            root = None if origin is None else origin.get_name().partition(".")[0]
+            if root == package:
+                parts.append(span)
+            else:
+                upstream = upstream or (root or "").startswith("flext_")
+        return tuple(parts), upstream
 
     @classmethod
     def _facade_foreign_publications(
@@ -1393,14 +1458,15 @@ class FlextInfraUtilitiesFacadeComponents:
             t.Infra.RopeSourceMemberResolverFactory,
         ]
     ]:
-        """Elect the published facade owner and its sole inherited namespace.
+        """Elect the published facade owner and its sole composing namespace.
+
+        The namespace is the inherited one, else the nested domain class;
+        only a facade with neither (the foundation) composes on its owner.
+        An inconsistent hierarchy escapes: a stale projection is repaired,
+        never flattened onto the owner.
 
         Returns:
             The owner, namespace, family declarations and their member resolver.
-
-        Raises:
-            InconsistentHierarchyError: If ``not
-                module.source_code.startswith(c.Infra.AUTOGEN_HEADER)``.
 
         """
         published = FlextInfraUtilitiesRopeAnalysisImportState.published_facade_owner(
@@ -1470,20 +1536,28 @@ class FlextInfraUtilitiesFacadeComponents:
                 project, sources=sources
             )
         )
-        try:
-            namespaces = cls._facade_inherited_namespaces(
-                owner, directory, resolver_factory=resolver_factory, project=project
-            )
-        except rope_exceptions.InconsistentHierarchyError:
-            if not module.source_code.startswith(c.Infra.AUTOGEN_HEADER):
-                raise
-            namespaces = ()
+        namespaces = cls._facade_inherited_namespaces(
+            owner, directory, resolver_factory=resolver_factory, project=project
+        )
         if len(namespaces) > 1:
             message = f"Competing inherited facade namespaces: {path}"
             return result_type.fail(message)
+        domain = cls._facade_domain_name(path)
+        nested = (
+            owner.get_attributes()[domain].get_object()
+            if domain is not None and domain in owner.get_scope().get_defined_names()
+            else None
+        )
+        elected = (
+            namespaces[0]
+            if namespaces
+            else nested
+            if FlextInfraUtilitiesRopeRuntimeTypes.py_class(nested)
+            else owner
+        )
         return result_type.ok((
             owner,
-            namespaces[0] if namespaces else owner,
+            elected,
             declarations,
             resolver_factory,
         ))
