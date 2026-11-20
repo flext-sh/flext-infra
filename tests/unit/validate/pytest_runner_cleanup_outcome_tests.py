@@ -14,7 +14,7 @@ import time
 from pathlib import Path
 
 from flext_infra import config
-from tests import c, m, tm, u
+from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraPytestRunnerCleanupOutcome:
@@ -25,11 +25,13 @@ class TestsFlextInfraPytestRunnerCleanupOutcome:
     @c.Tests.MARK.skipif(sys.platform != "linux", reason="prctl child subreaper")
     def test_timed_out_suite_with_an_unreaped_member_keeps_its_receipt(
         cached_runner_project: Path,
+        capfd: t.Tests.CaptureFixture[str],
     ) -> None:
         """A suite whose cleanup leaves a member behind still records its outcome.
 
         The test leaves a same-group child that ignores the soft signals, and
-        the suite clock is nearly spent, so the deadline kills the suite.
+        the suite clock is nearly spent, so the deadline kills the suite. The
+        complete run holds no Testmon lease, so its clock is not re-armed.
         While this process is the child subreaper and does not wait, the
         orphan stays a zombie member: the process owner fails the run with
         the timeout in ``error_data``, and the runner records that outcome as
@@ -54,7 +56,7 @@ class TestsFlextInfraPytestRunnerCleanupOutcome:
         runner = runner.model_copy(
             update={
                 "started_at_monotonic": time.monotonic()
-                - (policy.run_timeout_seconds - policy.termination_grace_seconds - 8),
+                - (policy.run_timeout_seconds - policy.termination_grace_seconds - 10),
             },
         )
         prctl = ctypes.CDLL(None, use_errno=True).prctl
@@ -63,7 +65,7 @@ class TestsFlextInfraPytestRunnerCleanupOutcome:
         tm.that(prctl(get_child_subreaper, ctypes.byref(previous), 0, 0, 0), eq=0)
         tm.that(prctl(set_child_subreaper, 1, 0, 0, 0), eq=0)
         try:
-            exit_code = tm.ok(runner.execute())
+            exit_code = tm.ok(runner.execute_full())
         finally:
             tm.that(prctl(set_child_subreaper, previous.value, 0, 0, 0), eq=0)
             if pid_file.is_file():
@@ -77,3 +79,7 @@ class TestsFlextInfraPytestRunnerCleanupOutcome:
         )
         tm.ok(outcome.timed_out)
         tm.that(outcome.raw_return_code, eq=-signal.SIGKILL)
+        tm.that(
+            capfd.readouterr().err,
+            has="pytest suite process cleanup: owned process boundary was not empty",
+        )
