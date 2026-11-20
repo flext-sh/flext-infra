@@ -739,9 +739,10 @@ class FlextInfraUtilitiesLazyInitPlan:
     ) -> Mapping[tuple[str, str], FlextInfraModelsCodegenLazyInit.LazyInitPlan]:
         """Return the family facade class of each root-namespace module and its plan.
 
-        Only the namespace families (``c``, ``t``, ``p``, ``m``, ``u``, derived
-        from the core package) compose namespace mixins; another facade, such
-        as a service base, composes model mixins that stay real.
+        The namespace families (``c``, ``t``, ``p``, ``m``, ``u``, derived from
+        the core package) compose namespace mixins. Another root facade class is
+        a root only when its project declares it in ``deferred_facades``
+        (operator ruling 2026-11-19); its parts pass the same stand-in checks.
 
         Returns:
             The planned root package of each ``(module, class)`` facade pair.
@@ -750,9 +751,22 @@ class FlextInfraUtilitiesLazyInitPlan:
         python = FlextInfraUtilitiesPythonModel
         families = FlextInfraUtilitiesCodegenNamespace.facade_families()
         roots: dict[tuple[str, str], FlextInfraModelsCodegenLazyInit.LazyInitPlan] = {}
+        declared: dict[Path, frozenset[str]] = {}
         for plan in run.plans.values():
             if not cls.lazy_init_is_facade_root(plan.context):
                 continue
+            project = FlextInfraUtilitiesLazyInitRender.lazy_init_project_root(
+                run.model, plan.context.pkg_dir
+            )
+            if project not in declared:
+                declared[project] = frozenset(
+                    FlextInfraUtilitiesProjectManagedArtifacts
+                    .load_repository_declaration_inputs(
+                        project, source_project=run.model.source_project
+                    )
+                    .unwrap()
+                    .spec.deferred_facades
+                )
             entry = run.index.packages_by_dir.get(str(plan.context.pkg_dir))
             for module in entry.modules if entry is not None else ():
                 if (
@@ -761,13 +775,14 @@ class FlextInfraUtilitiesLazyInitPlan:
                     or module.file_path.name == c.Infra.INIT_PY
                 ):
                     continue
-                owner = python.python_model_facade_owner(
-                    python.python_model_module_at(
-                        run.model, module.file_path, module.module_name
-                    )
+                facts = python.python_model_module_at(
+                    run.model, module.file_path, module.module_name
                 )
+                owner = python.python_model_facade_owner(facts)
                 if owner is not None and owner[0] in families:
                     roots[module.module_name, owner[1]] = plan
+                for name in declared[project] & facts.classes.keys():
+                    roots[module.module_name, name] = plan
         return roots
 
     @classmethod
