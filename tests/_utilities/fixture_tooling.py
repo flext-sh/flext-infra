@@ -433,13 +433,16 @@ class TestsFlextInfraUtilitiesToolingFixture:
             )
         # Without fixture wheels, Rope resolves pydantic and the other runtime
         # libraries through the generator runtime (uv ignores
-        # --system-site-packages when the parent is itself a uv venv).
+        # --system-site-packages when the parent is itself a uv venv). The
+        # runtime is bound as a site directory so its own .pth files (editable
+        # installs such as flext-infra's) run and its packages are importable.
         fixture_site = next(environment.glob("lib/python*/site-packages"), None)
         if fixture_site is None:
             return created
+        purelib = Path(sysconfig.get_paths()["purelib"])
         return u.Cli.files_write_text(
             fixture_site / "flext-fixture-runtime.pth",
-            f"{Path(sysconfig.get_paths()['purelib'])}\n",
+            f"import site; site.addsitedir({str(purelib)!r})\n",
         )
 
     @staticmethod
