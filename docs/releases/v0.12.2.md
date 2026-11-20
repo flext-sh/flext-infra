@@ -12,6 +12,8 @@
 
 ## Pull requests since last release
 
+- fix(deps): relock flext-tests at the standalone catalog fix; project the load5 20
+  admission (#2714)
 - fix(tests): fixture runtime binds as a site dir; fixture manifests are complete
   (flext-h4lwi) (#2715)
 - fix(release): read paginated forge inventories page by page (flext-rb4cl) (#2711)
