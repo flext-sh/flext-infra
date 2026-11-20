@@ -4179,7 +4179,8 @@ staged Markdown file runs the `markdown` and `markdown-format` gates over the
 repository, never a raw `rumdl` pass, so a declared foreign projected block
 (`tooling.tools.markdown.projected-blocks`) reads the same in the hook as in
 `make check` and `make fmt`. When enabled, the generated pre-push hook
-drops inherited `CI` and runs the workflow's primary check once. The local
+drops inherited `CI` and runs the workflow's primary check once, then the
+incremental tests, because CI runs setup and the primary check only. The local
 workflow retains the complete check and test steps. Every gate blocks in
 every context that runs it; there is no informative or advisory gate.
 Conflict detection uses the canonical Git inventory, including unpublished files,

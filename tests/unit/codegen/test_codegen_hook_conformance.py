@@ -332,6 +332,30 @@ class TestsFlextInfraCodegenHookConformance:
         tm.that(rendered, lacks="flext-pre-push-")
 
     @staticmethod
+    def test_pre_push_runs_the_incremental_tests_after_the_primary_check() -> None:
+        """CI runs setup and the primary check only, so pre-push runs the tests.
+
+        Operator decision 2026-11-19: a project that opts into pre-push gets
+        its primary check followed by its incremental tests in that hook.
+        """
+        rendered = tm.ok(
+            u.Cli.template_render(
+                _HOOK_TEMPLATE,
+                m.Infra.MakeWorkflowRenderSpec(
+                    scenario_data_roots=config.Infra.codegen.exclusions.scenario_data_roots,
+                    dist="flext-demo",
+                    make=config.Infra.codegen.make.model_copy(
+                        update={"pre_push": True},
+                    ),
+                ),
+            ),
+        )
+        check = rendered.find("id: flext-pre-push-check-primary")
+        tests = rendered.find("id: flext-pre-push-tests-primary")
+        tm.that(check, ne=-1)
+        tm.that(tests > check, truth=True)
+
+    @staticmethod
     def test_enabled_gates_render_exactly_the_declared_stages() -> None:
         """Each gate renders exactly its configured workflow rows, no more."""
         make = config.Infra.codegen.make
