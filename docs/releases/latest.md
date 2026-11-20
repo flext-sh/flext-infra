@@ -12,6 +12,8 @@
 
 ## Pull requests since last release
 
+- fix(tests): fixture runtime binds as a site dir; fixture manifests are complete
+  (flext-h4lwi) (#2715)
 - fix(release): read paginated forge inventories page by page (flext-rb4cl) (#2711)
 - fix(codegen): apply the independent review of #2701 (flext-5w9c0) (#2712)
 - fix(make): regenerate the Makefile so every verb admits at load5 20 (flext-kugv4)
