@@ -1096,7 +1096,7 @@ class TestsFlextInfraPytestRunner:
 
 
 class TestsFlextInfraPytestRunnerDatabase:
-    """The incremental database location is owned by the runner, not the caller."""
+    """Testmon keeps its native database file at the checkout root."""
 
     @staticmethod
     @c.Tests.MARK.parametrize(
@@ -1106,13 +1106,16 @@ class TestsFlextInfraPytestRunnerDatabase:
             c.Infra.PytestExecutionMode.FULL,
         ],
     )
-    def test_project_database_ignores_a_redirected_home(
+    def test_database_is_the_native_checkout_default(
         tmp_path: Path,
         monkeypatch: t.Tests.MonkeyPatch,
         *,
         mode: c.Infra.PytestExecutionMode,
     ) -> None:
-        """One database per project at the real account home; full runs have none."""
+        """Incremental runs use the checkout-root default; full runs have none.
+
+        A redirected ``HOME`` or ``XDG_CACHE_HOME`` never moves it.
+        """
         repository = tmp_path / "project"
         u.Tests.WorktreeFixture.initialize_governed_project(
             repository,
@@ -1124,7 +1127,6 @@ class TestsFlextInfraPytestRunnerDatabase:
             ),
         )
         context = tm.ok(infra.project_context(repository))
-        cache = config.Infra.codegen.make.testmon_cache
         expected = (
             u.Infra.real_account_home()
             / cache.home_cache_directory

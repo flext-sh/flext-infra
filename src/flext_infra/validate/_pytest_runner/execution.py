@@ -60,7 +60,8 @@ class FlextInfraPytestRunnerExecution(
         """Declare child overrides and removals at the process boundary.
 
         Unselected full and coverage suites own no Testmon plugin, so their
-        children neither receive nor inherit a database location.
+        children never inherit a database location: Testmon keeps its native
+        default in the checkout.
 
         Returns:
             The process options shared by every runner invocation.
@@ -69,10 +70,6 @@ class FlextInfraPytestRunnerExecution(
             ValueError: If test target has no declared project owner.
 
         """
-        testmon_keys = (
-            config.Infra.codegen.make.testmon_cache.database_environment_variable,
-            c.Infra.PYTEST_ENV_TESTMON_DATAFILE,
-        )
         source_root = self.repository_root
         if self.target_file is not None:
             target_root = u.Infra.nearest_project_root(
@@ -95,11 +92,9 @@ class FlextInfraPytestRunnerExecution(
                 )
                 if path
             )
-        if execution_mode.is_incremental:
-            if database is None:
-                msg = "incremental pytest requires its external Testmon database"
-                raise ValueError(msg)
-            overrides.update(dict.fromkeys(testmon_keys, str(database)))
+        if execution_mode.is_incremental and database is None:
+            msg = "incremental pytest requires its Testmon database"
+            raise ValueError(msg)
         if self.profile_enabled or self.collection_command_prefix:
             overrides[c.Infra.PYTEST_PROFILE_PROCESS_DIRECTORY_ENV] = (
                 self.pytest_policy().profile_process_directory
@@ -107,7 +102,7 @@ class FlextInfraPytestRunnerExecution(
         remove_keys = (
             *c.Infra.PYTEST_INHERITED_ENV_REMOVE_KEYS,
             "GITHUB_OUTPUT",
-            *(testmon_keys if not execution_mode.is_incremental else ()),
+            c.Infra.PYTEST_ENV_TESTMON_DATAFILE,
         )
         return m.Cli.ProcessOptions(
             env=overrides,
@@ -134,6 +129,10 @@ class FlextInfraPytestRunnerExecution(
         Returns:
             The selection plan or original failed collection outcome.
 
+        Raises:
+            RuntimeError: If the incremental selection or coverage inventory
+                process fails natively.
+
         """
         complete = complete or self.target_file is not None
         artifact = "testmon-inventory" if complete else "testmon-selection"
@@ -150,18 +149,17 @@ class FlextInfraPytestRunnerExecution(
             sys.stdout.write(
                 f"pytest {artifact} profile: {manifest_path.with_suffix('.pstats')}\n",
             )
-        outcome = u.Cli.run_to_file(
-            command,
-            selection_log,
-            cwd=self.repository_root,
-            options=self._selection_process_options(
-                execution_mode=execution_mode, database=database
-            ),
-        ).unwrap()
-        self._record_process_outcome(
+        outcome = self._record_process_outcome(
             report_dir,
             "inventory" if complete else "selection",
-            outcome,
+            u.Cli.run_to_file(
+                command,
+                selection_log,
+                cwd=self.repository_root,
+                options=self._selection_process_options(
+                    execution_mode=execution_mode, database=database
+                ),
+            ),
             report_log=report_log,
             raw_log=selection_log,
         )
@@ -216,6 +214,18 @@ class FlextInfraPytestRunnerExecution(
                     raw_log=selection_log,
                     outcome=outcome,
                 )
+                if (
+                    not complete
+                    or execution_mode == c.Infra.PytestExecutionMode.COVERAGE
+                ):
+                    detail = selection_log.read_text(
+                        encoding=c.DEFAULT_ENCODING,
+                    ).strip()
+                    msg = (
+                        f"testmon selection failed "
+                        f"({outcome.raw_return_code}): {detail}"
+                    )
+                    raise RuntimeError(msg)
             return outcome
         if self.profile_enabled or self.collection_command_prefix:
             self._bind_child_profile(report_dir, manifest_path.with_suffix(".pstats"))
@@ -379,20 +389,19 @@ class FlextInfraPytestRunnerExecution(
             report_dir / c.Infra.GATE_CAPTURE_START_FILENAME,
             capture.model_dump_json(round_trip=True) + "\n",
         ).unwrap()
-        outcome = u.Cli.run_to_file(
-            command,
-            report_dir / "pytest.log",
-            cwd=self.repository_root,
-            options=self._selection_process_options(
-                execution_mode=execution_mode,
-                database=database,
-                live=True,
-            ),
-        ).unwrap()
-        self._record_process_outcome(
+        outcome = self._record_process_outcome(
             report_dir,
             "suite",
-            outcome,
+            u.Cli.run_to_file(
+                command,
+                report_dir / "pytest.log",
+                cwd=self.repository_root,
+                options=self._selection_process_options(
+                    execution_mode=execution_mode,
+                    database=database,
+                    live=True,
+                ),
+            ),
             report_log=report_dir / "events.jsonl",
             raw_log=report_dir / "pytest.log",
         )
@@ -417,17 +426,41 @@ class FlextInfraPytestRunnerExecution(
         self,
         report_dir: Path,
         phase: str,
-        outcome: p.Cli.ProcessOutcome,
+        run: p.Result[p.Cli.ProcessOutcome],
         *,
         report_log: Path,
         raw_log: Path,
-    ) -> None:
+    ) -> p.Cli.ProcessOutcome:
         """Preserve the process owner's causal fields even when JUnit is absent.
 
+        A failed process cleanup still carries the observed exit, timeout and
+        forwarded signal in ``error_data``; that outcome is recorded like any
+        other, so a timed-out suite keeps its receipt.
+
+        Returns:
+            The recorded process outcome.
+
         Raises:
-            RuntimeError: If a zero return code follows an interrupted lifecycle.
+            RuntimeError: If the process reported no outcome, if a zero return
+                code follows an interrupted lifecycle, or if a successful
+                process left a cleanup failure.
 
         """
+        if run.success:
+            outcome = run.value
+        else:
+            data = run.error_data or {}
+            exit_code = data.get(c.Cli.PROCESS_EXIT_CODE_KEY)
+            if not isinstance(exit_code, int):
+                msg = f"pytest {phase} process reported no outcome: {run.error}"
+                raise RuntimeError(msg)
+            signal = data.get(c.Cli.PROCESS_FORWARDED_SIGNAL_KEY)
+            outcome = m.Cli.ProcessOutcome(
+                raw_return_code=exit_code,
+                timed_out=data.get(c.Cli.PROCESS_TIMED_OUT_KEY) is True,
+                forwarded_signal=signal if isinstance(signal, int) else None,
+            )
+            sys.stderr.write(f"pytest {phase} process cleanup: {run.error}\n")
         recorded = m.Cli.ProcessOutcome.model_validate(outcome, from_attributes=True)
         receipt = report_dir / f"{phase}-outcome.json"
         u.Cli.atomic_write_text_file(
@@ -458,6 +491,29 @@ class FlextInfraPytestRunnerExecution(
                 f"lifecycle: {receipt}"
             )
             raise RuntimeError(msg)
+        if run.failure and u.Cli.process_succeeded(outcome):
+            msg = f"pytest {phase} succeeded but its cleanup failed: {run.error}"
+            raise RuntimeError(msg)
+        return outcome
+
+    @staticmethod
+    def _interrupted_suite(outcome: p.Cli.ProcessOutcome) -> bool:
+        """Return whether the suite lifecycle ended before its natural end.
+
+        An interrupted suite may leave its last dispatched item in setup with
+        no call or teardown report; diagnostics retain that tail as reported
+        but not executed so the accounting publishes the executed prefix as
+        incomplete instead of rejecting the whole run.
+
+        Returns:
+            Whether the suite lifecycle was interrupted.
+
+        """
+        return (
+            outcome.timed_out
+            or outcome.raw_return_code < 0
+            or outcome.raw_return_code == c.Infra.PytestExitCode.INTERRUPTED
+        )
 
     @staticmethod
     def _completed_failure(outcome: p.Cli.ProcessOutcome, report_dir: Path) -> bool:
@@ -506,8 +562,16 @@ class FlextInfraPytestRunnerExecution(
         cache_restored: bool = False,
         raw_return_code: int = 0,
         cache_hit: bool = False,
+        interrupted: bool,
     ) -> p.Result[int]:
         """Reject incomplete evidence and publish one bounded summary.
+
+        Args:
+            report_dir: The report directory of the run.
+            cache_restored: Whether a testmon cache was restored.
+            raw_return_code: The native process exit status.
+            cache_hit: Whether the run was a verified incremental cache hit.
+            interrupted: Whether the suite ended before its natural end.
 
         Returns:
             The resulting ``p.Result[int]``.
@@ -517,7 +581,10 @@ class FlextInfraPytestRunnerExecution(
                 cache hit; or if a testmon cache hit cannot contain executed tests.
 
         """
-        diagnostics = self._diagnostics(report_dir).unwrap()
+        diagnostics = self._diagnostics(
+            report_dir,
+            interrupted=interrupted,
+        ).unwrap()
         accounting = self._accounting(
             report_dir / "junit.xml",
             report_dir / "pytest.log",
@@ -866,7 +933,11 @@ class FlextInfraPytestRunnerExecution(
             outcome, report_dir
         ):
             return self._unfinished_result(outcome, report_dir)
-        return self._finalize(report_dir, raw_return_code=outcome.raw_return_code)
+        return self._finalize(
+            report_dir,
+            raw_return_code=outcome.raw_return_code,
+            interrupted=self._interrupted_suite(outcome),
+        )
 
     def _execute_testmon(
         self,
@@ -881,12 +952,12 @@ class FlextInfraPytestRunnerExecution(
             The resulting ``p.Result[int]``.
 
         Raises:
-            ValueError: If incremental pytest requires its external Testmon database.
+            ValueError: If incremental pytest has no Testmon database.
 
         """
         database = self.testmon_db
         if database is None:
-            msg = "incremental pytest requires its external Testmon database"
+            msg = "incremental pytest requires its Testmon database"
             raise ValueError(msg)
         slow_marker = self.pytest_policy().slow_marker
         if self.slow_phase and slow_marker in self.ci_excluded_markers(
@@ -904,10 +975,11 @@ class FlextInfraPytestRunnerExecution(
                 else 0,
             )
         u.Cli.ensure_dir(database.parent).unwrap()
-        # Selection, execution, and integrity inspection share the project's
-        # database. Its lease is admission, like the host gate queue: it is
+        # Selection, execution, and integrity inspection share this checkout's
+        # database. Its lease and a linked worktree's one-time seed from the
+        # canonical database are admission, like the host gate queue: both are
         # awaited within this invocation's deadline, and the suite clock is
-        # re-armed once it is held, so it never consumes the budget of
+        # re-armed once they are done, so neither consumes the budget of
         # selection and execution.
         deadline = self._process_deadline()
         report_dir = self._report_directory()
@@ -928,6 +1000,13 @@ class FlextInfraPytestRunnerExecution(
         with u.Cli.file_changes_lock(
             database.with_name(f"{database.name}.lock"),
         ).acquire(timeout=max(0.0, admission_ends - time.monotonic())):
+            seed = self.testmon_seed_db
+            if seed is not None and not database.exists() and seed.is_file():
+                with u.Cli.file_changes_lock(
+                    seed.with_name(f"{seed.name}.lock")
+                ).acquire(timeout=max(0.0, admission_ends - time.monotonic())):
+                    FlextInfraTestmonDbInspector.seed_file(seed, database)
+                sys.stderr.write(f"pytest cache seed: {database} from {seed}\n")
             self.started_at_monotonic = time.monotonic()
             self._write_run_context(
                 report_dir,
@@ -1062,6 +1141,7 @@ class FlextInfraPytestRunnerExecution(
             cache_restored=cache_restored,
             raw_return_code=outcome.raw_return_code,
             cache_hit=cache_hit,
+            interrupted=self._interrupted_suite(outcome),
         )
         if result.success:
             self._publish_cache_publication(report_dir, state, policy, database)
@@ -1276,11 +1356,15 @@ class FlextInfraPytestRunnerExecution(
             execution_mode=c.Infra.PytestExecutionMode.COVERAGE,
         )
         if self._completed_failure(outcome, report_dir):
-            return self._finalize(report_dir, raw_return_code=outcome.raw_return_code)
+            return self._finalize(
+                report_dir,
+                raw_return_code=outcome.raw_return_code,
+                interrupted=self._interrupted_suite(outcome),
+            )
         if not u.Cli.process_succeeded(outcome):
             return r.ok(outcome.raw_return_code)
         self._validate_coverage(report_dir).unwrap()
-        return self._finalize(report_dir)
+        return self._finalize(report_dir, interrupted=False)
 
 
 __all__: list[str] = ["FlextInfraPytestRunnerExecution"]

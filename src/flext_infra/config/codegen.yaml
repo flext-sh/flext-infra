@@ -745,15 +745,10 @@ Infra:
       # `--check` side runs in `make check` like markdown-format, so format
       # drift is red at check time. fix never formats.
       fmt_gates: [ format, markdown-format, markdown-code ]
-      # One filename and the root-relative runner paths; the runner places the
-      # database in platformdirs' external per-worktree cache.
+      # Testmon's native default database file at the checkout root
+      # (git-ignored) and the root-relative runner paths.
       testmon_cache:
         database_filename: .testmondata
-        database_environment_variable: TESTMON_DATAFILE
-        data_home_environment_variable: XDG_CACHE_HOME
-        user_home_environment_variable: HOME
-        home_cache_directory: .cache
-        external_storage_directory: flext/infra/testmon
         target_directory: tests
         reports_directory: .reports/tests
       # Isolated environment that runs `make upg`'s one residual flext-infra
@@ -856,11 +851,14 @@ Infra:
       - { identity: setup, verb: setup, contexts: [ local, ci, pre_commit ] }
       # Initial behavioral admission requires global source evidence, not full check.
       - { identity: check-primary, verb: check, phase: primary, contexts: [ local, ci, pre_push ] }
+      # Operator decision 2026-11-19: a project that opts into the pre-push
+      # stage runs its incremental tests there after the primary check, since
+      # CI runs setup and the primary check only (ruling 2026-11-12).
       - identity: tests-primary
         verb: tests
-        contexts: [ local ]
+        contexts: [ local, pre_push ]
         requires:
-        - { step: check-primary, contexts: [ local ] }
+        - { step: check-primary, contexts: [ local, pre_push ] }
       # CI never generates: check's `codegen conform --mode check` is the
       # read-only projection verdict of the LOCKED generator, so a stale or
       # skewed projection fails there, while CI generation would run the
@@ -1090,10 +1088,8 @@ Infra:
     # Gitignore-only entries; they feed no other projection.
     - { name: .flext-sync.lock, is_dir: false, vscode_exclude: false, watch_exclude: false }
     - { name: .sync.lock, is_dir: false, vscode_exclude: false, watch_exclude: false }
-    # pytest-testmon's default cwd datafile and its SQLite WAL/SHM siblings.
-    # The canonical test verbs pin the database outside the checkout
-    # (make.testmon_cache) and the pytest plugin refuses an in-tree one, so an
-    # in-tree copy is a stray raw run that must never become tracked.
+    # pytest-testmon's native checkout-root database and its SQLite WAL/SHM
+    # siblings: local state, never tracked.
     - { name: ".testmondata*", is_dir: false, vscode_exclude: false, watch_exclude: false }
     - { name: .planning, vscode_exclude: false, watch_exclude: false }
     - { name: skill-create-output, vscode_exclude: false, watch_exclude: false }

@@ -4171,7 +4171,7 @@ owns whole-program type analysis, and no second type checker runs beside them
 (`u.Infra.ruff_cache_directory`) and keys its own entries by its version and
 package root inside it; FLEXT adds no namespace of its own. The commit hook
 first provisions the checkout with `make setup`,
-then passes `make.ci.pre_commit_value` to the check, which runs only the fast
+then runs `make check` with `make.ci.pre_commit_value`, which runs only the fast
 commit-stage gates (`make.pre_commit_check_gates`: lint, format and Markdown)
 through the engine that setup provisioned; it runs no tests and no other
 validator. Staged Python files run the lint and format gates on those files; a
@@ -4179,7 +4179,8 @@ staged Markdown file runs the `markdown` and `markdown-format` gates over the
 repository, never a raw `rumdl` pass, so a declared foreign projected block
 (`tooling.tools.markdown.projected-blocks`) reads the same in the hook as in
 `make check` and `make fmt`. When enabled, the generated pre-push hook
-drops inherited `CI` and runs the workflow's primary check once. The local
+drops inherited `CI` and runs the workflow's primary check once, then the
+incremental tests, because CI runs setup and the primary check only. The local
 workflow retains the complete check and test steps. Every gate blocks in
 every context that runs it; there is no informative or advisory gate.
 Conflict detection uses the canonical Git inventory, including unpublished files,
@@ -4269,10 +4270,9 @@ The ordinary `tests` operation uses incremental Testmon selection
 The explicit `tests-full` operation executes the applicable suite once without
 Testmon, an incremental pre-run or database access. Marker applicability remains
 owned by the declared execution context; neither operation invents exclusions.
-The incremental filesystem cache is one database per project, shared by every
-checkout and worktree of it, under the real account home's cache directory; a
-redirected `HOME` or `XDG_CACHE_HOME` never moves it, and full execution leaves it
-untouched.
+The incremental database is Testmon's native `.testmondata` at the checkout root,
+ignored by `.gitignore`; no variable, setting or Make value relocates it, and full
+execution leaves it untouched.
 The explicit single-file operation runs incremental selection followed by complete
 execution of that file, including its declared slow tests, on the same database.
 No empty marker phase is invoked or converted to success. Zero execution is accepted

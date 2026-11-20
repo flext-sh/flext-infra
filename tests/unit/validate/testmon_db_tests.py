@@ -33,18 +33,21 @@ class TestsFlextInfraTestmonDbInspector:
             inspector.execute()
 
     @staticmethod
-    def test_database_inside_checkout_is_rejected(tmp_path: Path) -> None:
-        """Test database inside checkout is rejected."""
+    def test_native_checkout_database_is_accepted(tmp_path: Path) -> None:
+        """Testmon's native checkout-root database is the inspected database."""
         repository_root = tmp_path / "checkout"
         repository_root.mkdir()
+        database = (
+            repository_root / config.Infra.codegen.make.testmon_cache.database_filename
+        )
 
-        with u.Tests.raises(ValueError, match="outside the repository checkout"):
-            FlextInfraTestmonDbInspector(
-                repository_root=repository_root,
-                db_path=repository_root
-                / config.Infra.codegen.make.testmon_cache.database_filename,
-                pre_run_digest=None,
-            )
+        inspector = FlextInfraTestmonDbInspector(
+            repository_root=repository_root,
+            db_path=database,
+            pre_run_digest=None,
+        )
+
+        tm.that(inspector.db_path, eq=database)
 
     @staticmethod
     def test_corrupt_db_preserves_sqlite_failure(tmp_path: Path) -> None:
@@ -119,15 +122,3 @@ class TestsFlextInfraTestmonDbInspector:
         tm.fail(state.changed)
         tm.fail(state.saveable)
         tm.that(state.reason, eq="unchanged")
-
-    @staticmethod
-    def test_in_checkout_database_is_rejected(tmp_path: Path) -> None:
-        """Test in checkout database is rejected."""
-        filename = config.Infra.codegen.make.testmon_cache.database_filename
-
-        with u.Tests.raises(ValueError, match="outside the repository checkout"):
-            FlextInfraTestmonDbInspector(
-                repository_root=tmp_path,
-                db_path=tmp_path / filename,
-                pre_run_digest=None,
-            )

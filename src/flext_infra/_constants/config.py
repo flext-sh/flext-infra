@@ -68,13 +68,6 @@ class FlextInfraConstantsConfig:
         WORKSPACE = "workspace"
         STANDALONE = "standalone"
 
-    class PytestCacheEnvironment(StrEnum):
-        """OS and pytest-testmon keys consumed by the Make cache contract."""
-
-        DATA_HOME = "XDG_CACHE_HOME"
-        USER_HOME = "HOME"
-        DATABASE_FILE = "TESTMON_DATAFILE"
-
     class CacheHomeEnvironment(StrEnum):
         """XDG and user-home keys that locate the shared external tool caches."""
 

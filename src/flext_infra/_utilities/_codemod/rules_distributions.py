@@ -18,7 +18,7 @@ from flext_cli import u
 from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
 
-from flext_infra import c, m, p, r
+from flext_infra import c, m, p, r, settings
 from flext_infra._utilities import FlextInfraUtilitiesProjectDiscovery
 
 
@@ -128,7 +128,9 @@ class FlextInfraUtilitiesCodemodRulesDistributions:
 
         """
         return cls._observed_environment(
-            FlextInfraUtilitiesProjectDiscovery.runtime_environment_dir(root).resolve()
+            FlextInfraUtilitiesProjectDiscovery.runtime_environment_dir(
+                root, runtime_root=settings.fetch_global().Infra.runtime_root
+            ).resolve()
         )
 
     @staticmethod

@@ -290,6 +290,15 @@ class FlextInfraProtocolsConfigWorkspace:
             ...
 
         @property
+        def deferred_facades(self) -> tuple[t.NonEmptyStr, ...]:
+            """Structural member projected from the owning model.
+
+            Own root facade classes beyond the namespace families whose in-package
+            bases are published as stand-ins.
+            """
+            ...
+
+        @property
         def examples_module(self) -> t.NonEmptyStr | None:
             """Own explicit examples module."""
             ...

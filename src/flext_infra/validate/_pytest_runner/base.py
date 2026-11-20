@@ -47,8 +47,17 @@ class FlextInfraPytestRunnerBase(s[int]):
         Path | None,
         m.Field(
             description=(
-                "The project's external SQLite database for incremental "
-                "Testmon runs, shared by every checkout and worktree."
+                "This checkout's external SQLite database for incremental "
+                "Testmon runs; each checkout owns its database and lease."
+            ),
+        ),
+    ] = None
+    testmon_seed_db: Annotated[
+        Path | None,
+        m.Field(
+            description=(
+                "The project's canonical database, owned by the primary "
+                "worktree, that seeds a linked worktree's absent database."
             ),
         ),
     ] = None
@@ -163,21 +172,39 @@ class FlextInfraPytestRunnerBase(s[int]):
         make = u.Infra.load_codegen_inputs(root).unwrap().spec.make
         cache = make.testmon_cache
         database: Path | None = None
+        seed: Path | None = None
         if execution_mode.is_incremental:
-            # One database per project, shared by every checkout and worktree
-            # (testmon tracks each checkout's sources by checksum), anchored at
-            # the real account home so a redirected HOME or XDG_CACHE_HOME never
-            # moves it.
-            database = (
-                u.Infra.real_account_home()
+            cache_home_value = u.Infra.env_value(cache.data_home_environment_variable)
+            cache_home = (
+                Path(cache_home_value)
+                if cache_home_value
+                else Path(settings.env_required(cache.user_home_environment_variable))
                 / cache.home_cache_directory
+            )
+            if not cache_home.is_absolute():
+                msg = "pytest persistent cache anchor must be absolute"
+                raise ValueError(msg)
+            # testmon keeps one fingerprint set per test, so worktrees on
+            # different commits that shared one database overwrote each
+            # other's records and every run reselected most of the suite.
+            # The primary worktree owns the project's canonical database; a
+            # linked worktree owns its own, seeded from the canonical one.
+            canonical = (
+                cache_home
                 / cache.external_storage_directory
                 / context.target.canonical_project_name
                 / cache.database_filename
             )
-        tooling = cls._elect_tooling(root)
-        run_timeout_seconds, termination_grace_seconds = cls._elected_deadline(
-            tooling, execution_mode=execution_mode
+            identity = context.identity
+            if identity.git_dir == identity.common_dir:
+                database = canonical
+            else:
+                database = (
+                    canonical.parent / identity.git_dir.name / cache.database_filename
+                )
+                seed = canonical
+        run_timeout_seconds, termination_grace_seconds = cls._elected_pytest_deadline(
+            root
         )
         return cls(
             repository_root=root,
@@ -189,6 +216,7 @@ class FlextInfraPytestRunnerBase(s[int]):
             target_file=target_file,
             reports=cache.reports_directory,
             testmon_db=database,
+            testmon_seed_db=seed,
             ci_context=u.Infra.env_value(make.ci.variable) == make.ci.value,
             profile_enabled=settings.Infra.profile,
             harness_marker=harness_marker,
@@ -294,11 +322,8 @@ class FlextInfraPytestRunnerBase(s[int]):
             ),
             reports=Path(cls._environment_value(c.Infra.PYTEST_ENV_REPORTS)),
             testmon_db=(
-                Path(
-                    cls._environment_value(
-                        config.Infra.codegen.make.testmon_cache.database_environment_variable,
-                    ),
-                )
+                repository_root
+                / config.Infra.codegen.make.testmon_cache.database_filename
                 if execution_mode.is_incremental
                 else None
             ),
@@ -312,13 +337,10 @@ class FlextInfraPytestRunnerBase(s[int]):
             The resulting ``Self``.
 
         Raises:
-            ValueError: If test target must be an existing directory; or if testmon
-                database path must be absolute; or if testmon database must be outside
-                the checkout; or if ``path.is_absolute() or not path.parts or any((part
-                in {'', '.', '..'} for part in path.parts)) or any((character in raw for
-                character in '\x00\r\n\\'))``; or if ``not
-                resolved.is_relative_to(self.repository_root.resolve())``; or if test
-                target file must be an existing repository file.
+            ValueError: If the test target is not an existing directory or file,
+                the testmon database path is not absolute, a target or reports path
+                is not a normalized repository-relative path or escapes the
+                repository, or the target file is not an existing repository file.
 
         """
         for name, path in (("target", self.target), ("reports", self.reports)):
@@ -342,15 +364,9 @@ class FlextInfraPytestRunnerBase(s[int]):
         ):
             msg = f"test target must be an existing directory or file: {self.target}"
             raise ValueError(msg)
-        if self.testmon_db is not None:
-            if not self.testmon_db.is_absolute():
-                msg = "testmon database path must be absolute"
-                raise ValueError(msg)
-            if self.testmon_db.resolve().is_relative_to(self.repository_root.resolve()):
-                msg = (
-                    f"testmon database must be outside the checkout: {self.testmon_db}"
-                )
-                raise ValueError(msg)
+        if self.testmon_db is not None and not self.testmon_db.is_absolute():
+            msg = "testmon database path must be absolute"
+            raise ValueError(msg)
         return self._validate_target_file()
 
     def _validate_target_file(self) -> Self:

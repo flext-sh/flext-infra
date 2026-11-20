@@ -83,7 +83,11 @@ class TestsProtocolDomainProjection:
         for relative, source in sources.items():
             path = package / relative
             tm.ok(u.Cli.ensure_dir(path.parent))
-            tm.ok(u.Cli.atomic_write_text_file(path, source))
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    path, source, durability=c.Cli.WriteDurability.SCRATCH
+                )
+            )
         return root, package
 
     @classmethod
@@ -134,7 +138,9 @@ class TestsProtocolDomainProjection:
         tm.that(tuple(projected), eq=(destination.relative_to(root),))
         tm.ok(
             u.Cli.atomic_write_text_file(
-                destination, projected[destination.relative_to(root)]
+                destination,
+                projected[destination.relative_to(root)],
+                durability=c.Cli.WriteDurability.SCRATCH,
             )
         )
         native_consumer(

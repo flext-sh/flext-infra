@@ -14,7 +14,7 @@ from contextlib import closing
 from pathlib import Path
 
 from flext_infra import config
-from flext_infra.validate import FlextInfraPytestRunner
+from flext_infra.validate import FlextInfraPytestDiagExtractor, FlextInfraPytestRunner
 from tests import c, m, p, t, tm, u
 
 
@@ -366,4 +366,50 @@ class TestsFlextInfraPytestRunnerSuiteStop:
         tm.that(
             "tests/test_hanging_fixture.py::test_a_completes" in persisted,
             truth=True,
+        )
+
+    @staticmethod
+    def test_interrupted_report_log_keeps_the_in_flight_item_reported(
+        tmp_path: Path,
+    ) -> None:
+        """An interrupted suite retains its setup-only tail instead of failing."""
+        report_log = tmp_path / "events.jsonl"
+        rows = (
+            ("tests/test_a.py::test_done", ("setup", "call", "teardown")),
+            ("tests/test_b.py::test_in_flight", ("setup",)),
+        )
+        report_log.write_text(
+            "\n".join(
+                m.Infra.PytestReportEvent.model_validate(
+                    {
+                        "$report_type": "TestReport",
+                        "nodeid": nodeid,
+                        "when": phase,
+                        "outcome": "passed",
+                    },
+                ).model_dump_json(by_alias=True)
+                for nodeid, phases in rows
+                for phase in phases
+            )
+            + "\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        report_log.with_suffix(c.Infra.PYTEST_WARNING_EVENTS_SUFFIX).write_text(
+            "",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        with u.Tests.raises(ValueError, match="incomplete pytest lifecycle"):
+            FlextInfraPytestDiagExtractor.extract_report_log(
+                report_log,
+                interrupted=False,
+            )
+        diagnostics = tm.ok(
+            FlextInfraPytestDiagExtractor.extract_report_log(
+                report_log,
+                interrupted=True,
+            ),
+        )
+        tm.that(
+            diagnostics.reported_node_ids,
+            has="tests/test_b.py::test_in_flight",
         )

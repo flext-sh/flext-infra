@@ -40,6 +40,9 @@ if TYPE_CHECKING:
         FlextInfraUtilitiesFacadeComponents,
     )
     from flext_infra._utilities.facade_members import FlextInfraUtilitiesFacadeMembers
+    from flext_infra._utilities.facade_namespace import (
+        FlextInfraUtilitiesFacadeNamespace,
+    )
     from flext_infra._utilities.gate_admission import FlextInfraUtilitiesGateAdmission
     from flext_infra._utilities.generation_inventory import (
         FlextInfraGenerationInventory,
@@ -195,6 +198,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesEnforcementCatalog",
     "FlextInfraUtilitiesFacadeComponents",
     "FlextInfraUtilitiesFacadeMembers",
+    "FlextInfraUtilitiesFacadeNamespace",
     "FlextInfraUtilitiesGateAdmission",
     "FlextInfraUtilitiesGenerationInventory",
     "FlextInfraUtilitiesGit",
@@ -287,6 +291,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesEnforcementCatalog": ".enforcement_catalog",
         "FlextInfraUtilitiesFacadeComponents": ".facade_components",
         "FlextInfraUtilitiesFacadeMembers": ".facade_members",
+        "FlextInfraUtilitiesFacadeNamespace": ".facade_namespace",
         "FlextInfraUtilitiesGateAdmission": ".gate_admission",
         "FlextInfraUtilitiesGenerationInventory": ".generation_inventory",
         "FlextInfraUtilitiesGit": ".git",
@@ -370,6 +375,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesEnforcementCatalog",
         "FlextInfraUtilitiesFacadeComponents",
         "FlextInfraUtilitiesFacadeMembers",
+        "FlextInfraUtilitiesFacadeNamespace",
         "FlextInfraUtilitiesGateAdmission",
         "FlextInfraUtilitiesGenerationInventory",
         "FlextInfraUtilitiesGit",
