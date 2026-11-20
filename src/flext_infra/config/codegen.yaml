@@ -745,15 +745,10 @@ Infra:
       # `--check` side runs in `make check` like markdown-format, so format
       # drift is red at check time. fix never formats.
       fmt_gates: [ format, markdown-format, markdown-code ]
-      # One filename and the root-relative runner paths; the runner places the
-      # database in platformdirs' external per-worktree cache.
+      # Testmon's native default database file at the checkout root
+      # (git-ignored) and the root-relative runner paths.
       testmon_cache:
         database_filename: .testmondata
-        database_environment_variable: TESTMON_DATAFILE
-        data_home_environment_variable: XDG_CACHE_HOME
-        user_home_environment_variable: HOME
-        home_cache_directory: .cache
-        external_storage_directory: flext/infra/testmon
         target_directory: tests
         reports_directory: .reports/tests
       # Isolated environment that runs `make upg`'s one residual flext-infra
@@ -1090,10 +1085,8 @@ Infra:
     # Gitignore-only entries; they feed no other projection.
     - { name: .flext-sync.lock, is_dir: false, vscode_exclude: false, watch_exclude: false }
     - { name: .sync.lock, is_dir: false, vscode_exclude: false, watch_exclude: false }
-    # pytest-testmon's default cwd datafile and its SQLite WAL/SHM siblings.
-    # The canonical test verbs pin the database outside the checkout
-    # (make.testmon_cache) and the pytest plugin refuses an in-tree one, so an
-    # in-tree copy is a stray raw run that must never become tracked.
+    # pytest-testmon's native checkout-root database and its SQLite WAL/SHM
+    # siblings: local state, never tracked.
     - { name: ".testmondata*", is_dir: false, vscode_exclude: false, watch_exclude: false }
     - { name: .planning, vscode_exclude: false, watch_exclude: false }
     - { name: skill-create-output, vscode_exclude: false, watch_exclude: false }

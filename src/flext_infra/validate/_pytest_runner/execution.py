@@ -60,7 +60,8 @@ class FlextInfraPytestRunnerExecution(
         """Declare child overrides and removals at the process boundary.
 
         Unselected full and coverage suites own no Testmon plugin, so their
-        children neither receive nor inherit a database location.
+        children never inherit a database location: Testmon keeps its native
+        default in the checkout.
 
         Returns:
             The process options shared by every runner invocation.
@@ -69,10 +70,6 @@ class FlextInfraPytestRunnerExecution(
             ValueError: If test target has no declared project owner.
 
         """
-        testmon_keys = (
-            config.Infra.codegen.make.testmon_cache.database_environment_variable,
-            c.Infra.PYTEST_ENV_TESTMON_DATAFILE,
-        )
         source_root = self.repository_root
         if self.target_file is not None:
             target_root = u.Infra.nearest_project_root(
@@ -95,11 +92,9 @@ class FlextInfraPytestRunnerExecution(
                 )
                 if path
             )
-        if execution_mode.is_incremental:
-            if database is None:
-                msg = "incremental pytest requires its external Testmon database"
-                raise ValueError(msg)
-            overrides.update(dict.fromkeys(testmon_keys, str(database)))
+        if execution_mode.is_incremental and database is None:
+            msg = "incremental pytest requires its Testmon database"
+            raise ValueError(msg)
         if self.profile_enabled or self.collection_command_prefix:
             overrides[c.Infra.PYTEST_PROFILE_PROCESS_DIRECTORY_ENV] = (
                 self.pytest_policy().profile_process_directory
@@ -107,7 +102,7 @@ class FlextInfraPytestRunnerExecution(
         remove_keys = (
             *c.Infra.PYTEST_INHERITED_ENV_REMOVE_KEYS,
             "GITHUB_OUTPUT",
-            *(testmon_keys if not execution_mode.is_incremental else ()),
+            c.Infra.PYTEST_ENV_TESTMON_DATAFILE,
         )
         return m.Cli.ProcessOptions(
             env=overrides,
@@ -881,12 +876,12 @@ class FlextInfraPytestRunnerExecution(
             The resulting ``p.Result[int]``.
 
         Raises:
-            ValueError: If incremental pytest requires its external Testmon database.
+            ValueError: If incremental pytest has no Testmon database.
 
         """
         database = self.testmon_db
         if database is None:
-            msg = "incremental pytest requires its external Testmon database"
+            msg = "incremental pytest requires its Testmon database"
             raise ValueError(msg)
         slow_marker = self.pytest_policy().slow_marker
         if self.slow_phase and slow_marker in self.ci_excluded_markers(
