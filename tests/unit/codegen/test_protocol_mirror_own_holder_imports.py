@@ -16,7 +16,7 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-from tests import tm, u
+from tests import c, tm, u
 
 
 class TestsProtocolMirrorOwnHolderImports:
@@ -48,7 +48,11 @@ class TestsProtocolMirrorOwnHolderImports:
     def _write(cls, sources: dict[Path, str]) -> None:
         for path, source in sources.items():
             tm.ok(u.Cli.ensure_dir(path.parent))
-            tm.ok(u.Cli.atomic_write_text_file(path, source))
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    path, source, durability=c.Cli.WriteDurability.SCRATCH
+                )
+            )
 
     @classmethod
     def test_source_model_holder_import_is_not_retained(cls, tmp_path: Path) -> None:
@@ -98,6 +102,24 @@ class TestsProtocolMirrorOwnHolderImports:
         )
         package = root / "infra" / "contracts"
         holder = "InfraContractsProtocolsPayload"
+        # A namespace package is a declared repository fact (repository config).
+        declaration = u.Tests.project_spec(root.name).model_copy(
+            update={"repository_namespace_packages": ("infra",)}
+        )
+        tm.ok(
+            u.Cli.yaml_dump(
+                root / "config" / "codegen.yaml",
+                {
+                    "Infra": {
+                        "codegen": {
+                            "repository": {
+                                "project": declaration.model_dump(mode="json")
+                            }
+                        }
+                    }
+                },
+            )
+        )
         cls._write({
             root / "infra" / "__init__.py": "",
             package / "__init__.py": "",

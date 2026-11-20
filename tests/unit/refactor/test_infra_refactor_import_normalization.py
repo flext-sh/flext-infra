@@ -886,18 +886,25 @@ class TestsFlextInfraNamespaceImportNormalization(
         tm.that(target.read_text(encoding=c.DEFAULT_ENCODING), eq=sources[target])
 
     @classmethod
-    @c.Tests.MARK.parametrize("ambiguous", [False, True])
+    @c.Tests.MARK.parametrize(
+        ("children", "moves"),
+        [
+            (("helpers",), True),
+            (("helpers", "support"), False),
+            (("_support",), False),
+        ],
+    )
     def test_root_import_of_child_owned_name_moves_to_the_child_package(
-        cls, tmp_path: Path, *, ambiguous: bool
+        cls, tmp_path: Path, children: tuple[str, ...], *, moves: bool
     ) -> None:
-        """A root import of a child-owned name binds through its one owner."""
+        """A root import of a child-owned name binds through its one public owner."""
         project, _package = cls._project(tmp_path)
         tests_root = project / c.Infra.DIR_TESTS
         cls._lazy_init(tests_root, {"c": ".constants"})
         (tests_root / "constants.py").write_text(
             "from flext_cli import c\n__all__ = ['c']\n", encoding=c.DEFAULT_ENCODING
         )
-        for child in ("helpers", "support") if ambiguous else ("helpers",):
+        for child in children:
             cls._lazy_init(tests_root / child, {"DemoHelper": ".harness"})
             (tests_root / child / "harness.py").write_text(
                 "class DemoHelper:\n    pass\n__all__ = ['DemoHelper']\n",
@@ -911,7 +918,7 @@ class TestsFlextInfraNamespaceImportNormalization(
                 source=source,
             )
         )
-        if ambiguous:
+        if not moves:
             tm.that(normalized, eq=source)
             return
         tm.that(normalized, has="from tests import c\n")

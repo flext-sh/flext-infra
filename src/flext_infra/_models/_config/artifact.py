@@ -598,6 +598,13 @@ class FlextInfraModelsConfigArtifact(
             int,
             m.Field(ge=1, le=16, description="Concurrent fresh-import subprocesses"),
         ]
+        fresh_import_timeout_seconds: Annotated[
+            int,
+            m.Field(
+                ge=1,
+                description="Deadline of one fresh-import subprocess, in seconds",
+            ),
+        ]
         lint_snapshot_workers: Annotated[
             int,
             m.Field(

@@ -6,10 +6,32 @@ valid:
     union = t.Core.Types
   - |
     value = self.Ldap.Tests
+  - |
+    """Read self.Ldap.Tests and t.Tests.Value."""
+  - |
+    source.write_text("    _ = c.Core.Tests.ERR_OK_FAILED\n", encoding="utf-8")
+  - |
+    value = registry.cases.Ldap.Tests
+  - |
+    runner = tu.DbtLdap.Tests.InMemoryDbtRunnerLdap(settings=settings)
 invalid:
+  - |
+    def build() -> None:
+        """Read self.Ldap.Tests before t.Ldap.Tests."""
   - |
     def send(request: t.Core.Tests.DispatchRequest) -> p.Result[str]: ...
   - |
     members = (t.Core.Tests.CentralizedUnion,)
   - |
     u.Ldap.Tests.that(result, eq=1)
+  - |
+    message = TestsFlextLdapModels.Ldap.Tests.FAIL_ERROR_MESSAGE
+  - |
+    match case:
+        case c.Ldap.Tests.AttrToStrListCase.EMPTY:
+            pass
+  - |
+    def build() -> None:
+        """Return ``t.DbtLdap.Tests.ServiceFactory``."""
+  - |
+    value = 1  # read from c.Ldap.Tests.HOST

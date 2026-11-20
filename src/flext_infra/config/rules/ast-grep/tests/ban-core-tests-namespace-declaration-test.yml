@@ -1,21 +1,54 @@
 id: ban-core-tests-namespace-declaration
 valid:
   - |
-    class TestsFlextCoreTypes(FlextTestsTypes):
+    class TestsFlextCliTypes(FlextTestsTypes, FlextCliTypes):
         class Tests(FlextTestsTypes.Tests):
-            type DispatchRequest = str
+            type Alias = str
   - |
-    class Inner:
-        class Tests:
-            pass
+    class TestsFlextMeltanoTypes(FlextTestsTypes, FlextMeltanoTypes):
+        class Meltano(FlextMeltanoTypes.Meltano):
+            type ComponentCase = tuple[str, str]
+
+            class Tests(FlextTestsTypes.Tests):
+                """Aliases."""
+  - |
+    class TestsFlextLdapConstants(FlextTestsConstants, FlextLdapConstants):
+        class Ldap(FlextLdapConstants.Ldap):
+            class Tests(FlextTestsConstants.Tests):
+                LDIF = """dn: cn=a
+        objectClass: top
+    """
 invalid:
   - |
-    class TestsFlextCoreTypes(FlextTestsTypes):
-        class Core:
-            class Tests(FlextTestsTypes.Tests):
-                type DispatchRequest = str
-  - |
-    class TestsFlextLdapUtilities(FlextLdapUtilities):
+    class TestsFlextLdapProtocols(FlextTestsProtocols):
         class Ldap:
-            class Tests(FlextTestsUtilities.Tests):
-                pass
+            class Tests(FlextTestsProtocols.Tests):
+                """Protocols."""
+
+                SOURCE = "_ = c.Ldap.Tests.HOST"
+
+                HOST = "h"
+  - |
+    class TestsFlextLdapTypes(FlextTestsTypes, FlextLdapTypes):
+        """Facade."""
+
+        class Ldap(FlextLdapTypes.Ldap):
+            """LDAP test types."""
+
+            class Tests(FlextTestsTypes.Tests):
+                """Use t.Ldap.Tests.* for all test types."""
+
+                type LdapContainerDict = Mapping[
+                    str,
+                    FlextLdapTypes.Scalar,
+                ]
+  - |
+    class TestsFlextCleanModels:
+        class Core:
+            """Core test-model namespace."""
+
+            class Tests:
+                """Clean models."""
+
+                class GoodEntity(m.ArbitraryTypesModel):
+                    name: str = ""
