@@ -129,6 +129,10 @@ class FlextInfraPytestRunnerExecution(
         Returns:
             The selection plan or original failed collection outcome.
 
+        Raises:
+            RuntimeError: If the incremental selection or coverage inventory
+                process fails natively.
+
         """
         complete = complete or self.target_file is not None
         artifact = "testmon-inventory" if complete else "testmon-selection"
@@ -210,6 +214,18 @@ class FlextInfraPytestRunnerExecution(
                     raw_log=selection_log,
                     outcome=outcome,
                 )
+                if (
+                    not complete
+                    or execution_mode == c.Infra.PytestExecutionMode.COVERAGE
+                ):
+                    detail = selection_log.read_text(
+                        encoding=c.DEFAULT_ENCODING,
+                    ).strip()
+                    msg = (
+                        f"testmon selection failed "
+                        f"({outcome.raw_return_code}): {detail}"
+                    )
+                    raise RuntimeError(msg)
             return outcome
         if self.profile_enabled or self.collection_command_prefix:
             self._bind_child_profile(report_dir, manifest_path.with_suffix(".pstats"))
@@ -481,6 +497,25 @@ class FlextInfraPytestRunnerExecution(
         return outcome
 
     @staticmethod
+    def _interrupted_suite(outcome: p.Cli.ProcessOutcome) -> bool:
+        """Return whether the suite lifecycle ended before its natural end.
+
+        An interrupted suite may leave its last dispatched item in setup with
+        no call or teardown report; diagnostics retain that tail as reported
+        but not executed so the accounting publishes the executed prefix as
+        incomplete instead of rejecting the whole run.
+
+        Returns:
+            Whether the suite lifecycle was interrupted.
+
+        """
+        return (
+            outcome.timed_out
+            or outcome.raw_return_code < 0
+            or outcome.raw_return_code == c.Infra.PytestExitCode.INTERRUPTED
+        )
+
+    @staticmethod
     def _completed_failure(outcome: p.Cli.ProcessOutcome, report_dir: Path) -> bool:
         """Return whether a failing suite still finished its lifecycle.
 
@@ -527,8 +562,16 @@ class FlextInfraPytestRunnerExecution(
         cache_restored: bool = False,
         raw_return_code: int = 0,
         cache_hit: bool = False,
+        interrupted: bool,
     ) -> p.Result[int]:
         """Reject incomplete evidence and publish one bounded summary.
+
+        Args:
+            report_dir: The report directory of the run.
+            cache_restored: Whether a testmon cache was restored.
+            raw_return_code: The native process exit status.
+            cache_hit: Whether the run was a verified incremental cache hit.
+            interrupted: Whether the suite ended before its natural end.
 
         Returns:
             The resulting ``p.Result[int]``.
@@ -538,7 +581,10 @@ class FlextInfraPytestRunnerExecution(
                 cache hit; or if a testmon cache hit cannot contain executed tests.
 
         """
-        diagnostics = self._diagnostics(report_dir).unwrap()
+        diagnostics = self._diagnostics(
+            report_dir,
+            interrupted=interrupted,
+        ).unwrap()
         accounting = self._accounting(
             report_dir / "junit.xml",
             report_dir / "pytest.log",
@@ -887,7 +933,11 @@ class FlextInfraPytestRunnerExecution(
             outcome, report_dir
         ):
             return self._unfinished_result(outcome, report_dir)
-        return self._finalize(report_dir, raw_return_code=outcome.raw_return_code)
+        return self._finalize(
+            report_dir,
+            raw_return_code=outcome.raw_return_code,
+            interrupted=self._interrupted_suite(outcome),
+        )
 
     def _execute_testmon(
         self,
@@ -1083,6 +1133,7 @@ class FlextInfraPytestRunnerExecution(
             cache_restored=cache_restored,
             raw_return_code=outcome.raw_return_code,
             cache_hit=cache_hit,
+            interrupted=self._interrupted_suite(outcome),
         )
         if result.success:
             self._publish_cache_publication(report_dir, state, policy, database)
@@ -1297,11 +1348,15 @@ class FlextInfraPytestRunnerExecution(
             execution_mode=c.Infra.PytestExecutionMode.COVERAGE,
         )
         if self._completed_failure(outcome, report_dir):
-            return self._finalize(report_dir, raw_return_code=outcome.raw_return_code)
+            return self._finalize(
+                report_dir,
+                raw_return_code=outcome.raw_return_code,
+                interrupted=self._interrupted_suite(outcome),
+            )
         if not u.Cli.process_succeeded(outcome):
             return r.ok(outcome.raw_return_code)
         self._validate_coverage(report_dir).unwrap()
-        return self._finalize(report_dir)
+        return self._finalize(report_dir, interrupted=False)
 
 
 __all__: list[str] = ["FlextInfraPytestRunnerExecution"]

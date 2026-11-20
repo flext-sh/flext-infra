@@ -84,6 +84,7 @@ class TestsFlextInfraPytestDiag:
                 junit,
                 log,
                 report_log=log.with_suffix(".jsonl"),
+                interrupted=False,
             ),
         )
 
@@ -102,6 +103,7 @@ class TestsFlextInfraPytestDiag:
                 missing_xml,
                 log,
                 report_log=log.with_suffix(".jsonl"),
+                interrupted=False,
             )
 
     def test_extract_invalid_xml_preserves_parser_error(self, tmp_path: Path) -> None:
@@ -117,6 +119,7 @@ class TestsFlextInfraPytestDiag:
                 bad_xml,
                 log,
                 report_log=log.with_suffix(".jsonl"),
+                interrupted=False,
             )
 
     def test_extract_failed_and_error_tests_from_xml(self, tmp_path: Path) -> None:
@@ -136,6 +139,7 @@ class TestsFlextInfraPytestDiag:
                 fail_xml,
                 log,
                 report_log=log.with_suffix(".jsonl"),
+                interrupted=False,
             ),
         )
         tm.that(fail_report.failed_count, eq=1)
@@ -155,6 +159,7 @@ class TestsFlextInfraPytestDiag:
                 err_xml,
                 log,
                 report_log=log.with_suffix(".jsonl"),
+                interrupted=False,
             ),
         )
         tm.that(err_report.error_count, eq=1)
@@ -176,6 +181,7 @@ class TestsFlextInfraPytestDiag:
                 skip_xml,
                 log,
                 report_log=log.with_suffix(".jsonl"),
+                interrupted=False,
             ),
         )
         tm.that(skip_report.skipped_count, eq=1)
@@ -192,6 +198,7 @@ class TestsFlextInfraPytestDiag:
                 slow_xml,
                 log,
                 report_log=log.with_suffix(".jsonl"),
+                interrupted=False,
             ),
         )
         tm.that(slow_report.slow_entries, length_gt=0)
@@ -234,7 +241,7 @@ class TestsFlextInfraPytestDiag:
         )
         report = tm.ok(
             self._extractor(junit, log).extract(
-                junit, log, report_log=log.with_suffix(".jsonl")
+                junit, log, report_log=log.with_suffix(".jsonl"), interrupted=False
             )
         )
         tm.that(report.skipped_count, eq=1)
@@ -256,6 +263,7 @@ class TestsFlextInfraPytestDiag:
                 junit,
                 tmp_path / "missing.txt",
                 report_log=tmp_path / "missing.jsonl",
+                interrupted=False,
             )
 
     def test_extract_unreadable_log_surfaces_failure(self, tmp_path: Path) -> None:
@@ -273,6 +281,7 @@ class TestsFlextInfraPytestDiag:
                 junit,
                 log_is_dir,
                 report_log=log_is_dir.with_suffix(".jsonl"),
+                interrupted=False,
             )
 
     def test_extract_warnings_from_report_log(self, tmp_path: Path) -> None:
@@ -303,7 +312,9 @@ class TestsFlextInfraPytestDiag:
                     '"lineno":10,"message":"test warning","when":"runtest"}\n',
                     identities=self._identity("DeprecationWarning", "test warning"),
                 ),
-            ).extract(junit, log, report_log=log.with_suffix(".jsonl")),
+            ).extract(
+                junit, log, report_log=log.with_suffix(".jsonl"), interrupted=False
+            ),
         )
 
         tm.that(report.error_count, eq=0)
@@ -335,7 +346,9 @@ class TestsFlextInfraPytestDiag:
                     events=event * 2,
                     identities=self._identity("DomainNotice", "first\nsecond") * 2,
                 ),
-            ).extract(junit, log, report_log=log.with_suffix(".jsonl")),
+            ).extract(
+                junit, log, report_log=log.with_suffix(".jsonl"), interrupted=False
+            ),
         )
 
         tm.that(report.warning_count, eq=2)
@@ -360,6 +373,7 @@ class TestsFlextInfraPytestDiag:
                 junit,
                 log,
                 report_log=log.with_suffix(".jsonl"),
+                interrupted=False,
             )
 
     def test_execute_writes_selected_output_files(self, tmp_path: Path) -> None:
@@ -426,7 +440,11 @@ class TestsFlextInfraPytestDiag:
                 ),
             ),
         )
-        report = tm.ok(extractor.extract(junit, log, report_log=extractor.report_log))
+        report = tm.ok(
+            extractor.extract(
+                junit, log, report_log=extractor.report_log, interrupted=False
+            )
+        )
         tm.that(report.warning_count, eq=1)
         tm.that(report.warning_lines[0], contains="enforcement evidence")
         tm.that(report.warning_lines[0], contains=e.SmellViolationError.__module__)
@@ -460,7 +478,9 @@ class TestsFlextInfraPytestDiag:
             options=m.Tests.PytestDiagOptions(events=events),
         )
         with u.Tests.raises(ValueError, match=r"contains no events|validation error"):
-            extractor.extract(junit, log, report_log=extractor.report_log)
+            extractor.extract(
+                junit, log, report_log=extractor.report_log, interrupted=False
+            )
 
     def test_missing_report_log_preserves_file_error(self, tmp_path: Path) -> None:
         """Test missing report log preserves file error."""
@@ -470,7 +490,9 @@ class TestsFlextInfraPytestDiag:
         log.write_text("consumer output")
         extractor = self._extractor(junit, log)
         with u.Tests.raises(FileNotFoundError):
-            extractor.extract(junit, log, report_log=tmp_path / "missing.jsonl")
+            extractor.extract(
+                junit, log, report_log=tmp_path / "missing.jsonl", interrupted=False
+            )
 
     def test_warning_without_identity_is_not_counted_as_green(
         self,
@@ -490,7 +512,9 @@ class TestsFlextInfraPytestDiag:
             ),
         )
         with u.Tests.raises(ValueError, match="zip"):
-            extractor.extract(junit, log, report_log=extractor.report_log)
+            extractor.extract(
+                junit, log, report_log=extractor.report_log, interrupted=False
+            )
 
     @staticmethod
     @c.Tests.MARK.parametrize(

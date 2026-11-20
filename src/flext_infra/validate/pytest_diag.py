@@ -54,24 +54,33 @@ class FlextInfraPytestDiagExtractor(
 
     @classmethod
     def _extract_report_events(
-        cls, report_log: Path, diag: p.Infra.DiagResult
+        cls,
+        report_log: Path,
+        diag: p.Infra.DiagResult,
+        *,
+        interrupted: bool,
     ) -> p.Infra.DiagResult:
         """Read real test attempts and every warning independently of terminal text.
 
         Every reported node must show one setup and one teardown phase, plus a
         call phase whenever setup passed. A native failed worker-crash report
         explains missing phases only for that node; repeated phases still fail.
-        A stopped session (no SessionFinish after a kill, or an Interrupted
-        exit status after a max-failures stop or the deadline's interruption)
-        leaves its in-flight items with only a passed setup: those never ran
-        their call and are not a lifecycle defect.
+        An interrupted suite may end with one in-flight item whose setup passed
+        and whose call and teardown have no report yet; that item is retained as
+        reported but not executed, so the accounting publishes the run as
+        incomplete instead of discarding the executed prefix.
+
+        Args:
+            report_log: The structured report-log path.
+            diag: The accumulating diagnostics result.
+            interrupted: Whether the suite process ended before its natural end.
 
         Returns:
             The updated diagnostics result.
 
         Raises:
-            ValueError: If pytest report log contains no events; or if incomplete pytest
-                lifecycle.
+            ValueError: If pytest report log contains no events; or if incomplete
+                pytest lifecycle outside an interrupted tail.
 
         """
         lines = report_log.read_text(encoding=c.DEFAULT_ENCODING).splitlines()
@@ -102,6 +111,8 @@ class FlextInfraPytestDiagExtractor(
             if phases.get("???") == "failed" or (
                 stopped and dict(phases) == {"setup": "passed"}
             ):
+                continue
+            if interrupted and dict(phases) == {"setup": "passed"}:
                 continue
             if (
                 "setup" not in phases
@@ -207,6 +218,7 @@ class FlextInfraPytestDiagExtractor(
         log_path: Path,
         *,
         report_log: Path,
+        interrupted: bool,
     ) -> p.Result[p.Infra.PytestDiagnostics]:
         """Extract diagnostics from JUnit XML, pytest log and explicit report-log.
 
@@ -214,6 +226,7 @@ class FlextInfraPytestDiagExtractor(
             junit_path: Path to JUnit XML result file.
             log_path: Path to raw pytest log output.
             report_log: Path to the structured pytest report-log.
+            interrupted: Whether the suite ended before its natural end.
 
         Returns:
             r with diagnostics dict containing counts and entries.
@@ -222,26 +235,41 @@ class FlextInfraPytestDiagExtractor(
         log_path.read_text(encoding=c.DEFAULT_ENCODING)
         diag = m.Infra.DiagResult()
         self._parse_xml(junit_path, diag)
-        diag = self._extract_report_events(report_log, diag)
+        diag = self._extract_report_events(
+            report_log,
+            diag,
+            interrupted=interrupted,
+        )
         return r[p.Infra.PytestDiagnostics].ok(self._diagnostics_model(diag))
 
     @classmethod
     def extract_report_log(
         cls,
         report_log: Path,
+        *,
+        interrupted: bool,
     ) -> p.Result[p.Infra.PytestDiagnostics]:
         """Read native event evidence without manufacturing JUnit test outcomes.
 
         Failed calls and failed setup, teardown or worker-crash phases retain
         their actual node identities. Collection without TestReports remains
-        zero execution; original traceback bytes stay in the raw log.
+        zero execution; original traceback bytes stay in the raw log. An
+        interrupted suite retains its setup-only tail as not executed.
+
+        Args:
+            report_log: The structured report-log path.
+            interrupted: Whether the suite ended before its natural end.
 
         Returns:
             The resulting ``p.Result[p.Infra.PytestDiagnostics]``.
 
         """
         diag = m.Infra.DiagResult()
-        diag = cls._extract_report_events(report_log, diag)
+        diag = cls._extract_report_events(
+            report_log,
+            diag,
+            interrupted=interrupted,
+        )
         for node_id, phases in diag.reported_phases.items():
             if phases.get("call") == "failed":
                 diag.failed_cases.append(node_id)
@@ -300,6 +328,7 @@ class FlextInfraPytestDiagExtractor(
             self.junit,
             self.log_path,
             report_log=self.report_log,
+            interrupted=False,
         ).unwrap()
         for output_path, attr_name, separator in [
             (self.failed, "failed_cases", "\n\n"),
