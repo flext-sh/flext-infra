@@ -666,7 +666,16 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
             (scripts / "run.py").write_text(
                 '"""Governed script."""\nvalue = 1\n', encoding="utf-8"
             )
-        u.Tests.declare_workspace_projects(workspace, (first.name, second.name))
+        u.Tests.initialize_git_repo(
+            second,
+            origin_url=u.Tests.WorktreeFixture.governed_repository_url(second.name),
+        )
+        u.Tests.WorktreeFixture.attach_submodule(
+            workspace,
+            second,
+            distribution=second.name,
+            relative_path=second.name,
+        )
         u.Tests.provision_checkout(workspace)
         before = {
             project.name: tm.ok(FlextInfraModGateEngine.scan(project, fix=False))
