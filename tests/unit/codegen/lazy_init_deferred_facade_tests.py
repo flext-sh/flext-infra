@@ -82,3 +82,14 @@ class TestsFlextInfraCodegenLazyInitDeferredFacade:
         repository, package = self._workspace(tmp_path)
         tm.that(u.Tests.run_lazy_init(repository), eq=0)
         tm.that(u.Tests.generated_init(package / "_servicos"), lacks="deferred_members")
+
+    def test_declared_facade_defined_nowhere_fails(self, tmp_path: Path) -> None:
+        """A declared facade no root-package module defines fails generation."""
+        repository, _package = self._workspace(tmp_path)
+        u.Tests.override_repository_declaration(
+            repository, {"deferred_facades": ["AbsentFacade"]}
+        )
+        tm.fail(
+            u.Tests.create_lazy_init_service(repository).plan_files(),
+            has="defined by no root-package module",
+        )
