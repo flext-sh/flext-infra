@@ -25,7 +25,7 @@ from flext_infra._models import (
     FlextInfraModelsRope,
     FlextInfraModelsTransformers,
 )
-from flext_infra._models._codegen.transaction import FlextInfraModelsCodegenTransaction
+from flext_infra._models._codegen import FlextInfraModelsCodegenTransaction
 
 
 class FlextInfraModelsCensus:
@@ -412,6 +412,101 @@ class FlextInfraModelsCensus:
             "manual-review"
         )
 
+    class PydanticModelCensus(FlextInfraModelsBase.FrozenArbitrary):
+        """One concrete Pydantic model and the base it declares."""
+
+        package: Annotated[str, m.Field(description="Owning FLEXT package")] = ""
+        name: Annotated[t.NonEmptyStr, m.Field(description="Model class name")]
+        file_path: Annotated[Path, m.Field(description="Declaring source file")]
+        line: Annotated[t.PositiveInt, m.Field(description="Declaration line")]
+        base: Annotated[str, m.Field(description="Resolved declared base")] = ""
+        preset: Annotated[str, m.Field(description="Resolved preset name")] = ""
+        raw: Annotated[
+            bool, m.Field(description="Whether the base is raw pydantic.BaseModel")
+        ] = False
+        generated: Annotated[
+            bool, m.Field(description="Whether the declaration is generated")
+        ] = False
+
+    class PydanticEnumCensus(FlextInfraModelsBase.FrozenArbitrary):
+        """One closed-domain ``StrEnum`` with its facade tier."""
+
+        package: Annotated[str, m.Field(description="Owning FLEXT package")] = ""
+        name: Annotated[t.NonEmptyStr, m.Field(description="Enum class name")]
+        tier: Annotated[str, m.Field(description="Declaring facade tier letter")] = ""
+        file_path: Annotated[Path, m.Field(description="Declaring source file")]
+        line: Annotated[t.PositiveInt, m.Field(description="Declaration line")]
+        generated: Annotated[
+            bool, m.Field(description="Whether the declaration is generated")
+        ] = False
+
+    class PydanticLiteralCensus(FlextInfraModelsBase.FrozenArbitrary):
+        """One ``Literal`` annotation and its domain classification."""
+
+        package: Annotated[str, m.Field(description="Owning FLEXT package")] = ""
+        owner: Annotated[str, m.Field(description="Nearest declaring owner")] = ""
+        values: tuple[str, ...] = m.Field(
+            default_factory=tuple, description="Literal member values"
+        )
+        kind: Annotated[
+            c.Infra.PydanticLiteralKind,
+            m.Field(description="Full-domain, subset or discriminator"),
+        ]
+        file_path: Annotated[Path, m.Field(description="Declaring source file")]
+        line: Annotated[t.PositiveInt, m.Field(description="Declaration line")]
+        generated: Annotated[
+            bool, m.Field(description="Whether the declaration is generated")
+        ] = False
+
+    class PydanticParityCensus(FlextInfraModelsBase.FrozenArbitrary):
+        """One divergence between a model and its projected protocol."""
+
+        package: Annotated[str, m.Field(description="Owning FLEXT package")] = ""
+        kind: Annotated[
+            str, m.Field(description="missing-protocol or projection-drift")
+        ]
+        model: Annotated[str, m.Field(description="Model class name")] = ""
+        protocol: Annotated[str, m.Field(description="Projected protocol name")] = ""
+        file_path: Annotated[Path, m.Field(description="Projection file")]
+        line: Annotated[t.PositiveInt, m.Field(description="Observation line")]
+        detail: Annotated[str, m.Field(description="Divergence detail")] = ""
+
+    class PydanticDuplicateModelCensus(FlextInfraModelsBase.FrozenArbitrary):
+        """Models whose exact declaration payload is identical."""
+
+        fingerprint: Annotated[t.NonEmptyStr, m.Field(description="Payload digest")]
+        models: tuple[str, ...] = m.Field(
+            default_factory=tuple, description="Duplicate model identities"
+        )
+
+    class PydanticCensus(FlextInfraModelsBase.FrozenArbitrary):
+        """Typed Pydantic domain census mounted on the workspace report."""
+
+        models: tuple[
+            FlextInfraModelsCensus.PydanticModelCensus,
+            ...,
+        ] = m.Field(default_factory=tuple, description="Concrete model inventory")
+        enums: tuple[
+            FlextInfraModelsCensus.PydanticEnumCensus,
+            ...,
+        ] = m.Field(default_factory=tuple, description="Closed-domain enum inventory")
+        literals: tuple[
+            FlextInfraModelsCensus.PydanticLiteralCensus,
+            ...,
+        ] = m.Field(default_factory=tuple, description="Literal annotation inventory")
+        parity: tuple[
+            FlextInfraModelsCensus.PydanticParityCensus,
+            ...,
+        ] = m.Field(
+            default_factory=tuple, description="Model-to-protocol divergence rows"
+        )
+        duplicate_models: tuple[
+            FlextInfraModelsCensus.PydanticDuplicateModelCensus,
+            ...,
+        ] = m.Field(
+            default_factory=tuple, description="Exact duplicate declaration payloads"
+        )
+
     class CensusFixPlan(FlextInfraModelsBase.FrozenArbitrary):
         """Typed extermination plan over the census rows."""
 
@@ -771,6 +866,10 @@ class FlextInfraModelsCensus:
             default_factory=tuple,
             description="Declarations or uses longer than their canonical form",
         )
+        pydantic_census: Annotated[
+            FlextInfraModelsCensus.PydanticCensus,
+            m.Field(description="Pydantic domain classification and parity"),
+        ]
         census_fix_plan: Annotated[
             FlextInfraModelsCensus.CensusFixPlan,
             m.Field(description="Typed extermination plan over this report's rows"),

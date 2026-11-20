@@ -195,5 +195,24 @@ class FlextInfraUtilitiesDependencyRequirements:
         """
         return canonicalize_name(Requirement(requirement).name)
 
+    @staticmethod
+    def requirement_variant_identity(
+        requirement: str,
+    ) -> tuple[tuple[str, str], tuple[str | None, str | None]]:
+        """Return the name, extras, marker and origin one requirement selects.
+
+        Two requirements with this identity differ only by their version
+        constraint.
+
+        Returns:
+            ``((name, extras), (marker, url))`` in canonical form.
+
+        """
+        parsed = Requirement(requirement)
+        return (
+            (canonicalize_name(parsed.name), ",".join(sorted(parsed.extras))),
+            (str(parsed.marker) if parsed.marker is not None else None, parsed.url),
+        )
+
 
 __all__: list[str] = ["FlextInfraUtilitiesDependencyRequirements"]

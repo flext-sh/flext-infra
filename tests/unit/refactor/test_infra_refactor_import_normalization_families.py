@@ -677,41 +677,60 @@ class TestsFlextInfraRefactorImportNormalizationFamilies(
         tm.that(outcome.stderr, eq="")
 
     @classmethod
-    @c.Tests.MARK.parametrize("role", sorted(c.Infra.IMPORT_LAW_ROOT_SINGLETONS))
+    @c.Tests.MARK.parametrize("role", sorted(c.Infra.IMPORT_LAW_LAYER_ZERO_ROOTS))
     @c.Tests.MARK.parametrize(
         "statement",
         [
             "from demo_pkg import t",
             "from demo_pkg import settings",
             "from demo_pkg import settings as own",
-            "from demo_pkg_models import DemoModelsBase",
-            "from demo_pkg._settings import DemoSettings",
-            "from ._settings import DemoSettings",
             "import demo_pkg as own",
         ],
     )
-    @c.Tests.MARK.parametrize("guarded", [False, True])
-    def test_layer_zero_rejects_all_own_namespace_dependencies(
-        cls, tmp_path: Path, role: str, statement: str, *, guarded: bool
+    def test_layer_zero_rejects_own_root_namespace_imports(
+        cls, tmp_path: Path, role: str, statement: str
     ) -> None:
-        """Typing guards and private paths cannot authorize a layer-zero edge."""
+        """Layer zero runs before the facades exist: no own-root runtime import."""
         project, package = cls._project(tmp_path)
-        source = (
-            "from __future__ import annotations\n"
-            "from typing import TYPE_CHECKING\n"
-            + (f"if TYPE_CHECKING:\n    {statement}\n" if guarded else statement + "\n")
-        )
         tm.fail(
             u.Infra.normalize_import_source(
                 project_root=project,
                 file_path=package / f"_{role}.py",
-                source=source,
+                source=f"from __future__ import annotations\n{statement}\n",
             ),
             has="layer-zero module imports its own",
         )
 
     @classmethod
-    @c.Tests.MARK.parametrize("role", sorted(c.Infra.IMPORT_LAW_ROOT_SINGLETONS))
+    @c.Tests.MARK.parametrize("role", sorted(c.Infra.IMPORT_LAW_LAYER_ZERO_ROOTS))
+    @c.Tests.MARK.parametrize(
+        "source",
+        [
+            (
+                "from typing import TYPE_CHECKING\nif TYPE_CHECKING:\n"
+                "    from demo_pkg import t\n"
+            ),
+            "from demo_pkg._settings import DemoSettings\n",
+        ],
+    )
+    def test_layer_zero_admits_typing_and_direct_leaf_imports(
+        cls, tmp_path: Path, role: str, source: str
+    ) -> None:
+        """A type-checking import never executes; a direct leaf is the provider."""
+        project, package = cls._project(tmp_path)
+        (package / "_settings.py").write_text(
+            "class DemoSettings:\n    pass\n", encoding="utf-8"
+        )
+        tm.ok(
+            u.Infra.normalize_import_source(
+                project_root=project,
+                file_path=package / f"_{role}.py",
+                source=f"from __future__ import annotations\n{source}",
+            )
+        )
+
+    @classmethod
+    @c.Tests.MARK.parametrize("role", sorted(c.Infra.IMPORT_LAW_LAYER_ZERO_ROOTS))
     def test_layer_zero_role_uses_architecture_not_substring(cls, role: str) -> None:
         """A domain configuration name cannot override its enclosing family."""
         tm.that(u.Infra.import_module_role(f"demo_pkg._{role}"), eq="layer0")

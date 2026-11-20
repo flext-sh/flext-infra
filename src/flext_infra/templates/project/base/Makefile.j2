@@ -178,14 +178,8 @@ WORKSPACE_SUBPROJECTS :={% for subproject in workspace_subprojects %} {{ subproj
 # The Makefile validates no caller input. Every verb
 # always applies; a mistyped variable fails where the verb consumes it, and an
 # unconsumed variable is ignored.
-export CHECK_PHASE
+export CHECK_PHASE MARKER
 PYTEST_REPORTS_DIR := {{ make.testmon_cache.reports_directory }}
-PYTEST_CACHE_HOME = $(if $(strip $({{ make.testmon_cache.data_home_environment_variable }})),$({{ make.testmon_cache.data_home_environment_variable }}),$(if $(strip $({{ make.testmon_cache.user_home_environment_variable }})),$({{ make.testmon_cache.user_home_environment_variable }})/{{ make.testmon_cache.home_cache_directory }},))
-# One persistent testmon database per project, shared by every checkout and
-# worktree of it: testmon tracks each checkout's source by file checksum, so a
-# new lane starts from the project's measured selection instead of a cold full
-# inventory.
-override FLEXT_PYTEST_TESTMON_DATABASE = $(if $(strip $(PYTEST_CACHE_HOME)),$(PYTEST_CACHE_HOME)/{{ make.testmon_cache.external_storage_directory }}/$(PROJECT_NAME)/{{ make.testmon_cache.database_filename }})
 override PYTEST_RUN_TIMEOUT_SECONDS := {{ pytest.run_timeout_seconds }}
 override PYTEST_TERMINATION_GRACE_SECONDS := {{ pytest.termination_grace_seconds }}
 override PYTEST_TIMEOUT_EXIT_CODE := {{ timeout_exit_code }}
@@ -323,8 +317,12 @@ CALLER_VIRTUAL_ENV := $(patsubst %/,%,$(VIRTUAL_ENV))
 
 # === SECTION: profile routing (managed) ===
 # Source: repository topology. workspace has .gitmodules; standalone does not.
-# Native UV membership and Git attachment elect the physical runtime.
+# Native UV membership and Git attachment elect the physical runtime; only an
+# explicit make command-line RUNTIME_ROOT (a test fixture's session runtime,
+# D-VENV) replaces the election, never the environment or a parent make.
+ifneq ($(origin RUNTIME_ROOT),command line)
 override RUNTIME_ROOT := $(REPOSITORY_ROOT)
+endif
 # Git and Mise discovery share the runtime boundary: an attached member's
 # verbs read workspace paths through the workspace runtime.
 override export GIT_CEILING_DIRECTORIES := $(shell cd "$(RUNTIME_ROOT)/.." && pwd -P)
@@ -356,8 +354,10 @@ override export MISE_AUTO_INSTALL := 0
 
 # D-VENV: the environment is <RUNTIME_ROOT>/.venv only. A member inside a
 # workspace uses the workspace environment; a standalone checkout or a linked
-# worktree owns its own physical environment inside the checkout. The path is
-# law, never configuration, and is never shared with another checkout.
+# worktree owns its own physical environment inside the checkout; a test
+# fixture checkout receives its test session's runtime root on the make command
+# line and owns none. No other input selects it, and it is never shared with
+# another checkout.
 override RUNTIME_VENV := $(RUNTIME_ROOT)/{{ environment_directory }}
 # The upgrade executor (make.executor_environment) is a separate uv-created
 # environment under the runtime root: it runs only `make upg`'s residual
@@ -984,6 +984,9 @@ _builtin_tests_all: _builtin_require_environment
 _builtin_tests_full_all: _builtin_require_environment
 	@{{ pytest_test_runner("tests-full") | trim }}
 
+_builtin_tests_harness_all: _builtin_require_environment
+	@{{ pytest_test_runner("tests-harness") | trim }}$(if $(MARKER), --marker "$$MARKER")
+
 # fmt is format-only (single-pass verb law): ruff formats Python, the
 # fmt_gates formatters run once through the checker's apply mode, and every
 # lint repair belongs to `make fix`. Every repair requires read-only native
@@ -997,8 +1000,8 @@ _builtin_fix_all: _builtin_require_environment
 _builtin_clean_generated: _builtin_require_interpreter
 	@$(PROJECT_FLEXT_INFRA) maintenance clean --repository-root "$(PROJECT_ROOT)" --apply
 
-# Heavy verbs (check, tests, tests-full, gen, gen-scope, mod) admit themselves
-# into the per-host FIFO queue and arm their wall-time budget only once
+# Heavy verbs (check, tests, tests-full, tests-harness, gen, gen-scope, mod)
+# admit themselves into the per-host FIFO queue and arm their wall-time budget only once
 # admitted (FLEXT ADR-032, config Infra.gate_admission): queue time never
 # counts against a budget. GEN_PROFILE=1 / MOD_PROFILE=1 capture cProfile.
 GEN_PROFILE ?=
@@ -1049,6 +1052,7 @@ _builtin-check: _builtin_check_all
 
 _builtin-tests: _builtin_tests_all
 _builtin-tests-full: _builtin_tests_full_all
+_builtin-tests-harness: _builtin_tests_harness_all
 _builtin-fmt: _builtin_fmt_all
 _builtin-fix: _builtin_fix_all
 _builtin-clean: _builtin_clean_generated

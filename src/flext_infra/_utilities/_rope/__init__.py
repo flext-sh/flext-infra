@@ -40,6 +40,7 @@ if TYPE_CHECKING:
     )
     from flext_infra._utilities._rope.native_project import FlextInfraRopeNativeProject
     from flext_infra._utilities._rope.project import FlextInfraRopeProject
+    from flext_infra._utilities._rope.pydantic import FlextInfraUtilitiesRopePydantic
     from flext_infra._utilities._rope.pymodule import (
         FlextInfraUtilitiesRopeCorePyModule,
     )
@@ -98,6 +99,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesRopeMissingImports",
     "FlextInfraUtilitiesRopeModulePatch",
     "FlextInfraUtilitiesRopeMovePublication",
+    "FlextInfraUtilitiesRopePydantic",
     "FlextInfraUtilitiesRopeRuntime",
     "FlextInfraUtilitiesRopeRuntimeBase",
     "FlextInfraUtilitiesRopeRuntimeMatching",
@@ -135,6 +137,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesRopeMissingImports": ".missing_imports",
         "FlextInfraUtilitiesRopeModulePatch": ".module_patch",
         "FlextInfraUtilitiesRopeMovePublication": ".move_publication",
+        "FlextInfraUtilitiesRopePydantic": ".pydantic",
         "FlextInfraUtilitiesRopeRuntime": ".runtime",
         "FlextInfraUtilitiesRopeRuntimeBase": ".runtime_base",
         "FlextInfraUtilitiesRopeRuntimeMatching": ".runtime_matching",

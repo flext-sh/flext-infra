@@ -104,6 +104,9 @@ Infra:
       evidence: "name: flext-strict-jsonvalue-session-continuation"
     # Fresh import probes are independent subprocesses within one validation.
     fresh_import_workers: 3
+    # One probe imports a whole package; a project whose import is slower
+    # declares its own deadline under the same key.
+    fresh_import_timeout_seconds: 60
     # Protected-edit lint snapshots run their gate subprocesses in this many
     # threads per level (paths, then gates per level); pyrefly keeps its own
     # resource-limited deadline, so the bound caps concurrent type checkers.
@@ -174,12 +177,12 @@ Infra:
       - name: codemod_compat_rules
         shapes: [ compat-read ]
       # Layer-zero import boundary rendered from the import-law classifier:
-      # a settings/config module imports neither its own root facade nor
-      # its own modules.
+      # a layer-zero (lazy loader) module imports neither its own root
+      # facade nor its own modules.
       - name: codemod_layer_zero_rules
         shapes:
-        - ban-settings-config-own-facade-import
-        - ban-settings-config-own-module-import
+        - ban-layer-zero-own-facade-import
+        - ban-layer-zero-own-module-import
       # Facade boundary (ADR-028): a library import outside the c/t/p/m/u
       # families; stdlib, own and FLEXT facade packages are derived
       # (ENFORCE-070/093, c.Infra.CODEMOD_EXTERNAL_IMPORT_SHAPE).
@@ -321,7 +324,7 @@ Infra:
       # override-dependencies bind only this project's own resolution, never
       # the metadata an installer of this distribution resolves.
       uv_override_dependencies:
-      - rope @ git+https://github.com/marlon-costa-dc/rope.git@3a0cb69024fb5f17ba32064bf6c294d016c7d9d8
+      - rope @ git+https://github.com/marlon-costa-dc/rope.git@09806ca918b69994ac3a880c92cde9689f480f46
       # Moving selectors consumed by generated .mise.toml and CI. Only
       # `make upg` resolves them to the newest release and writes mise.lock;
       # setup installs exactly what the committed lock pins, and only these
@@ -535,6 +538,10 @@ Infra:
     # packages: read; every other distribution and job stays contents-only.
     # Org repositories declare themselves in their own config/codegen.yaml.
     ci_package_registry_read: []
+    # Distributions whose docs must stay private: the generated Docs workflow
+    # builds and checks the site but never uploads or deploys it to Pages.
+    # Repositories declare themselves in their own config/codegen.yaml.
+    docs_site_unpublished: []
     # Per-distribution private composed-project auth for CI. The default
     # GITHUB_TOKEN cannot clone sibling private repos; projects that need
     # private submodules declare read-only deploy-key secrets in their own
@@ -685,27 +692,13 @@ Infra:
       # exceeds max_load5, and each recipe runs in a cgroup scope bounded by
       # memory_limit_gb and max_processes CPUs. overrides declares an explicit
       # exception per public verb. Every verb runs at idle CPU and IO weight,
-      # so agents use light processes instead of waiting for the load; only the
-      # full forms (tests-full, and mod without RULES or LAWS, named mod-full)
-      # keep max_load5. A selected mod is admitted through the mod override.
+      # so agents use light processes instead of waiting for the load.
       admission:
         max_load5: 20
         memory_limit_gb: 5
         max_processes: 2
-        # Operator 2026-11-14: host load from other actors sits at 85-113,
-        # so the provisioning path (setup, gen, check) admits to 160.
-        overrides:
-          setup: {max_load5: 160}
-          upg: {max_load5: 80}
-          gen: {max_load5: 160}
-          mod: {max_load5: 80}
-          fix: {max_load5: 80}
-          fmt: {max_load5: 80}
-          check: {max_load5: 160}
-          tests: {max_load5: 80}
-          help: {max_load5: 80}
-          build: {max_load5: 80}
-          clean: {max_load5: 80}
+        # Operator 2026-11-19: every verb admits at max_load5 20; no verb
+        # declares a higher load override.
         refusal_guidance:
         - Do not wait for the load to drop; run the lighter form now, it runs at idle priority.
         - Prefer make tests (incremental Testmon) over make tests-full; run tests-full only occasionally.
@@ -752,15 +745,10 @@ Infra:
       # `--check` side runs in `make check` like markdown-format, so format
       # drift is red at check time. fix never formats.
       fmt_gates: [ format, markdown-format, markdown-code ]
-      # One filename and the root-relative runner paths; the runner places the
-      # database in platformdirs' external per-worktree cache.
+      # Testmon's native default database file at the checkout root
+      # (git-ignored) and the root-relative runner paths.
       testmon_cache:
         database_filename: .testmondata
-        database_environment_variable: TESTMON_DATAFILE
-        data_home_environment_variable: XDG_CACHE_HOME
-        user_home_environment_variable: HOME
-        home_cache_directory: .cache
-        external_storage_directory: flext/infra/testmon
         target_directory: tests
         reports_directory: .reports/tests
       # Isolated environment that runs `make upg`'s one residual flext-infra
@@ -863,11 +851,14 @@ Infra:
       - { identity: setup, verb: setup, contexts: [ local, ci, pre_commit ] }
       # Initial behavioral admission requires global source evidence, not full check.
       - { identity: check-primary, verb: check, phase: primary, contexts: [ local, ci, pre_push ] }
+      # Operator decision 2026-11-19: a project that opts into the pre-push
+      # stage runs its incremental tests there after the primary check, since
+      # CI runs setup and the primary check only (ruling 2026-11-12).
       - identity: tests-primary
         verb: tests
-        contexts: [ local ]
+        contexts: [ local, pre_push ]
         requires:
-        - { step: check-primary, contexts: [ local ] }
+        - { step: check-primary, contexts: [ local, pre_push ] }
       # CI never generates: check's `codegen conform --mode check` is the
       # read-only projection verdict of the LOCKED generator, so a stale or
       # skewed projection fails there, while CI generation would run the
@@ -990,6 +981,9 @@ Infra:
         description: Run native incremental tests through the persistent Testmon selection.
       - name: tests-full
         description: Run the complete selected inventory once without Testmon.
+      - name: tests-harness
+        description: Run only the harness gate tests, through the persistent Testmon selection, under the harness that provides their inputs; MARKER=<harness gate marker> narrows the run to one.
+        arguments: [ MARKER ]
       - name: help
         description: Discover the declared public interface without effects.
       - name: build
@@ -1094,10 +1088,8 @@ Infra:
     # Gitignore-only entries; they feed no other projection.
     - { name: .flext-sync.lock, is_dir: false, vscode_exclude: false, watch_exclude: false }
     - { name: .sync.lock, is_dir: false, vscode_exclude: false, watch_exclude: false }
-    # pytest-testmon's default cwd datafile and its SQLite WAL/SHM siblings.
-    # The canonical test verbs pin the database outside the checkout
-    # (make.testmon_cache) and the pytest plugin refuses an in-tree one, so an
-    # in-tree copy is a stray raw run that must never become tracked.
+    # pytest-testmon's native checkout-root database and its SQLite WAL/SHM
+    # siblings: local state, never tracked.
     - { name: ".testmondata*", is_dir: false, vscode_exclude: false, watch_exclude: false }
     - { name: .planning, vscode_exclude: false, watch_exclude: false }
     - { name: skill-create-output, vscode_exclude: false, watch_exclude: false }

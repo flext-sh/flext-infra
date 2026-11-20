@@ -40,6 +40,9 @@ if TYPE_CHECKING:
         FlextInfraUtilitiesFacadeComponents,
     )
     from flext_infra._utilities.facade_members import FlextInfraUtilitiesFacadeMembers
+    from flext_infra._utilities.facade_namespace import (
+        FlextInfraUtilitiesFacadeNamespace,
+    )
     from flext_infra._utilities.gate_admission import FlextInfraUtilitiesGateAdmission
     from flext_infra._utilities.generation_inventory import (
         FlextInfraGenerationInventory,
@@ -133,6 +136,7 @@ if TYPE_CHECKING:
     from flext_infra._utilities.protocol_retirement import (
         FlextInfraUtilitiesModelsProtocolRetirement,
     )
+    from flext_infra._utilities.pydantic_census import FlextInfraUtilitiesPydanticCensus
     from flext_infra._utilities.pyrefly import FlextInfraUtilitiesPyrefly
     from flext_infra._utilities.pytest_collection import (
         FlextInfraUtilitiesPytestCollection,
@@ -194,6 +198,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesEnforcementCatalog",
     "FlextInfraUtilitiesFacadeComponents",
     "FlextInfraUtilitiesFacadeMembers",
+    "FlextInfraUtilitiesFacadeNamespace",
     "FlextInfraUtilitiesGateAdmission",
     "FlextInfraUtilitiesGenerationInventory",
     "FlextInfraUtilitiesGit",
@@ -231,6 +236,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesProtectedEditPreview",
     "FlextInfraUtilitiesProtectedEditWrites",
     "FlextInfraUtilitiesProtocolPublication",
+    "FlextInfraUtilitiesPydanticCensus",
     "FlextInfraUtilitiesPyrefly",
     "FlextInfraUtilitiesPytest",
     "FlextInfraUtilitiesPytestCollection",
@@ -285,6 +291,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesEnforcementCatalog": ".enforcement_catalog",
         "FlextInfraUtilitiesFacadeComponents": ".facade_components",
         "FlextInfraUtilitiesFacadeMembers": ".facade_members",
+        "FlextInfraUtilitiesFacadeNamespace": ".facade_namespace",
         "FlextInfraUtilitiesGateAdmission": ".gate_admission",
         "FlextInfraUtilitiesGenerationInventory": ".generation_inventory",
         "FlextInfraUtilitiesGit": ".git",
@@ -322,6 +329,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesProtectedEditPreview": ".protected_edit_preview",
         "FlextInfraUtilitiesProtectedEditWrites": ".protected_edit_writes",
         "FlextInfraUtilitiesProtocolPublication": ".protocol_publication",
+        "FlextInfraUtilitiesPydanticCensus": ".pydantic_census",
         "FlextInfraUtilitiesPyrefly": ".pyrefly",
         "FlextInfraUtilitiesPytest": ".pytest_surface",
         "FlextInfraUtilitiesPytestCollection": ".pytest_collection",
@@ -367,6 +375,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesEnforcementCatalog",
         "FlextInfraUtilitiesFacadeComponents",
         "FlextInfraUtilitiesFacadeMembers",
+        "FlextInfraUtilitiesFacadeNamespace",
         "FlextInfraUtilitiesGateAdmission",
         "FlextInfraUtilitiesGenerationInventory",
         "FlextInfraUtilitiesGit",
@@ -404,6 +413,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesProtectedEditPreview",
         "FlextInfraUtilitiesProtectedEditWrites",
         "FlextInfraUtilitiesProtocolPublication",
+        "FlextInfraUtilitiesPydanticCensus",
         "FlextInfraUtilitiesPyrefly",
         "FlextInfraUtilitiesPytest",
         "FlextInfraUtilitiesPytestCollection",

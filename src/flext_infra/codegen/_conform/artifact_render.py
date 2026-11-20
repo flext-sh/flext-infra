@@ -10,10 +10,8 @@ from collections.abc import Generator, Mapping, Sequence
 from contextlib import contextmanager
 from pathlib import Path
 
-from flext_infra import c, config, deps as dependency_services, m, p, r, t, u
-from flext_infra.codegen._conform.context_render import (
-    FlextInfraCodegenConformContextRender,
-)
+from flext_infra import c, config, deps, m, p, r, t, u
+from flext_infra.codegen._conform import FlextInfraCodegenConformContextRender
 from flext_infra.deps.phases import FlextInfraToolTablesPhase
 
 
@@ -183,9 +181,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         if first_party == isort.get(c.Infra.KNOWN_FIRST_PARTY_HYPHEN):
             return tooling
         isort[c.Infra.KNOWN_FIRST_PARTY_HYPHEN] = first_party
-        return (
-            dependency_services.FlextInfraPyprojectModernizer.tooling_context_from_payload
-        )(
+        return (deps.FlextInfraPyprojectModernizer.tooling_context_from_payload)(
             payload,
             project_kind=tooling.project_kind,
             tool_config=tool_config,
@@ -786,7 +782,6 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             spec = m.Infra.MakeWorkflowRenderSpec.model_validate({
                 "dist": (dist),
                 "make": (codegen.make),
-                "scenario_data_roots": (codegen.exclusions.scenario_data_roots),
             })
         elif destination == c.Infra.MARKDOWN_CONFIG_FILENAME:
             tooling = render_inputs.tooling_runtime
@@ -1007,6 +1002,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 ),
                 "system_packages": (tuple(codegen.ci_system_packages.get(dist, ()))),
                 "packages_read": (dist in codegen.ci_package_registry_read),
+                "docs_site_publish": (dist not in codegen.docs_site_unpublished),
                 "superproject": (None if superproject is None else superproject.value),
             }),
         )

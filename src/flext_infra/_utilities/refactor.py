@@ -651,7 +651,7 @@ class FlextInfraUtilitiesRefactor:
                         (
                             "read-only rule audit changed source",
                             not source_inventory_unchanged
-                            and stage.verb in {"audit", "audit-rules"},
+                            and stage.verb == "audit-rules",
                         ),
                         ("elected rule catalog changed", before.plan != after.plan),
                         (

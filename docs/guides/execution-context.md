@@ -1236,8 +1236,9 @@ helper, cache, detector or registry when the correct domain owner already exists
 
 Before publication, apply FLEXT law **Architecture and imports** and **Sources,
 generation, and commands**: preserve facade MRO `c -> t -> p -> m -> u`, inward
-imports, pure declarations and explicit dependency composition. Config/settings
-are layer-zero and import no own namespace. Models resolve at their declaring
+imports, pure declarations and explicit dependency composition. Layer zero is the
+lazy loader alone and imports no own namespace; settings and config import
+through the lazy initializer. Models resolve at their declaring
 owner and payloads cross typed Pydantic boundaries once. Repair cycles at the
 declaration/dependency owner, not through local-import demotion, fallback,
 compatibility exports or suppressions. Generated surfaces change only through
@@ -1395,6 +1396,12 @@ cannot invalidate the captured declaration offsets.
 The same rule covers imports from the package root and from its `protocols`
 module. Authored protocol extension inserts declarations against the captured
 holder extent before changing the import header, preserving class indentation.
+Generation is also the single writer under deletion (`flext-b4gw3.6`): a
+contract carrying the projection docstring whose model is gone retires from its
+authored holder, and a generated protocol module left without models retires
+whole. The retirement is hidden from the rest of the same candidate, so the `p`
+facade and the `_protocols` lazy exports drop the retired holder in that run and
+a second `make gen` writes nothing. Authored contracts are never retired.
 Persisted model fields name their concrete model directly (ADR-018 amendment
 2026-11-09), and consumers receive the `p` contract; the deferred
 `t.schema_for_model` form is no longer used at the field boundary. This is
@@ -2515,6 +2522,12 @@ extras and markers: the transformer does not infer a Git source from a name
 prefix. Generated internal floors use their declared provider provenance;
 explicit member Git references retain the existing URL validation. Preserving a
 requirement during conformance does not prove its resolution or installation.
+
+A requirement declared in `codegen.scaffold.project.dev` owns its distribution by
+name: a project requirement with the same name, extras, marker and origin but
+another version constraint, such as a typing-stub floor raised by Dependabot in a
+generated `pyproject.toml`, is replaced by the declared one, so each distribution
+appears once. The declared floor advances in `codegen.yaml`, never in a projection.
 
 Member contributions carry per-occurrence provenance in both managed development
 groups. CUSTOM entries retain their full constraints and origins; removing a
@@ -4158,7 +4171,7 @@ owns whole-program type analysis, and no second type checker runs beside them
 (`u.Infra.ruff_cache_directory`) and keys its own entries by its version and
 package root inside it; FLEXT adds no namespace of its own. The commit hook
 first provisions the checkout with `make setup`,
-then passes `make.ci.pre_commit_value` to the check, which runs only the fast
+then runs `make check` with `make.ci.pre_commit_value`, which runs only the fast
 commit-stage gates (`make.pre_commit_check_gates`: lint, format and Markdown)
 through the engine that setup provisioned; it runs no tests and no other
 validator. Staged Python files run the lint and format gates on those files; a
@@ -4166,7 +4179,8 @@ staged Markdown file runs the `markdown` and `markdown-format` gates over the
 repository, never a raw `rumdl` pass, so a declared foreign projected block
 (`tooling.tools.markdown.projected-blocks`) reads the same in the hook as in
 `make check` and `make fmt`. When enabled, the generated pre-push hook
-drops inherited `CI` and runs the workflow's primary check once. The local
+drops inherited `CI` and runs the workflow's primary check once, then the
+incremental tests, because CI runs setup and the primary check only. The local
 workflow retains the complete check and test steps. Every gate blocks in
 every context that runs it; there is no informative or advisory gate.
 Conflict detection uses the canonical Git inventory, including unpublished files,
@@ -4256,8 +4270,9 @@ The ordinary `tests` operation uses incremental Testmon selection
 The explicit `tests-full` operation executes the applicable suite once without
 Testmon, an incremental pre-run or database access. Marker applicability remains
 owned by the declared execution context; neither operation invents exclusions.
-The incremental filesystem cache lives at the typed XDG/HOME-derived project path
-and full execution leaves it untouched.
+The incremental database is Testmon's native `.testmondata` at the checkout root,
+ignored by `.gitignore`; no variable, setting or Make value relocates it, and full
+execution leaves it untouched.
 The explicit single-file operation runs incremental selection followed by complete
 execution of that file, including its declared slow tests, on the same database.
 No empty marker phase is invoked or converted to success. Zero execution is accepted

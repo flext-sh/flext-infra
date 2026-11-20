@@ -23,7 +23,7 @@ from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeRuntimeModules,
     FlextInfraUtilitiesRopeRuntimeRefactors,
 )
-from flext_infra._utilities._rope._analysis.asthelpers import (
+from flext_infra._utilities._rope._analysis import (
     FlextInfraUtilitiesRopeAnalysisAstHelpers,
 )
 from flext_infra._utilities._semantic_cutover import (

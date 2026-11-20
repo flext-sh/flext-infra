@@ -450,6 +450,15 @@ class FlextInfraModelsWorkspace:
             ),
         ] = c.Infra.CodegenConformScope.ALL
 
+        marker: Annotated[
+            str | None,
+            m.Field(
+                description=(
+                    "One declared harness gate marker narrowing the harness tests"
+                ),
+            ),
+        ] = None
+
     class FlextEditableRequest(WorkspaceRequest):
         """Setup's FLEXT editable selection: a workspace root, or none to clear."""
 

@@ -11,7 +11,7 @@ import sqlite3
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
-from flext_infra import config
+from flext_infra import config, infra, validate
 from tests import c, e, m, t, tm, u
 
 
@@ -337,17 +337,16 @@ class TestsFlextInfraPytestRunner:
         *,
         profile_collection: bool,
     ) -> None:
-        """A second run restores the seeded cache and executes nothing."""
+        """A second run restores the project's cache and executes nothing."""
         runner = u.Tests.PytestRunner.runner_for(cached_runner_project)
         tm.that(tm.ok(runner.execute()), eq=0)
         reports_root = cached_runner_project / runner.reports
-
-        second_exit = tm.ok(
-            u.Tests.PytestRunner.runner_for(
-                cached_runner_project,
-                profile_collection=profile_collection,
-            ).execute(),
+        second = u.Tests.PytestRunner.runner_for(
+            cached_runner_project,
+            profile_collection=profile_collection,
         )
+
+        second_exit = tm.ok(second.execute())
         tm.that(second_exit, eq=0)
         second_summary = u.Tests.PytestRunner.summary(reports_root)
         tm.that(
@@ -1094,3 +1093,52 @@ class TestsFlextInfraPytestRunner:
         tm.that(len(contexts), eq=2)
         tm.fail((contexts[-1].parent / "suite-outcome.json").exists())
         tm.fail((contexts[-1].parent / "testmon-inventory.json").exists())
+
+
+class TestsFlextInfraPytestRunnerDatabase:
+    """Testmon keeps its native database file at the checkout root."""
+
+    @staticmethod
+    @c.Tests.MARK.parametrize(
+        "mode",
+        [
+            c.Infra.PytestExecutionMode.GLOBAL_INCREMENTAL,
+            c.Infra.PytestExecutionMode.FULL,
+        ],
+    )
+    def test_database_is_the_native_checkout_default(
+        tmp_path: Path,
+        monkeypatch: t.Tests.MonkeyPatch,
+        *,
+        mode: c.Infra.PytestExecutionMode,
+    ) -> None:
+        """Incremental runs use the checkout-root default; full runs have none.
+
+        A redirected ``HOME`` or ``XDG_CACHE_HOME`` never moves it.
+        """
+        repository = tmp_path / "project"
+        u.Tests.WorktreeFixture.initialize_governed_project(
+            repository,
+            "fixture-project",
+            beads=u.Tests.BeadsIdentity(
+                workspace="fixture-workspace",
+                database="fixture_database",
+                issue_prefix="fixture",
+            ),
+        )
+        context = tm.ok(infra.project_context(repository))
+        expected = (
+            repository / config.Infra.codegen.make.testmon_cache.database_filename
+        )
+        redirected = tmp_path / "redirected-home"
+        monkeypatch.setenv("HOME", str(redirected))
+        monkeypatch.setenv("XDG_CACHE_HOME", str(redirected / "cache"))
+        runner = validate.FlextInfraPytestRunner.from_project_context(
+            context,
+            started_at_monotonic=1.0,
+            execution_mode=mode,
+        )
+        tm.that(
+            runner.testmon_db,
+            eq=expected if mode.is_incremental else None,
+        )

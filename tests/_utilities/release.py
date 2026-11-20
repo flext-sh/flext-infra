@@ -11,16 +11,11 @@ from pathlib import Path
 
 from flext_infra import FlextInfraCli, u
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-from tests import (
+from tests import c, config, m, p, t, tm
+from tests._utilities import (
     TestsFlextInfraUtilitiesGit,
     TestsFlextInfraUtilitiesProjectFixture,
     TestsFlextInfraUtilitiesToolingFixture,
-    c,
-    config,
-    m,
-    p,
-    t,
-    tm,
 )
 
 
@@ -36,7 +31,7 @@ class TestsFlextInfraUtilitiesRelease:
 
         """
         return (
-            Path(__file__).resolve().parents[1]
+            tm.not_none(u.Infra.project_root(Path(__file__)))
             / "src"
             / "flext_infra"
             / "templates"

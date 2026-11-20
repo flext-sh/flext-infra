@@ -13,13 +13,13 @@ from typing import Annotated, Literal, Self
 from flext_cli import m, t
 
 from flext_infra import c, p
-from flext_infra._constants.config import FlextInfraConstantsConfig
-from flext_infra._models._config import FlextInfraModelsConfigContract
-from flext_infra._models._config.external_cache import (
+from flext_infra._constants import FlextInfraConstantsConfig
+from flext_infra._models._config import (
     FlextInfraExternalCacheDirectorySpec,
+    FlextInfraModelsConfigContract,
+    FlextInfraModelsConfigMakeClean,
+    FlextInfraModelsConfigMakeDocs,
 )
-from flext_infra._models._config.make_clean import FlextInfraModelsConfigMakeClean
-from flext_infra._models._config.make_docs import FlextInfraModelsConfigMakeDocs
 from flext_infra.make_contract import FlextInfraConfigMakeContract
 
 
@@ -654,34 +654,13 @@ class FlextInfraModelsConfigMake(
                     raise ValueError(msg)
                 return self
 
-        class TestmonCacheSpec(
-            FlextInfraExternalCacheDirectorySpec.Directory[
-                FlextInfraConstantsConfig.PytestCacheEnvironment
-            ],
-            FlextInfraModelsConfigContract.ConfigContract,
-        ):
-            """Persistent pytest-testmon database and runner paths."""
+        class TestmonCacheSpec(FlextInfraModelsConfigContract.ConfigContract):
+            """Testmon's native database filename and the runner paths."""
 
             database_filename: Annotated[
                 t.NonEmptyStr,
-                m.Field(description="pytest-testmon database filename"),
+                m.Field(description="pytest-testmon's native database filename"),
             ]
-            database_environment_variable: Annotated[
-                FlextInfraConstantsConfig.PytestCacheEnvironment,
-                m.Field(
-                    description="pytest-testmon's supported database-path variable",
-                ),
-            ]
-            data_home_environment_variable: Annotated[
-                FlextInfraConstantsConfig.PytestCacheEnvironment,
-                m.Field(description="XDG persistent cache-home variable"),
-            ] = m.Field()
-            user_home_environment_variable: Annotated[
-                FlextInfraConstantsConfig.PytestCacheEnvironment,
-                m.Field(
-                    description="User home variable for the XDG default",
-                ),
-            ] = m.Field()
             target_directory: Annotated[
                 Path,
                 m.Field(description="Repository-relative pytest target"),
@@ -692,37 +671,16 @@ class FlextInfraModelsConfigMake(
             ]
 
             @m.model_validator(mode="after")
-            def require_external_database_contract(self) -> Self:
-                """Keep testmon's official path variable and external path policy exact.
+            def require_database_filename(self) -> Self:
+                """Keep the database a bare filename at the checkout root.
 
                 Returns:
                     The resulting ``Self``.
 
                 Raises:
-                    ValueError: If testmon cache database_filename must be a filename;
-                        or if testmon cache.
+                    ValueError: If database_filename is not a bare filename.
 
                 """
-                for name, actual, expected in (
-                    (
-                        "database_environment_variable",
-                        self.database_environment_variable,
-                        FlextInfraConstantsConfig.PytestCacheEnvironment.DATABASE_FILE,
-                    ),
-                    (
-                        "data_home_environment_variable",
-                        self.data_home_environment_variable,
-                        FlextInfraConstantsConfig.PytestCacheEnvironment.DATA_HOME,
-                    ),
-                    (
-                        "user_home_environment_variable",
-                        self.user_home_environment_variable,
-                        FlextInfraConstantsConfig.PytestCacheEnvironment.USER_HOME,
-                    ),
-                ):
-                    if actual != expected:
-                        msg = f"testmon cache {name} must be {expected.value}"
-                        raise ValueError(msg)
                 if Path(self.database_filename).name != self.database_filename:
                     msg = "testmon cache database_filename must be a filename"
                     raise ValueError(msg)

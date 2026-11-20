@@ -775,7 +775,7 @@ class FlextInfraGatesDuplication(FlextInfraDuplicationReport, FlextInfraGates):
         # catalog and the copy the distribution ships as <pkg>/config, so
         # the packaged provider root resolves beside its packaged config
         # directory.
-        provider_root = type(config).ssot_config_dir().parent / corpus_root_rel
+        provider_root = config.ssot_config_dir().parent / corpus_root_rel
         if (provider_root / c.Infra.CODEMOD_CONFIG_FILENAME).is_file():
             globs.extend(
                 self._sgconfig_fixture_globs(corpus_root_rel, provider_root),
