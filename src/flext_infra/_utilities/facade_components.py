@@ -1811,7 +1811,8 @@ class FlextInfraUtilitiesFacadeComponents:
         bases: list[tuple[str, p.Infra.RopePyObject]] = []
         for (start, end), binding in layout.base_bindings:
             if binding is None:
-                if rendered:
+                base_name = source[start:end].rsplit(".", maxsplit=1)[-1]
+                if rendered and base_name in declared_names:
                     continue
                 message = f"Unresolved facade base: {path}:{source[start:end]}"
                 return r[
@@ -2426,6 +2427,15 @@ class FlextInfraUtilitiesFacadeComponents:
                     )
                 )
                 for _expression, base in retained
+            ):
+                continue
+            resource = provider.get_module().get_resource()
+            source_root = (
+                Path(project.root.real_path)
+                / config.Infra.tooling.tools.pyrefly.path_rules.source_dir
+            )
+            if resource is not None and not Path(resource.real_path).is_relative_to(
+                source_root
             ):
                 continue
             module = FlextInfraUtilitiesProjectDiscovery.module_name_for_provider(

@@ -262,6 +262,18 @@ class FlextInfraTypesBase:
     type LintSnapshot[Receipt] = Mapping[str, Receipt]
     "Native gate receipts or diagnostic deltas, keyed by canonical tool name."
 
+    # ── Protocol projection types ───────────────────────────────────
+
+    type BootstrapProtocolPackage = tuple[
+        Path,
+        Mapping[Path, str],
+        Mapping[Path, str],
+        Mapping[Path, p.Cli.AtomicFileState],
+        Mapping[Path, p.Cli.AtomicFileState],
+        Sequence[tuple[str, str, tuple[str, ...]]],
+    ]
+    "One declared package's prepared bootstrap protocol sources and originals."
+
     # ── Lint policy types ────────────────────────────────────────────
 
     type RuffRule = Annotated[
