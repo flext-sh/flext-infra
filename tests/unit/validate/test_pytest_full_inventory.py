@@ -9,7 +9,6 @@ from __future__ import annotations
 import os
 import signal
 import sys
-import time
 from typing import TYPE_CHECKING
 
 from flext_infra import config, validate
@@ -668,10 +667,11 @@ class TestsFlextInfraPytestFullInventory:
             (directory / "run-context.json").read_bytes(),
         )
         tm.that(context.execution_mode, eq=c.Infra.PytestExecutionMode.FULL)
-        tm.that(
-            context.deadline_monotonic - policy.run_timeout_seconds,
-            gte=runner.started_at_monotonic,
-            lte=time.monotonic(),
+        # The real FULL entrypoint elects no run deadline.
+        tm.that(context.deadline_monotonic, none=True)
+        tm.fail(
+            c.Infra.PYTEST_SUITE_STOP_OPTION
+            in (directory / "command.txt").read_text(encoding=c.DEFAULT_ENCODING)
         )
         capture = m.Infra.GateCaptureStart.model_validate_json(
             (directory / c.Infra.GATE_CAPTURE_START_FILENAME).read_bytes(),

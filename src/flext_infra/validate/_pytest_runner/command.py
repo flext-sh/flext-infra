@@ -62,7 +62,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         execution_mode: c.Infra.PytestExecutionMode = (
             c.Infra.PytestExecutionMode.INCREMENTAL
         ),
-    ) -> float:
+    ) -> float | None:
         """Derive the graceful suite stop instant from the entrypoint deadline.
 
         Selection and inventory consume the same clock, so the instant leaves
@@ -72,9 +72,11 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         promising a synthetic unit completion window.
 
         Returns:
-            The resulting ``float``.
+            The stop instant, or None when the run owns no deadline.
 
         """
+        if self.run_timeout_seconds is None:
+            return None
         pytest = self.pytest_policy()
         if self.carries_slow_items(execution_mode):
             reserve = (
@@ -521,14 +523,18 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         """Return the aggregate graceful suite stop deadline.
 
         Returns:
-            The bounded suite's time-limit arguments.
+            The bounded suite's time-limit arguments; none for an unbounded run.
 
         """
         suite_stop = self.suite_stop_monotonic(
             serial=workers == c.ParserBooleanToken.ZERO,
             execution_mode=execution_mode,
         )
-        return (f"{c.Infra.PYTEST_SUITE_STOP_OPTION}={suite_stop!r}",)
+        return (
+            ()
+            if suite_stop is None
+            else (f"{c.Infra.PYTEST_SUITE_STOP_OPTION}={suite_stop!r}",)
+        )
 
     def _suite_argv(
         self,

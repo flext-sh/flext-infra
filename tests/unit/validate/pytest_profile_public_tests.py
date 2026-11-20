@@ -723,10 +723,11 @@ class TestsFlextInfraPytestProfile:
             contexts[0].read_text(encoding="utf-8"),
         )
         tm.that(context.testmon_db, eq=runner.testmon_db)
-        tm.ok(isfinite(context.deadline_monotonic))
-        tm.that(context.deadline_monotonic, gt=started_at)
+        deadline = tm.not_none(context.deadline_monotonic)
+        tm.ok(isfinite(deadline))
+        tm.that(deadline, gt=started_at)
         tm.that(
-            context.deadline_monotonic,
+            deadline,
             lte=monotonic() + config.Infra.tooling.tools.pytest.run_timeout_seconds,
         )
         command = (contexts[0].parent / "command.txt").read_text(encoding="utf-8")

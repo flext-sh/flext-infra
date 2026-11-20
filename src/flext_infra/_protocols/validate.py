@@ -306,8 +306,12 @@ class FlextInfraProtocolsValidate:
             ...
 
         @property
-        def deadline_monotonic(self) -> float:
-            """Shared absolute deadline across all execution phases."""
+        def deadline_monotonic(self) -> float | None:
+            """Structural member projected from the owning model.
+
+            Shared absolute deadline across all execution phases; absent for the
+            unbounded FULL operation.
+            """
             ...
 
         @property

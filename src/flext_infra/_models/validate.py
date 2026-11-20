@@ -314,10 +314,13 @@ class FlextInfraModelsCore:
                 "absent for coverage execution"
             ),
         )
-        deadline_monotonic: float = m.Field(
+        deadline_monotonic: float | None = m.Field(
             gt=0,
             allow_inf_nan=False,
-            description="Shared absolute deadline across all execution phases",
+            description=(
+                "Shared absolute deadline across all execution phases; "
+                "absent for the unbounded FULL operation"
+            ),
         )
         report_directory: Path | None = m.Field(
             default=None,

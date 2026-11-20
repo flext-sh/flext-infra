@@ -325,18 +325,33 @@ class FlextInfraPytestRunnerExecution(
                     return False
         return True
 
-    def _process_deadline(self) -> p.Cli.ProcessDeadline:
+    def _process_deadline(self) -> p.Cli.ProcessDeadline | None:
         """Use the suite clock for selection, execution, and cleanup.
 
         Returns:
             The absolute deadline shared by every phase of this operation;
             an incremental run re-arms it when the testmon lease is acquired.
+            FULL owns none.
 
         """
+        expires = self._deadline_monotonic()
+        if expires is None:
+            return None
         return m.Cli.ProcessDeadline(
-            expires_at_monotonic=self.started_at_monotonic + self.run_timeout_seconds,
+            expires_at_monotonic=expires,
             termination_grace_seconds=self.termination_grace_seconds,
         )
+
+    def _deadline_monotonic(self) -> float | None:
+        """Return the suite clock's absolute expiry; FULL owns none.
+
+        Returns:
+            The monotonic expiry instant, or None for an unbounded run.
+
+        """
+        if self.run_timeout_seconds is None:
+            return None
+        return self.started_at_monotonic + self.run_timeout_seconds
 
     def _run_suite(
         self,
@@ -908,24 +923,31 @@ class FlextInfraPytestRunnerExecution(
             execution_mode=execution_mode,
             testmon_db=database,
             testmon_lease_acquired=False,
-            deadline_monotonic=deadline.expires_at_monotonic,
+            deadline_monotonic=self._deadline_monotonic(),
             report_directory=report_dir,
         )
         self._write_run_context(report_dir, context)
-        admission_ends = (
-            deadline.expires_at_monotonic - deadline.termination_grace_seconds
-        )
+
+        def lease_wait() -> float | None:
+            # An unbounded FULL waits under the lock owner's own bound.
+            if deadline is None:
+                return None
+            admission_ends = (
+                deadline.expires_at_monotonic - deadline.termination_grace_seconds
+            )
+            return max(0.0, admission_ends - time.monotonic())
+
         self._cache_publication = None
         lease_started = time.monotonic()
         sys.stderr.write(f"pytest cache lease: acquiring {database}\n")
         with u.Cli.file_changes_lock(
             database.with_name(f"{database.name}.lock"),
-        ).acquire(timeout=max(0.0, admission_ends - time.monotonic())):
+        ).acquire(timeout=lease_wait()):
             seed = self.testmon_seed_db
             if seed is not None and not database.exists() and seed.is_file():
                 with u.Cli.file_changes_lock(
                     seed.with_name(f"{seed.name}.lock")
-                ).acquire(timeout=max(0.0, admission_ends - time.monotonic())):
+                ).acquire(timeout=lease_wait()):
                     FlextInfraTestmonDbInspector.seed_file(seed, database)
                 sys.stderr.write(f"pytest cache seed: {database} from {seed}\n")
             self.started_at_monotonic = time.monotonic()
@@ -934,9 +956,7 @@ class FlextInfraPytestRunnerExecution(
                 context.model_copy(
                     update={
                         "testmon_lease_acquired": True,
-                        "deadline_monotonic": (
-                            self._process_deadline().expires_at_monotonic
-                        ),
+                        "deadline_monotonic": self._deadline_monotonic(),
                     },
                 ),
             )
@@ -1254,14 +1274,13 @@ class FlextInfraPytestRunnerExecution(
 
         """
         report_dir = self._report_directory()
-        deadline = self._process_deadline()
         self._write_run_context(
             report_dir,
             m.Infra.PytestRunContext(
                 execution_mode=c.Infra.PytestExecutionMode.COVERAGE,
                 testmon_db=None,
                 testmon_lease_acquired=None,
-                deadline_monotonic=deadline.expires_at_monotonic,
+                deadline_monotonic=self._deadline_monotonic(),
                 report_directory=report_dir,
             ),
         )
