@@ -21,14 +21,14 @@ class TestsFlextInfraProtocolNamespaceProjection:
     @staticmethod
     @c.Tests.MARK.parametrize("nested", [False, True])
     @c.Tests.MARK.parametrize("aliased", [False, True])
-    def test_namespace_parts_preserve_real_protocols_and_converge(
+    def test_protocol_marker_beside_concrete_parts_is_refused(
         native_consumer: p.Tests.NativeConsumer,
         tmp_path: Path,
         *,
         nested: bool,
         aliased: bool,
     ) -> None:
-        """Remove namespace-only markers, not interfaces or their runtime checks."""
+        """Refuse a Protocol-marked namespace composed from concrete parts."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         family = u.Infra.facade_family_declared_by(c.Infra.PROTOCOLS_PY)
         facade = package / c.Infra.PROTOCOLS_PY
@@ -91,41 +91,15 @@ class TestsFlextInfraProtocolNamespaceProjection:
             f"    from {package.name}.protocols import p\n",
             cwd=root,
         )
-        rendered = tm.ok(
-            tm.not_none(u.Infra.render_utility_facade(package, family="p"))
+        before = tm.ok(u.Cli.atomic_read_binary_file_state(facade, required=True))
+        # The source is corrected, never compensated (ADR-018 rules 5 and 6).
+        error = tm.fail(
+            tm.not_none(u.Infra.render_utility_facade(package, family="p")),
+            has="declares Protocol beside non-protocol parts",
         )
-        tm.ok(u.Cli.atomic_write_text_file(facade, rendered))
-        tm.ok(
-            tm.not_none(u.Infra.render_utility_facade(package, family="p")), eq=rendered
-        )
-        tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
-        namespace = "p.Namespace" if nested else "p"
-        native_consumer(
-            f"sys.path.insert(0, {str(package.parent)!r})\n"
-            "from typing import Protocol, get_type_hints, is_protocol\n"
-            f"from {package.name} import p\n"
-            f"namespace = {namespace}\n"
-            "assert not is_protocol(namespace)\n"
-            "assert Protocol not in namespace.__mro__\n"
-            "assert namespace.marker == 'second-part'\n"
-            "assert tuple(base.__name__ for base in namespace.__bases__) == "
-            "('FirstPart', 'SecondPart')\n"
-            "assert is_protocol(namespace.Payload)\n"
-            "assert is_protocol(namespace.Local)\n"
-            "assert is_protocol(namespace.Other)\n"
-            "class Value:\n"
-            "    value = 'payload'\n"
-            "    local = 'local'\n"
-            "    other = 1\n"
-            "assert isinstance(Value(), namespace.Payload)\n"
-            "assert isinstance(Value(), namespace.Local)\n"
-            "assert isinstance(Value(), namespace.Other)\n"
-            "assert not isinstance(None, namespace.Payload)\n"
-            "def consume(value: namespace.Payload) -> namespace.Local:\n"
-            "    return value\n"
-            "assert get_type_hints(consume) == "
-            "{'value': namespace.Payload, 'return': namespace.Local}\n",
-            cwd=root,
+        tm.that(error, has="FirstPart")
+        tm.that(
+            tm.ok(u.Cli.atomic_read_binary_file_state(facade, required=True)), eq=before
         )
 
     @staticmethod
@@ -173,8 +147,9 @@ class TestsFlextInfraProtocolNamespaceProjection:
                 + f"from {package.name}.{directory}.first import FirstPart\n"
                 + f"from {package.name}.{directory}.second import SecondPart\n"
                 + f"from {package.name}.external import External\n"
-                + "class Facade:\n    class Namespace"
-                + ("(Protocol):\n" if family == "p" else "(FirstPart, SecondPart):\n")
+                # The generator never strips an authored Protocol marker
+                # (ADR-018 rule 6): both families compose the parts directly.
+                + "class Facade:\n    class Namespace(FirstPart, SecondPart):\n"
                 + aliases
                 + "        Unrelated: type[External.Payload] = External.Payload\n"
                 + f"{family} = Facade\n__all__ = ['Facade', '{family}']\n"
@@ -235,6 +210,8 @@ class TestsFlextInfraProtocolNamespaceProjection:
                 + '\n[tool.pyrefly]\nproject-includes = ["src"]\n',
             )
         )
+        # The gate resolves pyrefly from the checkout's own environment.
+        u.Tests.provision_checkout(root)
         context = m.Infra.GateContext(
             repository_root=root, reports_dir=root / ".reports"
         )
@@ -296,13 +273,15 @@ class TestsFlextInfraProtocolNamespaceProjection:
         tm.ok(u.Tests.materialize_lazy_init(service))
         before = tm.ok(u.Cli.atomic_read_binary_file_state(facade, required=True))
         projected = tm.not_none(u.Infra.render_utility_facade(package, family=family))
-        if annotated or conflict == "annotation":
-            # A declared annotation is never rewritten away.
-            tm.that(tm.ok(projected), has=f"{target}: type[{annotation}] = {value}")
+        if conflict == "renamed":
+            # Unrelated parts both declaring an unbound member collide (7099d8c516).
+            tm.fail(projected, has="declares 'Payload' in unrelated parts")
         else:
-            # An unannotated alias of a class both parents publish is ambiguous.
-            error = tm.fail(projected, has="Ambiguous source class binding")
-            tm.that(error, has=target)
+            # A member the namespace binds itself shadows the parts and survives.
+            declared = (
+                f": type[{annotation}]" if annotated or conflict == "annotation" else ""
+            )
+            tm.that(tm.ok(projected), has=f"{target}{declared} = {value}")
         tm.that(
             tm.ok(u.Cli.atomic_read_binary_file_state(facade, required=True)), eq=before
         )
@@ -315,24 +294,30 @@ class TestsFlextInfraProtocolNamespaceProjection:
         *,
         marker_base: bool,
     ) -> None:
-        """Keep original protocol types inside a plain namespace of aliases."""
+        """Keep protocol aliases verbatim; refuse a Protocol class as a part."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         family = u.Infra.facade_family_declared_by(c.Infra.PROTOCOLS_PY)
         facade = package / c.Infra.PROTOCOLS_PY
         files = {
             package / c.Infra.INIT_PY: "",
+            # A Protocol class is never a facade part (ADR-018 rule 5, cba6c33ce6).
+            package / "markers.py": (
+                "from typing import Protocol\n"
+                "class Marker(Protocol): pass\n"
+                "__all__ = ['Marker']\n"
+            ),
             package / family.directory / "base.py": (
                 "from typing import Protocol, runtime_checkable\n"
-                "class Marker(Protocol): pass\n"
                 "class Contracts:\n"
                 "    @runtime_checkable\n"
                 "    class Payload(Protocol):\n"
                 "        value: str\n"
-                "__all__ = ['Contracts', 'Marker']\n"
+                "__all__ = ['Contracts']\n"
             ),
             facade: (
                 "from typing import Protocol, runtime_checkable\n"
-                f"from {package.name}.{family.directory} import Contracts, Marker\n"
+                f"from {package.name}.{family.directory} import Contracts\n"
+                f"from {package.name}.markers import Marker\n"
                 "class Facade:\n"
                 "    @runtime_checkable\n"
                 f"    class Namespace({'Marker, ' if marker_base else ''}Protocol):\n"
@@ -348,6 +333,22 @@ class TestsFlextInfraProtocolNamespaceProjection:
         service = u.Tests.create_lazy_init_service(root)
         service.module = f"{package.name}.{family.directory}"
         tm.ok(u.Tests.materialize_lazy_init(service))
+        if marker_base:
+            # A Protocol class is never a facade part (ADR-018 rule 5): the
+            # lazy initializer refuses the composed facade.
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    facade,
+                    tm.ok(
+                        tm.not_none(u.Infra.render_utility_facade(package, family="p"))
+                    ),
+                )
+            )
+            tm.fail(
+                u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)),
+                has="cannot be a stand-in",
+            )
+            return
         rendered = tm.ok(
             tm.not_none(u.Infra.render_utility_facade(package, family="p"))
         )
@@ -365,13 +366,14 @@ class TestsFlextInfraProtocolNamespaceProjection:
             tm.not_none(u.Infra.render_utility_facade(package, family="p")), eq=rendered
         )
         tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
+        # The authored Protocol marker is propagated, never compensated
+        # (ADR-018 rule 6); the alias keeps the original protocol identity.
         native_consumer(
             f"sys.path.insert(0, {str(package.parent)!r})\n"
             "from typing import is_protocol\n"
             f"from {package.name} import p\n"
-            f"from {package.name}.{family.directory}.base import Contracts, Marker\n"
-            "assert not is_protocol(p.Namespace)\n"
-            f"assert (Marker in p.Namespace.__mro__) is {marker_base!r}\n"
+            f"from {package.name}.{family.directory}.base import Contracts\n"
+            "assert is_protocol(p.Namespace)\n"
             "assert p.Namespace.Payload is Contracts.Payload\n"
             "assert is_protocol(p.Namespace.Payload)\n"
             "class Value:\n"
@@ -379,3 +381,47 @@ class TestsFlextInfraProtocolNamespaceProjection:
             "assert isinstance(Value(), p.Namespace.Payload)\n",
             cwd=root,
         )
+
+    @staticmethod
+    def test_override_alias_follows_native_c3_order(tmp_path: Path) -> None:
+        """An alias that overrides the C3 owner stays; ``Generic`` is no part."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        directory = u.Infra.facade_family_declared_by(c.Infra.MODELS_PY).directory
+        facade = package / c.Infra.MODELS_PY
+        sources = {
+            package / c.Infra.INIT_PY: "",
+            package / directory / "root.py": (
+                "class RootPart:\n    class Member:\n        pass\n"
+                "__all__ = ['RootPart']\n"
+            ),
+            package / directory / "left.py": (
+                f"from {package.name}.{directory}.root import RootPart\n"
+                "class LeftPart(RootPart):\n    pass\n__all__ = ['LeftPart']\n"
+            ),
+            package / directory / "right.py": (
+                f"from {package.name}.{directory}.root import RootPart\n"
+                "class RightPart(RootPart):\n    class Member:\n        pass\n"
+                "__all__ = ['RightPart']\n"
+            ),
+            facade: (
+                f"from {package.name}.{directory}.left import LeftPart\n"
+                f"from {package.name}.{directory}.right import RightPart\n"
+                f"from {package.name}.{directory}.root import RootPart\n"
+                "class Facade:\n    class Namespace(LeftPart, RightPart):\n"
+                "        Member = RootPart.Member\n"
+                "m = Facade\n__all__ = ['Facade', 'm']\n"
+            ),
+        }
+        for path, source in sources.items():
+            path.parent.mkdir(parents=True, exist_ok=True)
+            tm.ok(u.Cli.atomic_write_text_file(path, source))
+            u.Tests.git_bootstrap(root, ("add", "--", str(path.relative_to(root))))
+        service = u.Tests.create_lazy_init_service(root)
+        service.module = f"{package.name}.{directory}"
+        tm.ok(u.Tests.materialize_lazy_init(service))
+        # C3 resolves Member to RightPart.Member, so the authored alias is an
+        # override, never a redundant binding.
+        rendered = tm.ok(
+            tm.not_none(u.Infra.render_utility_facade(package, family="m"))
+        )
+        tm.that(rendered, has="Member = RootPart.Member")

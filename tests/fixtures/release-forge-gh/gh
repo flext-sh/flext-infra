@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Release-forge test double for `gh api --paginate --jq FILTER`: like gh it
+# rejects --slurp together with --jq, and it prints the per-page documents
+# that RELEASE_FORGE_PAGES holds, one JSON document per line.
+set -eu
+for argument in "$@"; do
+  if [ "${argument}" = "--slurp" ]; then
+    echo "the \`--slurp\` option is not supported with \`--jq\` or \`--template\`" >&2
+    exit 1
+  fi
+done
+cat "${RELEASE_FORGE_PAGES}"

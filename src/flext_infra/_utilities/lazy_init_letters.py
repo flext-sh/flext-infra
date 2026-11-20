@@ -159,7 +159,9 @@ class FlextInfraUtilitiesLazyInitLetters:
 
         Every public ``src`` package (the root and each subpackage without a
         private segment) serves its published names, shallowest package first,
-        so a name the root publishes keeps the root as its provider.
+        so a name the root publishes keeps the root as its provider. A name
+        that two packages of the same depth publish has no single owner and
+        is not re-exported, nor taken from a deeper package.
         """
         entry = run.index.packages_by_dir.get(str(context.pkg_dir))
         project = entry.project_root if entry is not None else None
@@ -179,10 +181,20 @@ class FlextInfraUtilitiesLazyInitLetters:
             ),
             key=lambda package: (package.count("."), package),
         )
+        by_depth: dict[int, list[str]] = {}
         for package in (source, *subpackages):
-            for name in sorted(cls._lazy_init_package_names(run, package)):
-                if not name.startswith("_"):
-                    lazy_map.setdefault(name, (package, name))
+            by_depth.setdefault(package.count("."), []).append(package)
+        claimed = set(lazy_map)
+        for packages in by_depth.values():
+            publishers: dict[str, list[str]] = {}
+            for package in packages:
+                for name in cls._lazy_init_package_names(run, package):
+                    if not name.startswith("_") and name not in claimed:
+                        publishers.setdefault(name, []).append(package)
+            for name, owners in sorted(publishers.items()):
+                if len(owners) == 1:
+                    lazy_map[name] = (owners[0], name)
+            claimed.update(publishers)
 
     @classmethod
     def _lazy_init_inherited_facets(
