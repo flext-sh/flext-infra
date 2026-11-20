@@ -308,6 +308,39 @@ class TestsFlextInfraPytestRunnerSuiteStop:
         )
 
     @c.Tests.MARK.slow
+    def test_deadline_before_any_item_completes_reports_the_timeout(
+        self,
+        cached_runner_project: Path,
+        fixture_tree: p.Tests.FixtureTree,
+    ) -> None:
+        """A timeout whose JUnit holds no testcase is unfinished, not accounted."""
+        target = config.Infra.codegen.make.testmon_cache.target_directory
+        fixture_tree(
+            "pytest-runner-hanging-first",
+            destination=cached_runner_project / target,
+        )
+        TestsFlextInfraPytestRunnerSuiteStop._git_checkout(cached_runner_project)
+        policy = config.Infra.tooling.tools.pytest
+        runner = u.Tests.PytestRunner.runner_for(cached_runner_project).model_copy(
+            update={
+                "started_at_monotonic": time.monotonic()
+                - policy.run_timeout_seconds
+                + policy.slow_timeout_seconds
+                - 3 * policy.termination_grace_seconds,
+            },
+        )
+
+        tm.that(tm.ok(runner.execute()), lt=0)
+
+        reports = config.Infra.codegen.make.testmon_cache.reports_directory
+        (bounded,) = (
+            path.parent
+            for path in (cached_runner_project / reports).glob("*/summary.txt")
+        )
+        tm.that(self._read(bounded / "summary.txt"), has="outcome=interrupted")
+        tm.fail((bounded / "run-accounting.json").exists())
+
+    @c.Tests.MARK.slow
     def test_deadline_inside_a_fixture_publishes_the_executed_prefix(
         self,
         cached_runner_project: Path,

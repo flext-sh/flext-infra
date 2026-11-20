@@ -469,22 +469,26 @@ class FlextInfraPytestRunnerExecution(
         unwinds the suite through pytest's own handlers, so a timed-out
         suite that wrote its final JUnit report also finished its lifecycle
         and publishes its executed prefix, including when the remaining
-        termination escalation records the native signal exit. An operator
-        signal keeps forwarded_signal set and never qualifies. A startup
-        interruption has no final JUnit report and must retain its native
-        failure without suite finalization.
+        termination escalation records the native signal exit. A timed-out
+        suite whose JUnit holds no testcase has no prefix: it is the
+        unfinished timeout. An operator signal keeps forwarded_signal set and
+        never qualifies. A startup interruption has no final JUnit report and
+        must retain its native failure without suite finalization.
 
         Returns:
             Whether a failing suite still finished its lifecycle.
 
         """
+        junit = report_dir / "junit.xml"
+        if outcome.forwarded_signal is not None or not junit.is_file():
+            return False
+        if outcome.raw_return_code in c.Infra.PYTEST_COMPLETED_FAILURES:
+            return True
+        root = u.Infra.junit_report_root(junit)
         return (
-            (
-                outcome.raw_return_code < 0
-                or outcome.raw_return_code in c.Infra.PYTEST_COMPLETED_FAILURES
-            )
-            and outcome.forwarded_signal is None
-            and (report_dir / "junit.xml").is_file()
+            outcome.raw_return_code < 0
+            and root is not None
+            and next(root.iter("testcase"), None) is not None
         )
 
     @staticmethod
