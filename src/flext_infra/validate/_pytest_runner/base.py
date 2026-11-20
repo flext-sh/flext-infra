@@ -206,13 +206,14 @@ class FlextInfraPytestRunnerBase(s[int]):
                     canonical.parent / identity.git_dir.name / cache.database_filename
                 )
                 seed = canonical
-        run_timeout_seconds, termination_grace_seconds = cls._elected_pytest_deadline(
-            root
+        tooling = cls._elect_tooling(root)
+        run_timeout_seconds, termination_grace_seconds = cls._elected_deadline(
+            tooling, execution_mode=execution_mode
         )
         return cls(
             repository_root=root,
             started_at_monotonic=started_at_monotonic,
-            tooling=cls._elect_tooling(root),
+            tooling=tooling,
             run_timeout_seconds=run_timeout_seconds,
             termination_grace_seconds=termination_grace_seconds,
             target=cache.target_directory,
