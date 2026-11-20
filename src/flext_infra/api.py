@@ -643,8 +643,8 @@ class FlextInfra(
         # still fails when no member executed a harness item.
         harness = execution_mode == c.Infra.PytestExecutionMode.HARNESS
         status, executed = 0, not harness
-        for distribution, project in members.value:
-            u.Cli.info(f"tests: repository {distribution} root={project.cwd}")
+        for distribution, selected, project in members.value:
+            u.Cli.info(f"tests: repository {distribution} root={selected}")
             outcome = validate.FlextInfraPytestRunner.execute_project_context(
                 project,
                 started_at_monotonic=monotonic(),
@@ -667,19 +667,24 @@ class FlextInfra(
     @staticmethod
     def _workspace_test_members(
         context: p.Infra.WorkspaceProjectContext,
-    ) -> p.Result[Sequence[tuple[str, p.Infra.WorkspaceProjectContext]]]:
+    ) -> p.Result[Sequence[tuple[str, Path, p.Infra.WorkspaceProjectContext]]]:
         """Resolve every governed member's context in dependency order.
 
         Returns:
-            ``(distribution, context)`` per governed member, the submitted
+            ``(distribution, root, context)`` per governed member, the submitted
             repository reusing ``context``, or the first resolution failure.
 
         """
         root = context.identity.repo_root
         workspace_root = context.runtime.runtime_root
-        observed = workspace.FlextInfraWorkspaceDetector.load_workspace_spec(
+        spec = workspace.FlextInfraWorkspaceDetector.load_workspace_spec(
             workspace_root,
-        ).unwrap()
+        )
+        if spec.failure:
+            return r[
+                Sequence[tuple[str, Path, p.Infra.WorkspaceProjectContext]]
+            ].from_failure(spec)
+        observed = spec.value
         governed = frozenset(u.Infra.governed_project_roots(workspace_root))
         references = tuple(
             repository
@@ -692,7 +697,7 @@ class FlextInfra(
             for repository in references
         }
         if frozenset(by_distribution.values()) != governed:
-            return r[Sequence[tuple[str, p.Infra.WorkspaceProjectContext]]].fail(
+            return r[Sequence[tuple[str, Path, p.Infra.WorkspaceProjectContext]]].fail(
                 "tests workspace declarations differ from governed roots"
             )
         return r.traverse(
@@ -701,7 +706,10 @@ class FlextInfra(
                 r[p.Infra.WorkspaceProjectContext].ok(context)
                 if by_distribution[distribution] == root
                 else FlextInfra.project_context(by_distribution[distribution])
-            ).map(lambda project: (distribution, project)),
+            ).map(
+                lambda project: (distribution, by_distribution[distribution], project)
+            ),
+            exceptions=(),
         )
 
     @staticmethod

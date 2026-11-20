@@ -1129,7 +1129,7 @@ class TestsFlextInfraPytestRunnerDatabase:
             u.Infra.real_account_home()
             / cache.home_cache_directory
             / cache.external_storage_directory
-            / tm.not_none(context.target).canonical_project_name
+            / context.target.canonical_project_name
             / cache.database_filename
         )
         redirected = tmp_path / "redirected-home"
