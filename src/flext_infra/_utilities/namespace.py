@@ -340,6 +340,19 @@ class FlextInfraUtilitiesCodegenNamespace:
             return root.removeprefix(c.Infra.PKG_PREFIX_UNDERSCORE)
         return root
 
+    @staticmethod
+    def domain_namespace(class_stem: str) -> str:
+        """Name the nested domain namespace a package's facades compose.
+
+        ADR-028 Decision 10: ``FlextDbOracle`` composes ``DbOracle``; a stem
+        without the ``Flext`` prefix names itself.
+
+        Returns:
+            The class stem without its ``Flext`` prefix.
+
+        """
+        return class_stem.removeprefix("Flext") or class_stem
+
     @classmethod
     def _runtime_aliases(
         cls,

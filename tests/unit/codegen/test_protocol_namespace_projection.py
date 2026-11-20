@@ -78,7 +78,11 @@ class TestsFlextInfraProtocolNamespaceProjection:
         }
         for path, source in files.items():
             path.parent.mkdir(parents=True, exist_ok=True)
-            tm.ok(u.Cli.atomic_write_text_file(path, source))
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    path, source, durability=c.Cli.WriteDurability.SCRATCH
+                )
+            )
             u.Tests.git_bootstrap(root, ("add", "--", str(path.relative_to(root))))
         service = u.Tests.create_lazy_init_service(root)
         service.module = f"{package.name}.{family.directory}"
@@ -165,7 +169,11 @@ class TestsFlextInfraProtocolNamespaceProjection:
         }
         for path, source in sources.items():
             path.parent.mkdir(parents=True, exist_ok=True)
-            tm.ok(u.Cli.atomic_write_text_file(path, source))
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    path, source, durability=c.Cli.WriteDurability.SCRATCH
+                )
+            )
             u.Tests.git_bootstrap(root, ("add", "--", str(path.relative_to(root))))
         service = u.Tests.create_lazy_init_service(root)
         service.module = f"{package.name}.{directory}"
@@ -173,7 +181,11 @@ class TestsFlextInfraProtocolNamespaceProjection:
         rendered = tm.ok(
             tm.not_none(u.Infra.render_utility_facade(package, family=family))
         )
-        tm.ok(u.Cli.atomic_write_text_file(facade, rendered))
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                facade, rendered, durability=c.Cli.WriteDurability.SCRATCH
+            )
+        )
         tm.ok(
             tm.not_none(u.Infra.render_utility_facade(package, family=family)),
             eq=rendered,
@@ -208,6 +220,7 @@ class TestsFlextInfraProtocolNamespaceProjection:
                 pyproject,
                 tm.ok(u.Cli.files_read_text(pyproject))
                 + '\n[tool.pyrefly]\nproject-includes = ["src"]\n',
+                durability=c.Cli.WriteDurability.SCRATCH,
             )
         )
         # The gate resolves pyrefly from the checkout's own environment.
@@ -266,7 +279,11 @@ class TestsFlextInfraProtocolNamespaceProjection:
         }
         for path, source in sources.items():
             path.parent.mkdir(parents=True, exist_ok=True)
-            tm.ok(u.Cli.atomic_write_text_file(path, source))
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    path, source, durability=c.Cli.WriteDurability.SCRATCH
+                )
+            )
             u.Tests.git_bootstrap(root, ("add", "--", str(path.relative_to(root))))
         service = u.Tests.create_lazy_init_service(root)
         service.module = f"{package.name}.{directory}"
@@ -328,7 +345,11 @@ class TestsFlextInfraProtocolNamespaceProjection:
         }
         for path, source in files.items():
             path.parent.mkdir(parents=True, exist_ok=True)
-            tm.ok(u.Cli.atomic_write_text_file(path, source))
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    path, source, durability=c.Cli.WriteDurability.SCRATCH
+                )
+            )
             u.Tests.git_bootstrap(root, ("add", "--", str(path.relative_to(root))))
         service = u.Tests.create_lazy_init_service(root)
         service.module = f"{package.name}.{family.directory}"
@@ -342,6 +363,7 @@ class TestsFlextInfraProtocolNamespaceProjection:
                     tm.ok(
                         tm.not_none(u.Infra.render_utility_facade(package, family="p"))
                     ),
+                    durability=c.Cli.WriteDurability.SCRATCH,
                 )
             )
             tm.fail(
@@ -361,7 +383,11 @@ class TestsFlextInfraProtocolNamespaceProjection:
             ),
             eq=1,
         )
-        tm.ok(u.Cli.atomic_write_text_file(facade, rendered))
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                facade, rendered, durability=c.Cli.WriteDurability.SCRATCH
+            )
+        )
         tm.ok(
             tm.not_none(u.Infra.render_utility_facade(package, family="p")), eq=rendered
         )
@@ -414,7 +440,11 @@ class TestsFlextInfraProtocolNamespaceProjection:
         }
         for path, source in sources.items():
             path.parent.mkdir(parents=True, exist_ok=True)
-            tm.ok(u.Cli.atomic_write_text_file(path, source))
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    path, source, durability=c.Cli.WriteDurability.SCRATCH
+                )
+            )
             u.Tests.git_bootstrap(root, ("add", "--", str(path.relative_to(root))))
         service = u.Tests.create_lazy_init_service(root)
         service.module = f"{package.name}.{directory}"
