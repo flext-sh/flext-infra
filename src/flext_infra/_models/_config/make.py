@@ -756,7 +756,10 @@ class FlextInfraModelsConfigMake(
 
         testmon_cache: Annotated[
             TestmonCacheSpec,
-            m.Field(description="Adaptive testmon Actions cache policy"),
+            m.Field(
+                description="Adaptive testmon Actions cache policy",
+                default_factory=TestmonCacheSpec,
+            ),
         ]
         executor_environment: Annotated[
             ExecutorEnvironmentSpec,
