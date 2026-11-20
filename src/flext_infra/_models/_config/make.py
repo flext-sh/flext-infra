@@ -657,6 +657,21 @@ class FlextInfraModelsConfigMake(
         class TestmonCacheSpec(FlextInfraModelsConfigContract.ConfigContract):
             """Testmon's native database filename and the runner paths."""
 
+            data_home_environment_variable: Annotated[
+                str,
+                m.Field(min_length=1, description="XDG persistent cache-home variable"),
+            ] = FlextInfraConstantsConfig.CacheHomeEnvironment.DATA_HOME.value
+            user_home_environment_variable: Annotated[
+                str,
+                m.Field(
+                    min_length=1,
+                    description="User home variable for the XDG default",
+                ),
+            ] = FlextInfraConstantsConfig.CacheHomeEnvironment.USER_HOME.value
+            home_cache_directory: Annotated[
+                Path,
+                m.Field(description="Standard cache directory below the user home"),
+            ] = Path(".cache")
             database_filename: Annotated[
                 t.NonEmptyStr,
                 m.Field(description="pytest-testmon's native database filename"),
