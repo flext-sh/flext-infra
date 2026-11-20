@@ -414,7 +414,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
             source = (
                 "from flext_infra import m\n\n"
                 f"class FieldOverride(m.Infra.{declaring}):\n"
-                f"    {field}: p.Infra.{declaring}.model_fields["
+                f"    {field}: m.Infra.{declaring}.model_fields["
                 f"{field!r}].annotation = None\n\n"
                 "def inherited(value: FieldOverride):\n"
                 f"    return value.{rule.source_name}\n"

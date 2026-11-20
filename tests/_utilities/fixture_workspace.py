@@ -150,7 +150,8 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
         package_dir = project / "src" / name.replace("-", "_")
         package_dir.mkdir(parents=True)
         (project / c.PYPROJECT_FILENAME).write_text(
-            f"[project]\nname='{name}'\nversion='0.1.0'\n",
+            f"[project]\nname='{name}'\nversion='0.1.0'\nlicense='MIT'\n"
+            "authors=[{name='FLEXT Team'}]\n",
             encoding="utf-8",
         )
         (project / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
