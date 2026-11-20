@@ -581,6 +581,9 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
         Returns:
             The composed document; schema consumers validate their owned section.
 
+        Raises:
+            ValueError: If a tracked project layer declares the host load gate.
+
         """
         merged: t.JsonDict = {}
         for path in sources:
@@ -620,6 +623,20 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
                     retained_beads = retained_beads.get(namespace)
                 if isinstance(retained_beads, dict):
                     retained_beads.pop("ownership_command_prefix", None)
+            # ADR-032: a tracked project layer never disables the host load
+            # gate; only the packaged SSOT and an untracked local layer
+            # declare it (operator decision 2026-11-19, flext-lgbai).
+            gate_path = ("Infra", "codegen", "make", "admission", "host_load_gate")
+            if (
+                len(sources) > 1
+                and path == sources[1]
+                and u.Cli.json_walk_path(values, gate_path) is not None
+            ):
+                msg = (
+                    f"{path}: make.admission.host_load_gate is declared only by "
+                    "the packaged SSOT or the untracked local layer (ADR-032)"
+                )
+                raise ValueError(msg)
             merged = FlextStrictYamlConfigSource.merge_values(merged, values)
         return merged
 

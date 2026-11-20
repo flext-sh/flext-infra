@@ -691,6 +691,9 @@ Infra:
       # exception per public verb. Every verb runs at idle CPU and IO weight,
       # so agents use light processes instead of waiting for the load.
       admission:
+        # Operator 2026-11-19 (flext-lgbai): every real checkout keeps the
+        # load gate; only the test fabric renders fixture projects with false.
+        host_load_gate: true
         max_load5: 20
         memory_limit_gb: 5
         max_processes: 2
