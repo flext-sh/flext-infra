@@ -214,6 +214,11 @@ Infra:
       # read only inside the families; the library set is derived.
       - name: codemod_library_member_name_rules
         shapes: [ ban-library-named-facade-member ]
+      # The facade member-collision law applied to the composition root
+      # (`<package>/api.py`): two unrelated services composed by MRO must not
+      # declare one member; a service extending another overrides it.
+      - name: codemod_composition_root_collision_rules
+        shapes: [ ban-composition-root-member-collision ]
       # The duplicate retirement and wrong-layer guidance, one document per
       # declaring letter scoped to that letter's family files.
       - name: codemod_facade_member_ownership_rules

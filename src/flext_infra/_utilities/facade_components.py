@@ -3908,5 +3908,63 @@ class FlextInfraUtilitiesFacadeComponents:
             }
         }
 
+    @classmethod
+    def codemod_composition_root_collision_rules(
+        cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
+    ) -> Mapping[str, t.JsonMapping]:
+        """Fail a composition-root class whose unrelated services share a member.
+
+        The package-root ``api.py`` composes the project's services by MRO,
+        exactly like a generated facade composes its parts, so the same
+        member-collision law applies: method resolution would hand every
+        caller of the composed class whichever homonym comes first. Each
+        top-level class of that module is checked by
+        ``_facade_member_collisions`` over its direct bases; a service that
+        extends another overrides it and is not a collision. Detection-only.
+
+        Returns:
+            One rule per colliding composition class, matching its declaration.
+
+        """
+        root = project.resolve()
+        layout = FlextInfraUtilitiesCodegenNamespace.layout(root)
+        if layout is None or not (api := layout.package_dir / c.Infra.API_PY).is_file():
+            return {}
+        engine = snapshot.engine
+        module = cls._consumer_module(engine, api)
+        package = FlextInfraUtilitiesPyprojectConform.project_package_name(root)
+        rules: dict[str, t.JsonMapping] = {}
+        for name, binding in sorted(module.get_scope().get_defined_names().items()):
+            klass = binding.get_object()
+            if (
+                not FlextInfraUtilitiesRopeRuntimeTypes.py_class(klass)
+                or klass.get_module() is not module
+            ):
+                continue
+            verdict = cls._facade_member_collisions(
+                engine,
+                [(name, base) for base in klass.get_superclasses()],
+                klass,
+            )
+            if verdict.success:
+                continue
+            rule_id = (
+                f"{c.Infra.COMPOSITION_ROOT_COLLISION_SHAPE}"
+                f"{c.Infra.CODEMOD_GENERATED_ID_SEPARATOR}{package}"
+                f"{c.Infra.CODEMOD_GENERATED_ID_SEPARATOR}{name}"
+            )
+            rules[rule_id] = {
+                "id": rule_id,
+                "language": c.Infra.CODEMOD_PYTHON_LANGUAGE,
+                "severity": "error",
+                "files": [f"**/{api.relative_to(root).as_posix()}"],
+                "rule": {
+                    "kind": "class_definition",
+                    "has": {"field": "name", "regex": f"^{re.escape(name)}$"},
+                },
+                "message": verdict.error or "composition root member collision",
+            }
+        return rules
+
 
 __all__: list[str] = ["FlextInfraUtilitiesFacadeComponents"]
