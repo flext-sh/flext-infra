@@ -569,6 +569,26 @@ class FlextInfraProtocolsConfigMake:
         """Structural data contract projected from the owning model."""
 
         @property
+        def data_home_environment_variable(self) -> str:
+            """XDG persistent cache-home variable."""
+            ...
+
+        @property
+        def user_home_environment_variable(self) -> str:
+            """User home variable for the XDG default."""
+            ...
+
+        @property
+        def home_cache_directory(self) -> Path:
+            """Standard cache directory below the user home."""
+            ...
+
+        @property
+        def external_storage_directory(self) -> Path:
+            """FLEXT-owned directory below the cache home."""
+            ...
+
+        @property
         def database_filename(self) -> t.NonEmptyStr:
             """pytest-testmon's native database filename."""
             ...

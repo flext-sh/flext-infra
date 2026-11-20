@@ -2636,6 +2636,7 @@ class FlextInfraUtilitiesModelsProtocol:
             )
             self._source_unpublished_protocol_owners()
             self._source_index_model_aliases(grouped)
+            self._source_index_module_level_model_aliases(grouped)
             self.source_protocol_retirements = self._source_retired_protocol_owners(
                 package_dir, package_name, grouped
             )
@@ -2697,6 +2698,54 @@ class FlextInfraUtilitiesModelsProtocol:
                                 tree,
                                 model_nodes.get(matched[0], classes[0][0]),
                             )
+
+        def _source_index_module_level_model_aliases(
+            self,
+            grouped: Mapping[
+                Path, list[tuple[ast.ClassDef, tuple[str, ...], ast.Module]]
+            ],
+        ) -> None:
+            """Index module-level model aliases not nested in a class body."""
+            prefix = f"p.{self.class_stem}"
+            declared_protocol_names = self._source_protocol_declared_names(
+                frozenset(destination.resolve() for destination in grouped)
+            )
+            global_model_names = {
+                path[-1]
+                for classes in grouped.values()
+                for _node, path, _tree in classes
+                if path
+            }
+            for destination, classes in grouped.items():
+                model_nodes = {path[-1]: node for node, path, _tree in classes if path}
+                if not model_nodes:
+                    continue
+                sibling_names = set(model_nodes)
+                trees = {id(tree): tree for _node, _path, tree in classes}
+                for tree in trees.values():
+                    for statement in tree.body:
+                        alias = self._source_model_alias(statement)
+                        if alias is None:
+                            continue
+                        named = {
+                            symbol.id if isinstance(symbol, ast.Name) else symbol.attr
+                            for symbol in ast.walk(alias.value)
+                            if isinstance(symbol, (ast.Name, ast.Attribute))
+                        }
+                        matched = sorted(named & (sibling_names | global_model_names))
+                        if not matched or not isinstance(alias.name, ast.Name):
+                            continue
+                        if alias.name.id in declared_protocol_names:
+                            continue
+                        key = f"{prefix}.{alias.name.id}"
+                        if key in self.source_model_aliases:
+                            continue
+                        self.source_model_aliases[key] = (
+                            destination,
+                            alias,
+                            tree,
+                            model_nodes.get(matched[0], classes[0][0]),
+                        )
 
         def _source_protocol_declared_names(
             self, projected: frozenset[Path]
@@ -4383,12 +4432,16 @@ class FlextInfraUtilitiesModelsProtocol:
             evaluated_bases: set[str] = set()
             base_imports: set[str] = set()
             names: set[str] = set()
+            projected_paths = {path for _, path, _ in classes}
 
-            for node, path, tree in classes:
-                name = self.source_model_protocols[
-                    ".".join((self.source_module_names[id(tree)], *path))
-                ]
-                if name in names:
+            for node, path, _tree in classes:
+                name = node.name
+                depth = sum(
+                    1
+                    for index in range(1, len(path))
+                    if path[:index] in projected_paths
+                )
+                if name in names and depth == 0:
                     message = (
                         f"competing projected Protocol identity: {destination}:{name}"
                     )
@@ -4421,7 +4474,7 @@ class FlextInfraUtilitiesModelsProtocol:
                 contracts.append(
                     m.Infra.ModelProtocolRenderContext.ModelProtocolContract(
                         name=name,
-                        depth=0,
+                        depth=depth,
                         type_parameters=tuple(
                             ast.unparse(parameter)
                             for parameter in getattr(node, "type_params", ())
