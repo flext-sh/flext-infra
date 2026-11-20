@@ -851,11 +851,14 @@ Infra:
       - { identity: setup, verb: setup, contexts: [ local, ci, pre_commit ] }
       # Initial behavioral admission requires global source evidence, not full check.
       - { identity: check-primary, verb: check, phase: primary, contexts: [ local, ci, pre_push ] }
+      # Operator decision 2026-11-19: a project that opts into the pre-push
+      # stage runs its incremental tests there after the primary check, since
+      # CI runs setup and the primary check only (ruling 2026-11-12).
       - identity: tests-primary
         verb: tests
-        contexts: [ local ]
+        contexts: [ local, pre_push ]
         requires:
-        - { step: check-primary, contexts: [ local ] }
+        - { step: check-primary, contexts: [ local, pre_push ] }
       # CI never generates: check's `codegen conform --mode check` is the
       # read-only projection verdict of the LOCKED generator, so a stale or
       # skewed projection fails there, while CI generation would run the

@@ -4173,10 +4173,14 @@ package root inside it; FLEXT adds no namespace of its own. The commit hook
 first provisions the checkout with `make setup`,
 then runs `make check` with `make.ci.pre_commit_value`, which runs only the fast
 commit-stage gates (`make.pre_commit_check_gates`: lint, format and Markdown)
-over the repository through Make's forced runtime environment; the hook never
-selects an interpreter or engine path itself, and it runs no tests and no other
-validator. When enabled, the generated pre-push hook
-drops inherited `CI` and runs the workflow's primary check once. The local
+through the engine that setup provisioned; it runs no tests and no other
+validator. Staged Python files run the lint and format gates on those files; a
+staged Markdown file runs the `markdown` and `markdown-format` gates over the
+repository, never a raw `rumdl` pass, so a declared foreign projected block
+(`tooling.tools.markdown.projected-blocks`) reads the same in the hook as in
+`make check` and `make fmt`. When enabled, the generated pre-push hook
+drops inherited `CI` and runs the workflow's primary check once, then the
+incremental tests, because CI runs setup and the primary check only. The local
 workflow retains the complete check and test steps. Every gate blocks in
 every context that runs it; there is no informative or advisory gate.
 Conflict detection uses the canonical Git inventory, including unpublished files,
