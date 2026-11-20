@@ -274,6 +274,29 @@ class TestsFlextInfraPytestRunner:
             runner.build_command(report)[suite_command.index("--testmon-env") + 1],
             eq=names[-1],
         )
+        # Packaged config YAML keys the environment; other package files do not.
+        package_root = cached_runner_project / c.Infra.DEFAULT_SRC_DIR / "runner_sample"
+        (package_root / c.CONFIG_DIR_NAME).mkdir()
+        packaged = package_root / c.CONFIG_DIR_NAME / "behavior.yaml"
+        packaged.write_text("value: initial\n", encoding=c.DEFAULT_ENCODING)
+        with_config = u.Tests.PytestRunner.runner_for(
+            cached_runner_project
+        ).testmon_environment(c.Infra.PytestExecutionMode.INCREMENTAL)
+        tm.that(with_config, ne=name)
+        (package_root / "notes.txt").write_text("unrelated\n", encoding="utf-8")
+        tm.that(
+            u.Tests.PytestRunner.runner_for(cached_runner_project).testmon_environment(
+                c.Infra.PytestExecutionMode.INCREMENTAL
+            ),
+            eq=with_config,
+        )
+        packaged.write_text("value: changed\n", encoding=c.DEFAULT_ENCODING)
+        tm.that(
+            u.Tests.PytestRunner.runner_for(cached_runner_project).testmon_environment(
+                c.Infra.PytestExecutionMode.INCREMENTAL
+            ),
+            ne=with_config,
+        )
 
     @staticmethod
     @c.Tests.MARK.slow
