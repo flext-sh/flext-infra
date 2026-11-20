@@ -672,6 +672,10 @@ class FlextInfraModelsConfigMake(
                 Path,
                 m.Field(description="Standard cache directory below the user home"),
             ] = Path(".cache")
+            external_storage_directory: Annotated[
+                Path,
+                m.Field(description="FLEXT-owned directory below the cache home"),
+            ] = Path("flext/infra/testmon")
             database_filename: Annotated[
                 t.NonEmptyStr,
                 m.Field(description="pytest-testmon's native database filename"),
