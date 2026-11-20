@@ -152,17 +152,7 @@ class FlextInfraPytestRunnerBase(s[int]):
         Returns:
             The runner with independent persistent storage and operation clock.
 
-        Raises:
-            ValueError: If the context or external storage anchors are invalid.
-
         """
-        if (
-            context.identity is None
-            or context.target is None
-            or context.runtime is None
-        ):
-            msg = f"pytest requires a governed project context: {context.cwd}"
-            raise ValueError(msg)
         # The suite runs on the submitted project, the root `make check` wrote
         # its receipt under; the Git toplevel is an ancestor when the project
         # is a subdirectory of its checkout (CI checks out into <repo>/<repo>).
