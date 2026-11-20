@@ -532,25 +532,43 @@ class TestsFlextInfraPytestDiag:
 
     @staticmethod
     @c.Tests.MARK.parametrize(
-        ("finish", "interrupted"),
-        [(None, True), (2, True), (0, False)],
-        ids=["killed", "max-failures-stop", "finished"],
+        ("finish", "phases", "interrupted"),
+        [
+            (None, (("setup", "passed"),), True),
+            (2, (("setup", "passed"),), True),
+            (0, (("setup", "passed"),), False),
+            (1, (("setup", "passed"),), False),
+            (2, (("setup", "failed"),), False),
+            (2, (("setup", "passed"), ("call", "passed")), False),
+        ],
+        ids=[
+            "killed",
+            "interrupted",
+            "finished",
+            "tests-failed",
+            "stopped-failed-setup",
+            "stopped-missing-teardown",
+        ],
     )
     def test_report_log_accepts_in_flight_items_only_after_an_interrupted_session(
         tmp_path: Path,
         finish: int | None,
+        phases: tuple[tuple[str, str], ...],
         *,
         interrupted: bool,
     ) -> None:
-        """A passed setup without call is an in-flight item of a stopped session."""
+        """Only a stopped session's setup-only item is an in-flight item."""
         events: list[t.JsonMapping] = [
             {"$report_type": "SessionStart"},
-            {
-                "$report_type": "TestReport",
-                "nodeid": "tests/test_lifecycle.py::test_in_flight",
-                "when": "setup",
-                "outcome": "passed",
-            },
+            *(
+                {
+                    "$report_type": "TestReport",
+                    "nodeid": "tests/test_lifecycle.py::test_in_flight",
+                    "when": when,
+                    "outcome": outcome,
+                }
+                for when, outcome in phases
+            ),
         ]
         if finish is not None:
             events.append({"$report_type": "SessionFinish", "exitstatus": finish})
