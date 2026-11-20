@@ -48,15 +48,7 @@ class FlextInfraNamespaceRelocationCascade:
                 f"failed to collect Python files for {project_root}"
             )
             raise RuntimeError(msg)
-        declared = u.Infra.namespace_meta(project_root).get("scan_dirs")
-        if not isinstance(declared, list) or not declared:
-            return py_files_result.value
-        scope = frozenset(str(item).strip() for item in declared if str(item).strip())
-        return tuple(
-            path
-            for path in py_files_result.value
-            if path.relative_to(project_root).parts[0] in scope
-        )
+        return py_files_result.value
 
     @staticmethod
     def relocation_by_rule(
