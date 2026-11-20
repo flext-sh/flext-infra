@@ -11,7 +11,7 @@ from pathlib import Path
 
 from flext_infra import p, r, t
 from flext_infra._utilities import FlextInfraUtilitiesWorkspaceSnapshot
-from flext_infra._utilities._protocol_models.bootstrap_admission import (
+from flext_infra._utilities._protocol_models import (
     FlextInfraUtilitiesModelsProtocolBootstrapAdmission,
 )
 

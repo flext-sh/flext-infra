@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import c, config, m, p, r, t
-from flext_infra._utilities._protocol_models.bootstrap_package import (
+from flext_infra._utilities._protocol_models import (
     FlextInfraUtilitiesModelsProtocolBootstrapPackage,
 )
 from flext_infra.protocols_bootstrap import consolidate_protocol_owners
