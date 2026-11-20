@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Literal
 
 from flext_cli import m
 
@@ -39,11 +39,17 @@ class FlextInfraModelsGateAdmission:
         ]
 
     class GateRunRecord(m.ContractModel):
-        """Latest successful full-weight run of one gate and selection."""
+        """Latest recorded run of one gate and selection.
 
-        gate: Annotated[
-            t.NonEmptyStr, m.Field(description="Full-weight gate that succeeded")
-        ]
+        ``status`` defaults to ``success`` so existing repeat-ledger entries
+        (which only ever recorded successes) stay valid.
+        """
+
+        gate: Annotated[t.NonEmptyStr, m.Field(description="Gate that was run")]
+        status: Annotated[
+            Literal["success", "failure"],
+            m.Field(description="Outcome of the run"),
+        ] = "success"
         selection: Annotated[
             tuple[t.NonEmptyStr, ...],
             m.Field(description="LAWS/RULES selection; empty when unselected"),
@@ -55,7 +61,7 @@ class FlextInfraModelsGateAdmission:
             t.AwareDatetime, m.Field(description="Admission time of the run")
         ]
         finished_at: Annotated[
-            t.AwareDatetime, m.Field(description="Time the run succeeded")
+            t.AwareDatetime, m.Field(description="Time the run finished")
         ]
 
     class HostPressureSnapshot(m.ExternalContractModel):

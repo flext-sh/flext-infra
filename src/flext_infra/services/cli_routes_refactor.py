@@ -206,6 +206,7 @@ class FlextInfraRefactorRoutes:
         writes = not (request.check or request.dry_run_mode)
         repeat = config.Infra.gate_admission.repeat
         if writes:
+            u.Infra.gate_health_refuse(request.repository_root)
             u.Infra.gate_repeat_refuse(
                 c.Infra.GATE_ADMISSION_MODIFICATION,
                 request.repository_root,
