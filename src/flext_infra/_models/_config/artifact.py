@@ -598,6 +598,13 @@ class FlextInfraModelsConfigArtifact(
             int,
             m.Field(ge=1, le=16, description="Concurrent fresh-import subprocesses"),
         ]
+        fresh_import_timeout_seconds: Annotated[
+            int,
+            m.Field(
+                ge=1,
+                description="Deadline of one fresh-import subprocess, in seconds",
+            ),
+        ]
         lint_snapshot_workers: Annotated[
             int,
             m.Field(
@@ -696,6 +703,16 @@ class FlextInfraModelsConfigArtifact(
                     "Packages (for example private GHCR OCI dependencies); only "
                     "these grant the ci job packages: read, every other job "
                     "and distribution stays contents-only"
+                ),
+            ),
+        ]
+        docs_site_unpublished: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                description=(
+                    "Distributions whose generated docs workflow never publishes "
+                    "the built site to GitHub Pages; every other distribution "
+                    "deploys it from main"
                 ),
             ),
         ]

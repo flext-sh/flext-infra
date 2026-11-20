@@ -406,11 +406,8 @@ class TestsFlextInfraScriptDispatchMakefile:
             1,
         )[0]
         gate_runner = rendered.split("_builtin_test_all:", 1)[1].split("\n\n", 1)[0]
-        datafile = config.Infra.codegen.make.testmon_cache.database_environment_variable
-        # The diagnostic reuses the canonical runner's testmon database guard
-        # and exports the same database environment.
-        tm.that(profile_test, has='database="$(FLEXT_PYTEST_TESTMON_DATABASE)";')
-        tm.that(profile_test, has=f'{datafile}="$$database"')
+        # Testmon keeps its native in-checkout default: no recipe exports a path.
+        tm.that(profile_test, lacks=c.Infra.PYTEST_ENV_TESTMON_DATAFILE)
         # The thin entry delegates profiling to the execution adapter.
         tm.that(profile_test, has="-m flext_infra._pytest.entry profile")
         tm.that(profile_test, lacks="import cProfile")
@@ -465,7 +462,6 @@ class TestsFlextInfraScriptDispatchMakefile:
             extra_verbs=(),
             script_dispatch=None,
         )
-        cache = config.Infra.codegen.make.testmon_cache
         public_verbs = (
             next(
                 line
@@ -491,28 +487,13 @@ class TestsFlextInfraScriptDispatchMakefile:
                 "_builtin-test-full: _builtin_test_full_all\n",
             ],
         )
-        database_line = next(
-            line
-            for line in rendered.splitlines()
-            if line.startswith("override FLEXT_PYTEST_TESTMON_DATABASE")
-        )
         tm.that(rendered, has="PROJECT_NAME := demo-root\n")
-        tm.that(
-            database_line,
-            has=(
-                f"/{cache.external_storage_directory}/$(PROJECT_NAME)/"
-                f"{cache.database_filename}"
-            ),
-        )
-        tm.that(database_line, lacks="PROJECT_ROOT")
+        tm.that(rendered, lacks=c.Infra.PYTEST_ENV_TESTMON_DATAFILE)
         incremental = rendered.split("_builtin_test_all:", 1)[1].split("\n\n", 1)[0]
         full = rendered.split("_builtin_test_full_all:", 1)[1].split("\n\n", 1)[0]
         tm.that(
             incremental,
-            has=[
-                "PYTEST_BOUNDED",
-                f'{cache.database_environment_variable}="$$database"',
-            ],
+            has=["PYTEST_BOUNDED"],
         )
         tm.that(full.count("-m flext_infra._pytest.entry"), eq=1)
         tm.ok(full.rstrip().endswith("-m flext_infra._pytest.entry full"))
@@ -523,7 +504,6 @@ class TestsFlextInfraScriptDispatchMakefile:
                 "_builtin_require_environment",
                 'if [ -n "$(strip $(FILE))" ]; then',
                 'export FLEXT_PYTEST_TARGET_FILE="$(FILE)";',
-                f'{cache.database_environment_variable}="$$database"',
             ],
         )
 

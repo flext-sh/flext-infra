@@ -192,7 +192,7 @@ class FlextInfraUtilitiesGateAdmission:
         """
         owner_root = FlextInfraUtilitiesProjectDiscovery.runtime_environment_dir(
             Path.cwd(),
-            runtime_root=type(settings).fetch_global().Infra.runtime_root,
+            runtime_root=settings.fetch_global().Infra.runtime_root,
         ).parent
         resolved = FlextInfraUtilitiesMiseBinary.resolve_declared_tools(owner_root)
         if resolved.failure:

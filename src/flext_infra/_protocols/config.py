@@ -13,8 +13,12 @@ from flext_infra._protocols._config import (
     FlextInfraProtocolsConfigBeads,
     FlextInfraProtocolsConfigContexts,
     FlextInfraProtocolsConfigContract,
+    FlextInfraProtocolsConfigExternalCache,
     FlextInfraProtocolsConfigMake,
+    FlextInfraProtocolsConfigMakeClean,
+    FlextInfraProtocolsConfigMakeDocs,
     FlextInfraProtocolsConfigProvider,
+    FlextInfraProtocolsConfigRefactorCampaigns,
     FlextInfraProtocolsConfigRelease,
     FlextInfraProtocolsConfigRender,
     FlextInfraProtocolsConfigRepository,
@@ -24,14 +28,6 @@ from flext_infra._protocols._config import (
     FlextInfraProtocolsConfigStatic,
     FlextInfraProtocolsConfigTemplates,
     FlextInfraProtocolsConfigWorkspace,
-)
-from flext_infra._protocols._config.external_cache import (
-    FlextInfraProtocolsConfigExternalCache,
-)
-from flext_infra._protocols._config.make_clean import FlextInfraProtocolsConfigMakeClean
-from flext_infra._protocols._config.make_docs import FlextInfraProtocolsConfigMakeDocs
-from flext_infra._protocols._config.refactor_campaigns import (
-    FlextInfraProtocolsConfigRefactorCampaigns,
 )
 
 

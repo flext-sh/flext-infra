@@ -339,6 +339,15 @@ class FlextInfraProtocolsCodegenRender:
             ...
 
         @property
+        def docs_site_publish(self) -> bool:
+            """Structural member projected from the owning model.
+
+            Upload the built docs site and deploy it to GitHub Pages from main;
+            False keeps the docs workflow a build-only proof.
+            """
+            ...
+
+        @property
         def superproject(
             self,
         ) -> FlextInfraProtocolsConfigProvider.CiSuperprojectCheckoutSpec | None:
@@ -364,15 +373,6 @@ class FlextInfraProtocolsCodegenRender:
         @property
         def make(self) -> FlextInfraProtocolsConfigMake.MakeSpec:
             """Canonical workflow command contract."""
-            ...
-
-        @property
-        def scenario_data_roots(self) -> tuple[t.NonEmptyStr, ...]:
-            """Structural member projected from the owning model.
-
-            Scenario-data roots the staged-file hook never hands to a gate
-            (codegen.exclusions.scenario_data_roots).
-            """
             ...
 
     @runtime_checkable

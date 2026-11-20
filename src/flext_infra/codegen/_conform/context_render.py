@@ -10,11 +10,9 @@ from collections.abc import Mapping, Sequence
 from functools import partial
 from pathlib import Path
 
-from flext_infra import c, check as validation_services, config, m, p, r, t, u
+from flext_infra import c, check, config, m, p, r, t, u
 from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
-from flext_infra.codegen._conform.pyproject_policy import (
-    FlextInfraCodegenConformPyprojectPolicy,
-)
+from flext_infra.codegen._conform import FlextInfraCodegenConformPyprojectPolicy
 from flext_infra.deps.phases import FlextInfraEnsurePackagingPhase
 
 
@@ -284,7 +282,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
             codegen,
         )
         try:
-            gates = validation_services.FlextInfraGateRegistry.default()
+            gates = check.FlextInfraGateRegistry.default()
             delegated_rules = gates.delegated_lint_rules(
                 tooling.tools.ruff.lint.rule_owners,
                 check_gates=codegen.make.check_gates_default,
@@ -381,7 +379,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
             m.Infra.ProjectSpec(
                 package_name=package_name,
                 class_stem=class_stem,
-                namespace=class_stem.removeprefix("Flext") or class_stem,
+                namespace=u.Infra.domain_namespace(class_stem),
                 constant_name=repository.distribution,
                 namespace_attribute=alias,
                 alias=alias,

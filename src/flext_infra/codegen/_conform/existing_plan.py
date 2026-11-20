@@ -18,6 +18,7 @@ from flext_infra import (
     m,
     p,
     r,
+    settings,
     u,
     workspace as workspace_services,
 )
@@ -475,22 +476,27 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             )
         with self._source_view(root, declared_files=declared_files) as binding:
             rendered_sources: dict[Path, str] = {}
+            retired: set[Path] = set()
             for package_name in u.Infra.protocol_model_package_names(root, binding[0]):
-                rendered = u.Infra.protocol_model_sources_from_source(
+                projected = u.Infra.protocol_model_projection_from_source(
                     root, binding[0], package_name=package_name
                 )
-                if rendered.failure:
-                    return result_type.from_failure(rendered)
-                rendered_sources.update(rendered.value)
+                if projected.failure:
+                    return result_type.from_failure(projected)
+                rendered_sources.update(projected.value[0])
+                retired.update(projected.value[1])
             plans: list[p.Infra.CodegenFilePlan] = []
             for path, content in rendered_sources.items():
                 planned = self.file_plan(root, path.as_posix(), content)
                 if planned.failure:
                     return result_type.from_failure(planned)
                 plans.append(planned.value)
-            # Legacy route files may still have live imports. A filename and a
-            # general generation header do not authenticate projection ownership
-            # or prove consumer rewiring; retirement belongs to that cutover plan.
+            # A projection whose models are gone retires in this candidate.
+            for path in sorted(retired):
+                planned = self._absent_file_plan(root, root / path)
+                if planned.failure:
+                    return result_type.from_failure(planned)
+                plans.append(planned.value)
         return result_type.ok(tuple(plans))
 
     def _custom_export_seed(
@@ -850,10 +856,13 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         repository = target.repository
         project, metadata = identity
         return m.Infra.ToolingContextRequest(
-            # Attached members resolve through the canonical workspace runtime
-            # owner: runtime_environment_dir derives the superproject root when
-            # the checkout is a submodule, and the checkout's own root otherwise.
-            environment_dir=u.Infra.runtime_environment_dir(root),
+            # The declared runtime root (Make's RUNTIME_ROOT) owns the
+            # environment; undeclared, runtime_environment_dir derives the
+            # superproject root for a submodule and the checkout's own root
+            # otherwise.
+            environment_dir=u.Infra.runtime_environment_dir(
+                root, runtime_root=settings.fetch_global().Infra.runtime_root
+            ),
             planned_sources={
                 plan.path: plan.desired_content.decode(c.DEFAULT_ENCODING)
                 for plan in planned
@@ -1145,7 +1154,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         ).resolve_tooling_context(
             m.Infra.ToolingContextRequest(
                 environment_dir=u.Infra.runtime_environment_dir(
-                    root, runtime_root=root
+                    root, runtime_root=settings.fetch_global().Infra.runtime_root
                 ),
                 planned_sources={},
                 project_name=target.repository.distribution,

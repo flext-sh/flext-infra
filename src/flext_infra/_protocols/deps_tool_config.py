@@ -81,6 +81,7 @@ class FlextInfraProtocolsDepsToolConfig:
         slow_marker: t.NonEmptyStr
         item_deadline_call_only: bool
         run_timeout_seconds: int
+        harness_run_timeout_seconds: int
         termination_grace_seconds: int
         max_failures: int
         enforcement_plugin: t.NonEmptyStr

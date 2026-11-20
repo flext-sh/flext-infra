@@ -10,7 +10,7 @@ from collections.abc import Mapping
 from pathlib import Path
 
 from flext_infra import c, m, p, r, u
-from flext_infra.codemod.semantic_apply import FlextInfraCodemodSemanticApply
+from flext_infra.codemod import FlextInfraCodemodSemanticApply
 from flext_infra.refactor import FlextInfraRefactorAccessor
 from flext_infra.refactor._accessor import FlextInfraRefactorAccessorOrigin
 from flext_infra.transformers._semantic import FlextInfraTransformersSemanticPublication

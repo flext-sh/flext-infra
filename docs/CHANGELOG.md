@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.12.3 - 2026-11-20
+
+- Release tag: `v0.12.3`
+
+Full notes: `docs/releases/v0.12.3.md`
+
+## 0.12.2 - 2026-11-19
+
+- Release tag: `v0.12.2`
+
+Full notes: `docs/releases/v0.12.2.md`
+
 ## 0.12.1 - 2026-11-13
 
 - Release tag: `v0.12.1`

@@ -104,7 +104,10 @@ class FlextInfraWorkspaceRoutes:
 
         """
         full = execution_mode is c.Infra.PytestExecutionMode.FULL
-        gate = c.Infra.VERB_TEST_FULL if full else c.Infra.VERB_TEST
+        gate = {
+            c.Infra.PytestExecutionMode.FULL: c.Infra.VERB_TEST_FULL,
+            c.Infra.PytestExecutionMode.HARNESS: c.Infra.VERB_TEST_HARNESS,
+        }.get(execution_mode, c.Infra.VERB_TEST)
         if full:
             u.Infra.gate_repeat_refuse(
                 gate,
@@ -134,6 +137,18 @@ class FlextInfraWorkspaceRoutes:
 
         """
         return cls._tests(params, execution_mode=c.Infra.PytestExecutionMode.FULL)
+
+    @classmethod
+    def _tests_harness(
+        cls, params: p.Infra.WorkspaceTestsRequest
+    ) -> p.Cli.ErasedCommandResult:
+        """Run only the harness gate markers the other test scopes deselect.
+
+        Returns:
+            The native result, preserving the first failing status.
+
+        """
+        return cls._tests(params, execution_mode=c.Infra.PytestExecutionMode.HARNESS)
 
     @staticmethod
     def _detect_workspace(
@@ -474,6 +489,13 @@ class FlextInfraWorkspaceRoutes:
                     "Run the complete selected tests once without Testmon",
                     m.Infra.WorkspaceTestsRequest,
                     cls._tests_full,
+                    None,
+                ),
+                (
+                    c.Infra.VERB_TEST_HARNESS,
+                    "Run only the harness gate tests under their harness",
+                    m.Infra.WorkspaceTestsRequest,
+                    cls._tests_harness,
                     None,
                 ),
                 (

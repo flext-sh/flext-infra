@@ -38,6 +38,38 @@ class FlextInfraUtilitiesReleaseForge:
         ).map(str.strip)
 
     @staticmethod
+    def _release_forge_pages[TPage: p.StrictBoundaryModel](
+        root: Path,
+        endpoint: str,
+        page_filter: str,
+        page_model: type[TPage],
+    ) -> p.Result[tuple[TPage, ...]]:
+        """Read every page of one paginated endpoint as a validated page model.
+
+        ``gh api --paginate`` applies ``--jq`` to each page and prints one
+        JSON document per page (``--slurp`` is rejected together with
+        ``--jq``), so each line is one page validated by its strict model.
+
+        Returns:
+            The validated pages in API order, or the first read or validation
+            failure.
+
+        """
+        captured = u.Cli.capture(
+            [c.Infra.GH, "api", endpoint, "--paginate", "--jq", page_filter],
+            cwd=root,
+        )
+        if captured.failure:
+            return r[tuple[TPage, ...]].from_failure(captured)
+        pages: list[TPage] = []
+        for line in captured.value.splitlines():
+            page = u.validate_value(page_model, line, from_json=True)
+            if page.failure:
+                return r[tuple[TPage, ...]].from_failure(page)
+            pages.append(page.value)
+        return r[tuple[TPage, ...]].ok(tuple(pages))
+
+    @staticmethod
     def release_forge_releases(
         root: Path,
     ) -> p.Result[p.Infra.GithubReleaseInventory]:
@@ -47,24 +79,18 @@ class FlextInfraUtilitiesReleaseForge:
             The typed inventory, or the first read or validation failure.
 
         """
-        inventory = u.Cli.capture(
-            [
-                c.Infra.GH,
-                "api",
-                "repos/{owner}/{repo}/releases",
-                "--paginate",
-                "--slurp",
-                "--jq",
-                "{releases: [.[][] | {id, tag_name, draft}]}",
-            ],
-            cwd=root,
-        )
-        if inventory.failure:
-            return r[p.Infra.GithubReleaseInventory].from_failure(inventory)
-        return u.validate_value(
+        pages = FlextInfraUtilitiesReleaseForge._release_forge_pages(
+            root,
+            "repos/{owner}/{repo}/releases",
+            "{releases: [.[] | {id, tag_name, draft}]}",
             m.Infra.GithubReleaseInventory,
-            inventory.value,
-            from_json=True,
+        )
+        return pages.map(
+            lambda inventories: m.Infra.GithubReleaseInventory(
+                releases=tuple(
+                    release for page in inventories for release in page.releases
+                ),
+            ),
         )
 
     @staticmethod
@@ -78,24 +104,16 @@ class FlextInfraUtilitiesReleaseForge:
             The typed asset inventory, or the first read or validation failure.
 
         """
-        inventory = u.Cli.capture(
-            [
-                c.Infra.GH,
-                "api",
-                f"repos/{{owner}}/{{repo}}/releases/{release_id}/assets",
-                "--paginate",
-                "--slurp",
-                "--jq",
-                "{assets: [.[][] | {name, digest, state}]}",
-            ],
-            cwd=root,
-        )
-        if inventory.failure:
-            return r[p.Infra.GithubReleaseAssets].from_failure(inventory)
-        return u.validate_value(
+        pages = FlextInfraUtilitiesReleaseForge._release_forge_pages(
+            root,
+            f"repos/{{owner}}/{{repo}}/releases/{release_id}/assets",
+            "{assets: [.[] | {name, digest, state}]}",
             m.Infra.GithubReleaseAssets,
-            inventory.value,
-            from_json=True,
+        )
+        return pages.map(
+            lambda inventories: m.Infra.GithubReleaseAssets(
+                assets=tuple(asset for page in inventories for asset in page.assets),
+            ),
         )
 
     @staticmethod

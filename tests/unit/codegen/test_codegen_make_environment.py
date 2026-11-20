@@ -881,18 +881,8 @@ class TestsFlextInfraCodegenMakeEnvironment:
             envrc,
             has=f'VENV_DIR="${{RUNTIME_ROOT}}/{c.Infra.ENVIRONMENT_DIRECTORY}"',
         )
-        # One testmon database per project (flext-3l1gk): every checkout and
-        # worktree of the project resolves the same file, so a new lane starts
-        # from the project's measured selection, never a cold inventory.
-        testmon = config.Infra.codegen.make.testmon_cache
-        database = (
-            f"{testmon.external_storage_directory}/$(PROJECT_NAME)/"
-            f"{testmon.database_filename}"
-        )
-        tm.that(
-            makefile,
-            has=[database, f'{testmon.database_environment_variable}="$$database"'],
-        )
+        # Testmon keeps its native in-checkout default: Make exports no path.
+        tm.that(makefile, lacks=c.Infra.PYTEST_ENV_TESTMON_DATAFILE)
         tm.that(makefile, lacks="$(subst /,_,$(PROJECT_ROOT))")
         # The declarative cache policy (bead flext-j0u23) keeps an ascending
         # quota ladder and bounded generations whatever values config declares.

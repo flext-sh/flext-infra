@@ -147,14 +147,10 @@ class FlextInfraUtilitiesLazyInitPlan:
             entries = tuple(
                 entry for entry in entries if entry.project_root == run.root
             )
-        # Deepest first; at one depth the tests namespace comes last, because
-        # it publishes its sibling packages' planned exports.
+        # Deepest first: a root inherits letters from its planned facade parents.
         package_dirs = sorted(
             (entry.package_dir for entry in entries),
-            key=lambda package_dir: (
-                FlextInfraUtilitiesBase.path_depth(package_dir),
-                package_dir.name != c.Infra.DIR_TESTS,
-            ),
+            key=FlextInfraUtilitiesBase.path_depth,
             reverse=True,
         )
         if target is not None and target not in package_dirs:
@@ -441,11 +437,10 @@ class FlextInfraUtilitiesLazyInitPlan:
         )
         facade_root = cls.lazy_init_is_facade_root(context)
         if facade_root and context.current_pkg == c.Infra.DIR_TESTS:
+            FlextInfraUtilitiesLazyInitLetters.lazy_init_inherit_source(
+                run, context, lazy_map
+            )
             for name, target in c.Infra.TEST_RUNTIME_ALIAS_TARGETS.items():
-                lazy_map.setdefault(name, target)
-            for name, target in cls._lazy_init_test_namespace_publics(
-                run, context
-            ).items():
                 lazy_map.setdefault(name, target)
         if not lazy_map and not eager:
             keeps = (
@@ -539,11 +534,12 @@ class FlextInfraUtilitiesLazyInitPlan:
         # import-time code reads, is not deferred (root ADR-018 stand-in
         # composition law, rule 5): an empty stand-in is invalid, and a
         # stand-in published at import forbids an eager process.
+        roots = cls._lazy_init_facade_roots(run)
         parts = frozenset(
             owner
             for owner in (
-                cls._lazy_init_facade_composed(run)
-                - cls._lazy_init_facade_roots(run).keys()
+                cls._lazy_init_facade_composed(run, roots)
+                - roots.keys()
                 - cls._lazy_init_import_time(run)
             )
             if not cls._lazy_init_binds_nothing(run, owner)
@@ -744,20 +740,39 @@ class FlextInfraUtilitiesLazyInitPlan:
     ) -> Mapping[tuple[str, str], FlextInfraModelsCodegenLazyInit.LazyInitPlan]:
         """Return the family facade class of each root-namespace module and its plan.
 
-        Only the namespace families (``c``, ``t``, ``p``, ``m``, ``u``, derived
-        from the core package) compose namespace mixins; another facade, such
-        as a service base, composes model mixins that stay real.
+        The namespace families (``c``, ``t``, ``p``, ``m``, ``u``, derived from
+        the core package) compose namespace mixins. Another root facade class is
+        a root only when its project declares it in ``deferred_facades``
+        (operator ruling 2026-11-19); its parts pass the same stand-in checks.
 
         Returns:
             The planned root package of each ``(module, class)`` facade pair.
+
+        Raises:
+            ValueError: If a declared facade class is defined by no root-package
+                module of its project.
 
         """
         python = FlextInfraUtilitiesPythonModel
         families = FlextInfraUtilitiesCodegenNamespace.facade_families()
         roots: dict[tuple[str, str], FlextInfraModelsCodegenLazyInit.LazyInitPlan] = {}
+        declared: dict[Path, frozenset[str]] = {}
+        found: dict[Path, set[str]] = {}
         for plan in run.plans.values():
             if not cls.lazy_init_is_facade_root(plan.context):
                 continue
+            project = FlextInfraUtilitiesLazyInitRender.lazy_init_project_root(
+                run.model, plan.context.pkg_dir
+            )
+            if project not in declared:
+                declared[project] = frozenset(
+                    FlextInfraUtilitiesProjectManagedArtifacts
+                    .load_repository_declaration_inputs(
+                        project, source_project=run.model.source_project
+                    )
+                    .unwrap()
+                    .spec.deferred_facades
+                )
             entry = run.index.packages_by_dir.get(str(plan.context.pkg_dir))
             for module in entry.modules if entry is not None else ():
                 if (
@@ -766,18 +781,30 @@ class FlextInfraUtilitiesLazyInitPlan:
                     or module.file_path.name == c.Infra.INIT_PY
                 ):
                     continue
-                owner = python.python_model_facade_owner(
-                    python.python_model_module_at(
-                        run.model, module.file_path, module.module_name
-                    )
+                facts = python.python_model_module_at(
+                    run.model, module.file_path, module.module_name
                 )
+                owner = python.python_model_facade_owner(facts)
                 if owner is not None and owner[0] in families:
                     roots[module.module_name, owner[1]] = plan
+                for name in declared[project] & facts.classes.keys():
+                    roots[module.module_name, name] = plan
+                    found.setdefault(project, set()).add(name)
+        missing = {
+            str(project): sorted(names - found.get(project, set()))
+            for project, names in declared.items()
+            if names - found.get(project, set())
+        }
+        if missing:
+            msg = f"deferred facades are defined by no root-package module: {missing}"
+            raise ValueError(msg)
         return roots
 
     @classmethod
     def _lazy_init_facade_composed(
-        cls, run: FlextInfraModelsCodegenLazyInit.LazyInitRun
+        cls,
+        run: FlextInfraModelsCodegenLazyInit.LazyInitRun,
+        roots: Mapping[tuple[str, str], FlextInfraModelsCodegenLazyInit.LazyInitPlan],
     ) -> frozenset[tuple[str, str]]:
         """Return every in-package class a facade root class composes by MRO.
 
@@ -793,7 +820,6 @@ class FlextInfraUtilitiesLazyInitPlan:
 
         """
         python = FlextInfraUtilitiesPythonModel
-        roots = cls._lazy_init_facade_roots(run)
         pending = [(*root, plan) for root, plan in roots.items()]
         composed: set[tuple[str, str]] = set()
         while pending:
@@ -1245,146 +1271,6 @@ class FlextInfraUtilitiesLazyInitPlan:
             for candidate in (pkg_dir, *entry.descendant_child_dirs)
             if str(candidate) in run.index.packages_by_dir
         )
-
-    @classmethod
-    def _lazy_init_test_namespace_publics(
-        cls,
-        run: FlextInfraModelsCodegenLazyInit.LazyInitRun,
-        context: FlextInfraModelsCodegenLazyInit.LazyInitPackageContext,
-    ) -> t.MutableLazyAliasMap:
-        """Collect the sibling public declarations the tests facade exposes.
-
-        The generated tests namespace carries the public API of the project
-        source, scripts and examples packages, so behaviour tests import only
-        ``from tests import ...``. Test-only declarations remain in the tests
-        package's own ``_<base>`` modules.
-
-        Returns:
-            The public declarations keyed by exported name.
-
-        """
-        entry = run.index.packages_by_dir.get(str(context.pkg_dir))
-        project = entry.project_root if entry is not None else None
-        if project is None:
-            return {}
-        publics: t.MutableLazyAliasMap = {}
-        for sibling in cls._lazy_init_test_namespace_dirs(run, context, project):
-            sibling_context = cls.lazy_init_context(run, sibling)
-            if not sibling_context.importable:
-                continue
-            for name, target in cls._lazy_init_package_declarations(
-                run, sibling_context
-            ).items():
-                publics.setdefault(name, target)
-            for name in cls._lazy_init_candidate_exports(
-                run, sibling, sibling_context.current_pkg
-            ):
-                publics[name] = (sibling_context.current_pkg, name)
-        return {k: v for k, v in publics.items() if not k.startswith("__")}
-
-    @staticmethod
-    def _lazy_init_candidate_exports(
-        run: FlextInfraModelsCodegenLazyInit.LazyInitRun,
-        package_dir: Path,
-        package: str,
-    ) -> Sequence[str]:
-        """Return a package initializer's exports in this run's candidate.
-
-        A package this run planned publishes its planned exports; reading its
-        initializer from disk would replay the previous generation and take a
-        second run to converge. An unplanned package keeps its current
-        initializer.
-
-        Returns:
-            The exports the candidate initializer of ``package_dir`` declares.
-
-        """
-        planned = run.plans.get(package_dir)
-        if planned is not None:
-            return planned.exports
-        initializer = package_dir / c.Infra.INIT_PY
-        if not run.model.source_project.source_query(initializer, "isfile"):
-            return ()
-        python = FlextInfraUtilitiesPythonModel
-        return (
-            python.python_model_exports(
-                python.python_model_module_at(run.model, initializer, package)
-            )
-            or ()
-        )
-
-    @staticmethod
-    def _lazy_init_test_namespace_dirs(
-        run: FlextInfraModelsCodegenLazyInit.LazyInitRun,
-        context: FlextInfraModelsCodegenLazyInit.LazyInitPackageContext,
-        project: Path,
-    ) -> tuple[Path, ...]:
-        """Return the sibling namespaces the tests facade publishes.
-
-        Returns:
-            The source packages, ``scripts`` and ``examples`` directories.
-
-        """
-        directories = [
-            entry.package_dir
-            for entry in run.index.packages_by_dir.values()
-            if entry.project_root == project
-            and entry.package_dir != context.pkg_dir
-            and entry.package_dir.parent == project / c.Infra.DEFAULT_SRC_DIR
-        ]
-        for name in (c.Infra.DIR_SCRIPTS, c.Infra.DIR_EXAMPLES):
-            candidate = project / name
-            if (
-                str(candidate) in run.index.packages_by_dir
-                and candidate != context.pkg_dir
-            ):
-                directories.append(candidate)
-        directories.extend(
-            child
-            for child in sorted(
-                run.model.source_project.source_children(context.pkg_dir)
-            )
-            if run.model.source_project.source_query(child, "isdir")
-            and run.model.source_project.source_query(child / c.Infra.INIT_PY, "isfile")
-            and str(child) in run.index.packages_by_dir
-        )
-        return tuple(sorted(dict.fromkeys(directories)))
-
-    @staticmethod
-    def _lazy_init_package_declarations(
-        run: FlextInfraModelsCodegenLazyInit.LazyInitRun,
-        context: FlextInfraModelsCodegenLazyInit.LazyInitPackageContext,
-    ) -> t.MutableLazyAliasMap:
-        """Collect a package's direct public declarations without election.
-
-        The tests facade only re-exports names a namespace publishes in
-        ``__all__``; it never reaches into a module that the namespace does not
-        declare.
-
-        Returns:
-            The declarations keyed by exported name.
-
-        """
-        python = FlextInfraUtilitiesPythonModel
-        entry = run.index.packages_by_dir.get(str(context.pkg_dir))
-        declarations: t.MutableLazyAliasMap = {}
-        for module in entry.modules if entry is not None else ():
-            if (
-                module.file_path.suffix != c.Infra.EXT_PYTHON
-                or module.file_path.parent != context.pkg_dir
-                or module.file_path.name == c.Infra.INIT_PY
-            ):
-                continue
-            for name in (
-                python.python_model_exports(
-                    python.python_model_module_at(
-                        run.model, module.file_path, module.module_name
-                    )
-                )
-                or ()
-            ):
-                declarations.setdefault(name, (module.module_name, name))
-        return declarations
 
     @classmethod
     def _lazy_init_add(
