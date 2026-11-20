@@ -237,7 +237,6 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
             u.Cli.template_render(
                 root / ".pre-commit-config.yaml.j2",
                 m.Infra.MakeWorkflowRenderSpec(
-                    scenario_data_roots=config.Infra.codegen.exclusions.scenario_data_roots,
                     dist=spec.dist,
                     make=codegen.make,
                 ),
@@ -252,13 +251,14 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
             eq=(c.Infra.VERB_SETUP, c.Infra.VERB_CHECK),
         )
         # Each commit row renders its own hook, in workflow order: setup
-        # provisions through Make, check runs the engine on the staged files.
+        # provisions through Make, then check runs through Make.
         positions = [
             hook.index(f"flext-pre-commit-{step.identity}") for step in commit_steps
         ]
         tm.that(positions, eq=sorted(positions))
         tm.that(hook, has=f"{commit_token} {commit_steps[0].make_command}")
-        tm.that(hook, has=f'{commit_token} "$FLEXT" check run')
+        tm.that(hook, has=f"{commit_token} {commit_steps[1].make_command}")
+        tm.that(hook, lacks=['"$FLEXT"', ".venv/bin"])
         # Comments may name other verbs; no hook command runs them.
         for line in hook.splitlines():
             if "bash -eu -o pipefail -c" in line:
