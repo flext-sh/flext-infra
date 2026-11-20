@@ -83,7 +83,11 @@ class TestsFlextInfraCProfileReport:
             ),
             testmon_db=tmp_path / "testmon",
             testmon_lease_acquired=True,
-            deadline_monotonic=monotonic() + policy.run_timeout_seconds,
+            deadline_monotonic=(
+                monotonic() + policy.run_timeout_seconds
+                if selected_file is None
+                else None
+            ),
             report_directory=directory,
         )
         (directory / "run-context.json").write_text(

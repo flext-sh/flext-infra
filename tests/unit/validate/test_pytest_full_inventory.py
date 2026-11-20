@@ -301,6 +301,29 @@ class TestsFlextInfraPytestFullInventory:
         tm.fail((project / "excluded-output.txt").exists())
 
     @staticmethod
+    @c.Tests.MARK.parametrize(
+        ("mode", "deadline"),
+        [
+            (c.Infra.PytestExecutionMode.FULL, 1.0),
+            (c.Infra.PytestExecutionMode.INCREMENTAL, None),
+        ],
+    )
+    def test_only_full_execution_owns_no_deadline(
+        tmp_path: Path,
+        mode: c.Infra.PytestExecutionMode,
+        deadline: float | None,
+    ) -> None:
+        """A run context's deadline is absent exactly when its mode is FULL."""
+        with u.Tests.raises(m.ValidationError, match="only full execution"):
+            m.Infra.PytestRunContext(
+                execution_mode=mode,
+                testmon_db=tmp_path / "testmon",
+                testmon_lease_acquired=True,
+                deadline_monotonic=deadline,
+                report_directory=tmp_path,
+            )
+
+    @staticmethod
     @c.Tests.MARK.slow
     def test_full_on_a_fresh_database_warms_the_incremental_selection(
         tmp_path: Path,

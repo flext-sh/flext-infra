@@ -340,9 +340,15 @@ class FlextInfraModelsCore:
                 The validated execution identity.
 
             Raises:
-                ValueError: If the mode contradicts its database or lease state.
+                ValueError: If the mode contradicts its database, lease or
+                    deadline state.
 
             """
+            if (self.deadline_monotonic is None) != (
+                self.execution_mode == c.Infra.PytestExecutionMode.FULL
+            ):
+                msg = "only full execution owns no deadline"
+                raise ValueError(msg)
             recorded = self.execution_mode.records_testmon
             if recorded != (self.testmon_db is not None) or recorded != (
                 self.testmon_lease_acquired is not None
