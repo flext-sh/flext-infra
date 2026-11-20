@@ -11,7 +11,23 @@ valid:
 
             class Tests(FlextTestsTypes.Tests):
                 """Aliases."""
+  - |
+    class TestsFlextLdapConstants(FlextTestsConstants, FlextLdapConstants):
+        class Ldap(FlextLdapConstants.Ldap):
+            class Tests(FlextTestsConstants.Tests):
+                LDIF = """dn: cn=a
+        objectClass: top
+    """
 invalid:
+  - |
+    class TestsFlextLdapProtocols(FlextTestsProtocols):
+        class Ldap:
+            class Tests(FlextTestsProtocols.Tests):
+                """Protocols."""
+
+                SOURCE = "_ = c.Ldap.Tests.HOST"
+
+                HOST = "h"
   - |
     class TestsFlextLdapTypes(FlextTestsTypes, FlextLdapTypes):
         """Facade."""
