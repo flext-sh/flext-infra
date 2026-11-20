@@ -65,11 +65,24 @@ ignores:
   - "**/*_pb2.py"
   - "**/*_pb2_grpc.py"
 rule:
-  pattern: "$NAME: Annotated[$TYPE, m.Field(default_factory=$FACTORY, $$$REST)]"
-  not:
-    has:
-      field: right
-      regex: "."
+  all:
+    - pattern: "$NAME: Annotated[$TYPE, m.Field(default_factory=$FACTORY, $$$REST)]"
+    - not:
+        has:
+          field: right
+          regex: "."
+    # A factory reached through an enclosing class (`Outer.Inner` inside the
+    # body of a class nested in `Outer`) cannot move to an assignment: the
+    # enclosing name is not bound while the class body executes.
+    - not:
+        all:
+          - pattern: "$NAME: Annotated[$TYPE, m.Field(default_factory=$OUTER.$INNER, $$$REST)]"
+          - inside:
+              kind: class_definition
+              stopBy: end
+              has:
+                field: name
+                pattern: $OUTER
 fix: "$NAME: Annotated[$TYPE, m.Field($$$REST)] = m.Field(default_factory=$FACTORY)"
 message: >-
   Declare a pydantic field default factory by assignment
@@ -87,11 +100,22 @@ ignores:
   - "**/*_pb2.py"
   - "**/*_pb2_grpc.py"
 rule:
-  pattern: "$NAME: Annotated[$TYPE, m.Field(default_factory=$FACTORY)]"
-  not:
-    has:
-      field: right
-      regex: "."
+  all:
+    - pattern: "$NAME: Annotated[$TYPE, m.Field(default_factory=$FACTORY)]"
+    - not:
+        has:
+          field: right
+          regex: "."
+    # The same enclosing-class exemption as the multi-argument form above.
+    - not:
+        all:
+          - pattern: "$NAME: Annotated[$TYPE, m.Field(default_factory=$OUTER.$INNER)]"
+          - inside:
+              kind: class_definition
+              stopBy: end
+              has:
+                field: name
+                pattern: $OUTER
 fix: "$NAME: $TYPE = m.Field(default_factory=$FACTORY)"
 message: >-
   Declare a pydantic field default factory by assignment
