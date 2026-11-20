@@ -6,12 +6,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import sys
 from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, codegen, docs, gates, m, r, validate
+from flext_infra import c, codegen, docs, gates, m, r, settings, validate
 from flext_infra._utilities import (
     FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesProtectedEditLinting,
@@ -101,15 +100,15 @@ class FlextInfraConformWiring:
         workspace = codegen.FlextInfraStagedPackage.workspace_root(root)
         if workspace.failure:
             return r[bool].from_failure(workspace)
-        runtime = FlextInfraUtilitiesProjectDiscovery.runtime_owner_root(root)
-        if runtime.failure:
-            return r[bool].from_failure(runtime)
-        runtime_root = runtime.value
-        if not (runtime_root / c.Infra.ENVIRONMENT_DIRECTORY).is_dir():
-            # A new project owns no environment until its first `make setup`;
-            # the generator's runtime carries the FLEXT libraries its
-            # generated modules import, so it admits the first candidate.
-            runtime_root = Path(sys.prefix).parent
+        # The declared runtime root (Make's RUNTIME_ROOT) admits the candidate;
+        # undeclared, the checkout's derived runtime owner does.
+        declared = settings.fetch_global().Infra.runtime_root
+        if declared is None:
+            runtime = FlextInfraUtilitiesProjectDiscovery.runtime_owner_root(root)
+            if runtime.failure:
+                return r[bool].from_failure(runtime)
+            declared = runtime.value
+        runtime_root = declared
         repository = candidate / root.relative_to(workspace.value)
         repositories = tuple(
             candidate / project.relative_to(workspace.value) for project in projects

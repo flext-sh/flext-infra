@@ -47,8 +47,8 @@ class FlextInfraPytestRunnerBase(s[int]):
         Path | None,
         m.Field(
             description=(
-                "The project's external SQLite database for incremental "
-                "Testmon runs, shared by every checkout and worktree."
+                "This checkout's Testmon database at Testmon's native "
+                "default location for incremental runs."
             ),
         ),
     ] = None
@@ -174,17 +174,7 @@ class FlextInfraPytestRunnerBase(s[int]):
         cache = make.testmon_cache
         database: Path | None = None
         if execution_mode.is_incremental:
-            # One database per project, shared by every checkout and worktree
-            # (testmon tracks each checkout's sources by checksum), anchored at
-            # the real account home so a redirected HOME or XDG_CACHE_HOME never
-            # moves it.
-            database = (
-                u.Infra.real_account_home()
-                / cache.home_cache_directory
-                / cache.external_storage_directory
-                / context.target.canonical_project_name
-                / cache.database_filename
-            )
+            database = root / cache.database_filename
         tooling = cls._elect_tooling(root)
         run_timeout_seconds, termination_grace_seconds = cls._elected_deadline(
             tooling, execution_mode=execution_mode
@@ -304,11 +294,8 @@ class FlextInfraPytestRunnerBase(s[int]):
             ),
             reports=Path(cls._environment_value(c.Infra.PYTEST_ENV_REPORTS)),
             testmon_db=(
-                Path(
-                    cls._environment_value(
-                        config.Infra.codegen.make.testmon_cache.database_environment_variable,
-                    ),
-                )
+                repository_root
+                / config.Infra.codegen.make.testmon_cache.database_filename
                 if execution_mode.is_incremental
                 else None
             ),

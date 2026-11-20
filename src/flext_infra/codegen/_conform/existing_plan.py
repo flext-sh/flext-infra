@@ -18,6 +18,7 @@ from flext_infra import (
     m,
     p,
     r,
+    settings,
     u,
     workspace as workspace_services,
 )
@@ -855,10 +856,13 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         repository = target.repository
         project, metadata = identity
         return m.Infra.ToolingContextRequest(
-            # Attached members resolve through the canonical workspace runtime
-            # owner: runtime_environment_dir derives the superproject root when
-            # the checkout is a submodule, and the checkout's own root otherwise.
-            environment_dir=u.Infra.runtime_environment_dir(root),
+            # The declared runtime root (Make's RUNTIME_ROOT) owns the
+            # environment; undeclared, runtime_environment_dir derives the
+            # superproject root for a submodule and the checkout's own root
+            # otherwise.
+            environment_dir=u.Infra.runtime_environment_dir(
+                root, runtime_root=settings.fetch_global().Infra.runtime_root
+            ),
             planned_sources={
                 plan.path: plan.desired_content.decode(c.DEFAULT_ENCODING)
                 for plan in planned
@@ -1150,7 +1154,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         ).resolve_tooling_context(
             m.Infra.ToolingContextRequest(
                 environment_dir=u.Infra.runtime_environment_dir(
-                    root, runtime_root=root
+                    root, runtime_root=settings.fetch_global().Infra.runtime_root
                 ),
                 planned_sources={},
                 project_name=target.repository.distribution,
