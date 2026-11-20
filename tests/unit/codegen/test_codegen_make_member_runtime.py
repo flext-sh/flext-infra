@@ -17,8 +17,6 @@ class TestsFlextInfraCodegenMakeMemberRuntime:
     """Prove where a generated member Makefile resolves its runtime."""
 
     RUNTIME_NAMES = (
-        "GIT_CEILING_DIRECTORIES",
-        "MISE_CEILING_PATHS",
         "PROJECT_ROOT",
         "REPOSITORY_ROOT",
         "RUNTIME_ROOT",
@@ -69,17 +67,30 @@ class TestsFlextInfraCodegenMakeMemberRuntime:
         return root
 
     @classmethod
-    def _runtime_values(cls, project_root: Path) -> dict[str, str]:
+    def _runtime_values(
+        cls, project_root: Path, probe: Path | None = None
+    ) -> dict[str, str]:
         """Print the resolved runtime through the public help verb's post hook.
+
+        A ``probe`` directory is resolved by Git under the environment the
+        generated Makefile exports, as a verb reading that path does; its
+        toplevel is reported as ``PROBE_TOPLEVEL``.
 
         Returns:
             The resulting ``dict[str, str]``.
 
         """
+        discovery = (
+            ""
+            if probe is None
+            else "\t@printf 'PROBE_TOPLEVEL=%s\\n' "
+            f"\"$$(git -C '{probe}' rev-parse --show-toplevel)\"\n"
+        )
         (project_root / "custom.mk").write_text(
             "post-help:\n\t@printf '%s\\n' "
             + " ".join(f"'{name}=$({name})'" for name in cls.RUNTIME_NAMES)
-            + "\n",
+            + "\n"
+            + discovery,
             encoding="utf-8",
         )
         process = tm.ok(
@@ -92,7 +103,7 @@ class TestsFlextInfraCodegenMakeMemberRuntime:
         return dict(
             line.split("=", 1)
             for line in process.stdout.splitlines()
-            if line.split("=", 1)[0] in cls.RUNTIME_NAMES
+            if line.split("=", 1)[0] in {*cls.RUNTIME_NAMES, "PROBE_TOPLEVEL"}
         )
 
     @staticmethod
@@ -178,11 +189,13 @@ class TestsFlextInfraCodegenMakeMemberRuntime:
         return workspace.resolve()
 
     @staticmethod
-    def _direnv_venv(entry: Path) -> str:
-        """Read the ``VENV_DIR`` the real generated ``.envrc`` activation resolves.
+    def _direnv_exec(entry: Path, *command: str) -> str:
+        """Run ``command`` under the real generated ``.envrc`` activation.
+
+        The activation exports its ``VENV_DIR`` as ``OBSERVED_VENV_DIR``.
 
         Returns:
-            The resulting ``str``.
+            The command's standard output, stripped.
 
         """
         owner = tm.ok(u.Infra.runtime_owner_root(entry))
@@ -202,8 +215,7 @@ class TestsFlextInfraCodegenMakeMemberRuntime:
                         # symlinked path argument is checked unresolved.
                         "exec",
                         ".",
-                        "printenv",
-                        "OBSERVED_VENV_DIR",
+                        *command,
                     ),
                     cwd=entry,
                     options=m.Cli.ProcessOptions(
@@ -241,7 +253,9 @@ class TestsFlextInfraCodegenMakeMemberRuntime:
             u.Tests.copy_tracked_mise_seeds(project_root)
             tm.that((project_root / c.GIT_DIR_NAME).is_file(), eq=True)
 
-        values = self._runtime_values(project_root)
+        probe = project_root / "examples"
+        probe.mkdir(exist_ok=True)
+        values = self._runtime_values(project_root, probe)
         root = str(project_root.resolve())
         tm.that(
             u.Tests.git_capture(project_root, "rev-parse", "--show-toplevel").strip(),
@@ -249,11 +263,17 @@ class TestsFlextInfraCodegenMakeMemberRuntime:
         )
         tm.that(tm.ok(u.Infra.runtime_owner_root(project_root)), eq=project_root)
         tm.that(values["RUNTIME_ROOT"], eq=root)
+        # Discovery inside the checkout reaches its own repository, never a
+        # repository above it.
+        tm.that(values["PROBE_TOPLEVEL"], eq=root)
         tm.that(
             values["RUNTIME_VENV"],
             eq=str(u.Infra.runtime_environment_dir(project_root)),
         )
-        tm.that(self._direnv_venv(project_root), eq=values["RUNTIME_VENV"])
+        tm.that(
+            self._direnv_exec(project_root, "printenv", "OBSERVED_VENV_DIR"),
+            eq=values["RUNTIME_VENV"],
+        )
         if linked:
             tm.that(u.Infra.runtime_environment_dir(runtime_reader).exists(), eq=False)
 
@@ -266,17 +286,25 @@ class TestsFlextInfraCodegenMakeMemberRuntime:
         member_source = runtime_reader
         workspace = self._workspace_with_member(tmp_path, member_source)
         member = workspace / member_source.name
+        # A workspace path outside the member, as `make gen` reads examples/.
+        probe = workspace / "examples"
+        probe.mkdir()
 
-        values = self._runtime_values(member)
+        values = self._runtime_values(member, probe)
 
         tm.that(values["PROJECT_ROOT"], eq=str(member))
         for name in ("REPOSITORY_ROOT", "RUNTIME_ROOT"):
             tm.that(values[name], eq=str(workspace))
         tm.that(values["UV_PROJECT"], empty=True)
-        # The member's verbs read workspace paths, so Git discovery reaches
-        # the workspace repository instead of stopping at the member.
-        for name in ("GIT_CEILING_DIRECTORIES", "MISE_CEILING_PATHS"):
-            tm.that(values[name], eq=str(workspace.parent))
+        # The member's verbs and its shell both discover the workspace
+        # repository from that path instead of stopping at the member.
+        tm.that(values["PROBE_TOPLEVEL"], eq=str(workspace))
+        tm.that(
+            self._direnv_exec(
+                member, "git", "-C", str(probe), "rev-parse", "--show-toplevel"
+            ),
+            eq=str(workspace),
+        )
         for name in ("RUNTIME_VENV", "UV_PROJECT_ENVIRONMENT"):
             tm.that(
                 values[name],
@@ -310,7 +338,10 @@ class TestsFlextInfraCodegenMakeMemberRuntime:
             values["RUNTIME_VENV"],
             eq=str(u.Infra.runtime_environment_dir(member, runtime_root=owner)),
         )
-        tm.that(self._direnv_venv(member), eq=values["RUNTIME_VENV"])
+        tm.that(
+            self._direnv_exec(member, "printenv", "OBSERVED_VENV_DIR"),
+            eq=values["RUNTIME_VENV"],
+        )
         for path, before in locks:
             tm.that(
                 tm.ok(u.Cli.atomic_read_binary_file_state(path, required=False)),
@@ -382,7 +413,7 @@ class TestsFlextInfraCodegenMakeMemberRuntime:
             entry = link / member.relative_to(owner)
 
         values = self._runtime_values(entry)
-        observed = self._direnv_venv(entry)
+        observed = self._direnv_exec(entry, "printenv", "OBSERVED_VENV_DIR")
 
         tm.that(
             values["RUNTIME_VENV"],
