@@ -11,7 +11,7 @@ import sqlite3
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
-from flext_infra import config
+from flext_infra import config, infra, validate
 from tests import c, e, m, t, tm, u
 
 
@@ -339,38 +339,23 @@ class TestsFlextInfraPytestRunner:
 
     @staticmethod
     @c.Tests.MARK.slow
-    @c.Tests.MARK.parametrize(
-        ("profile_collection", "linked_checkout"),
-        [(False, False), (True, False), (False, True)],
-    )
+    @c.Tests.MARK.parametrize("profile_collection", [False, True])
     def test_warm_cache_deselects_the_unchanged_suite(
         cached_runner_project: Path,
         *,
         profile_collection: bool,
-        linked_checkout: bool,
     ) -> None:
-        """A second run restores the seeded cache and executes nothing.
-
-        A linked checkout has no database of its own yet: it is seeded from
-        the canonical one and starts warm instead of a full inventory.
-        """
+        """A second run restores the project's cache and executes nothing."""
         runner = u.Tests.PytestRunner.runner_for(cached_runner_project)
         tm.that(tm.ok(runner.execute()), eq=0)
         reports_root = cached_runner_project / runner.reports
-        canonical = tm.not_none(runner.testmon_db)
-        checkout = canonical.parent / "linked-checkout" / canonical.name
         second = u.Tests.PytestRunner.runner_for(
             cached_runner_project,
             profile_collection=profile_collection,
         )
-        if linked_checkout:
-            second = second.model_copy(
-                update={"testmon_db": checkout, "testmon_seed_db": canonical}
-            )
 
         second_exit = tm.ok(second.execute())
         tm.that(second_exit, eq=0)
-        tm.that(checkout.is_file(), eq=linked_checkout)
         second_summary = u.Tests.PytestRunner.summary(reports_root)
         tm.that(
             second_summary,
@@ -1116,3 +1101,54 @@ class TestsFlextInfraPytestRunner:
         tm.that(len(contexts), eq=2)
         tm.fail((contexts[-1].parent / "suite-outcome.json").exists())
         tm.fail((contexts[-1].parent / "testmon-inventory.json").exists())
+
+
+class TestsFlextInfraPytestRunnerDatabase:
+    """The incremental database location is owned by the runner, not the caller."""
+
+    @staticmethod
+    @c.Tests.MARK.parametrize(
+        "mode",
+        [
+            c.Infra.PytestExecutionMode.GLOBAL_INCREMENTAL,
+            c.Infra.PytestExecutionMode.FULL,
+        ],
+    )
+    def test_project_database_ignores_a_redirected_home(
+        tmp_path: Path,
+        monkeypatch: t.Tests.MonkeyPatch,
+        *,
+        mode: c.Infra.PytestExecutionMode,
+    ) -> None:
+        """One database per project at the real account home; full runs have none."""
+        repository = tmp_path / "project"
+        u.Tests.WorktreeFixture.initialize_governed_project(
+            repository,
+            "fixture-project",
+            beads=u.Tests.BeadsIdentity(
+                workspace="fixture-workspace",
+                database="fixture_database",
+                issue_prefix="fixture",
+            ),
+        )
+        context = tm.ok(infra.project_context(repository))
+        cache = config.Infra.codegen.make.testmon_cache
+        expected = (
+            u.Infra.real_account_home()
+            / cache.home_cache_directory
+            / cache.external_storage_directory
+            / tm.not_none(context.target).canonical_project_name
+            / cache.database_filename
+        )
+        redirected = tmp_path / "redirected-home"
+        monkeypatch.setenv("HOME", str(redirected))
+        monkeypatch.setenv("XDG_CACHE_HOME", str(redirected / "cache"))
+        runner = validate.FlextInfraPytestRunner.from_project_context(
+            context,
+            started_at_monotonic=1.0,
+            execution_mode=mode,
+        )
+        tm.that(
+            runner.testmon_db,
+            eq=expected if mode.is_incremental else None,
+        )

@@ -701,9 +701,7 @@ class FlextInfra(
             )
         identity = u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=resolved))
         if identity.failure:
-            return r[p.Infra.WorkspaceProjectContext].ok(
-                m.Infra.WorkspaceProjectContext(cwd=resolved),
-            )
+            return r[p.Infra.WorkspaceProjectContext].from_failure(identity)
         root = identity.value.repo_root
         captured_runtime = FlextInfra._project_captured_runtime(resolved, root)
         if captured_runtime.failure:

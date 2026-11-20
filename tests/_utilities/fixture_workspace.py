@@ -116,7 +116,9 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
         project_dir = root / name
         project_dir.mkdir(parents=True, exist_ok=True)
         (project_dir / c.PYPROJECT_FILENAME).write_text(pyproject, encoding="utf-8")
-        TestsFlextInfraUtilitiesGit.git_bootstrap(project_dir, ("init", "--quiet"))
+        TestsFlextInfraUtilitiesGit.git_bootstrap(
+            project_dir, ("init", "--quiet", "-b", c.Infra.GIT_MAIN)
+        )
         if markdown_config is not None:
             (project_dir / c.Infra.MARKDOWN_CONFIG_FILENAME).write_text(
                 markdown_config, encoding="utf-8"
@@ -148,7 +150,8 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
         package_dir = project / "src" / name.replace("-", "_")
         package_dir.mkdir(parents=True)
         (project / c.PYPROJECT_FILENAME).write_text(
-            f"[project]\nname='{name}'\n",
+            f"[project]\nname='{name}'\nversion='0.1.0'\nlicense='MIT'\n"
+            "authors=[{name='FLEXT Team'}]\n",
             encoding="utf-8",
         )
         (project / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
@@ -171,6 +174,12 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
         package_dir.mkdir(parents=True, exist_ok=True)
         (package_dir / "__init__.py").write_text("", encoding="utf-8")
         (project_dir / c.PYPROJECT_FILENAME).write_text(pyproject, encoding="utf-8")
+        # Git owns Python source discovery: the project is a real checkout. The
+        # branch is pinned: a later ``init -b`` on an existing repository is
+        # ignored, so the host's init.defaultBranch must never decide it.
+        TestsFlextInfraUtilitiesGit.git_bootstrap(
+            project_dir, ("init", "--quiet", "-b", c.Infra.GIT_MAIN)
+        )
         return package_dir
 
     @staticmethod
@@ -179,7 +188,10 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
         *,
         project_name: str = "sample-proj",
         package_name: str = "sample_pkg",
-        pyproject: str = "[project]\nname='sample'\nversion='1.0.0'\n",
+        pyproject: str = (
+            "[project]\nname='sample'\nversion='1.0.0'\nlicense='MIT'\n"
+            "authors=[{name='FLEXT Team'}]\n"
+        ),
         declare: bool = True,
     ) -> tuple[Path, Path, Path]:
         """Materialize the workspace tree the namespace enforcer scans.

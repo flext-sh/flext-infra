@@ -312,6 +312,12 @@ class FlextInfraValidateFreshImport(s[bool]):
 
         """
         workers = config.Infra.codegen.fresh_import_workers
+        # The deadline is the target's own policy: a consumer whose import is
+        # slower declares it in its config/codegen.yaml layer.
+        policy = u.Infra.load_codegen_inputs(self.repository_root)
+        if policy.failure:
+            return r[p.Infra.ValidationReport].from_failure(policy)
+        deadline = policy.value.spec.fresh_import_timeout_seconds
         u.Cli.info(f"fresh-import: running {len(probes)} probes with {workers} workers")
 
         # Each source travels on stdin because the workspace export probe may
@@ -325,6 +331,7 @@ class FlextInfraValidateFreshImport(s[bool]):
             u.Cli.info(f"fresh-import: probe {index} start {probe.subject}")
             result = self.execute_probe(
                 probe,
+                deadline=deadline,
                 source_roots=tuple(layout.src_dir for layout in layouts),
                 profile_slot=index,
             )
@@ -630,6 +637,7 @@ class FlextInfraValidateFreshImport(s[bool]):
         self,
         probe: p.Infra.FreshImportProbe,
         *,
+        deadline: int,
         source_roots: Sequence[Path] = (),
         profile_slot: int = 0,
     ) -> p.Result[p.Cli.CommandOutput]:
@@ -683,7 +691,7 @@ class FlextInfraValidateFreshImport(s[bool]):
                 "-",
             ],
             cwd=self.repository_root,
-            timeout=c.Infra.TIMEOUT_SHORT,
+            timeout=deadline,
             options=m.Cli.ProcessOptions(
                 env=self._workspace_import_env(source_roots),
                 input_data=source,
