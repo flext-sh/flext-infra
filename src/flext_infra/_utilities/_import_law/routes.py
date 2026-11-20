@@ -318,6 +318,9 @@ class FlextInfraUtilitiesImportLawRoutes(
                 if base is not None
                 and init.name == c.Infra.INIT_PY
                 and init.parent.is_relative_to(base)
+                and not any(
+                    part.startswith("_") for part in init.parent.relative_to(base).parts
+                )
                 and (
                     package := ".".join((
                         namespace,
