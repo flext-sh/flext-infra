@@ -21,7 +21,7 @@ from functools import partial
 from pathlib import Path
 
 from flext_cli import u
-from rope.base import ast, exceptions as rope_exceptions
+from rope.base import ast
 
 from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
@@ -29,6 +29,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenFilePlan,
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesFacadeMembers,
+    FlextInfraUtilitiesFacadeNamespace,
     FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesProjectManagedArtifacts,
     FlextInfraUtilitiesProtectedEditLinting,
@@ -775,107 +776,15 @@ class FlextInfraUtilitiesFacadeComponents:
             FlextInfraUtilitiesRopeRuntimeModules.file_resource_at(project, path),
             directory,
         )
-        return r[Mapping[Path, str]].ok(
-            {} if unpublished is None else {path: unpublished}
+        if unpublished is not None:
+            return r[Mapping[Path, str]].ok({path: unpublished})
+        nested = FlextInfraUtilitiesFacadeNamespace.facade_nested_domain_source(
+            project,
+            path,
+            declares_parts=bool(cls.facade_component_declarations(project, directory)),
+            indent_step=cls._facade_indent_step(project),
         )
-
-    @staticmethod
-    def _canonical_facade_source(
-        source: str,
-        family: c.Infra.FacadeFamily,
-        *,
-        own_package: str,
-    ) -> str:
-        """Project the upstream letter base and the domain nested class.
-
-        Each edit replaces only its own name span in the original text, so
-        every comment and the layout of the facade survive.
-
-        Returns:
-            The canonical facade source, unchanged when it already conforms.
-
-        """
-        tree = ast.parse(source)
-        upstream = {
-            alias.asname or alias.name: node.module
-            for node in tree.body
-            if isinstance(node, ast.ImportFrom)
-            and node.module is not None
-            and node.module.startswith("flext_")
-            and node.module.partition(".")[0] != own_package
-            for alias in node.names
-        }
-        lines = source.encode().splitlines(keepends=True)
-        edits: dict[tuple[int, int, int, int], str] = {}
-        for node in tree.body:
-            if isinstance(node, ast.ClassDef):
-                FlextInfraUtilitiesFacadeComponents._strip_nested_prefix(
-                    node, lines, edits
-                )
-                FlextInfraUtilitiesFacadeComponents._rebase_upstream_letter(
-                    tree, node, (upstream, family), edits
-                )
-        for (line, start, end_line, end), text in sorted(edits.items(), reverse=True):
-            lines[line - 1 : end_line] = [
-                lines[line - 1][:start] + text.encode() + lines[end_line - 1][end:]
-            ]
-        return b"".join(lines).decode()
-
-    @staticmethod
-    def _strip_nested_prefix(
-        facade: ast.ClassDef,
-        lines: Sequence[bytes],
-        edits: MutableMapping[tuple[int, int, int, int], str],
-    ) -> None:
-        """Name each nested namespace by its domain stem, never ``Flext<Domain>``."""
-        for child in facade.body:
-            if isinstance(child, ast.ClassDef) and child.name.startswith("Flext"):
-                start = lines[child.lineno - 1].index(
-                    child.name.encode(), child.col_offset
-                )
-                span = (child.lineno, start, child.lineno, start + len(child.name))
-                edits[span] = child.name.removeprefix("Flext")
-
-    @staticmethod
-    def _rebase_upstream_letter(
-        tree: ast.Module,
-        facade: ast.ClassDef,
-        target: tuple[Mapping[str, str], c.Infra.FacadeFamily],
-        edits: MutableMapping[tuple[int, int, int, int], str],
-    ) -> None:
-        """Replace the first upstream facade base and its import by the letter.
-
-        A facade already based on the letter keeps every other base, so a
-        sister facade composed beside it is never removed.
-
-        Raises:
-            ValueError: If a rebound name carries no source end location.
-
-        """
-        upstream, family = target
-        base = next(
-            (
-                item
-                for item in facade.bases
-                if isinstance(item, ast.Name) and item.id in upstream
-            ),
-            None,
-        )
-        if base is None or base.id == family.value:
-            return
-        rebound = [base] + [
-            alias
-            for node in tree.body
-            if isinstance(node, ast.ImportFrom) and node.module == upstream[base.id]
-            for alias in node.names
-            if (alias.asname or alias.name) == base.id
-        ]
-        for item in rebound:
-            if item.end_lineno is None or item.end_col_offset is None:
-                msg = f"{ast.dump(item)} has no source end location"
-                raise ValueError(msg)
-            span = (item.lineno, item.col_offset, item.end_lineno, item.end_col_offset)
-            edits[span] = family.value
+        return r[Mapping[Path, str]].ok({} if nested is None else {path: nested})
 
     @classmethod
     def _facade_foreign_publications(
@@ -1393,14 +1302,15 @@ class FlextInfraUtilitiesFacadeComponents:
             t.Infra.RopeSourceMemberResolverFactory,
         ]
     ]:
-        """Elect the published facade owner and its sole inherited namespace.
+        """Elect the published facade owner and its sole composing namespace.
+
+        The namespace is the inherited one, else the nested domain class;
+        only a facade with neither (the foundation) composes on its owner.
+        An inconsistent hierarchy escapes: a stale projection is repaired,
+        never flattened onto the owner.
 
         Returns:
             The owner, namespace, family declarations and their member resolver.
-
-        Raises:
-            InconsistentHierarchyError: If ``not
-                module.source_code.startswith(c.Infra.AUTOGEN_HEADER)``.
 
         """
         published = FlextInfraUtilitiesRopeAnalysisImportState.published_facade_owner(
@@ -1470,20 +1380,28 @@ class FlextInfraUtilitiesFacadeComponents:
                 project, sources=sources
             )
         )
-        try:
-            namespaces = cls._facade_inherited_namespaces(
-                owner, directory, resolver_factory=resolver_factory, project=project
-            )
-        except rope_exceptions.InconsistentHierarchyError:
-            if not module.source_code.startswith(c.Infra.AUTOGEN_HEADER):
-                raise
-            namespaces = ()
+        namespaces = cls._facade_inherited_namespaces(
+            owner, directory, resolver_factory=resolver_factory, project=project
+        )
         if len(namespaces) > 1:
             message = f"Competing inherited facade namespaces: {path}"
             return result_type.fail(message)
+        domain = FlextInfraUtilitiesFacadeNamespace.facade_domain_name(path)
+        nested = (
+            owner.get_attributes()[domain].get_object()
+            if domain is not None and domain in owner.get_scope().get_defined_names()
+            else None
+        )
+        elected = (
+            namespaces[0]
+            if namespaces
+            else nested
+            if FlextInfraUtilitiesRopeRuntimeTypes.py_class(nested)
+            else owner
+        )
         return result_type.ok((
             owner,
-            namespaces[0] if namespaces else owner,
+            elected,
             declarations,
             resolver_factory,
         ))
@@ -1739,10 +1657,8 @@ class FlextInfraUtilitiesFacadeComponents:
 
         Returns:
             Every nested type class bound by an abstract parent attribute or a
-            family-directory base, in declaration order.
-
-        Raises:
-            InconsistentHierarchyError: If ``not rendered``.
+            family-directory base, in declaration order. An inconsistent
+            hierarchy escapes: a stale projection is repaired, never guessed.
 
         """
         types = FlextInfraUtilitiesRopeRuntimeTypes
@@ -1754,19 +1670,14 @@ class FlextInfraUtilitiesFacadeComponents:
             child = scope.pyobject
             if not types.py_class(child):
                 continue
-            try:
-                classified = (
-                    FlextInfraUtilitiesFacadeMembers.class_kind(
-                        child,
-                        resolver_factory=resolver_factory,
-                        source_project=project,
-                    )
-                    is c.Infra.FacadeMemberKind.TYPE
+            classified = (
+                FlextInfraUtilitiesFacadeMembers.class_kind(
+                    child,
+                    resolver_factory=resolver_factory,
+                    source_project=project,
                 )
-            except rope_exceptions.InconsistentHierarchyError:
-                if not rendered:
-                    raise
-                classified = True
+                is c.Infra.FacadeMemberKind.TYPE
+            )
             if rendered:
                 aliases = FlextInfraUtilitiesFacadeComponents._facade_namespace_aliases(
                     child.get_module().get_source_binding_index(), child
