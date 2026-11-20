@@ -25,21 +25,17 @@ class FlextInfraTestmonDbInspector(s[p.Infra.TestmonCacheState]):
 
     @m.model_validator(mode="after")
     def _validate_absolute_db(self) -> Self:
-        """Reject relative or in-checkout database paths.
+        """Reject a relative database path.
 
         Returns:
             The resulting ``Self``.
 
         Raises:
-            ValueError: If testmon db_path must be absolute; or if testmon database must
-                be outside the repository checkout.
+            ValueError: If testmon db_path is not absolute.
 
         """
         if not self.db_path.is_absolute():
             msg = "testmon db_path must be absolute"
-            raise ValueError(msg)
-        if self.db_path.resolve().is_relative_to(self.root.resolve()):
-            msg = "testmon database must be outside the repository checkout"
             raise ValueError(msg)
         return self
 

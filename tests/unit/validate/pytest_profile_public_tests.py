@@ -539,9 +539,6 @@ class TestsFlextInfraPytestProfile:
                             c.Infra.PYTEST_ENV_TARGET: str(runner.target),
                             c.Infra.PYTEST_ENV_TARGET_FILE: str(target),
                             c.Infra.PYTEST_ENV_REPORTS: str(runner.reports),
-                            cache.database_environment_variable: str(
-                                tm.not_none(runner.testmon_db)
-                            ),
                         },
                     ),
                 ),
@@ -657,9 +654,6 @@ class TestsFlextInfraPytestProfile:
                             c.Infra.PYTEST_ENV_TARGET: str(runner.target),
                             c.Infra.PYTEST_ENV_TARGET_FILE: str(target),
                             c.Infra.PYTEST_ENV_REPORTS: str(runner.reports),
-                            cache.database_environment_variable: str(
-                                tm.not_none(runner.testmon_db)
-                            ),
                         },
                     ),
                 ),
