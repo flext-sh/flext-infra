@@ -865,7 +865,7 @@ VERB_ARGUMENTS_check := CHECK_PHASE
 VERB_DESCRIPTION_tests := Run native incremental tests through the persistent Testmon selection.
 VERB_ARGUMENTS_tests :=
 
-VERB_DESCRIPTION_tests-full := Run the complete selected inventory once without Testmon.
+VERB_DESCRIPTION_tests-full := Run the complete selected inventory once and record it in Testmon.
 VERB_ARGUMENTS_tests-full :=
 
 VERB_DESCRIPTION_tests-harness := Run only the harness gate tests, through the persistent Testmon selection, under the harness that provides their inputs; MARKER=<harness gate marker> narrows the run to one.
