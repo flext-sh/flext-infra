@@ -60,7 +60,7 @@ class FlextInfraPytestCollection:
     @staticmethod
     @u.Infra.Pytest.hookimpl(tryfirst=True)
     def pytest_configure(config: t.Infra.Pytest.Config) -> None:
-        """Pin testmon outside the checkout and record warnings once."""
+        """Record warnings once; Testmon keeps its native in-checkout default."""
         u.Infra.collection_configure(config)
 
     @classmethod

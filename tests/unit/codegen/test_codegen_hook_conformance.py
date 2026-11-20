@@ -62,7 +62,6 @@ class TestsFlextInfraCodegenHookConformance:
             u.Cli.template_render(
                 _HOOK_TEMPLATE,
                 m.Infra.MakeWorkflowRenderSpec(
-                    scenario_data_roots=config.Infra.codegen.exclusions.scenario_data_roots,
                     dist="flext-demo",
                     make=config.Infra.codegen.make,
                 ),
@@ -118,7 +117,6 @@ class TestsFlextInfraCodegenHookConformance:
             u.Cli.template_render(
                 _HOOK_TEMPLATE,
                 m.Infra.MakeWorkflowRenderSpec(
-                    scenario_data_roots=config.Infra.codegen.exclusions.scenario_data_roots,
                     dist="flext-demo",
                     make=make,
                 ),
@@ -156,7 +154,6 @@ class TestsFlextInfraCodegenHookConformance:
             u.Cli.template_render(
                 _HOOK_TEMPLATE,
                 m.Infra.MakeWorkflowRenderSpec(
-                    scenario_data_roots=config.Infra.codegen.exclusions.scenario_data_roots,
                     dist="fixture-project",
                     make=make,
                 ),
@@ -235,14 +232,13 @@ class TestsFlextInfraCodegenHookConformance:
         )
 
     @staticmethod
-    def test_commit_hook_checks_markdown_through_the_canonical_gates(
+    def test_commit_hook_checks_through_the_make_runtime_route(
         tmp_path: Path,
     ) -> None:
-        """A staged Markdown file runs the commit-stage markdown gates.
+        """The commit check runs its Make verb with the commit-stage CI value.
 
-        The gates read declared foreign projected blocks the way make check
-        and make fmt do, so the commit hook never reports a finding the check
-        verb masks and never runs a second, raw linter path.
+        Make forces the runtime environment and selects the commit-stage gates,
+        so the hook never picks an interpreter or engine path by itself.
         """
         make = config.Infra.codegen.make.model_copy(update={"pre_commit": True})
         hook_config = tmp_path / c.Infra.PRE_COMMIT_CONFIG_FILENAME
@@ -253,7 +249,6 @@ class TestsFlextInfraCodegenHookConformance:
                     u.Cli.template_render(
                         _HOOK_TEMPLATE,
                         m.Infra.MakeWorkflowRenderSpec(
-                            scenario_data_roots=config.Infra.codegen.exclusions.scenario_data_roots,
                             dist="flext-demo",
                             make=make,
                         ),
@@ -281,17 +276,11 @@ class TestsFlextInfraCodegenHookConformance:
             ),
             "entry",
         )
-        markdown_gates = (c.Infra.MARKDOWN, c.Infra.MARKDOWN_FORMAT)
-        tm.ok(all(gate in make.pre_commit_check_gates for gate in markdown_gates))
         tm.that(
             entry,
-            has=(
-                f"{make.ci.variable}={make.ci.pre_commit_value} "
-                '"$FLEXT" check run --repository-root . '
-                + " ".join(f"--gates {gate}" for gate in markdown_gates)
-            ),
+            has=f"{make.ci.variable}={make.ci.pre_commit_value} {check.make_command}",
         )
-        tm.that(entry, lacks="rumdl")
+        tm.that(entry, lacks=['"$FLEXT"', ".venv/bin", "rumdl"])
 
     @staticmethod
     def test_hook_stages_follow_configuration() -> None:
@@ -301,7 +290,6 @@ class TestsFlextInfraCodegenHookConformance:
             u.Cli.template_render(
                 _HOOK_TEMPLATE,
                 m.Infra.MakeWorkflowRenderSpec(
-                    scenario_data_roots=config.Infra.codegen.exclusions.scenario_data_roots,
                     dist="flext-demo",
                     make=make,
                 ),
@@ -317,7 +305,6 @@ class TestsFlextInfraCodegenHookConformance:
             u.Cli.template_render(
                 _HOOK_TEMPLATE,
                 m.Infra.MakeWorkflowRenderSpec(
-                    scenario_data_roots=config.Infra.codegen.exclusions.scenario_data_roots,
                     dist="flext-demo",
                     make=config.Infra.codegen.make.model_copy(
                         update={"pre_commit": False, "pre_push": False},
@@ -364,7 +351,6 @@ class TestsFlextInfraCodegenHookConformance:
             u.Cli.template_render(
                 _HOOK_TEMPLATE,
                 m.Infra.MakeWorkflowRenderSpec(
-                    scenario_data_roots=config.Infra.codegen.exclusions.scenario_data_roots,
                     dist="flext-demo",
                     make=make.model_copy(update={"pre_commit": True, "pre_push": True}),
                 ),
@@ -382,7 +368,6 @@ class TestsFlextInfraCodegenHookConformance:
             u.Cli.template_render(
                 _HOOK_TEMPLATE,
                 m.Infra.MakeWorkflowRenderSpec(
-                    scenario_data_roots=config.Infra.codegen.exclusions.scenario_data_roots,
                     dist="flext-demo",
                     make=make.model_copy(
                         update={"pre_commit": True, "pre_push": False},

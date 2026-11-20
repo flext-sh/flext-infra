@@ -44,13 +44,7 @@ class TestsFlextInfraUtilitiesToolingFixture:
 
             """
             cache = config.Infra.codegen.make.testmon_cache
-            testmon_db = (
-                cached_runner_project.parent
-                / ".testmon-cache"
-                / cached_runner_project.name
-                / cache.database_filename
-            )
-            testmon_db.parent.mkdir(parents=True, exist_ok=True)
+            testmon_db = cached_runner_project / cache.database_filename
             tooling = u.Infra.load_tooling_inputs(cached_runner_project).unwrap()
             policy = tooling.document.tools.pytest
             return validate.FlextInfraPytestRunner(
@@ -137,10 +131,9 @@ class TestsFlextInfraUtilitiesToolingFixture:
                 RuntimeError: If the profiling entry fails.
 
             """
-            database = tm.not_none(runner.testmon_db)
+            tm.not_none(runner.testmon_db)
             output.parent.mkdir(parents=True, exist_ok=True)
             policy = config.Infra.tooling.tools.pytest
-            cache = config.Infra.codegen.make.testmon_cache
             log = output.with_suffix(".log")
             outcome = tm.ok(
                 u.Cli.run_to_file(
@@ -166,9 +159,6 @@ class TestsFlextInfraUtilitiesToolingFixture:
                                     else runner.target_file or "",
                                 ),
                                 c.Infra.PYTEST_ENV_REPORTS: str(runner.reports),
-                                cache.database_environment_variable: str(
-                                    database,
-                                ),
                             },
                         ),
                         deadline=m.Cli.ProcessDeadline(

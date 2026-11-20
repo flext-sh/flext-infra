@@ -620,7 +620,6 @@ class TestsFlextInfraPytestFullInventory:
         project = TestsFlextInfraPytestFullInventory._consumer(tmp_path)
         runner = u.Tests.PytestRunner.runner_for(project)
         policy = config.Infra.tooling.tools.pytest
-        cache = config.Infra.codegen.make.testmon_cache
 
         process = tm.ok(
             u.Cli.run_raw(
@@ -632,7 +631,6 @@ class TestsFlextInfraPytestFullInventory:
                         c.Infra.PYTEST_ENV_TARGET: str(runner.target),
                         c.Infra.PYTEST_ENV_TARGET_FILE: "",
                         c.Infra.PYTEST_ENV_REPORTS: str(runner.reports),
-                        cache.database_environment_variable: str(runner.testmon_db),
                         "FLEXT_INFRA_PROFILE": c.ParserBooleanToken.TRUE,
                     },
                     deadline=m.Cli.ProcessDeadline(
