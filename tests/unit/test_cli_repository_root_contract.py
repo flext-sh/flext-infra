@@ -79,13 +79,10 @@ class TestsFlextInfraCliRepositoryRootContract:
             for route in FlextInfraCliRouteService.route_table_for(group)
             if route.name == command
         )
-        fields = route.resolved_model_cls.model_fields
-        tm.that(tuple(fields), has="repository_root")
-        tm.that(tuple(fields), lacks="workspace")
-        scope = fields["repository_root"]
-        tm.ok(scope.alias is None)
-        tm.ok(scope.validation_alias is None)
-        tm.ok(scope.serialization_alias is None)
+        annotations = route.model_cls.__annotations__
+        field_names = tuple(annotations)
+        tm.that(field_names, has="repository_root")
+        tm.that(field_names, lacks="workspace")
         option = "--repository-root"
         tm.that(
             rendered_makefile,

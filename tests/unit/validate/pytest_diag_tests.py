@@ -552,7 +552,9 @@ class TestsFlextInfraPytestDiag:
         )
 
         with u.Tests.raises(ValueError, match=expected):
-            FlextInfraPytestDiagExtractor.extract_report_log(report_log)
+            FlextInfraPytestDiagExtractor.extract_report_log(
+                report_log, interrupted=False
+            )
 
     @staticmethod
     @c.Tests.MARK.parametrize(
@@ -614,9 +616,13 @@ class TestsFlextInfraPytestDiag:
 
         if interrupted:
             diagnostics = tm.ok(
-                FlextInfraPytestDiagExtractor.extract_report_log(report_log)
+                FlextInfraPytestDiagExtractor.extract_report_log(
+                    report_log, interrupted=interrupted
+                )
             )
             tm.that(diagnostics.failed_cases, empty=True)
             return
         with u.Tests.raises(ValueError, match="incomplete pytest lifecycle"):
-            FlextInfraPytestDiagExtractor.extract_report_log(report_log)
+            FlextInfraPytestDiagExtractor.extract_report_log(
+                report_log, interrupted=interrupted
+            )
