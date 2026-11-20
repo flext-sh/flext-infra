@@ -529,3 +529,52 @@ class TestsFlextInfraPytestDiag:
 
         with u.Tests.raises(ValueError, match=expected):
             FlextInfraPytestDiagExtractor.extract_report_log(report_log)
+
+    @staticmethod
+    @c.Tests.MARK.parametrize(
+        ("finish", "interrupted"),
+        [(None, True), (2, True), (0, False)],
+        ids=["killed", "max-failures-stop", "finished"],
+    )
+    def test_report_log_accepts_in_flight_items_only_after_an_interrupted_session(
+        tmp_path: Path,
+        finish: int | None,
+        *,
+        interrupted: bool,
+    ) -> None:
+        """A passed setup without call is an in-flight item of a stopped session."""
+        events: list[t.JsonMapping] = [
+            {"$report_type": "SessionStart"},
+            {
+                "$report_type": "TestReport",
+                "nodeid": "tests/test_lifecycle.py::test_in_flight",
+                "when": "setup",
+                "outcome": "passed",
+            },
+        ]
+        if finish is not None:
+            events.append({"$report_type": "SessionFinish", "exitstatus": finish})
+        report_log = tmp_path / "suite.events.jsonl"
+        report_log.write_text(
+            "".join(
+                m.Infra.PytestReportEvent.model_validate(event).model_dump_json(
+                    by_alias=True, exclude_none=True
+                )
+                + "\n"
+                for event in events
+            ),
+            encoding="utf-8",
+        )
+        report_log.with_suffix(c.Infra.PYTEST_WARNING_EVENTS_SUFFIX).write_text(
+            "",
+            encoding="utf-8",
+        )
+
+        if interrupted:
+            diagnostics = tm.ok(
+                FlextInfraPytestDiagExtractor.extract_report_log(report_log)
+            )
+            tm.that(diagnostics.failed_cases, empty=True)
+            return
+        with u.Tests.raises(ValueError, match="incomplete pytest lifecycle"):
+            FlextInfraPytestDiagExtractor.extract_report_log(report_log)
