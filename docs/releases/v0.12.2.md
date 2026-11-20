@@ -12,6 +12,8 @@
 
 ## Pull requests since last release
 
+- perf(semantic-cutover): one model-envelope checker run per stage content (flext-lkfsm)
+  (#2716)
 - fix(deps): relock flext-tests at the standalone catalog fix; project the load5 20
   admission (#2714)
 - fix(tests): fixture runtime binds as a site dir; fixture manifests are complete
