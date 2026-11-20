@@ -309,13 +309,10 @@ class FlextInfraPytestRunnerBase(s[int]):
             The resulting ``Self``.
 
         Raises:
-            ValueError: If test target must be an existing directory; or if testmon
-                database path must be absolute; or if testmon database must be outside
-                the checkout; or if ``path.is_absolute() or not path.parts or any((part
-                in {'', '.', '..'} for part in path.parts)) or any((character in raw for
-                character in '\x00\r\n\\'))``; or if ``not
-                resolved.is_relative_to(self.repository_root.resolve())``; or if test
-                target file must be an existing repository file.
+            ValueError: If the test target is not an existing directory or file,
+                the testmon database path is not absolute, a target or reports path
+                is not a normalized repository-relative path or escapes the
+                repository, or the target file is not an existing repository file.
 
         """
         for name, path in (("target", self.target), ("reports", self.reports)):
@@ -339,15 +336,9 @@ class FlextInfraPytestRunnerBase(s[int]):
         ):
             msg = f"test target must be an existing directory or file: {self.target}"
             raise ValueError(msg)
-        if self.testmon_db is not None:
-            if not self.testmon_db.is_absolute():
-                msg = "testmon database path must be absolute"
-                raise ValueError(msg)
-            if self.testmon_db.resolve().is_relative_to(self.repository_root.resolve()):
-                msg = (
-                    f"testmon database must be outside the checkout: {self.testmon_db}"
-                )
-                raise ValueError(msg)
+        if self.testmon_db is not None and not self.testmon_db.is_absolute():
+            msg = "testmon database path must be absolute"
+            raise ValueError(msg)
         return self._validate_target_file()
 
     def _validate_target_file(self) -> Self:

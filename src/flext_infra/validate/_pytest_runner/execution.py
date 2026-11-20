@@ -876,12 +876,12 @@ class FlextInfraPytestRunnerExecution(
             The resulting ``p.Result[int]``.
 
         Raises:
-            ValueError: If incremental pytest requires its external Testmon database.
+            ValueError: If incremental pytest has no Testmon database.
 
         """
         database = self.testmon_db
         if database is None:
-            msg = "incremental pytest requires its external Testmon database"
+            msg = "incremental pytest requires its Testmon database"
             raise ValueError(msg)
         slow_marker = self.pytest_policy().slow_marker
         if self.slow_phase and slow_marker in self.ci_excluded_markers(
