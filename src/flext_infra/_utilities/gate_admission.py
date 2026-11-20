@@ -255,29 +255,30 @@ class FlextInfraUtilitiesGateAdmission:
         ticket: p.Infra.GateTicket,
         selection: Sequence[str] = (),
     ) -> None:
-        """Record one successful full-weight run in its checkout's ledger.
+        """Record a successful full-weight run for repeat limiting.
 
-        The ledger keeps the latest success per gate and selection, written
-        under the queue lock. CI runners and the pre-push hook record nothing.
+        Only successes are recorded. The record is written to the repeat ledger
+        for the ticket's gate and selection, so a subsequent run inside the
+        window will be refused.
 
         """
-        if cls._repeat_exempt() or ticket.admitted_at is None:
-            return
         root = cls.gate_admission_root()
-        repository = Path(ticket.repository)
+        root.mkdir(parents=True, exist_ok=True)
+        now = datetime.now(UTC)
         record = m.Infra.GateRunRecord(
             gate=ticket.gate,
+            status="success",
             selection=tuple(selection),
             repository=ticket.repository,
-            admitted_at=ticket.admitted_at,
-            finished_at=datetime.now(UTC),
+            admitted_at=ticket.admitted_at or now,
+            finished_at=now,
         )
-        ledger = cls._ledger_path(root, repository)
+        ledger = cls._ledger_path(root, Path(ticket.repository))
         with cls._queue_lock(root):
             kept = [
                 earlier
-                for earlier in cls._ledger(root, repository)
-                if (earlier.gate, earlier.selection) != (record.gate, record.selection)
+                for earlier in cls._ledger(root, Path(ticket.repository))
+                if earlier.gate != ticket.gate or earlier.selection != tuple(selection)
             ]
             ledger.parent.mkdir(exist_ok=True)
             u.Cli.atomic_write_text_file(
@@ -285,6 +286,98 @@ class FlextInfraUtilitiesGateAdmission:
                 "".join(f"{entry.model_dump_json()}\n" for entry in (*kept, record)),
                 durability=c.Cli.WriteDurability.SCRATCH,
             ).unwrap()
+
+    @classmethod
+    def gate_health_record(
+        cls,
+        repository: Path,
+        gate: str,
+        *,
+        success: bool,
+    ) -> None:
+        """Record the outcome of a check/tests run for heavy-op gating.
+
+        Writes (or replaces) the latest entry for ``gate`` with its ``status``.
+        CI runners and the pre-push hook are not exempt here: health is recorded
+        in every context so heavy ops can see the real state.
+
+        """
+        root = cls.gate_admission_root()
+        root.mkdir(parents=True, exist_ok=True)
+        health_gate = f"health-{gate}"
+        now = datetime.now(UTC)
+        record = m.Infra.GateRunRecord(
+            gate=health_gate,
+            status="success" if success else "failure",
+            selection=(),
+            repository=str(repository),
+            admitted_at=now,
+            finished_at=now,
+        )
+        ledger = cls._ledger_path(root, repository)
+        with cls._queue_lock(root):
+            kept = [
+                earlier
+                for earlier in cls._ledger(root, repository)
+                if earlier.gate != health_gate
+            ]
+            ledger.parent.mkdir(exist_ok=True)
+            u.Cli.atomic_write_text_file(
+                ledger,
+                "".join(f"{entry.model_dump_json()}\n" for entry in (*kept, record)),
+                durability=c.Cli.WriteDurability.SCRATCH,
+            ).unwrap()
+
+    @classmethod
+    def gate_health_refuse(cls, repository: Path) -> None:
+        """Refuse a heavy op when check/tests health is missing-failed-stale.
+
+        Missing records are allowed (first-run grace). Exempt contexts (CI,
+        remote, pre-push) bypass.
+
+        Raises:
+            SystemExit: When the last recorded health is a failure or stale.
+
+        """
+        if cls._repeat_exempt():
+            return
+        root = cls.gate_admission_root()
+        root.mkdir(parents=True, exist_ok=True)
+        repeat = config.Infra.gate_admission.repeat
+        windows = {
+            "health-check": repeat.check.window_seconds,
+            "health-tests": repeat.tests_full.window_seconds,
+        }
+        remediation = {
+            "health-check": "make check",
+            "health-tests": "make tests",
+        }
+        with cls._queue_lock(root):
+            records = cls._ledger(root, repository)
+        now = datetime.now(UTC)
+        for health_gate, window in windows.items():
+            matches = [r for r in records if r.gate == health_gate]
+            if not matches:
+                continue
+            last = matches[-1]
+            elapsed = (now - last.finished_at).total_seconds()
+            if last.status != "success":
+                u.Cli.emit_raw(
+                    f"gate admission: refused heavy operation in {repository}: "
+                    f"last {remediation[health_gate]} failed at "
+                    f"{last.finished_at.isoformat(timespec='seconds')}; "
+                    f"repair and rerun it before heavy work.\n",
+                    error=True,
+                )
+                raise SystemExit(c.Infra.GATE_ADMISSION_REFUSED_EXIT_CODE)
+            if elapsed >= window:
+                u.Cli.emit_raw(
+                    f"gate admission: refused heavy operation in {repository}: "
+                    f"last green {remediation[health_gate]} is "
+                    f"{elapsed:.0f}s old (window {window}s); rerun it.\n",
+                    error=True,
+                )
+                raise SystemExit(c.Infra.GATE_ADMISSION_REFUSED_EXIT_CODE)
 
     @staticmethod
     def _repeat_exempt() -> bool:
