@@ -104,6 +104,9 @@ Infra:
       evidence: "name: flext-strict-jsonvalue-session-continuation"
     # Fresh import probes are independent subprocesses within one validation.
     fresh_import_workers: 3
+    # One probe imports a whole package; a project whose import is slower
+    # declares its own deadline under the same key.
+    fresh_import_timeout_seconds: 60
     # Protected-edit lint snapshots run their gate subprocesses in this many
     # threads per level (paths, then gates per level); pyrefly keeps its own
     # resource-limited deadline, so the bound caps concurrent type checkers.

@@ -911,11 +911,10 @@ class FlextInfraPytestRunnerExecution(
                 else 0,
             )
         u.Cli.ensure_dir(database.parent).unwrap()
-        # Selection, execution, and integrity inspection share this checkout's
-        # database. Its lease and a linked worktree's one-time seed from the
-        # canonical database are admission, like the host gate queue: both are
+        # Selection, execution, and integrity inspection share the project's
+        # database. Its lease is admission, like the host gate queue: it is
         # awaited within this invocation's deadline, and the suite clock is
-        # re-armed once they are done, so neither consumes the budget of
+        # re-armed once it is held, so it never consumes the budget of
         # selection and execution.
         deadline = self._process_deadline()
         report_dir = self._report_directory()
@@ -943,13 +942,6 @@ class FlextInfraPytestRunnerExecution(
         with u.Cli.file_changes_lock(
             database.with_name(f"{database.name}.lock"),
         ).acquire(timeout=lease_wait()):
-            seed = self.testmon_seed_db
-            if seed is not None and not database.exists() and seed.is_file():
-                with u.Cli.file_changes_lock(
-                    seed.with_name(f"{seed.name}.lock")
-                ).acquire(timeout=lease_wait()):
-                    FlextInfraTestmonDbInspector.seed_file(seed, database)
-                sys.stderr.write(f"pytest cache seed: {database} from {seed}\n")
             self.started_at_monotonic = time.monotonic()
             self._write_run_context(
                 report_dir,

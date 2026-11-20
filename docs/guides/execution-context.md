@@ -4272,8 +4272,10 @@ The ordinary `tests` operation uses incremental Testmon selection
 The explicit `tests-full` operation executes the applicable suite once without
 Testmon, an incremental pre-run or database access. Marker applicability remains
 owned by the declared execution context; neither operation invents exclusions.
-The incremental filesystem cache lives at the typed XDG/HOME-derived project path
-and full execution leaves it untouched.
+The incremental filesystem cache is one database per project, shared by every
+checkout and worktree of it, under the real account home's cache directory; a
+redirected `HOME` or `XDG_CACHE_HOME` never moves it, and full execution leaves it
+untouched.
 The explicit single-file operation runs incremental selection followed by complete
 execution of that file, including its declared slow tests, on the same database.
 No empty marker phase is invoked or converted to success. Zero execution is accepted

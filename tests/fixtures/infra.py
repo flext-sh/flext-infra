@@ -356,16 +356,13 @@ def real_python_package(tmp_path: Path) -> Path:
 
 
 @pytest.fixture
-def cached_runner_project(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+def cached_runner_project(tmp_path: Path) -> Path:
     """Create a real one-test consumer for the public cached pytest runner.
 
     Returns:
         The resulting ``Path``.
 
     """
-    external_cache = tmp_path / "external-cache"
-    monkeypatch.setenv("XDG_CACHE_HOME", str(external_cache))
-    monkeypatch.setenv("LOCALAPPDATA", str(external_cache))
     project_root = tmp_path / "cached_runner_project"
     policy = config.Infra.codegen.make.testmon_cache
     package_root = project_root / c.Infra.DEFAULT_SRC_DIR / "runner_sample"
