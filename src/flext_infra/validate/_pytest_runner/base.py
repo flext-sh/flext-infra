@@ -62,13 +62,13 @@ class FlextInfraPytestRunnerBase(s[int]):
         ),
     ] = None
     run_timeout_seconds: Annotated[
-        int,
+        int | None,
         m.Field(
             gt=0,
             description=(
                 "Repository-elected suite wall-clock maximum. The election "
                 "always includes the packaged fleet default as its merge base, "
-                "so this single source decides the deadline."
+                "so this single source decides the deadline. FULL owns none."
             ),
         ),
     ]
@@ -254,16 +254,20 @@ class FlextInfraPytestRunnerBase(s[int]):
         tooling: m.Infra.ToolConfigDocument,
         *,
         execution_mode: c.Infra.PytestExecutionMode,
-    ) -> tuple[int, int]:
+    ) -> tuple[int | None, int]:
         """Return the suite deadline; the harness scope owns its own clock.
 
+        FULL is local, load-admitted and unbounded: it elects no run timeout.
+
         Returns:
-            The elected run timeout and termination grace in seconds.
+            The elected run timeout (absent for FULL) and termination grace.
 
         """
         pytest_section = tooling.tools.pytest
         return (
-            pytest_section.harness_run_timeout_seconds
+            None
+            if execution_mode == c.Infra.PytestExecutionMode.FULL
+            else pytest_section.harness_run_timeout_seconds
             if execution_mode == c.Infra.PytestExecutionMode.HARNESS
             else pytest_section.run_timeout_seconds,
             pytest_section.termination_grace_seconds,

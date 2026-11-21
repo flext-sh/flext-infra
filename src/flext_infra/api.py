@@ -599,7 +599,7 @@ class FlextInfra(
         a shared clock left every later member only the budget its
         predecessors did not spend.
         FULL executes the complete applicable suite once in each project context
-        without Testmon, an incremental pre-run or database access.
+        and records it in Testmon without selecting, warming the incremental run.
         A declared file selects only this repository through that same runner.
         A declared marker narrows only the harness scope to that harness gate.
 

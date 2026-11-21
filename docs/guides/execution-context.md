@@ -1777,8 +1777,11 @@ teardown. The next `make tests` selects only the unexecuted remainder, so repeat
 invocations converge to a complete run that exits 0. No budget grows, no test is
 deselected, and the stop never waits for a batch-size flush. The explicitly
 requested `make tests-full` executes the complete
-applicable population once without Testmon or an incremental pre-run, preserving
-the persistent database untouched. It is a distinct operation, not an alias for
+applicable population once and records every item in Testmon without selecting,
+under the environment of its own marker scope. Locally that scope, and therefore
+the environment, is the one `make tests` reads, so one `make tests-full` warms a
+cold lane (a fresh worktree, or a lock or toolchain change) and the next
+`make tests` is incremental. It is a distinct operation, not an alias for
 incremental execution. Checks and tests are independent native operations.
 `flext-infra workspace tests --repository-root <root> --scope all` runs without
 requiring a prior check receipt. Generated Make consumers use `make tests`; bare
@@ -2701,6 +2704,16 @@ worktree owns its physical `<RUNTIME_ROOT>/.venv`; it never resolves an environm
 from the primary checkout or Git common directory. The generated Makefile, generated
 `.envrc`, and `runtime_environment_dir` derive the same path. Neither a caller
 variable nor a checkout-local symlink may redirect the environment.
+
+Git and Mise discovery share that boundary: the generated Makefile and `.envrc` set
+`GIT_CEILING_DIRECTORIES` and `MISE_CEILING_PATHS` to the parent of `RUNTIME_ROOT`.
+An attached member's verbs read workspace paths through the workspace runtime (for
+example the staged preview of `make gen` loads the workspace layouts), so the ceiling
+must not stop Git below the superproject; discovery from inside the member still ends
+at the member's own `.git`. A standalone checkout or linked worktree is its own
+`RUNTIME_ROOT`, so its ceiling stays at its own parent. The contract relies on
+`RUNTIME_ROOT` being a Git toplevel, which the renderer guarantees by rendering
+`REPOSITORY_ROOT_REL` as `.` (bead `flext-ce0q5`).
 
 An attached member remains governed by the superproject environment even when the
 superproject does not declare it as a native uv workspace member. Its own committed

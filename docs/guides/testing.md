@@ -158,9 +158,9 @@ runner that violates this contract is repaired at its owner and rerun through Ma
 
 Each phase retains its mode, raw process outcome, collection manifest, and
 diagnostics. The latest receipt names the current attempt even when collection fails.
-Incremental phases retain their database and cache accounting. Full phases record
-no Testmon database, lease or cache publication and reconcile execution against
-their complete applicable inventory.
+Incremental and full phases retain their database and cache accounting. Full
+phases select nothing, record every item under the lease and reconcile execution
+against their complete applicable inventory.
 Warning totals include selection, inventory, and suite occurrences, with blocking and
 explicitly suspended warnings reported separately. The existing non-strict MRO
 enforcement suspension remains visible in those receipts. Unexpected skips block

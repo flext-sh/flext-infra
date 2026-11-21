@@ -616,7 +616,7 @@ Infra:
         # deselects them too: CI has neither Docker nor remote services, so they
         # are reported NOT EXECUTED, never skipped (operator decision 2026-11-05).
         # `make tests-full` runs the complete applicable population once,
-        # without Testmon and without a test-count limit. Harness gates are
+        # recording it in Testmon, without a test-count limit. Harness gates are
         # not applicable outside their harness, so FULL deselects them like
         # the incremental local scope and reports them NOT EXECUTED; existing
         # external tests retain their declared environment and authentication

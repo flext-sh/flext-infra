@@ -11,7 +11,6 @@ import pstats
 import signal
 import sys
 from collections.abc import Callable
-from math import isfinite
 from pathlib import Path
 from time import monotonic
 
@@ -717,10 +716,9 @@ class TestsFlextInfraPytestProfile:
             contexts[0].read_text(encoding="utf-8"),
         )
         tm.that(context.testmon_db, eq=runner.testmon_db)
-        tm.ok(isfinite(context.deadline_monotonic))
-        tm.that(context.deadline_monotonic, gt=started_at)
         tm.that(
-            context.deadline_monotonic,
+            tm.not_none(context.deadline_monotonic),
+            gt=started_at,
             lte=monotonic() + config.Infra.tooling.tools.pytest.run_timeout_seconds,
         )
         command = (contexts[0].parent / "command.txt").read_text(encoding="utf-8")

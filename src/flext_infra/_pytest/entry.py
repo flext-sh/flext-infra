@@ -25,16 +25,16 @@ class FlextInfraPytestEntry:
 
         ``global`` incrementally selects from FULL's entire inventory,
         independently of quality-check receipts. ``full`` explicitly executes that
-        complete inventory once without Testmon or a preceding incremental
-        run. ``profile`` profiles the global incremental run.
+        complete inventory once, recording it in Testmon without selecting.
+        ``profile`` profiles the global incremental run.
         ``coverage`` selects coverage alone; the default remains the local
         incremental operation. The ``slow`` operation runs the incremental
         phase over the slow marker
         only, as its own process with an aggregate operation deadline. The
-        ``file`` runs the complete declared target once without Testmon within
+        ``file`` runs and records the complete declared target once within
         the shared deadline, including slow items. ``file-slow`` retains its
         incremental operation. Both require Make to export the single-file target.
-        ``full-slow`` runs the full slow phase without Testmon under that budget.
+        ``full-slow`` runs and records the full slow phase under that budget.
         The declared operation elects database participation before the runner
         reads any environment-based database location.
 

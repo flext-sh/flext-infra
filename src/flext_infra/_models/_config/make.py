@@ -862,8 +862,20 @@ class FlextInfraModelsConfigMake(
         ADR-032: on the shared host every verb refuses to start above
         ``max_load5`` and runs bounded by ``memory_limit_gb`` and
         ``max_processes``; ``overrides`` declares explicit verb exceptions.
+        ``host_load_gate`` false renders a Makefile without the load refusal,
+        for fixture projects the test fabric builds inside an admitted verb;
+        the run limits stay in force.
         """
 
+        host_load_gate: Annotated[
+            bool,
+            m.Field(
+                description=(
+                    "Whether rendered verbs refuse above max_load5; false only "
+                    "for test-fabric fixture projects (ADR-032)"
+                ),
+            ),
+        ]
         overrides: Annotated[
             Mapping[
                 t.NonEmptyStr,

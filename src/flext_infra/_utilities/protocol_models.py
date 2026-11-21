@@ -4189,9 +4189,9 @@ class FlextInfraUtilitiesModelsProtocol:
                 ", ".join(
                     ast.unparse(
                         Sibling().visit(
-                            self._source_structural_annotation(
-                                argument, tree, node, classes
-                            )
+                            self._source_structural_projection(
+                                argument, tree, node, classes, lexical=None
+                            )[0]
                         )
                     )
                     for argument in (
@@ -4562,9 +4562,9 @@ class FlextInfraUtilitiesModelsProtocol:
                     continue
                 name = statement.name.id
                 value = ast.unparse(
-                    self._source_structural_annotation(
-                        statement.value, alias_tree, model, classes
-                    )
+                    self._source_structural_projection(
+                        statement.value, alias_tree, model, classes, lexical=None
+                    )[0]
                 )
                 if name in contracts:
                     if value == f"{owner}.{name}":
@@ -6053,6 +6053,7 @@ class FlextInfraUtilitiesModelsProtocol:
                 native = self._source_class(native.get_attribute(part))
             scope = native.get_scope()
             member = (tree, model, classes, lexical)
+            self_owner = self
 
             class Project(ast.NodeTransformer):
                 def __init__(self) -> None:

@@ -201,19 +201,27 @@ class TestsFlextInfraPytestRunner:
         *,
         ci_context: bool,
     ) -> None:
-        """CI children cannot import code from a caller's source path."""
+        """CI children cannot import code from a caller's source path.
+
+        A caller's bytecode disable never reaches the suite either: pytest
+        caches rewritten modules only as bytecode, so an inherited disable
+        would re-rewrite every imported module on every run.
+        """
         inherited = cached_runner_project.parent / "inherited-source"
         inherited.mkdir()
         (inherited / "inherited_marker.py").write_text("VALUE = 42\n", encoding="utf-8")
         monkeypatch.setenv(c.Infra.ORCHESTRATOR_ENV_PYTHONPATH, str(inherited))
+        monkeypatch.setenv("PYTHONDONTWRITEBYTECODE", "1")
         source = cached_runner_project / c.Infra.DEFAULT_SRC_DIR
         runner = u.Tests.PytestRunner.runner_for(
             cached_runner_project, ci_context=ci_context
         )
         (cached_runner_project / runner.target / "test_import_boundary.py").write_text(
             "import importlib.util\n"
-            "import os\n\n"
+            "import os\n"
+            "import sys\n\n"
             "def test_import_boundary() -> None:\n"
+            "    assert sys.dont_write_bytecode is False\n"
             "    paths = os.environ.get('PYTHONPATH', '').split(os.pathsep)\n"
             f"    assert ({str(source)!r} in paths) is {not ci_context!r}\n"
             "    available = importlib.util.find_spec('inherited_marker') is not None\n"
@@ -273,6 +281,29 @@ class TestsFlextInfraPytestRunner:
         tm.that(
             runner.build_command(report)[suite_command.index("--testmon-env") + 1],
             eq=names[-1],
+        )
+        # Packaged config YAML keys the environment; other package files do not.
+        package_root = cached_runner_project / c.Infra.DEFAULT_SRC_DIR / "runner_sample"
+        (package_root / c.CONFIG_DIR_NAME).mkdir()
+        packaged = package_root / c.CONFIG_DIR_NAME / "behavior.yaml"
+        packaged.write_text("value: initial\n", encoding=c.DEFAULT_ENCODING)
+        with_config = u.Tests.PytestRunner.runner_for(
+            cached_runner_project
+        ).testmon_environment(c.Infra.PytestExecutionMode.INCREMENTAL)
+        tm.that(with_config, ne=name)
+        (package_root / "notes.txt").write_text("unrelated\n", encoding="utf-8")
+        tm.that(
+            u.Tests.PytestRunner.runner_for(cached_runner_project).testmon_environment(
+                c.Infra.PytestExecutionMode.INCREMENTAL
+            ),
+            eq=with_config,
+        )
+        packaged.write_text("value: changed\n", encoding=c.DEFAULT_ENCODING)
+        tm.that(
+            u.Tests.PytestRunner.runner_for(cached_runner_project).testmon_environment(
+                c.Infra.PytestExecutionMode.INCREMENTAL
+            ),
+            ne=with_config,
         )
 
     @staticmethod
@@ -722,12 +753,12 @@ class TestsFlextInfraPytestRunner:
     @staticmethod
     @c.Tests.MARK.slow
     @c.Tests.MARK.parametrize("ci_context", [False, True])
-    def test_full_executes_the_applicable_population_once_without_touching_testmon(
+    def test_full_executes_the_applicable_population_once_and_records_testmon(
         cached_runner_project: Path,
         *,
         ci_context: bool,
     ) -> None:
-        """A bounded full execution ignores its cache and its harness gates."""
+        """A bounded full execution records its scope and skips harness gates."""
         policy = config.Infra.tooling.tools.pytest
         markers = tuple(
             sorted({
@@ -752,8 +783,6 @@ class TestsFlextInfraPytestRunner:
             cached_runner_project, ci_context=ci_context
         )
         database = tm.not_none(runner.testmon_db)
-        database.write_bytes(b"invalid cache must remain outside the full operation")
-        database_before = database.read_bytes()
         source = "import pytest\nfrom runner_sample import answer\n\n"
         for index, marker in enumerate(markers):
             source += (
@@ -776,9 +805,9 @@ class TestsFlextInfraPytestRunner:
             [context.execution_mode for context in parsed],
             eq=[c.Infra.PytestExecutionMode.FULL],
         )
-        tm.that({context.testmon_db for context in parsed}, eq={None})
-        tm.that({context.testmon_lease_acquired for context in parsed}, eq={None})
-        tm.that(database.read_bytes(), eq=database_before)
+        tm.that({context.testmon_db for context in parsed}, eq={database})
+        tm.that({context.testmon_lease_acquired for context in parsed}, eq={True})
+        tm.ok(database.is_file())
         tm.that(parsed[-1].execution_mode, eq=c.Infra.PytestExecutionMode.FULL)
         tm.that(
             parsed[-1].deadline_monotonic,
@@ -806,7 +835,15 @@ class TestsFlextInfraPytestRunner:
             ],
         )
         recorded = (report_dir / "command.txt").read_text()
-        tm.fail("--testmon" in recorded)
+        tm.that(
+            recorded.split(),
+            has=[
+                "--testmon",
+                "--testmon-noselect",
+                runner.testmon_environment(c.Infra.PytestExecutionMode.FULL),
+            ],
+            lacks="--testmon-forceselect",
+        )
         tm.that(recorded, has=c.Infra.PYTEST_SUITE_STOP_OPTION)
         tm.that(recorded, has=f"--timeout={policy.ordinary_timeout_seconds}")
         tm.that(recorded, has=[*not_executed])
@@ -820,7 +857,7 @@ class TestsFlextInfraPytestRunner:
     def test_file_runs_after_warm_cache_and_ignores_node_like_diagnostics(
         cached_runner_project: Path,
     ) -> None:
-        """Complete file collection preserves a cache warmed by native selection."""
+        """Complete file collection records into a cache warmed by selection."""
         (cached_runner_project / "conftest.py").write_text(
             "import sys\n\n"
             "def pytest_collection_finish(session):\n"
@@ -838,7 +875,6 @@ class TestsFlextInfraPytestRunner:
         tm.that(tm.ok(baseline.execute()), eq=0)
         database = tm.not_none(baseline.testmon_db)
         tm.ok(database.is_file())
-        database_before = database.read_bytes()
         reports_root = cached_runner_project / baseline.reports
         existing = set(reports_root.glob("*/run-context.json"))
         runner = u.Tests.PytestRunner.runner_for(
@@ -857,14 +893,14 @@ class TestsFlextInfraPytestRunner:
             [context.execution_mode for context in parsed],
             eq=[c.Infra.PytestExecutionMode.FULL],
         )
-        tm.that({context.testmon_db for context in parsed}, eq={None})
-        tm.that({context.testmon_lease_acquired for context in parsed}, eq={None})
+        tm.that({context.testmon_db for context in parsed}, eq={database})
+        tm.that({context.testmon_lease_acquired for context in parsed}, eq={True})
         tm.ok(database.is_absolute())
         tm.that(
             database.is_relative_to(cached_runner_project.resolve()),
             eq=False,
         )
-        tm.that(database.read_bytes(), eq=database_before)
+        tm.ok(database.is_file())
         tm.that(
             (
                 cached_runner_project
@@ -945,8 +981,8 @@ class TestsFlextInfraPytestRunner:
                 + config.Infra.tooling.tools.pytest.run_timeout_seconds,
             },
         )
-        tm.that({context.testmon_db for context in parsed}, eq={None})
-        tm.that({context.testmon_lease_acquired for context in parsed}, eq={None})
+        tm.that({context.testmon_db for context in parsed}, eq={runner.testmon_db})
+        tm.that({context.testmon_lease_acquired for context in parsed}, eq={True})
 
     @staticmethod
     @c.Tests.MARK.slow

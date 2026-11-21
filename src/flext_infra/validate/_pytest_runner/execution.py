@@ -335,18 +335,33 @@ class FlextInfraPytestRunnerExecution(
                     return False
         return True
 
-    def _process_deadline(self) -> p.Cli.ProcessDeadline:
+    def _process_deadline(self) -> p.Cli.ProcessDeadline | None:
         """Use the suite clock for selection, execution, and cleanup.
 
         Returns:
             The absolute deadline shared by every phase of this operation;
             an incremental run re-arms it when the testmon lease is acquired.
+            FULL owns none.
 
         """
+        expires = self._deadline_monotonic()
+        if expires is None:
+            return None
         return m.Cli.ProcessDeadline(
-            expires_at_monotonic=self.started_at_monotonic + self.run_timeout_seconds,
+            expires_at_monotonic=expires,
             termination_grace_seconds=self.termination_grace_seconds,
         )
+
+    def _deadline_monotonic(self) -> float | None:
+        """Return the suite clock's absolute expiry; FULL owns none.
+
+        Returns:
+            The monotonic expiry instant, or None for an unbounded run.
+
+        """
+        if self.run_timeout_seconds is None:
+            return None
+        return self.started_at_monotonic + self.run_timeout_seconds
 
     def _run_suite(
         self,
@@ -525,22 +540,26 @@ class FlextInfraPytestRunnerExecution(
         unwinds the suite through pytest's own handlers, so a timed-out
         suite that wrote its final JUnit report also finished its lifecycle
         and publishes its executed prefix, including when the remaining
-        termination escalation records the native signal exit. An operator
-        signal keeps forwarded_signal set and never qualifies. A startup
-        interruption has no final JUnit report and must retain its native
-        failure without suite finalization.
+        termination escalation records the native signal exit. A timed-out
+        suite whose JUnit holds no testcase has no prefix: it is the
+        unfinished timeout. An operator signal keeps forwarded_signal set and
+        never qualifies. A startup interruption has no final JUnit report and
+        must retain its native failure without suite finalization.
 
         Returns:
             Whether a failing suite still finished its lifecycle.
 
         """
+        junit = report_dir / "junit.xml"
+        if outcome.forwarded_signal is not None or not junit.is_file():
+            return False
+        if outcome.raw_return_code in c.Infra.PYTEST_COMPLETED_FAILURES:
+            return True
+        root = u.Infra.junit_report_root(junit)
         return (
-            (
-                outcome.raw_return_code < 0
-                or outcome.raw_return_code in c.Infra.PYTEST_COMPLETED_FAILURES
-            )
-            and outcome.forwarded_signal is None
-            and (report_dir / "junit.xml").is_file()
+            outcome.raw_return_code < 0
+            and root is not None
+            and next(root.iter("testcase"), None) is not None
         )
 
     @staticmethod
@@ -867,8 +886,10 @@ class FlextInfraPytestRunnerExecution(
     ) -> p.Result[int]:
         """Select impacted global cases independently of quality checks.
 
-        Explicit FULL executes once without Testmon. Both operations retain
-        the same marker inventory and native execution evidence.
+        Explicit FULL executes its complete inventory once and records it
+        under its own Testmon environment, which locally is the global
+        incremental one, so one FULL run warms a cold lane. Both operations
+        retain the same marker inventory and native execution evidence.
 
         Returns:
             The native status with selection, inventory and execution evidence.
@@ -880,14 +901,10 @@ class FlextInfraPytestRunnerExecution(
         if not execution_mode.is_global:
             msg = f"global pytest operation requires a global mode: {execution_mode}"
             raise ValueError(msg)
-        return (
-            self._execute_complete_suite()
-            if execution_mode == c.Infra.PytestExecutionMode.FULL
-            else self._execute_testmon(execution_mode=execution_mode)
-        )
+        return self._execute_testmon(execution_mode=execution_mode)
 
     def execute_file(self) -> p.Result[int]:
-        """Run the complete declared file once without Testmon.
+        """Run and record the complete declared file once.
 
         Returns:
             The native status of the complete file execution.
@@ -901,30 +918,24 @@ class FlextInfraPytestRunnerExecution(
             raise ValueError(msg)
         return self.execute_full()
 
-    def _execute_complete_suite(self) -> p.Result[int]:
-        """Run and account for one complete suite without opening Testmon.
+    def _execute_complete_suite(
+        self, *, database: Path, report_dir: Path
+    ) -> p.Result[int]:
+        """Run, record and account for one complete suite under the lease.
+
+        Testmon selects nothing; it records every executed item, so the
+        incremental run of the same marker scope starts warm.
 
         Returns:
             The original suite status after its complete-inventory evidence.
 
         """
-        report_dir = self._report_directory()
-        deadline = self._process_deadline()
         mode = c.Infra.PytestExecutionMode.FULL
-        self._write_run_context(
-            report_dir,
-            m.Infra.PytestRunContext(
-                execution_mode=mode,
-                testmon_db=None,
-                testmon_lease_acquired=None,
-                deadline_monotonic=deadline.expires_at_monotonic,
-                report_directory=report_dir,
-            ),
-        )
         outcome = self._run_suite(
             self.build_command(report_dir, execution_mode=mode),
             report_dir,
             execution_mode=mode,
+            database=database,
         )
         selection = self._selection_from_suite(report_dir, outcome)
         if isinstance(selection, p.Cli.ProcessOutcome):
@@ -946,7 +957,7 @@ class FlextInfraPytestRunnerExecution(
             c.Infra.PytestExecutionMode.INCREMENTAL
         ),
     ) -> p.Result[int]:
-        """Execute one selected testmon phase without resetting shared state.
+        """Execute one Testmon phase, selected or FULL, under the database lease.
 
         Returns:
             The resulting ``p.Result[int]``.
@@ -987,13 +998,23 @@ class FlextInfraPytestRunnerExecution(
             execution_mode=execution_mode,
             testmon_db=database,
             testmon_lease_acquired=False,
-            deadline_monotonic=deadline.expires_at_monotonic,
+            deadline_monotonic=self._deadline_monotonic(),
             report_directory=report_dir,
         )
         self._write_run_context(report_dir, context)
+
+        def lease_wait() -> float | None:
+            # An unbounded FULL waits under the lock owner's own bound.
+            if deadline is None:
+                return None
+            return max(0.0, admission_ends - time.monotonic())
+
         admission_ends = (
-            deadline.expires_at_monotonic - deadline.termination_grace_seconds
+            (deadline.expires_at_monotonic - deadline.termination_grace_seconds)
+            if deadline is not None
+            else float("inf")
         )
+
         self._cache_publication = None
         lease_started = time.monotonic()
         sys.stderr.write(f"pytest cache lease: acquiring {database}\n")
@@ -1013,9 +1034,7 @@ class FlextInfraPytestRunnerExecution(
                 context.model_copy(
                     update={
                         "testmon_lease_acquired": True,
-                        "deadline_monotonic": (
-                            self._process_deadline().expires_at_monotonic
-                        ),
+                        "deadline_monotonic": self._deadline_monotonic(),
                     },
                 ),
             )
@@ -1023,10 +1042,14 @@ class FlextInfraPytestRunnerExecution(
                 "pytest cache lease: acquired "
                 f"after {self.started_at_monotonic - lease_started:.3f}s\n",
             )
-            result = self._execute_testmon_leased(
-                database=database,
-                execution_mode=execution_mode,
-                report_dir=report_dir,
+            result = (
+                self._execute_complete_suite(database=database, report_dir=report_dir)
+                if execution_mode == c.Infra.PytestExecutionMode.FULL
+                else self._execute_testmon_leased(
+                    database=database,
+                    execution_mode=execution_mode,
+                    report_dir=report_dir,
+                )
             )
         # Only the parent publishes, after SQLite closure and lease release.
         self._publish_cache_output()
@@ -1330,14 +1353,13 @@ class FlextInfraPytestRunnerExecution(
 
         """
         report_dir = self._report_directory()
-        deadline = self._process_deadline()
         self._write_run_context(
             report_dir,
             m.Infra.PytestRunContext(
                 execution_mode=c.Infra.PytestExecutionMode.COVERAGE,
                 testmon_db=None,
                 testmon_lease_acquired=None,
-                deadline_monotonic=deadline.expires_at_monotonic,
+                deadline_monotonic=self._deadline_monotonic(),
                 report_directory=report_dir,
             ),
         )
