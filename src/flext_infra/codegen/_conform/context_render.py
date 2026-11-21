@@ -379,7 +379,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
             m.Infra.ProjectSpec(
                 package_name=package_name,
                 class_stem=class_stem,
-                namespace=class_stem.removeprefix("Flext") or class_stem,
+                namespace=u.Infra.facade_namespace(class_stem),
                 constant_name=repository.distribution,
                 namespace_attribute=alias,
                 alias=alias,

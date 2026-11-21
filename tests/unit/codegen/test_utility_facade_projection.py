@@ -7,6 +7,9 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from tests.unit.codegen._utility_facade_projection.behavior import UtilityFacadeBehavior
+from tests.unit.codegen._utility_facade_projection.namespace import (
+    UtilityFacadeNamespace,
+)
 from tests.unit.codegen._utility_facade_projection.planning import UtilityFacadePlanning
 from tests.unit.codegen._utility_facade_projection.publication import (
     UtilityFacadePublication,
@@ -16,6 +19,7 @@ from tests.unit.codegen._utility_facade_projection.publication import (
 class TestsFlextInfraUtilityFacadeProjection(
     UtilityFacadePlanning,
     UtilityFacadeBehavior,
+    UtilityFacadeNamespace,
     UtilityFacadePublication,
 ):
     """Exercise declared owner projection only through ``u.Infra``."""

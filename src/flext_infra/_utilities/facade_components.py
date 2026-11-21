@@ -19,6 +19,7 @@ import tokenize
 from collections.abc import Generator, Mapping, MutableMapping, Sequence
 from functools import partial
 from pathlib import Path
+from typing import TypeGuard
 
 from flext_cli import u
 from rope.base import ast, exceptions as rope_exceptions
@@ -28,6 +29,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesBase,
     FlextInfraUtilitiesCodegenFilePlan,
     FlextInfraUtilitiesCodegenNamespace,
+    FlextInfraUtilitiesDiscovery,
     FlextInfraUtilitiesFacadeMembers,
     FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesProjectManagedArtifacts,
@@ -681,7 +683,9 @@ class FlextInfraUtilitiesFacadeComponents:
         selected = c.Infra.FacadeFamily(
             family.letter if isinstance(family, m.Infra.FacadeFamily) else family
         )
-        rewrites = cls._facade_source_rewrites(project, path, directory)
+        rewrites = cls._facade_source_rewrites(
+            project, path, directory, family=selected, owner_name=owner_name
+        )
         if rewrites.failure:
             return r[str].from_failure(rewrites)
         if rewrites.value:
@@ -747,13 +751,20 @@ class FlextInfraUtilitiesFacadeComponents:
 
     @classmethod
     def _facade_source_rewrites(
-        cls, project: p.Infra.RopeProject, path: Path, directory: Path
+        cls,
+        project: p.Infra.RopeProject,
+        path: Path,
+        directory: Path,
+        *,
+        family: c.Infra.FacadeFamily,
+        owner_name: str | None,
     ) -> p.Result[Mapping[Path, str]]:
         """Plan the facade source edits that precede composition.
 
         Returns:
             The upstream facade-base import edits, else the retired foreign
-            publications, else no edit.
+            publications, else the own parts nested under the package
+            namespace, else no edit.
 
         """
         headers = (
@@ -775,107 +786,279 @@ class FlextInfraUtilitiesFacadeComponents:
             FlextInfraUtilitiesRopeRuntimeModules.file_resource_at(project, path),
             directory,
         )
-        return r[Mapping[Path, str]].ok(
-            {} if unpublished is None else {path: unpublished}
-        )
+        if unpublished is not None or owner_name is not None:
+            return r[Mapping[Path, str]].ok(
+                {} if unpublished is None else {path: unpublished}
+            )
+        return cls._facade_namespace_rewrite(project, path, directory, family)
 
-    @staticmethod
-    def _canonical_facade_source(
-        source: str,
+    @classmethod
+    def _facade_namespace_rewrite(
+        cls,
+        project: p.Infra.RopeProject,
+        path: Path,
+        directory: Path,
         family: c.Infra.FacadeFamily,
-        *,
-        own_package: str,
-    ) -> str:
-        """Project the upstream letter base and the domain nested class.
+    ) -> p.Result[Mapping[Path, str]]:
+        """Compose a public facade's own parts inside its package namespace.
 
-        Each edit replaces only its own name span in the original text, so
-        every comment and the layout of the facade survive.
+        ADR-028 Decision 10: a facade extending an upstream facade lists only
+        the upstream facades as root bases; its own family parts compose in
+        the one nested namespace class named by the package. A root part the
+        namespace already composes leaves the root. A root facade without an
+        upstream base, a test or example surface and a converged facade
+        receive no edit.
 
         Returns:
-            The canonical facade source, unchanged when it already conforms.
+            The facade source with its Rope-located spans rewritten, no edit,
+            or the namespace name the facade cannot derive or binds otherwise.
 
         """
-        tree = ast.parse(source)
-        upstream = {
-            alias.asname or alias.name: node.module
-            for node in tree.body
-            if isinstance(node, ast.ImportFrom)
-            and node.module is not None
-            and node.module.startswith("flext_")
-            and node.module.partition(".")[0] != own_package
-            for alias in node.names
-        }
-        lines = source.encode().splitlines(keepends=True)
-        edits: dict[tuple[int, int, int, int], str] = {}
-        for node in tree.body:
-            if isinstance(node, ast.ClassDef):
-                FlextInfraUtilitiesFacadeComponents._strip_nested_prefix(
-                    node, lines, edits
+        result = r[Mapping[Path, str]]
+        located = cls._facade_public_owner(project, path)
+        if located is None:
+            return result.ok({})
+        module, owner = located
+        header = module.get_source_binding_index().class_layout(owner.get_scope())
+        own, kept = cls._facade_root_parts(module.source_code, header, directory)
+        if not own or not kept:
+            return result.ok({})
+        return cls._facade_namespace_class(
+            module, owner, path, (directory, family)
+        ).map(
+            lambda elected: {
+                path: cls._facade_namespace_source(
+                    module,
+                    (header, elected[1]),
+                    (elected[0], own, kept),
+                    cls._facade_indent_step(project),
                 )
-                FlextInfraUtilitiesFacadeComponents._rebase_upstream_letter(
-                    tree, node, (upstream, family), edits
-                )
-        for (line, start, end_line, end), text in sorted(edits.items(), reverse=True):
-            lines[line - 1 : end_line] = [
-                lines[line - 1][:start] + text.encode() + lines[end_line - 1][end:]
-            ]
-        return b"".join(lines).decode()
-
-    @staticmethod
-    def _strip_nested_prefix(
-        facade: ast.ClassDef,
-        lines: Sequence[bytes],
-        edits: MutableMapping[tuple[int, int, int, int], str],
-    ) -> None:
-        """Name each nested namespace by its domain stem, never ``Flext<Domain>``."""
-        for child in facade.body:
-            if isinstance(child, ast.ClassDef) and child.name.startswith("Flext"):
-                start = lines[child.lineno - 1].index(
-                    child.name.encode(), child.col_offset
-                )
-                span = (child.lineno, start, child.lineno, start + len(child.name))
-                edits[span] = child.name.removeprefix("Flext")
-
-    @staticmethod
-    def _rebase_upstream_letter(
-        tree: ast.Module,
-        facade: ast.ClassDef,
-        target: tuple[Mapping[str, str], c.Infra.FacadeFamily],
-        edits: MutableMapping[tuple[int, int, int, int], str],
-    ) -> None:
-        """Replace the first upstream facade base and its import by the letter.
-
-        A facade already based on the letter keeps every other base, so a
-        sister facade composed beside it is never removed.
-
-        Raises:
-            ValueError: If a rebound name carries no source end location.
-
-        """
-        upstream, family = target
-        base = next(
-            (
-                item
-                for item in facade.bases
-                if isinstance(item, ast.Name) and item.id in upstream
-            ),
-            None,
+            }
         )
-        if base is None or base.id == family.value:
-            return
-        rebound = [base] + [
-            alias
-            for node in tree.body
-            if isinstance(node, ast.ImportFrom) and node.module == upstream[base.id]
-            for alias in node.names
-            if (alias.asname or alias.name) == base.id
+
+    @staticmethod
+    def _facade_public_owner(
+        project: p.Infra.RopeProject, path: Path
+    ) -> tuple[p.Infra.RopeSourceModule, p.Infra.RopeSourceClass] | None:
+        """Locate the published owner class of a package-root facade.
+
+        Returns:
+            The module and its owner, or ``None`` for a test or example surface
+            and for an owner the planner rejects with its located failure.
+
+        """
+        types = FlextInfraUtilitiesRopeRuntimeTypes
+        root = FlextInfraUtilitiesDiscovery.project_root(path, source_project=project)
+        layout = (
+            None
+            if root is None
+            else FlextInfraUtilitiesCodegenNamespace.layout(root, rope_project=project)
+        )
+        if layout is None or path.parent != layout.package_dir:
+            return None
+        resource = FlextInfraUtilitiesRopeRuntimeModules.file_resource_at(project, path)
+        published = FlextInfraUtilitiesRopeAnalysisImportState.published_facade_owner(
+            project, resource
+        )
+        module = types.require_source_module(project.get_pymodule(resource))
+        binding = (
+            None if published is None else module.get_attributes().get(published[1])
+        )
+        owner = None if binding is None else binding.get_object()
+        if owner is None or not types.py_class(owner):
+            return None
+        return module, owner
+
+    @classmethod
+    def _facade_root_parts(
+        cls,
+        source: str,
+        header: p.Infra.RopeSourceClassLayout,
+        directory: Path,
+    ) -> tuple[list[tuple[str, p.Infra.RopeSourceClass]], list[str]]:
+        """Split the owner's base list into own family parts and kept bases.
+
+        Returns:
+            The own parts with their base expressions, and every other base
+            expression (upstream facades and unresolved bases) in order.
+
+        """
+        own: list[tuple[str, p.Infra.RopeSourceClass]] = []
+        kept: list[str] = []
+        for (start, end), binding in header.base_bindings:
+            base = None if binding is None else binding.get_object()
+            if base is not None and cls._facade_family_class(base, directory):
+                own.append((source[start:end], base))
+            else:
+                kept.append(source[start:end])
+        return own, kept
+
+    @classmethod
+    def _facade_namespace_class(
+        cls,
+        module: p.Infra.RopeSourceModule,
+        owner: p.Infra.RopeSourceClass,
+        path: Path,
+        target: tuple[Path, c.Infra.FacadeFamily],
+    ) -> p.Result[tuple[str, p.Infra.RopeSourceClass | None]]:
+        """Elect the nested namespace the own parts compose in.
+
+        Returns:
+            The owner's nested family namespace, else the name the package
+            stem derives with its nested class when one exists, or the
+            competing, underivable or non-class namespace binding.
+
+        """
+        result = r[tuple[str, p.Infra.RopeSourceClass | None]]
+        types = FlextInfraUtilitiesRopeRuntimeTypes
+        directory, family = target
+        defined = owner.get_scope().get_defined_names()
+        nested = [
+            child
+            for name in defined
+            if types.py_class(child := defined[name].get_object())
+            and child.get_module() is module
+            and any(
+                cls._facade_family_class(base, directory)
+                for base in child.get_superclasses()
+            )
         ]
-        for item in rebound:
-            if item.end_lineno is None or item.end_col_offset is None:
-                msg = f"{ast.dump(item)} has no source end location"
-                raise ValueError(msg)
-            span = (item.lineno, item.col_offset, item.end_lineno, item.end_col_offset)
-            edits[span] = family.value
+        if len(nested) > 1:
+            return result.fail(f"Competing inherited facade namespaces: {path}")
+        if nested:
+            return result.ok((nested[0].get_name(), nested[0]))
+        suffix = FlextInfraUtilitiesCodegenNamespace.facade_families()[family].suffix
+        stem = owner.get_name().removesuffix(suffix)
+        if not stem or stem == owner.get_name():
+            return result.fail(
+                f"Facade {owner.get_name()} has no package stem before {suffix!r} "
+                f"to name its namespace: {path}; fix: name the facade "
+                f"<PackageStem>{suffix}"
+            )
+        name = FlextInfraUtilitiesCodegenNamespace.facade_namespace(stem)
+        bound = defined[name].get_object() if name in defined else None
+        if bound is None:
+            return result.ok((name, None))
+        if types.py_class(bound) and bound.get_module() is module:
+            return result.ok((name, bound))
+        return result.fail(
+            f"Facade {owner.get_name()} binds its namespace name {name!r} to a "
+            f"non-class: {path}; fix: remove that binding so the own parts "
+            f"compose in class {name}"
+        )
+
+    @classmethod
+    def _facade_namespace_source(
+        cls,
+        module: p.Infra.RopeSourceModule,
+        layouts: tuple[p.Infra.RopeSourceClassLayout, p.Infra.RopeSourceClass | None],
+        parts: tuple[str, Sequence[tuple[str, p.Infra.RopeSourceClass]], Sequence[str]],
+        step: int,
+    ) -> str:
+        """Keep only the kept root bases and compose the own parts in the namespace.
+
+        Returns:
+            The facade source with its Rope-located spans replaced back to front.
+
+        """
+        header, namespace = layouts
+        name, own, kept = parts
+        targets = [
+            cls._facade_namespace_part(part, name, expression)
+            for expression, part in own
+        ]
+        lines = module.lines
+        edits = {(header.bases[0][0], header.bases[-1][1]): ", ".join(kept)}
+        if namespace is None:
+            start = header.region[0]
+            indent = " " * (
+                start - lines.get_line_start(lines.get_line_number(start)) + step
+            )
+            close = lines.get_line_end(lines.get_line_number(header.region[1]))
+            bases = ", ".join(expression for expression, _target in targets)
+            edits[close, close] = (
+                f"\n\n{indent}class {name}({bases}):\n{indent}{' ' * step}"
+                f'"""{name} namespace of the package\'s own components."""'
+            )
+        else:
+            edits.update(cls._facade_namespace_additions(module, namespace, targets))
+        source = module.source_code
+        for (first, last), text in sorted(edits.items(), reverse=True):
+            source = source[:first] + text + source[last:]
+        return source
+
+    @classmethod
+    def _facade_namespace_additions(
+        cls,
+        module: p.Infra.RopeSourceModule,
+        namespace: p.Infra.RopeSourceClass,
+        targets: Sequence[tuple[str, p.Infra.RopeSourceClass]],
+    ) -> dict[tuple[int, int], str]:
+        """Append the own parts an existing namespace does not compose yet.
+
+        Returns:
+            The base insertion edit, or none when every part is composed.
+
+        """
+        added = ", ".join(
+            expression
+            for expression, target in targets
+            if not any(
+                cls._same_facade_target(base, target) for base in namespace.get_bases()
+            )
+        )
+        if not added:
+            return {}
+        layout = module.get_source_binding_index().class_layout(namespace.get_scope())
+        if layout.bases:
+            offset, text = layout.bases[-1][1], f", {added}"
+        elif layout.arguments_region is not None:
+            offset, text = layout.arguments_region[0], f"{added}, "
+        else:
+            offset, text = layout.bases_insertion_offset, f"({added})"
+        return {(offset, offset): text}
+
+    @staticmethod
+    def _facade_family_class(
+        value: p.Infra.RopePyObject, directory: Path
+    ) -> TypeGuard[p.Infra.RopeSourceClass]:
+        """Whether ``value`` is a source class declared inside the family package.
+
+        Returns:
+            Whether the class's module resource lies under ``directory``.
+
+        """
+        if not FlextInfraUtilitiesRopeRuntimeTypes.py_class(value):
+            return False
+        resource = value.get_module().get_resource()
+        return resource is not None and Path(resource.real_path).is_relative_to(
+            directory
+        )
+
+    @staticmethod
+    def _facade_namespace_part(
+        part: p.Infra.RopeSourceClass, name: str, expression: str
+    ) -> tuple[str, p.Infra.RopeSourceClass]:
+        """Return the namespace base one own part contributes.
+
+        A part whose only member is a plain ``class <Namespace>:`` holds the
+        namespace and composes through it (``Part.<Namespace>``). A part that
+        declares a real class of that name composes whole, so its class reads
+        ``<letter>.<Namespace>.<Namespace>``.
+
+        Returns:
+            The base expression and the class it names.
+
+        """
+        attributes = part.get_attributes()
+        held = attributes[name].get_object() if set(attributes) == {name} else None
+        if (
+            held is not None
+            and FlextInfraUtilitiesRopeRuntimeTypes.py_class(held)
+            and not held.get_bases()
+        ):
+            return f"{expression}.{name}", held
+        return expression, part
 
     @classmethod
     def _facade_foreign_publications(
