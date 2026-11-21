@@ -10,7 +10,7 @@ import sys
 from contextlib import ExitStack
 from pathlib import Path
 
-from flext_infra.codegen import FlextInfraCodegenConform, FlextInfraCodegenLazyInit
+from flext_infra.codegen import FlextInfraCodegenLazyInit
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, m, p, tm, u
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
@@ -187,16 +187,8 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
             module=f"{package.name}.{destination.stem}",
         )
 
-        plan = tm.ok(
-            FlextInfraCodegenConform.Generate(
-                repository_root=root,
-                state=m.Infra.CodegenConformState(
-                    repository_root=root,
-                    initial_workspace=workspace,
-                    request=request,
-                ),
-            ).plan(request),
-        )
+        # The public conform boundary binds its collaborators (law 9).
+        plan = tm.ok(u.Tests.conform_plan_result(root, request, workspace=workspace))
 
         tm.that(tuple(file.path for file in plan.files), eq=(destination,))
         tm.that(plan.uv_environments, eq=())
@@ -320,16 +312,8 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
             package / c.Infra.INIT_PY: (package / c.Infra.INIT_PY).read_bytes()
             for package in packages
         }
-        plan = tm.ok(
-            FlextInfraCodegenConform.Generate(
-                repository_root=root,
-                state=m.Infra.CodegenConformState(
-                    repository_root=root,
-                    request=request,
-                    initial_workspace=workspace,
-                ),
-            ).plan(request),
-        )
+        # The public conform boundary binds its collaborators (law 9).
+        plan = tm.ok(u.Tests.conform_plan_result(root, request, workspace=workspace))
         selected = tuple(
             (root / repository.path).resolve() for repository in plan.repositories
         )
