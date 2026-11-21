@@ -12,7 +12,7 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
-from flext_infra._constants.config import FlextInfraConstantsConfig
+from flext_infra._constants import FlextInfraConstantsConfig
 from flext_infra._protocols._config import (
     FlextInfraProtocolsConfigContract,
     FlextInfraProtocolsConfigExternalCache,
@@ -564,38 +564,33 @@ class FlextInfraProtocolsConfigMake:
 
     @runtime_checkable
     class MakeHarnessSpecTestmonCacheSpec(
-        FlextInfraProtocolsConfigExternalCache.Directory[
-            FlextInfraConstantsConfig.PytestCacheEnvironment
-        ],
-        FlextInfraProtocolsConfigContract.ConfigContract,
-        Protocol,
+        FlextInfraProtocolsConfigContract.ConfigContract, Protocol
     ):
         """Structural data contract projected from the owning model."""
 
         @property
-        def data_home_environment_variable(
-            self,
-        ) -> FlextInfraConstantsConfig.PytestCacheEnvironment:
+        def data_home_environment_variable(self) -> str:
             """XDG persistent cache-home variable."""
             ...
 
         @property
-        def user_home_environment_variable(
-            self,
-        ) -> FlextInfraConstantsConfig.PytestCacheEnvironment:
+        def user_home_environment_variable(self) -> str:
             """User home variable for the XDG default."""
             ...
 
         @property
-        def database_filename(self) -> t.NonEmptyStr:
-            """pytest-testmon database filename."""
+        def home_cache_directory(self) -> Path:
+            """Standard cache directory below the user home."""
             ...
 
         @property
-        def database_environment_variable(
-            self,
-        ) -> FlextInfraConstantsConfig.PytestCacheEnvironment:
-            """pytest-testmon's supported database-path variable."""
+        def external_storage_directory(self) -> Path:
+            """FLEXT-owned directory below the cache home."""
+            ...
+
+        @property
+        def database_filename(self) -> t.NonEmptyStr:
+            """pytest-testmon's native database filename."""
             ...
 
         @property

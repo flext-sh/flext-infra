@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from flext_core import c
 
-from flext_infra._constants.config import FlextInfraConstantsConfig
+from flext_infra._constants import FlextInfraConstantsConfig
 from flext_infra._pytest import FlextInfraPytestProfileChild
 
 if TYPE_CHECKING:
@@ -42,6 +42,7 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
     # Runtime-integrity component proving uv.lock matches its manifest.
     LOCK_FRESHNESS: ClassVar[str] = "lock-freshness"
     ENFORCEMENT_CATALOG: ClassVar[str] = "enforcement-catalog"
+    PYDANTIC_CENSUS: ClassVar[str] = "pydantic-census"
 
     GATE_TOOLS_BY_KIND: ClassVar[
         Mapping[
@@ -137,6 +138,13 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
             ENFORCEMENT_CATALOG: (
                 "Flext Static Enforcement Catalog",
                 "internal://flext-infra/enforcement-catalog",
+                False,
+                False,
+                FlextInfraConstantsConfig.GateStage.PUSH,
+            ),
+            PYDANTIC_CENSUS: (
+                "Flext Pydantic Domain Census",
+                "internal://flext-infra/pydantic-census",
                 False,
                 False,
                 FlextInfraConstantsConfig.GateStage.PUSH,

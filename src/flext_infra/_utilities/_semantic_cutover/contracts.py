@@ -43,7 +43,7 @@ from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeSourceBasesRuntime,
     FlextInfraUtilitiesRopeStructure,
 )
-from flext_infra._utilities._rope._analysis.exports import (
+from flext_infra._utilities._rope._analysis import (
     FlextInfraUtilitiesRopeAnalysisExports,
 )
 from flext_infra._utilities._semantic_cutover import (
@@ -55,15 +55,11 @@ from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticDeclarationRetirement,
     FlextInfraUtilitiesSemanticDelegations,
     FlextInfraUtilitiesSemanticFamilyTypeReferences,
+    FlextInfraUtilitiesSemanticModelFieldContracts,
+    FlextInfraUtilitiesSemanticOpaquePorts,
 )
 from flext_infra._utilities._semantic_cutover.model_envelopes import (
     FlextInfraUtilitiesSemanticModelEnvelopes,
-)
-from flext_infra._utilities._semantic_cutover.model_field_contracts import (
-    FlextInfraUtilitiesSemanticModelFieldContracts,
-)
-from flext_infra._utilities._semantic_cutover.opaque_ports import (
-    FlextInfraUtilitiesSemanticOpaquePorts,
 )
 
 
@@ -216,8 +212,7 @@ class FlextInfraUtilitiesSemanticContracts(
 
         """
         packaged = (
-            type(config).ssot_config_dir().parent
-            / c.Infra.CODEMOD_ROPE_CONTRACTS_RELPATH
+            config.ssot_config_dir().parent / c.Infra.CODEMOD_ROPE_CONTRACTS_RELPATH
         )
         roots = dict.fromkeys((
             repository_root.resolve(),
@@ -483,6 +478,11 @@ class FlextInfraUtilitiesSemanticContracts(
             tuple[str, str], t.Infra.RopeImplementationPaths
         ] = {}
         restrictions = (options.annotation_only, options.class_alias_only)
+        # One native checker run per distinct stage content: the model-envelope
+        # and opaque-port rules read the same diagnostics of an unchanged stage.
+        diagnostics: MutableMapping[
+            tuple[tuple[Path, str], ...], Sequence[p.Infra.Issue]
+        ] = {}
         for declared_rule in rules:
             for pattern, goal in cls._source_contract_templates(
                 workspace.rope_project,
@@ -511,7 +511,13 @@ class FlextInfraUtilitiesSemanticContracts(
                             project,
                             rule,
                             proposed_sources,
-                            (implementation_owners, working, owned_modules, workspace),
+                            (
+                                implementation_owners,
+                                working,
+                                owned_modules,
+                                workspace,
+                                diagnostics,
+                            ),
                             restrictions,
                         ),
                         (working, applied),
@@ -768,6 +774,7 @@ class FlextInfraUtilitiesSemanticContracts(
             Mapping[Path, str],
             Mapping[str, Path],
             p.Infra.RopeWorkspaceDsl,
+            MutableMapping[tuple[tuple[Path, str], ...], Sequence[p.Infra.Issue]],
         ],
         restrictions: tuple[bool, bool],
     ) -> list[p.Infra.RopeChangeContents]:
@@ -780,6 +787,10 @@ class FlextInfraUtilitiesSemanticContracts(
             if checker is None:
                 message = "model-envelope admission requires its native checker"
                 raise RuntimeError(message)
+            stage = tuple(sorted(context[1].items()))
+            findings = context[4].get(stage)
+            if findings is None:
+                findings = context[4][stage] = checker(context[1])
             transform = (
                 cls.model_envelope_changes
                 if rule.operation
@@ -790,7 +801,7 @@ class FlextInfraUtilitiesSemanticContracts(
                 project,
                 rule,
                 cls._contract_scope_resources(project, rule, tuple(context[1])),
-                checker(context[1]),
+                findings,
                 (
                     workspace.model_protocol_identities
                     if rule.operation

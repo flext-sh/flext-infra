@@ -65,6 +65,38 @@ class FlextInfraUtilitiesCodegen(
 ):
     """Compose the source helpers consumed by the generation operation."""
 
+    @staticmethod
+    def generation_root_members(
+        workspace_root: Path,
+        workspace: p.Infra.WorkspaceSpec,
+    ) -> tuple[Path, ...]:
+        """Elect every declared member checkout that is its own generation root.
+
+        A managed subproject is a member by declaration. An attached member the
+        workspace declares as external is still a governed project once it
+        carries its own ``pyproject.toml`` and committed ``mise.lock``: it owns
+        its projections while sharing only the workspace runtime, so it is a
+        legal generation root. A plain vendored fork carries no FLEXT lock and
+        stays outside generation; a path the workspace never declares stays
+        outside it as before.
+
+        Returns:
+            The absolute member checkouts generation may target.
+
+        """
+        return (
+            *(
+                (workspace_root / member.path).resolve()
+                for member in workspace.subprojects
+            ),
+            *(
+                (workspace_root / path).resolve()
+                for path in workspace.external_dependency_paths
+                if (workspace_root / path / c.PYPROJECT_FILENAME).is_file()
+                and (workspace_root / path / c.Infra.MISE_LOCK_FILENAME).is_file()
+            ),
+        )
+
     @classmethod
     def workspace_runtime_codegen(
         cls,

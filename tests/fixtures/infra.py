@@ -15,9 +15,23 @@ from pathlib import Path
 import pytest
 
 from flext_infra import config, settings, workspace
-from tests import c, p, t, tm, u
+from tests import c, infra, p, t, tm, u
 
 _PROJECT_ROOT = tm.not_none(u.Infra.project_root(Path(__file__)))
+
+
+@pytest.fixture(scope="session")
+def semantic_cutover_runtime(tmp_path_factory: pytest.TempPathFactory) -> None:
+    """Load the semantic-cutover runtime once per worker, at session setup.
+
+    The first read of the libcst-backed cutover members loads
+    ``libcst.codemod`` (~1.3 s cold) and the first rope workspace costs
+    ~0.5 s. Session setup belongs to the suite deadline, so no ordinary item
+    budget pays that one-time cost (docs/guides/testing.md, execution budgets).
+    """
+    _ = u.Infra.relocate_declared_exports
+    with infra.rope_workspace(tmp_path_factory.mktemp("rope-runtime")):
+        pass
 
 
 @pytest.fixture
@@ -172,7 +186,9 @@ def deptry_report_payload(fixture_tree: p.Tests.FixtureTree) -> t.JsonPayload:
         The resulting ``t.JsonPayload``.
 
     """
-    parsed = u.Cli.json_loads((fixture_tree("deps") / "deptry_report.json").read_text(encoding="utf-8"))
+    parsed = u.Cli.json_loads(
+        (fixture_tree("deps") / "deptry_report.json").read_text(encoding="utf-8")
+    )
     parsed = tm.not_none(parsed)
     tm.ok(parsed)
     return parsed.value
@@ -340,16 +356,13 @@ def real_python_package(tmp_path: Path) -> Path:
 
 
 @pytest.fixture
-def cached_runner_project(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+def cached_runner_project(tmp_path: Path) -> Path:
     """Create a real one-test consumer for the public cached pytest runner.
 
     Returns:
         The resulting ``Path``.
 
     """
-    external_cache = tmp_path / "external-cache"
-    monkeypatch.setenv("XDG_CACHE_HOME", str(external_cache))
-    monkeypatch.setenv("LOCALAPPDATA", str(external_cache))
     project_root = tmp_path / "cached_runner_project"
     policy = config.Infra.codegen.make.testmon_cache
     package_root = project_root / c.Infra.DEFAULT_SRC_DIR / "runner_sample"
@@ -394,11 +407,15 @@ def cached_runner_project(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Pa
         "    assert answer() == 42\n",
         encoding="utf-8",
     )
+    u.Tests.git_bootstrap(project_root, ("init", "-b", c.Infra.GIT_MAIN))
     return project_root
 
 
 @pytest.fixture
-def policy_violation_project(tmp_path: Path) -> Path:
+def policy_violation_project(
+    tmp_path: Path,
+    fixture_tree: p.Tests.FixtureTree,
+) -> Path:
     """Create a real consumer whose suite violates the slow-timeout policy.
 
     Returns:
@@ -410,19 +427,25 @@ def policy_violation_project(tmp_path: Path) -> Path:
     tests_root = project_root / policy.target_directory
     tests_root.mkdir(parents=True)
     # The ini value is an arbitrary non-production budget owned by this probe.
-    (project_root / c.PYPROJECT_FILENAME).write_text(
-        '[tool.pytest.ini_options]\nflext_slow_timeout_seconds = "30"\n',
-        encoding="utf-8",
+    tm.ok(
+        u.Cli.toml_write_mapping(
+            project_root / c.PYPROJECT_FILENAME,
+            {
+                "tool": {
+                    "pytest": {
+                        "ini_options": {
+                            c.Infra.FLEXT_SLOW_TIMEOUT_SECONDS: "30",
+                            "markers": list(
+                                config.Infra.tooling.tools.pytest.standard_markers,
+                            ),
+                        },
+                    },
+                },
+            },
+        ),
     )
-    (tests_root / "test_policy.py").write_text(
-        "import pytest\n"
-        "\n"
-        "\n"
-        "@pytest.mark.timeout(1)\n"
-        "def test_breaks_policy() -> None:\n"
-        "    pass\n",
-        encoding="utf-8",
-    )
+    fixture_tree("pytest-runner-policy-violation", destination=tests_root)
+    u.Tests.initialize_git_repo(project_root)
     return project_root
 
 

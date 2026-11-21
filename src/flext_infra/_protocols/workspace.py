@@ -350,6 +350,11 @@ class FlextInfraProtocolsWorkspace:
             """Test all governed repositories or only this repository."""
             ...
 
+        @property
+        def marker(self) -> str | None:
+            """One declared harness gate marker narrowing the harness tests."""
+            ...
+
     @runtime_checkable
     class FlextEditableRequest(WorkspaceRequest, Protocol):
         """Structural data contract projected from the owning model."""
@@ -635,8 +640,8 @@ class FlextInfraProtocolsWorkspace:
             ...
 
         @property
-        def identity(self) -> FlextInfraProtocolsGitIdentity.GitIdentityReport | None:
-            """Observed Git identity, absent outside a repository."""
+        def identity(self) -> FlextInfraProtocolsGitIdentity.GitIdentityReport:
+            """Observed Git identity of the containing checkout."""
             ...
 
         @property
@@ -647,7 +652,7 @@ class FlextInfraProtocolsWorkspace:
         @property
         def target(
             self,
-        ) -> FlextInfraProtocolsConfigRepository.RepositoryConformTarget | None:
+        ) -> FlextInfraProtocolsConfigRepository.RepositoryConformTarget:
             """Effective governed project properties."""
             ...
 
@@ -659,7 +664,7 @@ class FlextInfraProtocolsWorkspace:
         @property
         def runtime(
             self,
-        ) -> FlextInfraProtocolsWorkspace.WorkspaceRuntimeContext | None:
+        ) -> FlextInfraProtocolsWorkspace.WorkspaceRuntimeContext:
             """Physical environment and native resolver ownership."""
             ...
 

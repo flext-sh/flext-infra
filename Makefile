@@ -27,61 +27,6 @@ override ADMISSION_VERB := $(if $(filter mod,$(ADMISSION_VERB)),$(if $(strip $(R
 override ADMISSION_MAX_LOAD5 := 20.0
 override ADMISSION_MEMORY_LIMIT_BYTES := 5368709120
 override ADMISSION_MAX_PROCESSES := 2
-ifeq ($(ADMISSION_VERB),setup)
-override ADMISSION_MAX_LOAD5 := 160.0
-override ADMISSION_MEMORY_LIMIT_BYTES := 5368709120
-override ADMISSION_MAX_PROCESSES := 2
-endif
-ifeq ($(ADMISSION_VERB),upg)
-override ADMISSION_MAX_LOAD5 := 80.0
-override ADMISSION_MEMORY_LIMIT_BYTES := 5368709120
-override ADMISSION_MAX_PROCESSES := 2
-endif
-ifeq ($(ADMISSION_VERB),gen)
-override ADMISSION_MAX_LOAD5 := 160.0
-override ADMISSION_MEMORY_LIMIT_BYTES := 5368709120
-override ADMISSION_MAX_PROCESSES := 2
-endif
-ifeq ($(ADMISSION_VERB),mod)
-override ADMISSION_MAX_LOAD5 := 80.0
-override ADMISSION_MEMORY_LIMIT_BYTES := 5368709120
-override ADMISSION_MAX_PROCESSES := 2
-endif
-ifeq ($(ADMISSION_VERB),fix)
-override ADMISSION_MAX_LOAD5 := 80.0
-override ADMISSION_MEMORY_LIMIT_BYTES := 5368709120
-override ADMISSION_MAX_PROCESSES := 2
-endif
-ifeq ($(ADMISSION_VERB),fmt)
-override ADMISSION_MAX_LOAD5 := 80.0
-override ADMISSION_MEMORY_LIMIT_BYTES := 5368709120
-override ADMISSION_MAX_PROCESSES := 2
-endif
-ifeq ($(ADMISSION_VERB),check)
-override ADMISSION_MAX_LOAD5 := 160.0
-override ADMISSION_MEMORY_LIMIT_BYTES := 5368709120
-override ADMISSION_MAX_PROCESSES := 2
-endif
-ifeq ($(ADMISSION_VERB),tests)
-override ADMISSION_MAX_LOAD5 := 80.0
-override ADMISSION_MEMORY_LIMIT_BYTES := 5368709120
-override ADMISSION_MAX_PROCESSES := 2
-endif
-ifeq ($(ADMISSION_VERB),help)
-override ADMISSION_MAX_LOAD5 := 80.0
-override ADMISSION_MEMORY_LIMIT_BYTES := 5368709120
-override ADMISSION_MAX_PROCESSES := 2
-endif
-ifeq ($(ADMISSION_VERB),build)
-override ADMISSION_MAX_LOAD5 := 80.0
-override ADMISSION_MEMORY_LIMIT_BYTES := 5368709120
-override ADMISSION_MAX_PROCESSES := 2
-endif
-ifeq ($(ADMISSION_VERB),clean)
-override ADMISSION_MAX_LOAD5 := 80.0
-override ADMISSION_MEMORY_LIMIT_BYTES := 5368709120
-override ADMISSION_MAX_PROCESSES := 2
-endif
 override ADMISSION_LOAD5 := $(shell awk -v limit=$(ADMISSION_MAX_LOAD5) '$$2 > limit { print $$2 }' /proc/loadavg)
 ifneq ($(.SHELLSTATUS),0)
 $(error Cannot read the 5-minute load average from /proc/loadavg)
@@ -199,7 +144,7 @@ $(eval export GIT_CONFIG_VALUE_$(GIT_CONFIG_ALLOW_INDEX))
 # === SECTION: project identity (managed) ===
 # Source: config:dist / config:make_profile / config:repository_root_rel / config:uv_link_mode
 PROJECT_NAME := flext-infra
-MAKE_PROFILE := workspace
+MAKE_PROFILE := standalone
 REPOSITORY_ROOT_REL := .
 # === SECTION: workspace subprojects (managed) ===
 # Source: config:workspace_subprojects (list), config:workspace_repositories (list)
@@ -211,14 +156,8 @@ WORKSPACE_SUBPROJECTS :=
 # The Makefile validates no caller input. Every verb
 # always applies; a mistyped variable fails where the verb consumes it, and an
 # unconsumed variable is ignored.
-export CHECK_PHASE
+export CHECK_PHASE MARKER
 PYTEST_REPORTS_DIR := .reports/tests
-PYTEST_CACHE_HOME = $(if $(strip $(XDG_CACHE_HOME)),$(XDG_CACHE_HOME),$(if $(strip $(HOME)),$(HOME)/.cache,))
-# One persistent testmon database per project, shared by every checkout and
-# worktree of it: testmon tracks each checkout's source by file checksum, so a
-# new lane starts from the project's measured selection instead of a cold full
-# inventory.
-override FLEXT_PYTEST_TESTMON_DATABASE = $(if $(strip $(PYTEST_CACHE_HOME)),$(PYTEST_CACHE_HOME)/flext/infra/testmon/$(PROJECT_NAME)/.testmondata)
 override PYTEST_RUN_TIMEOUT_SECONDS := 240
 override PYTEST_TERMINATION_GRACE_SECONDS := 2
 override PYTEST_TIMEOUT_EXIT_CODE := 124
@@ -391,7 +330,7 @@ endif
 # === SECTION: verb dispatch (managed) ===
 # Source: config:make.verbs and the canonical gate vocabulary. A verb exists
 # only in the profiles it declares (make.verbs[].profiles).
-PUBLIC_VERBS := setup upg lock gen gen-scope mod fix fmt check tests tests-full help build clean mod-snapshots release-plan release-version release-tag release-build release-publish
+PUBLIC_VERBS := setup upg lock gen gen-scope mod fix fmt check tests tests-full tests-harness help build clean mod-snapshots release-plan release-version release-tag release-build release-publish
 SCRIPT_VERBS := mod-snapshots
 
 CUSTOM_MAKEFILE := $(MAKEFILE_ROOT)/custom.mk
@@ -452,8 +391,12 @@ CALLER_VIRTUAL_ENV := $(patsubst %/,%,$(VIRTUAL_ENV))
 
 # === SECTION: profile routing (managed) ===
 # Source: repository topology. workspace has .gitmodules; standalone does not.
-# Native UV membership and Git attachment elect the physical runtime.
+# Native UV membership and Git attachment elect the physical runtime; only an
+# explicit make command-line RUNTIME_ROOT (a test fixture's session runtime,
+# D-VENV) replaces the election, never the environment or a parent make.
+ifneq ($(origin RUNTIME_ROOT),command line)
 override RUNTIME_ROOT := $(REPOSITORY_ROOT)
+endif
 # Git and Mise discovery share the runtime boundary: an attached member's
 # verbs read workspace paths through the workspace runtime.
 override export GIT_CEILING_DIRECTORIES := $(shell cd "$(RUNTIME_ROOT)/.." && pwd -P)
@@ -473,9 +416,9 @@ override export MISE_GLOBAL_CONFIG_FILE := $(MISE_CONFIG_DIR)/config.toml
 override export MISE_SYSTEM_CONFIG_DIR := $(MISE_CONFIG_DIR)
 # A file override wins over the system directory in native Mise discovery.
 unexport MISE_SYSTEM_CONFIG_FILE MISE_ENV MISE_ENV_FILE
-# No global locked mode: setup installs whatever mise.lock pins and never stops
-# on a stale or incomplete lock (operator-ruling-2026-10-09-setup-resilient);
-# only the runtime reader's discovery calls run locked, scoped to those calls.
+# Setup installs the committed mise.lock with a locked install and never
+# writes it; only `make upg` writes locks, and it resolves them through the
+# declared self-managed release (`MISE_LOCKFILE=0` on bootstrap calls).
 override export MISE_AUTO_INSTALL := 0
 # Project provisioning must never install or resolve tools from host config.
 # The physical runtime owns both its environment and frozen tool identities.
@@ -485,8 +428,10 @@ override export MISE_AUTO_INSTALL := 0
 
 # D-VENV: the environment is <RUNTIME_ROOT>/.venv only. A member inside a
 # workspace uses the workspace environment; a standalone checkout or a linked
-# worktree owns its own physical environment inside the checkout. The path is
-# law, never configuration, and is never shared with another checkout.
+# worktree owns its own physical environment inside the checkout; a test
+# fixture checkout receives its test session's runtime root on the make command
+# line and owns none. No other input selects it, and it is never shared with
+# another checkout.
 override RUNTIME_VENV := $(RUNTIME_ROOT)/.venv
 # The upgrade executor (make.executor_environment) is a separate uv-created
 # environment under the runtime root: it runs only `make upg`'s residual
@@ -601,13 +546,36 @@ _bootstrap_setup_tools:
 			sh "$${mise_stage}/install.sh" ;; \
 	esac; \
 	fi; \
+	bootstrap_stage=lock-pin; \
+	if MISE_LOCKED=1 "$(BOOTSTRAP_MISE)" -C "$(PROJECT_ROOT)" install --yes "github:jdx/mise"; then :; else \
+		printf 'ERROR: mise.lock pins no usable github:jdx/mise release for this tree; run make upg\n' >&2; \
+		exit 2; \
+	fi; \
+	mise_pin="$$(MISE_LOCKED=1 "$(BOOTSTRAP_MISE)" -C "$(PROJECT_ROOT)" tool "github:jdx/mise" --active)"; \
+	if [ -z "$$mise_pin" ]; then \
+		printf 'ERROR: mise.lock pins no active github:jdx/mise release for this tree; run make upg\n' >&2; \
+		exit 2; \
+	fi; \
+	mise_reader="$$(MISE_LOCKED=1 "$(BOOTSTRAP_MISE)" -C "$(PROJECT_ROOT)" which mise)"; \
+	if [ "$${OS:-}" = Windows_NT ]; then mise_reader="$$(cygpath --unix "$$mise_reader")"; fi; \
+	bootstrap_stage=release-verification; \
+	case "$$(MISE_LOCKFILE=0 "$$mise_reader" --version)" in \
+		"$$mise_pin "*) : ;; \
+		*) printf 'setup: installed Mise %s does not report the locked %s; re-provisioning the pinned release\n' "$$mise_reader" "$$mise_pin"; \
+			MISE_LOCKED=1 "$(BOOTSTRAP_MISE)" -C "$(PROJECT_ROOT)" install --force --yes "github:jdx/mise"; \
+			mise_reader="$$(MISE_LOCKED=1 "$(BOOTSTRAP_MISE)" -C "$(PROJECT_ROOT)" which mise)"; \
+			if [ "$${OS:-}" = Windows_NT ]; then mise_reader="$$(cygpath --unix "$$mise_reader")"; fi; \
+			case "$$(MISE_LOCKFILE=0 "$$mise_reader" --version)" in \
+				"$$mise_pin "*) : ;; \
+				*) printf 'ERROR: installed Mise %s still does not report the locked %s after the locked reinstall\n' "$$mise_reader" "$$mise_pin" >&2; exit 2 ;; \
+			esac ;; \
+	esac; \
 	export MISE_SHIMS_DIR="$(PROJECT_ROOT)/.bin/shims"; \
-	export MISE_LOCKED=0; \
+	export MISE_LOCKED=1; \
 	bootstrap_stage=tool-install; \
-	"$(BOOTSTRAP_MISE)" -C "$(PROJECT_ROOT)" install --yes "python" "github:jdx/mise" "uv" "github:direnv/direnv" "taplo" "aqua:ast-grep/ast-grep" "gitleaks" "aqua:boyter/scc" "github:qltysh/qlty" "github:kucherenko/jscpd" "github:microsoft/waza" "aqua:j178/prek"; \
-	mise_active="$$("$(BOOTSTRAP_MISE)" -C "$(PROJECT_ROOT)" tool "github:jdx/mise" --active)"; \
-	mise_binary="$$("$(BOOTSTRAP_MISE)" -C "$(PROJECT_ROOT)" which mise)"; \
-	if [ "$${OS:-}" = Windows_NT ]; then mise_binary="$$(cygpath --unix "$${mise_binary}")"; fi; \
+	"$$mise_reader" -C "$(PROJECT_ROOT)" install --yes "python" "github:jdx/mise" "uv" "github:direnv/direnv" "taplo" "aqua:ast-grep/ast-grep" "gitleaks" "aqua:boyter/scc" "github:qltysh/qlty" "github:kucherenko/jscpd" "github:microsoft/waza" "aqua:j178/prek"; \
+	mise_active="$$(MISE_LOCKED=1 "$${mise_reader}" -C "$(PROJECT_ROOT)" tool "github:jdx/mise" --active)"; \
+	mise_binary="$${mise_reader}"; \
 	bootstrap_stage=tool-paths; \
 	if [ -n "$${GITHUB_PATH:-}" ]; then "$${mise_binary}" -C "$(PROJECT_ROOT)" bin-paths >> "$${GITHUB_PATH}"; fi; \
 	printf 'setup: mise %s provisioning complete\n' "$${mise_active}"; \
@@ -621,7 +589,7 @@ _bootstrap_setup_tools: _builtin_require_workspace
 # process the root and every governed member together in one checker run
 # (operator ruling 2026-10-25: never member by member); each multi-root tool
 # runs once over their union.
-GATE_SCOPE := $(if $(filter Y,$(CI)),self,all)
+GATE_SCOPE := self
 # Local and CI consume the same native project/workspace declarations and lock.
 # Setup always bootstraps: `uv sync --frozen` installs exactly the committed
 # uv.lock without re-resolving or rewriting it, so manifest drift never blocks
@@ -829,10 +797,10 @@ SYNC_UPGRADE_EXECUTOR_WITH = $(call TARGET_ENVIRONMENT,$(FLEXT_INFRA_EXECUTOR_VE
 # every member's declared extras and groups, without copying dependency graphs.
 
 
-override SETUP_SYNC_ARGS := --all-extras --all-groups --link-mode clone --all-packages
+override SETUP_SYNC_ARGS := --all-extras --all-groups --link-mode clone
 
 ifeq ($(CI),Y)
-override SETUP_SYNC_ARGS := --all-extras --all-groups --link-mode clone --all-packages --no-editable
+override SETUP_SYNC_ARGS := --all-extras --all-groups --link-mode clone --no-editable
 endif
 
 # Custom hooks are declared in CI too; load their selected physical Makefile.
@@ -900,6 +868,9 @@ VERB_ARGUMENTS_tests :=
 VERB_DESCRIPTION_tests-full := Run the complete selected inventory once without Testmon.
 VERB_ARGUMENTS_tests-full :=
 
+VERB_DESCRIPTION_tests-harness := Run only the harness gate tests, through the persistent Testmon selection, under the harness that provides their inputs; MARKER=<harness gate marker> narrows the run to one.
+VERB_ARGUMENTS_tests-harness := MARKER
+
 VERB_DESCRIPTION_help := Discover the declared public interface without effects.
 VERB_ARGUMENTS_help :=
 
@@ -933,14 +904,14 @@ VERB_HELP_LINE = printf '  %-16s %s\n' '$(1)' '$(VERB_DESCRIPTION_$(1))'$(if $(s
 ifeq ($(VERB_CONTRACT),)
 PROFILE_VERBS_PLAIN := gen gen-scope
 PROFILE_VERBS_DISPATCH := help clean
-PROFILE_VERBS_ACTIVATED := mod fix fmt check tests tests-full build release-plan release-version release-tag release-build release-publish
+PROFILE_VERBS_ACTIVATED := mod fix fmt check tests tests-full tests-harness build release-plan release-version release-tag release-build release-publish
 PROFILE_VERBS_INTERPRETER :=
 PROFILE_VERBS_HOOKED := $(foreach v,$(filter-out $(PROFILE_VERBS_INTERPRETER),$(PROFILE_VERBS_ACTIVATED)),$(if $(filter pre-$(v) _custom-$(v) post-$(v),$(CUSTOM_DECLARED_TARGETS)),$(v)))
 PROFILE_VERBS_DIRECT := $(filter-out $(PROFILE_VERBS_HOOKED) $(PROFILE_VERBS_INTERPRETER),$(PROFILE_VERBS_ACTIVATED))
 PROFILE_VERBS_ROUTED := $(PROFILE_VERBS_HOOKED) $(PROFILE_VERBS_INTERPRETER)
 
 $(PROFILE_VERBS_PLAIN): %: _builtin_require_workspace _builtin_require_interpreter
-	@printf '==> %s | project=%s | profile=%s\n' '$@' "$(PROJECT_ROOT)" 'workspace'
+	@printf '==> %s | project=%s | profile=%s\n' '$@' "$(PROJECT_ROOT)" 'standalone'
 	$(call RUN_PUBLIC,$@)
 
 
@@ -949,7 +920,7 @@ $(PROFILE_VERBS_DISPATCH):
 
 
 $(PROFILE_VERBS_ACTIVATED): %: _builtin_require_workspace
-	@printf '==> %s | project=%s | profile=%s\n' '$@' "$(PROJECT_ROOT)" 'workspace'
+	@printf '==> %s | project=%s | profile=%s\n' '$@' "$(PROJECT_ROOT)" 'standalone'
 	+@$(if $(filter Y,$(CI)),$(MISE) -C "$(RUNTIME_ROOT)" exec -- $(SELF_MAKE) _activated-$@,$(DIRENV) exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-$@)
 .PHONY: $(addprefix _activated-,$(PROFILE_VERBS_ACTIVATED))
 ifneq ($(strip $(PROFILE_VERBS_DIRECT)),)
@@ -1011,7 +982,7 @@ SCRIPT_VERBS_ROUTED := $(SCRIPT_VERBS_HOOKED) $(SCRIPT_VERBS_INTERPRETER)
 
 
 $(SCRIPT_VERBS_ACTIVATED): %: _builtin_require_workspace
-	@printf '==> %s | project=%s | profile=%s\n' '$@' "$(PROJECT_ROOT)" 'workspace'
+	@printf '==> %s | project=%s | profile=%s\n' '$@' "$(PROJECT_ROOT)" 'standalone'
 	+@$(if $(filter Y,$(CI)),$(MISE) -C "$(RUNTIME_ROOT)" exec -- $(SELF_MAKE) _activated-$@,$(DIRENV) exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-$@)
 .PHONY: $(addprefix _activated-,$(SCRIPT_VERBS_ACTIVATED))
 ifneq ($(strip $(SCRIPT_VERBS_DIRECT)),)
@@ -1072,7 +1043,7 @@ ifneq ($(CI),Y)
 endif
 
 _builtin-help:
-	@printf '%s\n' 'flext-infra [workspace]' ''
+	@printf '%s\n' 'flext-infra [standalone]' ''
 	@$(foreach verb,$(PUBLIC_VERBS),$(call VERB_HELP_LINE,$(verb));)
 
 # A project owns the sources declared by its manifest. Generated setup
@@ -1286,10 +1257,17 @@ _upg_toolchain: _builtin_require_workspace _builtin_require_github_credential
 			sh "$${mise_stage}/install.sh" ;; \
 	esac; \
 	fi; \
+	MISE_LOCKFILE=0 "$(BOOTSTRAP_MISE)" -C "$(PROJECT_ROOT)" install --yes "github:jdx/mise"; \
+	mise_reader="$$(MISE_LOCKFILE=0 "$(BOOTSTRAP_MISE)" -C "$(PROJECT_ROOT)" which mise)"; \
+	if [ "$${OS:-}" = Windows_NT ]; then mise_reader="$$(cygpath --unix "$$mise_reader")"; fi; \
+	case "$$(MISE_LOCKFILE=0 "$$mise_reader" --version)" in \
+		"2026.10.3 "*) : ;; \
+		*) printf 'ERROR: the resolved Mise reader %s does not report the declared 2026.10.3; run make upg\n' "$$mise_reader" >&2; exit 2 ;; \
+	esac; \
 	uv_lock="$(RUNTIME_ROOT)/uv.lock"; \
 	if [ -f "$$uv_lock" ]; then \
-		"$(BOOTSTRAP_MISE)" fmt --stdin < /dev/null >/dev/null; \
-		if "$(BOOTSTRAP_MISE)" fmt --stdin < "$$uv_lock" >/dev/null; then :; else \
+		"$$mise_reader" fmt --stdin < /dev/null >/dev/null; \
+		if "$$mise_reader" fmt --stdin < "$$uv_lock" >/dev/null; then :; else \
 			lint_status=$$?; \
 			if [ "$$lint_status" -ne 1 ]; then exit "$$lint_status"; fi; \
 			printf 'upg: %s is not valid TOML; deleting it so its native writer regenerates it\n' "$$uv_lock"; \
@@ -1302,31 +1280,31 @@ _upg_toolchain: _builtin_require_workspace _builtin_require_github_credential
 		case "$$checkout" in .) lock_root="$$root" ;; *) lock_root="$$root/$$checkout" ;; esac; \
 		mise_lock="$$lock_root/mise.lock"; \
 		if [ -f "$$mise_lock" ]; then \
-		"$(BOOTSTRAP_MISE)" fmt --stdin < /dev/null >/dev/null; \
-		if "$(BOOTSTRAP_MISE)" fmt --stdin < "$$mise_lock" >/dev/null; then :; else \
+		"$$mise_reader" fmt --stdin < /dev/null >/dev/null; \
+		if "$$mise_reader" fmt --stdin < "$$mise_lock" >/dev/null; then :; else \
 			lint_status=$$?; \
 			if [ "$$lint_status" -ne 1 ]; then exit "$$lint_status"; fi; \
 			printf 'upg: %s is not valid TOML; deleting it so its native writer regenerates it\n' "$$mise_lock"; \
 			rm -f "$$mise_lock"; \
 		fi; \
 	fi; \
-		if [ "$$("$(BOOTSTRAP_MISE)" -C "$$lock_root" lock --bump --dry-run --json)" = "[]" ]; then \
+		if [ "$$("$$mise_reader" -C "$$lock_root" lock --bump --dry-run --json)" = "[]" ]; then \
 		printf 'upg: %s: no locked version changes\n' "$$lock_root"; \
 	else \
 		changed_tools=""; \
 		for tool in "python" "github:jdx/mise" "uv" "github:direnv/direnv" "taplo" "aqua:ast-grep/ast-grep" "gitleaks" "aqua:boyter/scc" "github:qltysh/qlty" "github:kucherenko/jscpd" "github:microsoft/waza" "aqua:j178/prek"; do \
-			if [ "$$("$(BOOTSTRAP_MISE)" -C "$$lock_root" lock --bump --dry-run --json "$$tool")" != "[]" ]; then changed_tools="$$changed_tools $$tool"; fi; \
+			if [ "$$("$$mise_reader" -C "$$lock_root" lock --bump --dry-run --json "$$tool")" != "[]" ]; then changed_tools="$$changed_tools $$tool"; fi; \
 		done; \
 		if [ -z "$$changed_tools" ]; then \
 			printf 'upg: %s: pruning lock entries no declared tool owns\n' "$$lock_root"; \
-			"$(BOOTSTRAP_MISE)" -C "$$lock_root" lock; \
-			if [ "$$("$(BOOTSTRAP_MISE)" -C "$$lock_root" lock --bump --dry-run --json)" != "[]" ]; then \
+			"$$mise_reader" -C "$$lock_root" lock; \
+			if [ "$$("$$mise_reader" -C "$$lock_root" lock --bump --dry-run --json)" != "[]" ]; then \
 				printf 'ERROR[upg] %s: mise still previews a lock change that no declared tool owns\n' "$$lock_root" >&2; \
 				exit 2; \
 			fi; \
 		else \
 			printf 'upg: %s: locking%s\n' "$$lock_root" "$$changed_tools"; \
-			"$(BOOTSTRAP_MISE)" -C "$$lock_root" lock --bump $$changed_tools; \
+			"$$mise_reader" -C "$$lock_root" lock --bump $$changed_tools; \
 		fi; \
 	fi; \
 	done; \
@@ -1334,7 +1312,7 @@ _upg_toolchain: _builtin_require_workspace _builtin_require_github_credential
 	export MISE_SHIMS_DIR="$(PROJECT_ROOT)/.bin/shims"; \
 	export MISE_LOCKED=1; \
 	bootstrap_stage=tool-install; \
-	"$(BOOTSTRAP_MISE)" -C "$(PROJECT_ROOT)" install --yes "python" "github:jdx/mise" "uv" "github:direnv/direnv" "taplo" "aqua:ast-grep/ast-grep" "gitleaks" "aqua:boyter/scc" "github:qltysh/qlty" "github:kucherenko/jscpd" "github:microsoft/waza" "aqua:j178/prek"; \
+	"$$mise_reader" -C "$(PROJECT_ROOT)" install --yes "python" "github:jdx/mise" "uv" "github:direnv/direnv" "taplo" "aqua:ast-grep/ast-grep" "gitleaks" "aqua:boyter/scc" "github:qltysh/qlty" "github:kucherenko/jscpd" "github:microsoft/waza" "aqua:j178/prek"; \
 	printf 'upg: locks classified, Mise locks current, locked toolchain provisioned\n'
 
 _upg_lifecycle:
@@ -1471,6 +1449,9 @@ _builtin_tests_all: _builtin_require_environment
 _builtin_tests_full_all: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) workspace tests-full --repository-root "$(PROJECT_ROOT)" --scope "$(GATE_SCOPE)"
 
+_builtin_tests_harness_all: _builtin_require_environment
+	@$(PROJECT_FLEXT_INFRA) workspace tests-harness --repository-root "$(PROJECT_ROOT)" --scope "$(GATE_SCOPE)"$(if $(MARKER), --marker "$$MARKER")
+
 # fmt is format-only (single-pass verb law): ruff formats Python, the
 # fmt_gates formatters run once through the checker's apply mode, and every
 # lint repair belongs to `make fix`. Every repair requires read-only native
@@ -1485,8 +1466,8 @@ _builtin_fix_all: _builtin_require_environment
 _builtin_clean_generated: _builtin_require_interpreter
 	@$(PROJECT_FLEXT_INFRA) maintenance clean --repository-root "$(PROJECT_ROOT)" --apply
 
-# Heavy verbs (check, tests, tests-full, gen, gen-scope, mod) admit themselves
-# into the per-host FIFO queue and arm their wall-time budget only once
+# Heavy verbs (check, tests, tests-full, tests-harness, gen, gen-scope, mod)
+# admit themselves into the per-host FIFO queue and arm their wall-time budget only once
 # admitted (FLEXT ADR-032, config Infra.gate_admission): queue time never
 # counts against a budget. GEN_PROFILE=1 / MOD_PROFILE=1 capture cProfile.
 GEN_PROFILE ?=
@@ -1537,6 +1518,7 @@ _builtin-check: _builtin_check_all
 
 _builtin-tests: _builtin_tests_all
 _builtin-tests-full: _builtin_tests_full_all
+_builtin-tests-harness: _builtin_tests_harness_all
 _builtin-fmt: _builtin_fmt_all
 _builtin-fix: _builtin_fix_all
 _builtin-clean: _builtin_clean_generated

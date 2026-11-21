@@ -9,6 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import config, m
+from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, infra, tm, u
 
 
@@ -84,3 +85,137 @@ class TestsFlextInfraMakeGenRootContract:
             result,
             has="generation root must be the workspace root or a declared member",
         )
+
+    @staticmethod
+    def _attached_member(root: Path, tmp_path: Path, name: str) -> Path:
+        """Attach one real governed submodule the workspace declares as external.
+
+        Returns:
+            The attached member checkout.
+
+        """
+        origin = tmp_path / f"{name}-origin"
+        beads = u.Tests.beads_project(name)
+        u.Tests.WorktreeFixture.initialize_governed_project(
+            origin,
+            name,
+            beads=u.Tests.BeadsIdentity(
+                workspace=beads.workspace,
+                database=beads.database,
+                issue_prefix=beads.issue_prefix,
+            ),
+        )
+        branch = u.Tests.checkout_integration(origin)
+        u.Tests.git_bootstrap(
+            root,
+            (
+                "-c",
+                "protocol.file.allow=always",
+                "submodule",
+                "add",
+                "-b",
+                branch,
+                str(origin),
+                name,
+            ),
+        )
+        u.Tests.git_bootstrap(
+            root,
+            (
+                "config",
+                "-f",
+                c.Infra.GITMODULES,
+                f"submodule.{name}.flext-managed",
+                c.ParserBooleanToken.FALSE,
+            ),
+        )
+        u.Tests.write_workspace_manifest(
+            root,
+            root.name,
+            role=c.Infra.MakeProfile.WORKSPACE,
+        )
+        u.Tests.git_bootstrap(root, ("add", c.Infra.GITMODULES, name))
+        u.Tests.git_bootstrap(root, ("commit", "-m", f"Declare attached member {name}"))
+        return root / name
+
+    @staticmethod
+    def test_election_admits_a_governed_attached_member_only(tmp_path: Path) -> None:
+        """A declared attached member with its own project and lock is a root.
+
+        The workspace may classify an attached checkout as an external
+        dependency; the checkout still owns its projections when it carries
+        its own ``pyproject.toml`` and ``mise.lock``. A plain vendored fork
+        carries no lock and never becomes a generation root.
+        """
+        root = u.Tests.WorktreeFixture.governed_workspace(tmp_path, "election-ws")
+        member = TestsFlextInfraMakeGenRootContract._attached_member(
+            root, tmp_path, "elected-member"
+        )
+        plain = root / "plain-fork"
+        plain.mkdir()
+        (plain / c.PYPROJECT_FILENAME).write_text(
+            '[project]\nname = "plain-fork"\nversion = "0.1.0"\n',
+            encoding=c.Infra.ENCODING_DEFAULT,
+        )
+        (root / c.Infra.GITMODULES).write_text(
+            (root / c.Infra.GITMODULES).read_text(encoding=c.Infra.ENCODING_DEFAULT)
+            + '[submodule "plain-fork"]\n'
+            "\tpath = plain-fork\n"
+            "\turl = https://github.com/foreign-owner/plain-fork.git\n"
+            "\tbranch = master\n"
+            "\tflext-classification = external-fork\n"
+            "\tflext-managed = false\n",
+            encoding=c.Infra.ENCODING_DEFAULT,
+        )
+
+        workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
+        elected = u.Infra.generation_root_members(root, workspace)
+
+        tm.that(workspace.subprojects, empty=True)
+        tm.ok(member.resolve() in elected)
+        tm.fail(plain.resolve() in elected)
+        tm.ok(root.resolve() not in elected)
+
+    @staticmethod
+    def test_generation_rejects_an_unlocked_declared_member(tmp_path: Path) -> None:
+        """A declared member without its own lock is rejected by the service."""
+        root = u.Tests.WorktreeFixture.governed_workspace(tmp_path, "unlocked-ws")
+        member = TestsFlextInfraMakeGenRootContract._attached_member(
+            root, tmp_path, "unlocked-member"
+        )
+        (member / c.Infra.MISE_LOCK_FILENAME).unlink()
+
+        workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
+        elected = u.Infra.generation_root_members(root, workspace)
+
+        tm.that(workspace.subprojects, empty=True)
+        tm.fail(member.resolve() in elected)
+        result = infra.codegen_generate(
+            m.Infra.CodegenGenerateRequest(
+                root=member,
+                what=c.Infra.CodegenConformSurface.MAKEFILE,
+                scope=c.Infra.CodegenConformScope.SELF,
+            )
+        )
+        tm.fail(
+            result,
+            has="generation root must be the workspace root or a declared member",
+        )
+
+    @staticmethod
+    def test_generation_admits_a_governed_attached_member(tmp_path: Path) -> None:
+        """The public service generates inside a declared governed member."""
+        root = u.Tests.WorktreeFixture.governed_workspace(tmp_path, "attached-ws")
+        member = TestsFlextInfraMakeGenRootContract._attached_member(
+            root, tmp_path, "attached-member"
+        )
+
+        result = infra.codegen_generate(
+            m.Infra.CodegenGenerateRequest(
+                root=member,
+                what=c.Infra.CodegenConformSurface.MAKEFILE,
+                scope=c.Infra.CodegenConformScope.SELF,
+            )
+        )
+
+        tm.ok(result)

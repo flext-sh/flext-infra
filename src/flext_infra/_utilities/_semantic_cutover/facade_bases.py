@@ -41,14 +41,10 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesWorkspaceSnapshot,
 )
-from flext_infra._utilities._rope import FlextInfraUtilitiesRopeRuntimeModules
-from flext_infra._utilities._rope.runtime_refactors import (
+from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeRuntimeModules,
     FlextInfraUtilitiesRopeRuntimeRefactors,
-)
-from flext_infra._utilities._rope.runtime_types import (
     FlextInfraUtilitiesRopeRuntimeTypes,
-)
-from flext_infra._utilities._rope.source_bases_runtime import (
     FlextInfraUtilitiesRopeSourceBasesRuntime,
 )
 from flext_infra._utilities._semantic_cutover import (

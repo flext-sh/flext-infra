@@ -201,7 +201,6 @@ class TestsFlextInfraCodegenRepositoryRootScope:
         rendered = (root / c.Infra.MAKEFILE_FILENAME).read_text(
             encoding=c.Infra.ENCODING_DEFAULT,
         )
-        cache = config.Infra.codegen.make.testmon_cache
         recipe = rendered.split("_builtin_test_all:", 1)[1].split("\n\n", 1)[0]
         tm.that(recipe.count("-m flext_infra._pytest.entry"), eq=1)
         tm.that(
@@ -210,7 +209,7 @@ class TestsFlextInfraCodegenRepositoryRootScope:
         )
         tm.that(
             recipe,
-            has=f'{cache.database_environment_variable}="$$database"',
+            lacks=c.Infra.PYTEST_ENV_TESTMON_DATAFILE,
         )
         tm.that(recipe, has="$(PYTEST_BOUNDED)")
         file_recipe = rendered.split("_builtin_test_file_all:", 1)[1].split("\n\n", 1)[
@@ -224,7 +223,7 @@ class TestsFlextInfraCodegenRepositoryRootScope:
         )
         tm.that(
             file_recipe,
-            has=f'{cache.database_environment_variable}="$$database"',
+            lacks=c.Infra.PYTEST_ENV_TESTMON_DATAFILE,
         )
         full_recipe = rendered.split("_builtin_test_full_all:", 1)[1].split("\n\n", 1)[
             0

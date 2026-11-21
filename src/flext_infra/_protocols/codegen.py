@@ -8,15 +8,17 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from flext_infra._protocols import (
+    FlextInfraProtocolsCodegenRender,
+    FlextInfraProtocolsCodegenToolchain,
+)
 from flext_infra._protocols._codegen import (
     FlextInfraProtocolsCodegenFix,
+    FlextInfraProtocolsCodegenLazyInit,
     FlextInfraProtocolsCodegenPipeline,
     FlextInfraProtocolsCodegenScaffold,
     FlextInfraProtocolsCodegenTransaction,
 )
-from flext_infra._protocols._codegen.lazy_init import FlextInfraProtocolsCodegenLazyInit
-from flext_infra._protocols.codegen_render import FlextInfraProtocolsCodegenRender
-from flext_infra._protocols.codegen_toolchain import FlextInfraProtocolsCodegenToolchain
 
 
 class FlextInfraProtocolsCodegen(

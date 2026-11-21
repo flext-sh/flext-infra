@@ -435,6 +435,10 @@ class TestsFlextInfraRopeContractBindings:
             rule
             for rule in u.Infra.declared_contract_rules(workspace.repository_root)
             if rule.id.startswith("pydantic-")
+            # The envelope rule is proven by test_model_envelope_contracts; here
+            # it would stage a native checker run per case.
+            and rule.operation
+            != c.Infra.RopeContractOperation.NORMALIZE_MODEL_ENVELOPES
         )
         tm.that(rules, empty=False)
         path.write_text(source, encoding=c.DEFAULT_ENCODING)

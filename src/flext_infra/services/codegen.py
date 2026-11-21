@@ -85,7 +85,7 @@ class FlextInfraCodegenHandlers:
 
         """
         requested = request.root.expanduser().resolve()
-        caller_root = type(settings).fetch_global().Infra.runtime_root
+        caller_root = settings.fetch_global().Infra.runtime_root
         if (
             caller_root is not None
             and not requested.is_relative_to(caller_root.resolve())
@@ -96,6 +96,7 @@ class FlextInfraCodegenHandlers:
                 f"generation target {requested} has no provisioned Python "
                 "environment; run make setup and make gen in the target checkout"
             )
+        u.Infra.gate_health_refuse(requested)
         with u.Infra.gate_admitted(
             c.Infra.GATE_ADMISSION_GENERATION,
             requested,
@@ -114,9 +115,9 @@ class FlextInfraCodegenHandlers:
                                 lambda: m.Infra.CodegenRootSelection(
                                     workspace_root=workspace_root,
                                     requested_root=requested,
-                                    members=tuple(
-                                        (workspace_root / member.path).resolve()
-                                        for member in observed.subprojects
+                                    members=u.Infra.generation_root_members(
+                                        workspace_root,
+                                        observed,
                                     ),
                                 ),
                             )

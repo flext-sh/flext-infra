@@ -24,6 +24,13 @@ Infra:
       namespace_scan_dirs:
       - src
       publishes_release: true
+      # Why (flext-0b20f): a consumer importing `from flext_infra import config`
+      # (ai-hub `validate_suppressions`) built and validated this config on
+      # import, ~0.95 s CPU per CLI invocation; both roots are built on first
+      # attribute read (ADR-018 configuration roots).
+      deferred_instances:
+        - config
+        - settings
       extra_verbs:
       - name: mod-snapshots
         description: Regenerate every owned ast-grep rule-test snapshot and report changes for review.

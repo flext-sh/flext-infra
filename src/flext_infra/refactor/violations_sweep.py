@@ -8,7 +8,8 @@ from __future__ import annotations
 
 import shlex
 import sys
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
+from operator import itemgetter
 from pathlib import Path
 from time import monotonic
 from typing import Annotated, override
@@ -69,21 +70,20 @@ class FlextInfraRefactorViolationsSweep(s[p.Infra.ViolationsSweepReport]):
         if before_scan.failure and not self.audit_rules:
             return r[p.Infra.ViolationsSweepReport].from_failure(before_scan)
         initial = before_scan.value[2] if before_scan.success else None
-        projects = (
-            initial.repository_roots if initial is not None else (root.resolve(),)
+        projects = self._declared_projects(root, initial)
+        if projects is None:
+            return r[p.Infra.ViolationsSweepReport].from_failure(before_scan)
+        # Plans are repository-scoped (3d692b9d88): the root scan observes only
+        # the root, so each declared member is observed through its own plan.
+        members_before = (
+            {}
+            if self.audit_rules
+            else {
+                project: self._source_snapshot(project, observe=True)
+                for project in projects
+                if project != root.resolve()
+            }
         )
-        if initial is None:
-            declared = u.Infra.git_submodule_declarations(root)
-            if declared.failure:
-                return r[p.Infra.ViolationsSweepReport].from_failure(before_scan)
-            projects = (
-                root.resolve(),
-                *(
-                    (root / item.path).resolve()
-                    for item in declared.value
-                    if item.managed is not False
-                ),
-            )
         repairs = self._repair_stages(
             root,
             verbs,
@@ -91,26 +91,16 @@ class FlextInfraRefactorViolationsSweep(s[p.Infra.ViolationsSweepReport]):
             initial,
         )
         after_scan = self._scan_evidence(root, invocation / "after.json")
-        comparisons = tuple(
-            u.Infra.violations_audit_comparison(
-                project,
-                m.Infra.ViolationsSweepStage.model_validate({
-                    "repository_root": (root.resolve()),
-                    "cwd": (root.resolve()),
-                    "command": (()),
-                    "verb": ("comparison"),
-                    "duration": (0),
-                    "invoked": (False),
-                    "outcome": (None),
-                    "error": (str(after_scan.error) if after_scan.failure else None),
-                    "audit_before": (initial),
-                    "audit_after": (
-                        after_scan.value[2] if after_scan.success else None
-                    ),
-                }),
-                initial.plan if initial is not None else None,
-            )
-            for project in projects
+        comparisons = (
+            self._snapshot_comparison(
+                root,
+                root.resolve(),
+                r[p.Infra.ViolationsSweepSources].ok(initial)
+                if initial is not None
+                else r[p.Infra.ViolationsSweepSources].fail(str(before_scan.error)),
+                after_scan.map(itemgetter(2)),
+            ),
+            *self._member_comparisons(root, projects, repairs[1], members_before),
         )
         report = m.Infra.ViolationsSweepReport.model_validate({
             "schema_version": (c.Infra.VIOLATIONS_SWEEP_REPORT_SCHEMA_VERSION),
@@ -191,6 +181,98 @@ class FlextInfraRefactorViolationsSweep(s[p.Infra.ViolationsSweepReport]):
                 else published,
             )
         return self._verdict(report, comparisons)
+
+    @staticmethod
+    def _declared_projects(
+        root: Path,
+        initial: p.Infra.ViolationsSweepSources | None,
+    ) -> tuple[Path, ...] | None:
+        """Return the observed topology, else the declared one.
+
+        Returns:
+            The root followed by its managed declared members, or ``None``
+            when the declarations cannot be read.
+
+        """
+        if initial is not None:
+            return tuple(initial.repository_roots)
+        declared = u.Infra.git_submodule_declarations(root)
+        if declared.failure:
+            return None
+        return (
+            root.resolve(),
+            *(
+                (root / item.path).resolve()
+                for item in declared.value
+                if item.managed is not False
+            ),
+        )
+
+    def _member_comparisons(
+        self,
+        root: Path,
+        projects: Sequence[Path],
+        stages: Sequence[p.Infra.ViolationsSweepStage],
+        members_before: Mapping[Path, p.Result[p.Infra.ViolationsSweepSources]],
+    ) -> tuple[p.Infra.ViolationsSweepStage, ...]:
+        """Compare each declared member through its own observations.
+
+        An audit reads the member's own invoked audit stage; a repair run
+        compares the member's own snapshots around the repairs.
+
+        Returns:
+            One comparison stage per declared member.
+
+        """
+        if self.audit_rules:
+            audited = {
+                stage.repository_root: stage for stage in stages if stage.invoked
+            }
+            return tuple(
+                audited[project]
+                for project in projects
+                if project != root.resolve() and project in audited
+            )
+        return tuple(
+            self._snapshot_comparison(
+                root,
+                project,
+                members_before[project],
+                self._source_snapshot(project, observe=True),
+            )
+            for project in members_before
+        )
+
+    @staticmethod
+    def _snapshot_comparison(
+        root: Path,
+        project: Path,
+        before: p.Result[p.Infra.ViolationsSweepSources],
+        after: p.Result[p.Infra.ViolationsSweepSources],
+    ) -> p.Infra.ViolationsSweepStage:
+        """Compare one project's own before and after observations.
+
+        Returns:
+            The comparison stage; a failed observation keeps its error.
+
+        """
+        failure = before if before.failure else after if after.failure else None
+        return u.Infra.violations_audit_comparison(
+            project,
+            m.Infra.ViolationsSweepStage.model_validate({
+                "repository_root": project.resolve(),
+                "cwd": root.resolve(),
+                "command": (),
+                "verb": "comparison",
+                "duration": 0,
+                "invoked": False,
+                "outcome": None,
+                "error": str(failure.error) if failure is not None else None,
+                "audit_before": before.value if before.success else None,
+                "audit_after": after.value if after.success else None,
+            }),
+            before.value.plan if before.success else None,
+        )
 
     @staticmethod
     def _verdict(
@@ -295,22 +377,13 @@ class FlextInfraRefactorViolationsSweep(s[p.Infra.ViolationsSweepReport]):
             inventory = catalog.value if catalog.success else None
         for verb in verbs:
             blocked = repair_failure is not None
-            for project in projects if verb == "audit" else (root,):
+            for project in projects if self.audit_rules else (root,):
                 if blocked:
                     stages.append(
                         m.Infra.ViolationsSweepStage(
                             repository_root=project.resolve(),
                             cwd=root.resolve(),
-                            command=(
-                                (
-                                    c.Infra.MAKE,
-                                    "-f",
-                                    str(project / c.Infra.MAKEFILE_FILENAME),
-                                    verb,
-                                )
-                                if verb == "audit"
-                                else (c.Infra.MAKE, verb)
-                            ),
+                            command=(c.Infra.MAKE, verb),
                             verb=verb,
                             duration=0,
                             invoked=False,
@@ -361,11 +434,7 @@ class FlextInfraRefactorViolationsSweep(s[p.Infra.ViolationsSweepReport]):
             The process receipt and its causal verdict.
 
         """
-        command = (
-            (c.Infra.MAKE, "-f", str(project / c.Infra.MAKEFILE_FILENAME), verb)
-            if verb == "audit"
-            else (c.Infra.MAKE, verb)
-        )
+        command = (c.Infra.MAKE, verb)
         before = cls._source_snapshot(project, observe=True, previous=previous)
         started = monotonic()
         executed = (
@@ -621,7 +690,9 @@ class FlextInfraRefactorViolationsSweep(s[p.Infra.ViolationsSweepReport]):
                 if item.managed is not False
             ),
         )
-        if set(projects) != set(planned.value.project_rule_ids) or len({
+        # Plans are repository-scoped (3d692b9d88): the root plan elects only
+        # the root, and each declared member is observed through its own plan.
+        if set(planned.value.project_rule_ids) != {root.resolve()} or len({
             project.name for project in projects
         }) != len(projects):
             return result.fail(
@@ -797,7 +868,7 @@ class FlextInfraRefactorViolationsSweep(s[p.Infra.ViolationsSweepReport]):
         )
         paths.update(configs)
         for config_path in configs:
-            directories = FlextInfraCodemodSnapshotReconciler.fixture_directories(
+            directories = FlextInfraCodemodSnapshotReconciler.scanner_directories(
                 config_path.parent,
             )
             paths.update(

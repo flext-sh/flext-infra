@@ -90,7 +90,6 @@ class TestsFlextInfraClassNestingSuiteScope:
             The cold pytest run's standard output.
 
         """
-        cache = config.Infra.codegen.make.testmon_cache
         result = tm.ok(
             u.Cli.run(
                 (
@@ -114,9 +113,6 @@ class TestsFlextInfraClassNestingSuiteScope:
                             "PYTEST_DISABLE_PLUGIN_AUTOLOAD": c.ParserBooleanToken.ONE,
                             "PYTEST_ADDOPTS": "",
                             "PYTEST_PLUGINS": "",
-                            cache.database_environment_variable: str(
-                                root / cache.database_filename
-                            ),
                         }
                     ),
                 ),

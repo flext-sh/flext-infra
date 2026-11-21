@@ -80,6 +80,30 @@ class TestsFlextInfraCodemodScanCacheContentKey:
         tm.that(len(after.entries), eq=0)
 
     @classmethod
+    def test_scan_resolves_tools_from_the_invocation_not_the_scanned_root(
+        cls, duplicate_project: Path
+    ) -> None:
+        """A scanned root whose own manifest lacks ast-grep still scans.
+
+        A linked worktree stages its preview under the primary checkout's Git
+        directory, whose manifest need not declare the invocation's tools; the
+        scan-cache key resolves ast-grep from the invocation owner, like the run.
+        """
+        root, consumer, selection = cls._project(duplicate_project)
+        tm.ok(
+            u.Cli.atomic_write_text_file(root / c.Infra.MISE_TOML_FILENAME, "[tools]\n")
+        )
+        report = tm.ok(
+            FlextInfraModGateEngine.scan(
+                root, fix=False, selection=selection, source_files=(consumer,)
+            )
+        )
+        tm.that(
+            {u.Infra.codemod_source_path(root, row.file) for row in report.entries},
+            eq={consumer.resolve()},
+        )
+
+    @classmethod
     def test_unchanged_rescan_hits_and_one_change_rescans_one_source(
         cls, duplicate_project: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:

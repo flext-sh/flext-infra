@@ -70,6 +70,40 @@ class FlextInfraConstantsCensus:
         ALIAS_CHAIN = "alias-chain"
         DUPLICATE_DECLARATION = "duplicate-declaration"
         BLOAT_WRAPPER = "bloat-wrapper"
+        PYDANTIC = "pydantic"
+
+    @unique
+    class PydanticLiteralKind(StrEnum):
+        """Closed-domain classification of one ``Literal`` annotation."""
+
+        FULL_DOMAIN = "full-domain"
+        SUBSET = "subset"
+        DISCRIMINATOR = "discriminator"
+
+    CENSUS_PYDANTIC_SELECTORS: ClassVar[frozenset[str]] = frozenset({
+        CensusRule.PYDANTIC,
+    })
+    "Extermination kinds selecting the Pydantic domain census."
+    CENSUS_PYDANTIC_CODE: ClassVar[str] = "pydantic-census"
+    "Finding code of the Pydantic domain census gate."
+    PYDANTIC_MODEL_SUFFIX: ClassVar[str] = "Model"
+    "Suffix that marks a concrete model declaration without a preset base."
+    PYDANTIC_RAW_MODEL_NAME: ClassVar[str] = "BaseModel"
+    "The raw Pydantic base a preset must replace."
+    PYDANTIC_STR_ENUM_NAME: ClassVar[str] = "StrEnum"
+    "The closed-domain enum base."
+    PYDANTIC_LITERAL_NAME: ClassVar[str] = "Literal"
+    "The inline closed-domain annotation that a full-domain literal abuses."
+    PYDANTIC_ANNOTATED_NAME: ClassVar[str] = "Annotated"
+    "The annotation wrapper that carries field metadata."
+    PYDANTIC_UNION_NAME: ClassVar[str] = "Union"
+    "The union wrapper that makes a literal a subset or discriminator."
+    PYDANTIC_PROTOCOL_DIRECTORY: ClassVar[str] = "_protocols"
+    "The generated projection directory compared against models."
+    PYDANTIC_SUBSCRIPT_KIND: ClassVar[str] = "Subscript"
+    "Native node kind of a ``Literal[...]`` annotation."
+    PYDANTIC_CONSTANT_KIND: ClassVar[str] = "Constant"
+    "Native node kind of one literal value element."
 
     CENSUS_ALIAS_SELECTORS: ClassVar[frozenset[str]] = frozenset({
         "alias",

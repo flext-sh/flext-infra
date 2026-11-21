@@ -24,7 +24,13 @@ class FlextInfraPytestRunnerBase(s[int]):
 
     started_at_monotonic: Annotated[
         float,
-        m.Field(gt=0, description="Clock captured before FLEXT imports."),
+        m.Field(
+            gt=0,
+            description=(
+                "Suite clock: captured before FLEXT imports and re-armed when "
+                "the testmon lease is acquired."
+            ),
+        ),
     ]
     target: Annotated[Path, m.Field(description="Repository-relative test root.")]
     target_file: Annotated[
@@ -39,7 +45,21 @@ class FlextInfraPytestRunnerBase(s[int]):
     reports: Annotated[Path, m.Field(description="Repository-relative report root.")]
     testmon_db: Annotated[
         Path | None,
-        m.Field(description="External SQLite database for incremental Testmon runs."),
+        m.Field(
+            description=(
+                "This checkout's external SQLite database for incremental "
+                "Testmon runs; each checkout owns its database and lease."
+            ),
+        ),
+    ] = None
+    testmon_seed_db: Annotated[
+        Path | None,
+        m.Field(
+            description=(
+                "The project's canonical database, owned by the primary "
+                "worktree, that seeds a linked worktree's absent database."
+            ),
+        ),
     ] = None
     run_timeout_seconds: Annotated[
         int,
@@ -84,6 +104,24 @@ class FlextInfraPytestRunnerBase(s[int]):
             ),
         ),
     ] = False
+    tooling: Annotated[
+        m.Infra.ToolConfigDocument,
+        m.Field(
+            description=(
+                "The repository's tooling document, elected once at the runner "
+                "boundary; the deadline and every pytest policy read come from it."
+            ),
+        ),
+    ]
+    harness_marker: Annotated[
+        str | None,
+        m.Field(
+            description=(
+                "One declared harness gate marker narrowing the harness scope; "
+                "absent selects every harness gate marker."
+            ),
+        ),
+    ] = None
 
     @staticmethod
     def _environment_value(name: str) -> str:
@@ -116,6 +154,7 @@ class FlextInfraPytestRunnerBase(s[int]):
         execution_mode: c.Infra.PytestExecutionMode = (
             c.Infra.PytestExecutionMode.GLOBAL_INCREMENTAL
         ),
+        harness_marker: str | None = None,
     ) -> Self:
         """Bind the native runner to one repository's typed policy and identity.
 
@@ -123,16 +162,9 @@ class FlextInfraPytestRunnerBase(s[int]):
             The runner with independent persistent storage and operation clock.
 
         Raises:
-            ValueError: If the context or external storage anchors are invalid.
+            ValueError: If repository pytest tooling election fails.
 
         """
-        if (
-            context.identity is None
-            or context.target is None
-            or context.runtime is None
-        ):
-            msg = f"pytest requires a governed project context: {context.cwd}"
-            raise ValueError(msg)
         # The suite runs on the submitted project, the root `make check` wrote
         # its receipt under; the Git toplevel is an ancestor when the project
         # is a subdirectory of its checkout (CI checks out into <repo>/<repo>).
@@ -143,6 +175,7 @@ class FlextInfraPytestRunnerBase(s[int]):
         make = u.Infra.load_codegen_inputs(root).unwrap().spec.make
         cache = make.testmon_cache
         database: Path | None = None
+        seed: Path | None = None
         if execution_mode.is_incremental:
             cache_home_value = u.Infra.env_value(cache.data_home_environment_variable)
             cache_home = (
@@ -154,40 +187,55 @@ class FlextInfraPytestRunnerBase(s[int]):
             if not cache_home.is_absolute():
                 msg = "pytest persistent cache anchor must be absolute"
                 raise ValueError(msg)
-            database = (
+            # testmon keeps one fingerprint set per test, so worktrees on
+            # different commits that shared one database overwrote each
+            # other's records and every run reselected most of the suite.
+            # The primary worktree owns the project's canonical database; a
+            # linked worktree owns its own, seeded from the canonical one.
+            canonical = (
                 cache_home
                 / cache.external_storage_directory
                 / context.target.canonical_project_name
                 / cache.database_filename
             )
-        run_timeout_seconds, termination_grace_seconds = cls._elected_pytest_deadline(
-            root
+            identity = context.identity
+            if identity.git_dir == identity.common_dir:
+                database = canonical
+            else:
+                database = (
+                    canonical.parent / identity.git_dir.name / cache.database_filename
+                )
+                seed = canonical
+        tooling = cls._elect_tooling(root)
+        run_timeout_seconds, termination_grace_seconds = cls._elected_deadline(
+            tooling, execution_mode=execution_mode
         )
         return cls(
             repository_root=root,
             started_at_monotonic=started_at_monotonic,
+            tooling=tooling,
             run_timeout_seconds=run_timeout_seconds,
             termination_grace_seconds=termination_grace_seconds,
             target=cache.target_directory,
             target_file=target_file,
             reports=cache.reports_directory,
             testmon_db=database,
+            testmon_seed_db=seed,
             ci_context=u.Infra.env_value(make.ci.variable) == make.ci.value,
             profile_enabled=settings.Infra.profile,
+            harness_marker=harness_marker,
         )
 
     @classmethod
-    def _elected_pytest_deadline(
-        cls,
-        repository_root: Path,
-    ) -> tuple[int, int]:
-        """Elect the repository's suite deadline from its governed YAML layers.
+    def _elect_tooling(cls, repository_root: Path) -> m.Infra.ToolConfigDocument:
+        """Elect the repository's tooling document from its governed YAML layers.
 
-        The election always merges the packaged fleet defaults as its base, so
-        one source decides the deadline for every repository.
+        The election always merges the packaged fleet defaults as its base. It
+        runs once per runner, so the deadline and every pytest policy read share
+        one validated document that cannot change mid-run.
 
         Returns:
-            The elected run timeout and termination grace in seconds.
+            The repository-elected tooling document.
 
         Raises:
             ValueError: If the repository tooling election fails.
@@ -199,11 +247,36 @@ class FlextInfraPytestRunnerBase(s[int]):
         if tooling.failure:
             msg = f"repository pytest tooling election failed: {tooling.error}"
             raise ValueError(msg)
-        pytest_section = tooling.value.document.tools.pytest
+        return m.Infra.ToolConfigDocument.model_validate(tooling.value.document)
+
+    @staticmethod
+    def _elected_deadline(
+        tooling: m.Infra.ToolConfigDocument,
+        *,
+        execution_mode: c.Infra.PytestExecutionMode,
+    ) -> tuple[int, int]:
+        """Return the suite deadline; the harness scope owns its own clock.
+
+        Returns:
+            The elected run timeout and termination grace in seconds.
+
+        """
+        pytest_section = tooling.tools.pytest
         return (
-            pytest_section.run_timeout_seconds,
+            pytest_section.harness_run_timeout_seconds
+            if execution_mode == c.Infra.PytestExecutionMode.HARNESS
+            else pytest_section.run_timeout_seconds,
             pytest_section.termination_grace_seconds,
         )
+
+    def pytest_policy(self) -> p.Infra.PytestConfig:
+        """Return the pytest policy of this runner's elected tooling document.
+
+        Returns:
+            The policy elected with the suite deadline.
+
+        """
+        return self.tooling.tools.pytest
 
     @classmethod
     def from_environment(
@@ -233,11 +306,13 @@ class FlextInfraPytestRunnerBase(s[int]):
         if not repository_root.is_absolute():
             msg = "Make-owned pytest repository root must be absolute"
             raise ValueError(msg)
-        run_timeout_seconds, termination_grace_seconds = cls._elected_pytest_deadline(
-            repository_root
+        tooling = cls._elect_tooling(repository_root)
+        run_timeout_seconds, termination_grace_seconds = cls._elected_deadline(
+            tooling, execution_mode=execution_mode
         )
         return cls(
             repository_root=repository_root,
+            tooling=tooling,
             run_timeout_seconds=run_timeout_seconds,
             termination_grace_seconds=termination_grace_seconds,
             started_at_monotonic=started_at_monotonic,
@@ -251,11 +326,8 @@ class FlextInfraPytestRunnerBase(s[int]):
             ),
             reports=Path(cls._environment_value(c.Infra.PYTEST_ENV_REPORTS)),
             testmon_db=(
-                Path(
-                    cls._environment_value(
-                        config.Infra.codegen.make.testmon_cache.database_environment_variable,
-                    ),
-                )
+                repository_root
+                / config.Infra.codegen.make.testmon_cache.database_filename
                 if execution_mode.is_incremental
                 else None
             ),
@@ -269,13 +341,10 @@ class FlextInfraPytestRunnerBase(s[int]):
             The resulting ``Self``.
 
         Raises:
-            ValueError: If test target must be an existing directory; or if testmon
-                database path must be absolute; or if testmon database must be outside
-                the checkout; or if ``path.is_absolute() or not path.parts or any((part
-                in {'', '.', '..'} for part in path.parts)) or any((character in raw for
-                character in '\x00\r\n\\'))``; or if ``not
-                resolved.is_relative_to(self.repository_root.resolve())``; or if test
-                target file must be an existing repository file.
+            ValueError: If the test target is not an existing directory or file,
+                the testmon database path is not absolute, a target or reports path
+                is not a normalized repository-relative path or escapes the
+                repository, or the target file is not an existing repository file.
 
         """
         for name, path in (("target", self.target), ("reports", self.reports)):
@@ -299,15 +368,9 @@ class FlextInfraPytestRunnerBase(s[int]):
         ):
             msg = f"test target must be an existing directory or file: {self.target}"
             raise ValueError(msg)
-        if self.testmon_db is not None:
-            if not self.testmon_db.is_absolute():
-                msg = "testmon database path must be absolute"
-                raise ValueError(msg)
-            if self.testmon_db.resolve().is_relative_to(self.repository_root.resolve()):
-                msg = (
-                    f"testmon database must be outside the checkout: {self.testmon_db}"
-                )
-                raise ValueError(msg)
+        if self.testmon_db is not None and not self.testmon_db.is_absolute():
+            msg = "testmon database path must be absolute"
+            raise ValueError(msg)
         return self._validate_target_file()
 
     def _validate_target_file(self) -> Self:
@@ -367,17 +430,8 @@ class FlextInfraPytestRunnerBase(s[int]):
         Returns:
             The resulting ``int | m.Infra.PytestWorkerCeiling``.
 
-        Raises:
-            ValueError: If the repository tooling election fails.
-
         """
-        tooling = FlextInfraUtilitiesProjectManagedArtifacts.load_tooling_inputs(
-            self.repository_root,
-        )
-        if tooling.failure:
-            msg = f"repository pytest tooling election failed: {tooling.error}"
-            raise ValueError(msg)
-        elected = tooling.value.document.tools.pytest
+        elected = self.pytest_policy()
         name = self._declared_project_name()
         if name is None:
             return elected.parallel_workers
