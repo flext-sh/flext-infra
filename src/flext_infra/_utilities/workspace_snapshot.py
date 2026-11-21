@@ -442,7 +442,7 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
             listed = tuple(
                 path
                 for path in FlextInfraUtilitiesProjectDiscovery.discover_python_files(
-                    member,
+                    member / c.Infra.DEFAULT_SRC_DIR,
                     workspace_excluded_top_dirs=frozenset(),
                     source_project=view,
                 )
