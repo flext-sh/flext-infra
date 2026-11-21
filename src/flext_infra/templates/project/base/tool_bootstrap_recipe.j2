@@ -1,8 +1,10 @@
 {#- The official installer owns acquisition, platform and checksum handling, and
     places Mise at its default $(BOOTSTRAP_MISE), shared by every checkout. It
     runs only when that executable is absent; the committed min_version makes
-    Mise itself refuse an older one. Native `mise install` then provisions the
-    pinned self-managed release, which execution resolves through `mise which`. -#}
+    Mise itself refuse an older one. The checkout's own config is then trusted,
+    so a new worktree provisions through `make setup`/`make upg` alone. Native
+    `mise install` provisions the pinned self-managed release, which execution
+    resolves through `mise which`. -#}
 {% macro mise_acquisition(project_root, toolchain) -%}
 	bootstrap_stage=acquisition; \
 	if [ ! -x "$(BOOTSTRAP_MISE)" ]; then \
@@ -17,7 +19,9 @@
 			curl --proto '=https' --tlsv1.2 -fsSL -o "$${mise_stage}/install.sh" https://mise.run; \
 			sh "$${mise_stage}/install.sh" ;; \
 	esac; \
-	fi;
+	fi; \
+	bootstrap_stage=trust; \
+	"$(BOOTSTRAP_MISE)" trust "{{ project_root }}/.mise.toml";
 {%- endmacro %}
 
 {% macro mise_staging_cleanup() -%}

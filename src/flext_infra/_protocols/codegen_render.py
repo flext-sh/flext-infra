@@ -115,11 +115,6 @@ class FlextInfraProtocolsCodegenRender:
             ...
 
         @property
-        def depth(self) -> int:
-            """The contract's nesting depth beneath its owner."""
-            ...
-
-        @property
         def type_parameters(self) -> tuple[str, ...]:
             """Complete parameter declarations with bounds and defaults."""
             ...

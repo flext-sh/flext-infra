@@ -38,11 +38,6 @@ class FlextInfraModelsCodegenRender(FlextInfraModelsCodegenLazyInit):
             )
 
             name: t.NonEmptyStr = m.Field(description="The nested structural contract")
-            depth: int = m.Field(
-                default=0,
-                ge=0,
-                description="The contract's nesting depth beneath its owner",
-            )
             type_parameters: tuple[str, ...] = m.Field(
                 description="Complete parameter declarations with bounds and defaults"
             )

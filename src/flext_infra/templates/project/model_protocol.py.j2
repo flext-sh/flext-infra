@@ -16,13 +16,12 @@ class {{ owner }}{% if bases %}({{ bases | join(', ') }}){% endif %}:
     """{{ owner_description }}"""
 
 {% for contract in contracts %}
-{% set indent = '    ' * (contract.depth + 1) %}
-{{ indent }}@runtime_checkable
-{{ indent }}class {{ contract.name }}{% if contract.type_parameters %}[{{ contract.type_parameters | join(', ') }}]{% endif %}({{ contract.bases | join(', ') }}):
-{{ indent }}    """{{ contract_description }}"""
+    @runtime_checkable
+    class {{ contract.name }}{% if contract.type_parameters %}[{{ contract.type_parameters | join(', ') }}]{% endif %}({{ contract.bases | join(', ') }}):
+        """{{ contract_description }}"""
 {% if contract.declarations %}
 
-{{ contract.declarations | join('\n') | indent((contract.depth + 2) * 4, true) }}
+{{ contract.declarations | join('\n') | indent(8, true) }}
 {% endif %}
 {% endfor %}
 {% for alias in aliases %}

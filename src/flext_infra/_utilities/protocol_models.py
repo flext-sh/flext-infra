@@ -4434,16 +4434,15 @@ class FlextInfraUtilitiesModelsProtocol:
             evaluated_bases: set[str] = set()
             base_imports: set[str] = set()
             names: set[str] = set()
-            projected_paths = {path for _, path, _ in classes}
 
-            for node, path, _tree in classes:
-                name = node.name
-                depth = sum(
-                    1
-                    for index in range(1, len(path))
-                    if path[:index] in projected_paths
-                )
-                if name in names and depth == 0:
+            for node, path, tree in classes:
+                # A nested model's contract is a sibling under its indexed
+                # name: nested in its parent Protocol it would become a class
+                # member every implementing parent model must match.
+                name = self.source_model_protocols[
+                    ".".join((self.source_module_names[id(tree)], *path))
+                ]
+                if name in names:
                     message = (
                         f"competing projected Protocol identity: {destination}:{name}"
                     )
@@ -4476,7 +4475,6 @@ class FlextInfraUtilitiesModelsProtocol:
                 contracts.append(
                     m.Infra.ModelProtocolRenderContext.ModelProtocolContract(
                         name=name,
-                        depth=depth,
                         type_parameters=tuple(
                             ast.unparse(parameter)
                             for parameter in getattr(node, "type_params", ())
