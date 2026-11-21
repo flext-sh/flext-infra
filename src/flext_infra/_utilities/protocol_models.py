@@ -5998,6 +5998,49 @@ class FlextInfraUtilitiesModelsProtocol:
             tree: ast.Module,
             model: ast.ClassDef,
             classes: list[tuple[ast.ClassDef, tuple[str, ...], ast.Module]],
+            models: tuple[str, Mapping[str, str]],
+        ) -> ast.expr:
+            """Spell a witness type-parameter bound in the witness module's scope.
+
+            The witness parameter must admit the native generic, so a bound
+            naming a public model keeps that model, read through the published
+            model facade exactly as the witness spells constructors; the
+            model's own projection is valid only in its module. The bound
+            resolves as its annotation scope does: from the class enclosing the
+            model outward to the module.
+
+            Returns:
+                The facade-spelled model, or the structural projection otherwise.
+
+            """
+            tree, model, path = owner
+            module = self.source_module_names[id(tree)]
+            spelled_bound = ast.unparse(value)
+            model_facade, public = models
+            route = next(
+                (
+                    found
+                    for depth in range(len(path) - 1, -1, -1)
+                    if (
+                        found := public.get(
+                            ".".join((module, *path[:depth], spelled_bound))
+                        )
+                    )
+                    is not None
+                ),
+                None,
+            )
+            if route is None:
+                return self._source_structural_annotation(value, tree, model, classes)
+            spelled = f"{model_facade}{route.removeprefix('m')}"
+            return ast.parse(spelled, mode="eval").body
+
+        def _source_structural_annotation(
+            self,
+            annotation: ast.expr,
+            tree: ast.Module,
+            model: ast.ClassDef,
+            classes: list[tuple[ast.ClassDef, tuple[str, ...], ast.Module]],
             *,
             lexical: p.Infra.RopeScope | None = None,
         ) -> ast.expr:
