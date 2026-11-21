@@ -66,28 +66,29 @@ class FlextInfraProtocolsDepsToolConfigTypeCheckers:
             """Pyrefly search-path rules."""
             ...
 
-    @runtime_checkable
-    class PyreflyConfigPathRulesConfig(FlextCliProtocols.BaseModel, Protocol):
-        """Structural data contract projected from the owning model."""
+        @runtime_checkable
+        class PathRulesConfig(FlextCliProtocols.BaseModel, Protocol):
+            """Structural data contract projected from the owning model."""
 
-        source_dir: str
-        project_root: str
-        env_dirs: Sequence[str]
-        workspace_include_children: bool
-        workspace_include_child_env_dirs: Sequence[str]
-        project_shared_search_paths: Sequence[str]
+            source_dir: str
+            project_root: str
+            env_dirs: Sequence[str]
+            workspace_include_children: bool
+            workspace_include_child_env_dirs: Sequence[str]
+            project_shared_search_paths: Sequence[str]
 
-        @property
-        def diagnostic_path_exceptions(
-            self,
-        ) -> tuple[
-            FlextInfraProtocolsDepsToolConfigTypeCheckers.DiagnosticPathException, ...
-        ]:
-            """Structural member projected from the owning model.
+            @property
+            def diagnostic_path_exceptions(
+                self,
+            ) -> tuple[
+                FlextInfraProtocolsDepsToolConfigTypeCheckers.DiagnosticPathException,
+                ...,
+            ]:
+                """Structural member projected from the owning model.
 
-            Authorized rule exceptions; each entry renders its Pyrefly sub-config.
-            """
-            ...
+                Authorized rule exceptions; each entry renders its Pyrefly sub-config.
+                """
+                ...
 
 
 __all__: list[str] = [

@@ -8,7 +8,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
 from flext_cli import FlextCliProtocols
 
@@ -64,7 +64,12 @@ class FlextInfraProtocolsGateAdmission:
 
         @property
         def gate(self) -> t.NonEmptyStr:
-            """Full-weight gate that succeeded."""
+            """Gate that was run."""
+            ...
+
+        @property
+        def status(self) -> Literal["success", "failure"]:
+            """Outcome of the run."""
             ...
 
         @property
@@ -84,7 +89,7 @@ class FlextInfraProtocolsGateAdmission:
 
         @property
         def finished_at(self) -> t.AwareDatetime:
-            """Time the run succeeded."""
+            """Time the run finished."""
             ...
 
     @runtime_checkable
