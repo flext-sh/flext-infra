@@ -2702,6 +2702,16 @@ from the primary checkout or Git common directory. The generated Makefile, gener
 `.envrc`, and `runtime_environment_dir` derive the same path. Neither a caller
 variable nor a checkout-local symlink may redirect the environment.
 
+Git and Mise discovery share that boundary: the generated Makefile and `.envrc` set
+`GIT_CEILING_DIRECTORIES` and `MISE_CEILING_PATHS` to the parent of `RUNTIME_ROOT`.
+An attached member's verbs read workspace paths through the workspace runtime (for
+example the staged preview of `make gen` loads the workspace layouts), so the ceiling
+must not stop Git below the superproject; discovery from inside the member still ends
+at the member's own `.git`. A standalone checkout or linked worktree is its own
+`RUNTIME_ROOT`, so its ceiling stays at its own parent. The contract relies on
+`RUNTIME_ROOT` being a Git toplevel, which the renderer guarantees by rendering
+`REPOSITORY_ROOT_REL` as `.` (bead `flext-ce0q5`).
+
 An attached member remains governed by the superproject environment even when the
 superproject does not declare it as a native uv workspace member. Its own committed
 lock is then not the validation owner: a consumer gate that depends on a newer FLEXT
