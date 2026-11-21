@@ -6,13 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import NoReturn
 
 from flext_cli import u
 
-from flext_infra import c, config, e, m, p, r
+from flext_infra import c, config, e, m, p
 from flext_infra._utilities import (
     FlextInfraUtilitiesBase,
     FlextInfraUtilitiesCodegenFacades,
@@ -97,63 +96,6 @@ class FlextInfraUtilitiesCodegen(
             ),
         )
 
-    @classmethod
-    def workspace_runtime_codegen(
-        cls,
-        repository_root: Path,
-        workspace: p.Infra.WorkspaceSpec,
-        codegen: p.Infra.CodegenConfigSpec,
-    ) -> p.Result[p.Infra.CodegenConfigSpec]:
-        """Compose attached members' declared tools into the workspace runtime.
-
-        An attached member (a gitlink rendered on the WORKSPACE profile) runs
-        on its superproject's Mise runtime, so the workspace toolchain carries
-        every tool its attached members declare. One tool declared with two
-        effective versions fails with both declarations named.
-
-        Returns:
-            The workspace codegen with the composed toolchain, or the conflict.
-
-        """
-        result_type = r[p.Infra.CodegenConfigSpec]
-        toolchain = codegen.toolchain
-        tools = {entry.name: entry for entry in toolchain.tools}
-        versions = dict(toolchain.tool_versions)
-        owners = dict.fromkeys(tools, repository_root.name)
-        for member in workspace.subprojects:
-            if member.role != c.Infra.MakeProfile.WORKSPACE:
-                continue
-            loaded = cls.load_codegen_inputs(repository_root / member.path)
-            if loaded.failure:
-                return result_type.from_failure(loaded)
-            member_toolchain = loaded.value.spec.toolchain
-            for entry in member_toolchain.tools:
-                version = member_toolchain.tool_versions[entry.name]
-                if entry.name not in tools:
-                    tools[entry.name] = entry
-                    versions[entry.name] = version
-                    owners[entry.name] = member.name
-                elif versions[entry.name] != version:
-                    return result_type.fail(
-                        f"workspace toolchain conflict for {entry.name}: "
-                        f"{owners[entry.name]} declares {versions[entry.name]}, "
-                        f"{member.name} declares {version}",
-                    )
-        if len(tools) == len(toolchain.tools):
-            return result_type.ok(codegen)
-        return result_type.ok(
-            codegen.model_copy(
-                update={
-                    "toolchain": toolchain.model_copy(
-                        update={
-                            "tools": tuple(tools.values()),
-                            "tool_version_pins": versions,
-                        },
-                    ),
-                },
-            ),
-        )
-
     @staticmethod
     def codegen_raise_failure(scope: Path, failure: p.FailureLike) -> NoReturn:
         """Stop codegen planning at its first failure instead of retaining it.
@@ -221,54 +163,6 @@ class FlextInfraUtilitiesCodegen(
         return any(
             child.is_file() and child.suffix == ".py" for child in pkg_dir.iterdir()
         )
-
-    @staticmethod
-    def parse_final_constant_definitions(
-        source_lines: Sequence[str],
-    ) -> Sequence[tuple[str, str, str, str, int]]:
-        """Parse ``NAME: Final[...] = VALUE`` definitions with class-path context.
-
-        Returns:
-            The resulting ``Sequence[tuple[str, str, str, str, int]]``.
-
-        """
-        class_stack: MutableSequence[tuple[str, int]] = []
-        parsed: MutableSequence[tuple[str, str, str, str, int]] = []
-        for line_number, line in enumerate(source_lines, 1):
-            stripped = line.lstrip()
-            indent = len(line) - len(stripped)
-            FlextInfraUtilitiesCodegen.update_class_stack(class_stack, stripped, indent)
-            match = c.Infra.DETECTION_FINAL_DECL_RE.match(line)
-            if match is None:
-                continue
-            parsed.append((
-                match.group("name"),
-                match.group("ann"),
-                match.group("value").strip(),
-                ".".join(name for name, _ in class_stack),
-                line_number,
-            ))
-        return tuple(parsed)
-
-    @staticmethod
-    def update_class_stack(
-        class_stack: MutableSequence[tuple[str, int]],
-        stripped_line: str,
-        indent: int,
-    ) -> None:
-        """Keep class-path stack in sync while iterating constant source lines."""
-        class_match = (
-            c.Infra.DETECTION_CLASS_DECL_RE.match(stripped_line)
-            if stripped_line.startswith("class ") and stripped_line.endswith(":")
-            else None
-        )
-        if class_match is not None:
-            while class_stack and class_stack[-1][1] >= indent:
-                class_stack.pop()
-            class_stack.append((class_match.group(1), indent))
-            return
-        while class_stack and indent <= class_stack[-1][1]:
-            class_stack.pop()
 
 
 __all__: list[str] = ["FlextInfraUtilitiesCodegen"]

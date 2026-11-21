@@ -65,7 +65,7 @@ class FlextInfraUtilitiesRopeInventory(FlextInfraUtilitiesRopeInventorySites):
         # come from one snapshot even when the file changed on disk since.
         source = pymodule.source_code
         parameter_lines = cls._parameter_lines(pymodule) if include_local_scopes else {}
-        constant_bindings = cls._constant_bindings(pymodule)
+        constant_bindings = cls.constant_bindings(pymodule)
         items: MutableSequence[p.Infra.Object] = []
         module_scope = pymodule.get_scope()
         child_scopes = tuple(module_scope.get_scopes())
@@ -550,7 +550,7 @@ class FlextInfraUtilitiesRopeInventory(FlextInfraUtilitiesRopeInventorySites):
         return " ".join(piece for piece in pieces if piece)
 
     @staticmethod
-    def _constant_bindings(
+    def constant_bindings(
         pymodule: t.Infra.RopePyModule,
     ) -> frozenset[tuple[int, str]]:
         """Recognize immutable declarations by typing identity, independent of case.

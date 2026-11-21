@@ -80,6 +80,7 @@ class TestsFlextInfraUtilitiesConform:
         what: c.Infra.CodegenConformSurface = c.Infra.CodegenConformSurface.ALL,
         scope: c.Infra.CodegenConformScope = c.Infra.CodegenConformScope.SELF,
         mode: c.Infra.CodegenConformMode = c.Infra.CodegenConformMode.CHECK,
+        module: str | None = None,
     ) -> p.Infra.CodegenConformRequest:
         """Build one codegen conform request; every default is the model's own.
 
@@ -92,6 +93,7 @@ class TestsFlextInfraUtilitiesConform:
             what=what,
             scope=scope,
             mode=mode,
+            module=module,
         )
 
     @staticmethod
