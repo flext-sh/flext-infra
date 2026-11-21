@@ -38,9 +38,4 @@ install_lazy_exports(
         "FlextInfraUtilitiesModelsProtocolBootstrapSources": ".bootstrap_sources",
     },
     public_exports=__all__,
-    deferred_members=(
-        "FlextInfraUtilitiesModelsProtocolBootstrapAdmission",
-        "FlextInfraUtilitiesModelsProtocolBootstrapPackage",
-        "FlextInfraUtilitiesModelsProtocolBootstrapSources",
-    ),
 )
