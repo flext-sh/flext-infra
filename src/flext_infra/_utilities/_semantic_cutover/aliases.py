@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+from collections import deque
 from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 from typing import NamedTuple
@@ -262,16 +263,19 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
     def _inherits_service_kernel(
         value: p.Infra.RopePyObject, kernel: p.Infra.RopePyObject
     ) -> bool:
-        """Traverse native bases without revisiting ancestry cycles.
+        """Traverse native bases breadth-first without revisiting ancestry cycles.
+
+        Declared bases are tested in order before any of their ancestry, so a
+        class naming the kernel directly never analyses its other bases' MROs.
 
         Returns:
             Whether the service class derives from the upstream kernel.
 
         """
-        pending = list(FlextInfraUtilitiesDeclarationPayload.direct_bases(value))
+        pending = deque(FlextInfraUtilitiesDeclarationPayload.direct_bases(value))
         visited: list[p.Infra.RopePyObject] = []
         while pending:
-            ancestor = pending.pop()
+            ancestor = pending.popleft()
             if ancestor == kernel:
                 return True
             if ancestor in visited:
