@@ -201,6 +201,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         alias_source = "from __future__ import annotations\n\ntype LocalAlias = str\n"
         _ = alias_file.write_text(alias_source, encoding="utf-8")
 
+        u.Tests.provision_checkout(workspace)
         report = FlextInfraNamespaceEnforcer(repository_root=workspace).enforce(
             apply=False,
         )
@@ -227,6 +228,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
             encoding="utf-8",
         )
 
+        u.Tests.provision_checkout(workspace)
         report = FlextInfraNamespaceEnforcer(repository_root=workspace).enforce(
             apply=False,
         )
@@ -655,7 +657,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
     def test_namespace_workspace_counts_bracket_all_projects_without_double_counting(
         tmp_path: Path,
     ) -> None:
-        """Every project compares the same initial and final workspace observations."""
+        """Each project's counts match its own scans bracketing every repair."""
         workspace, first, _pkg = u.Tests.namespace_workspace(tmp_path)
         second, _second_pkg = u.Tests.demo_project(workspace, name="another-project")
         for project in (first, second):
@@ -664,15 +666,30 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
             (scripts / "run.py").write_text(
                 '"""Governed script."""\nvalue = 1\n', encoding="utf-8"
             )
-        u.Tests.declare_workspace_projects(workspace, (first.name, second.name))
+        u.Tests.initialize_git_repo(
+            second,
+            origin_url=u.Tests.WorktreeFixture.governed_repository_url(second.name),
+        )
+        u.Tests.WorktreeFixture.attach_submodule(
+            workspace,
+            second,
+            distribution=second.name,
+            relative_path=second.name,
+        )
         u.Tests.provision_checkout(workspace)
-        before = tm.ok(FlextInfraModGateEngine.scan(workspace, fix=False))
+        before = {
+            project.name: tm.ok(FlextInfraModGateEngine.scan(project, fix=False))
+            for project in (first, second)
+        }
 
         report = FlextInfraNamespaceEnforcer(repository_root=workspace).enforce(
             apply=True,
         )
 
-        after = tm.ok(FlextInfraModGateEngine.scan(workspace, fix=False))
+        after = {
+            project.name: tm.ok(FlextInfraModGateEngine.scan(project, fix=False))
+            for project in (first, second)
+        }
         tm.that(
             {project.project for project in report.projects},
             eq={first.name, second.name},
@@ -682,8 +699,8 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
                 {row.repository for row in project.rule_deltas}, eq={project.project}
             )
             for counts, snapshot in (
-                (project.before_rule_counts, before),
-                (project.after_rule_counts, after),
+                (project.before_rule_counts, before[project.project]),
+                (project.after_rule_counts, after[project.project]),
             ):
                 tm.that(
                     counts,

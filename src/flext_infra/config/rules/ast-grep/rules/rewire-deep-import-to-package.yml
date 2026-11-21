@@ -6,18 +6,13 @@
 # `ban-consumer-submodule-import`, `ban-own-family-internal-import`) report
 # what this rule cannot repair.
 #
-# A module keeps its deep imports of its own top-level package: inside
-# `<package>`, `from <package>.<module> import ...` stays. The package
-# initializer publishes the importing module itself, so rewriting the import
-# to the package (or to a package below it) closes a runtime import cycle
-# (`<package>.api` -> `<package>` -> `<package>.api`). The `top-package-`
-# file scope partitions the rule per top-level package of the project: an
-# import whose module path starts with that package never matches in its own
-# files, while every other top-level package's deep modules (a test tier
-# importing the production package) are still rewritten. As for every
-# partitioned rule, an exact selection names the rendered partitions
-# (`rewire-deep-import-to-package--<project package>[--<top package>]`) or the
-# laws below; the catalog id is not a selector alias.
+# The rule holds inside a package as well (operator order 2026-11-19): every
+# generated initializer is fully lazy, so a package's own modules import from
+# the package too, and a deep import no longer loads its module eagerly. The
+# only modules kept out are the initializers, flext-core's lazy machinery,
+# which the flext-core initializer imports to install laziness itself, and the
+# layer-zero modules, which the import law forbids to import their own
+# namespace.
 #
 # The `package-published-import` utility is the generated fact. It matches the
 # module-path node of `from <package>.<module> import ...` only when the
@@ -41,16 +36,12 @@ files:
   - "**/*.py"
 ignores:
   - "**/__init__.py"
-  - "**/settings.py"
-  - "**/config.py"
+  - "**/flext_core/lazy.py"
+  - "**/flext_core/flextlazy_*.py"
 metadata:
   enforce: [ENFORCE-015, ENFORCE-055, ENFORCE-068, ENFORCE-099]
   scope:
-    partition:
-      variable: MODULE
-      holds: false
-      selectors: top-package-
-      pattern: "^{key}\\."
+    not-in: [ layer-zero ]
 rule:
   all:
     - kind: dotted_name

@@ -18,11 +18,13 @@ from tests.unit.codemod.private_import_cutover_support import (
 )
 
 
+@c.Tests.MARK.usefixtures("semantic_cutover_runtime")
 class TestsFlextInfraPrivateImportCutoverRewrites(
     TestsFlextInfraPrivateImportCutoverSupport,
 ):
     """Exercise facade rewrites of private imports only through ``u.Infra``."""
 
+    @c.Tests.MARK.slow
     @c.Tests.MARK.parametrize("nested", [False, True])
     @c.Tests.MARK.parametrize(
         "assignment",
@@ -300,6 +302,7 @@ class TestsFlextInfraPrivateImportCutoverRewrites(
         tm.that(updated, has="return u.Sample.ServiceManagers")
         tm.that(updated, lacks=private_import)
 
+    @c.Tests.MARK.slow
     @c.Tests.MARK.parametrize(
         "mode", [(True, False), (True, True), (False, False), (False, True)]
     )

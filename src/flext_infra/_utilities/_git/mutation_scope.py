@@ -11,9 +11,7 @@ from pathlib import Path
 from git import GitError
 
 from flext_infra import m, p, r
-from flext_infra._utilities._git.physical_scope import (
-    FlextInfraUtilitiesGitPhysicalScope,
-)
+from flext_infra._utilities._git import FlextInfraUtilitiesGitPhysicalScope
 
 
 class FlextInfraUtilitiesGitMutationScope:

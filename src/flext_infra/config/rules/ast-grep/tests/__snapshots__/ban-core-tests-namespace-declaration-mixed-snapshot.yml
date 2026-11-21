@@ -1,0 +1,315 @@
+id: ban-core-tests-namespace-declaration-mixed
+snapshots:
+  "class TestsFlextLdapConstants(FlextTestsConstants, FlextLdapConstants):\n    class Ldap(FlextLdapConstants.Ldap):\n        class Tests(FlextTestsConstants.Tests):\n            LDIF = \"\"\"dn: cn=a\n    objectClass: top\n\"\"\"\n":
+    labels:
+    - source: |-
+        class Tests(FlextTestsConstants.Tests):
+                    LDIF = """dn: cn=a
+            objectClass: top
+        """
+      style: primary
+      start: 121
+      end: 216
+    - source: |
+        class TestsFlextLdapConstants(FlextTestsConstants, FlextLdapConstants):
+            class Ldap(FlextLdapConstants.Ldap):
+                class Tests(FlextTestsConstants.Tests):
+                    LDIF = """dn: cn=a
+            objectClass: top
+        """
+      style: secondary
+      start: 0
+      end: 217
+    - source: |-
+        class TestsFlextLdapConstants(FlextTestsConstants, FlextLdapConstants):
+            class Ldap(FlextLdapConstants.Ldap):
+                class Tests(FlextTestsConstants.Tests):
+                    LDIF = """dn: cn=a
+            objectClass: top
+        """
+      style: secondary
+      start: 0
+      end: 216
+    - source: |-
+        class Ldap(FlextLdapConstants.Ldap):
+                class Tests(FlextTestsConstants.Tests):
+                    LDIF = """dn: cn=a
+            objectClass: top
+        """
+      style: secondary
+      start: 76
+      end: 216
+    - source: Ldap
+      style: secondary
+      start: 82
+      end: 86
+    - source: |-
+        class Ldap(FlextLdapConstants.Ldap):
+                class Tests(FlextTestsConstants.Tests):
+                    LDIF = """dn: cn=a
+            objectClass: top
+        """
+      style: secondary
+      start: 76
+      end: 216
+    - source: |-
+        class Tests(FlextTestsConstants.Tests):
+                    LDIF = """dn: cn=a
+            objectClass: top
+        """
+      style: secondary
+      start: 121
+      end: 216
+    - source: Tests
+      style: secondary
+      start: 127
+      end: 132
+  "class TestsFlextMeltanoConstants(FlextTestsConstants):\n    class Meltano(FlextMeltanoConstants.Meltano):\n        \"\"\"Meltano domain namespace.\"\"\"\n\n        class Tests(FlextTestsConstants.Tests):\n            HOST = \"localhost\"\n":
+    labels:
+    - source: |-
+        class Tests(FlextTestsConstants.Tests):
+                    HOST = "localhost"
+      style: primary
+      start: 154
+      end: 224
+    - source: |
+        class TestsFlextMeltanoConstants(FlextTestsConstants):
+            class Meltano(FlextMeltanoConstants.Meltano):
+                """Meltano domain namespace."""
+
+                class Tests(FlextTestsConstants.Tests):
+                    HOST = "localhost"
+      style: secondary
+      start: 0
+      end: 225
+    - source: |-
+        class TestsFlextMeltanoConstants(FlextTestsConstants):
+            class Meltano(FlextMeltanoConstants.Meltano):
+                """Meltano domain namespace."""
+
+                class Tests(FlextTestsConstants.Tests):
+                    HOST = "localhost"
+      style: secondary
+      start: 0
+      end: 224
+    - source: |-
+        class Meltano(FlextMeltanoConstants.Meltano):
+                """Meltano domain namespace."""
+
+                class Tests(FlextTestsConstants.Tests):
+                    HOST = "localhost"
+      style: secondary
+      start: 59
+      end: 224
+    - source: Meltano
+      style: secondary
+      start: 65
+      end: 72
+    - source: |-
+        class Meltano(FlextMeltanoConstants.Meltano):
+                """Meltano domain namespace."""
+
+                class Tests(FlextTestsConstants.Tests):
+                    HOST = "localhost"
+      style: secondary
+      start: 59
+      end: 224
+    - source: |-
+        """Meltano domain namespace."""
+
+                class Tests(FlextTestsConstants.Tests):
+                    HOST = "localhost"
+      style: secondary
+      start: 113
+      end: 224
+    - source: Tests
+      style: secondary
+      start: 160
+      end: 165
+  "class TestsFlextMeltanoTypes(FlextTestsTypes, FlextMeltanoTypes):\n    class Meltano(FlextMeltanoTypes.Meltano):\n        type ComponentCase = tuple[str, str]\n\n        class Tests(FlextTestsTypes.Tests):\n            \"\"\"Aliases.\"\"\"\n":
+    labels:
+    - source: |-
+        class Tests(FlextTestsTypes.Tests):
+                    """Aliases."""
+      style: primary
+      start: 166
+      end: 228
+    - source: |
+        class TestsFlextMeltanoTypes(FlextTestsTypes, FlextMeltanoTypes):
+            class Meltano(FlextMeltanoTypes.Meltano):
+                type ComponentCase = tuple[str, str]
+
+                class Tests(FlextTestsTypes.Tests):
+                    """Aliases."""
+      style: secondary
+      start: 0
+      end: 229
+    - source: |-
+        class TestsFlextMeltanoTypes(FlextTestsTypes, FlextMeltanoTypes):
+            class Meltano(FlextMeltanoTypes.Meltano):
+                type ComponentCase = tuple[str, str]
+
+                class Tests(FlextTestsTypes.Tests):
+                    """Aliases."""
+      style: secondary
+      start: 0
+      end: 228
+    - source: |-
+        class Meltano(FlextMeltanoTypes.Meltano):
+                type ComponentCase = tuple[str, str]
+
+                class Tests(FlextTestsTypes.Tests):
+                    """Aliases."""
+      style: secondary
+      start: 70
+      end: 228
+    - source: Meltano
+      style: secondary
+      start: 76
+      end: 83
+    - source: |-
+        class Meltano(FlextMeltanoTypes.Meltano):
+                type ComponentCase = tuple[str, str]
+
+                class Tests(FlextTestsTypes.Tests):
+                    """Aliases."""
+      style: secondary
+      start: 70
+      end: 228
+    - source: |-
+        type ComponentCase = tuple[str, str]
+
+                class Tests(FlextTestsTypes.Tests):
+                    """Aliases."""
+      style: secondary
+      start: 120
+      end: 228
+    - source: Tests
+      style: secondary
+      start: 172
+      end: 177
+  "class TestsFlextOtherConstants(FlextTestsConstants):\n    class Ldap(FlextLdapConstants.Ldap):\n        class Tests:\n            A = 1\n\n    class Ldif:\n        class Tests:\n            B = 2\n":
+    labels:
+    - source: |-
+        class Tests:
+                    A = 1
+      style: primary
+      start: 102
+      end: 132
+    - source: |
+        class TestsFlextOtherConstants(FlextTestsConstants):
+            class Ldap(FlextLdapConstants.Ldap):
+                class Tests:
+                    A = 1
+
+            class Ldif:
+                class Tests:
+                    B = 2
+      style: secondary
+      start: 0
+      end: 189
+    - source: |-
+        class TestsFlextOtherConstants(FlextTestsConstants):
+            class Ldap(FlextLdapConstants.Ldap):
+                class Tests:
+                    A = 1
+
+            class Ldif:
+                class Tests:
+                    B = 2
+      style: secondary
+      start: 0
+      end: 188
+    - source: |-
+        class Ldap(FlextLdapConstants.Ldap):
+                class Tests:
+                    A = 1
+
+            class Ldif:
+                class Tests:
+                    B = 2
+      style: secondary
+      start: 57
+      end: 188
+    - source: Ldap
+      style: secondary
+      start: 63
+      end: 67
+    - source: |-
+        class Ldap(FlextLdapConstants.Ldap):
+                class Tests:
+                    A = 1
+      style: secondary
+      start: 57
+      end: 132
+    - source: |-
+        class Tests:
+                    A = 1
+      style: secondary
+      start: 102
+      end: 132
+    - source: Tests
+      style: secondary
+      start: 108
+      end: 113
+  "class TestsFlextOtherTypes(FlextTestsTypes):\n    class Tests(FlextTestsTypes.Tests):\n        A = 1\n\n    class Ldap(FlextLdapTypes.Ldap):\n        class Tests(FlextTestsTypes.Tests):\n            B = 2\n":
+    labels:
+    - source: |-
+        class Tests(FlextTestsTypes.Tests):
+                    B = 2
+      style: primary
+      start: 145
+      end: 198
+    - source: |
+        class TestsFlextOtherTypes(FlextTestsTypes):
+            class Tests(FlextTestsTypes.Tests):
+                A = 1
+
+            class Ldap(FlextLdapTypes.Ldap):
+                class Tests(FlextTestsTypes.Tests):
+                    B = 2
+      style: secondary
+      start: 0
+      end: 199
+    - source: |-
+        class TestsFlextOtherTypes(FlextTestsTypes):
+            class Tests(FlextTestsTypes.Tests):
+                A = 1
+
+            class Ldap(FlextLdapTypes.Ldap):
+                class Tests(FlextTestsTypes.Tests):
+                    B = 2
+      style: secondary
+      start: 0
+      end: 198
+    - source: |-
+        class Tests(FlextTestsTypes.Tests):
+                A = 1
+
+            class Ldap(FlextLdapTypes.Ldap):
+                class Tests(FlextTestsTypes.Tests):
+                    B = 2
+      style: secondary
+      start: 49
+      end: 198
+    - source: Ldap
+      style: secondary
+      start: 110
+      end: 114
+    - source: |-
+        class Ldap(FlextLdapTypes.Ldap):
+                class Tests(FlextTestsTypes.Tests):
+                    B = 2
+      style: secondary
+      start: 104
+      end: 198
+    - source: |-
+        class Tests(FlextTestsTypes.Tests):
+                    B = 2
+      style: secondary
+      start: 145
+      end: 198
+    - source: Tests
+      style: secondary
+      start: 151
+      end: 156

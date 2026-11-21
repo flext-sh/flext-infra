@@ -95,6 +95,11 @@ class UtilityFacadeOwnerPublication:
             cwd=root,
         )
 
+    # Measured 2026-11-18: the native_consumer probe spawns a fresh interpreter
+    # (run_lazy_init_probe) by contract; 1.89 s call uncovered and 3.50 s under
+    # coverage at load 14.6, and the canonical gate timed out at the 2 s
+    # ordinary call budget while the child was still running.
+    @c.Tests.MARK.slow
     def test_initializer_retires_exports_moved_into_class_owners(
         self,
         tmp_path: Path,
@@ -164,7 +169,8 @@ class UtilityFacadeOwnerPublication:
         if publication[1] is not None:
             package = root / publication[1]
         u.Tests.copy_tracked_mise_seeds(root)
-        definition = u.Infra.facade_families()[family]
+        families = u.Infra.facade_families()
+        definition = families[family]
         self._write(package / "__init__.py", "")
         self._write(
             package / definition.directory / "__init__.py",
@@ -185,6 +191,16 @@ class UtilityFacadeOwnerPublication:
                 f"__all__ = [{name!r}]\n",
             )
         facade = package / f"{definition.module}.py"
+        facade_class = f"PublicFacade{definition.suffix}"
+        if family == c.Infra.FacadeFamily.M:
+            protocol_class = f"PublicFacade{families[c.Infra.FacadeFamily.P].suffix}"
+            self._write(
+                package / "protocols.py",
+                '"""Explicit public protocol facade."""\n'
+                f"class {protocol_class}:\n    pass\n"
+                f"p = {protocol_class}\n"
+                f"__all__ = [{protocol_class!r}, 'p']\n",
+            )
         indent = "        " if nested else "    "
         owner_module = f"{package.name}.{definition.directory}"
         imports = (
@@ -197,12 +213,12 @@ class UtilityFacadeOwnerPublication:
             facade,
             '"""Explicit public class facade."""\n'
             + imports
-            + "class PublicFacade:\n"
+            + f"class {facade_class}:\n"
             + ("    class Sample:\n" if nested else "")
             + f"{indent}Base = LocalBase\n"
             + f"{indent}Vocabulary = OwnerVocabulary\n"
-            + f"{family} = PublicFacade\n"
-            + f"__all__ = ['PublicFacade', {family!r}]\n",
+            + f"{family} = {facade_class}\n"
+            + f"__all__ = [{facade_class!r}, {family!r}]\n",
         )
         with u.Infra.facade_source_project(root) as (project, sources):
             rendered = tm.ok(
@@ -232,8 +248,6 @@ class UtilityFacadeOwnerPublication:
             eq=rendered,
         )
         self._write(facade, rendered)
-        if publication[0] == "barrel":
-            self._write(package / definition.directory / "__init__.py", "")
         with u.Infra.facade_source_project(root) as (project, sources):
             repeated = tm.ok(
                 u.Infra.render_type_facade(package, facade, sources, project=project)
@@ -252,7 +266,7 @@ class UtilityFacadeOwnerPublication:
                     "-c",
                     "from importlib import import_module\n"
                     f"facade = import_module('{package.name}.{definition.module}')"
-                    ".PublicFacade\n"
+                    f".{facade_class}\n"
                     + ("facade = facade.Sample\n" if nested else "")
                     + f"base = import_module('{package.name}."
                     f"{definition.directory}.base').OwnerBase\n"

@@ -13,8 +13,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, r, u
+from flext_infra.validate import FlextInfraPytestDiagExtractor
 from flext_infra.validate._pytest_runner import FlextInfraPytestRunnerBase
-from flext_infra.validate.pytest_diag import FlextInfraPytestDiagExtractor
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -294,8 +294,17 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
         # file and full requests execute their complete in-scope inventory.
         return (inventory_count - len(selected.node_ids), inventory_count)
 
-    def _diagnostics(self, report_dir: Path) -> p.Result[p.Infra.PytestDiagnostics]:
+    def _diagnostics(
+        self,
+        report_dir: Path,
+        *,
+        interrupted: bool,
+    ) -> p.Result[p.Infra.PytestDiagnostics]:
         """Extract diagnostics through the canonical typed service.
+
+        Args:
+            report_dir: The report directory of the run.
+            interrupted: Whether the suite ended before its natural end.
 
         Returns:
             The resulting ``p.Result[p.Infra.PytestDiagnostics]``.
@@ -311,6 +320,7 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
             extractor.junit,
             extractor.log_path,
             report_log=extractor.report_log,
+            interrupted=interrupted,
         )
 
     @staticmethod
@@ -325,6 +335,7 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
         """
         diagnostics = FlextInfraPytestDiagExtractor.extract_report_log(
             report_log,
+            interrupted=False,
         ).unwrap()
         receipt = report_log.with_suffix(".diagnostics.json")
         u.Cli.atomic_write_text_file(

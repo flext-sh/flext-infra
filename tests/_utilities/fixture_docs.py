@@ -11,14 +11,11 @@ from pathlib import Path
 
 from flext_infra import config
 from flext_infra.docs import FlextInfraDocGenerator
-from tests import (
+from tests import c, p, r, tm
+from tests._utilities import (
     TestsFlextInfraUtilitiesCodegen,
     TestsFlextInfraUtilitiesGit,
     TestsFlextInfraUtilitiesProjectFixture,
-    c,
-    p,
-    r,
-    tm,
 )
 
 

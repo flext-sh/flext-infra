@@ -17,20 +17,22 @@ from flext_tests import u as flext_tests_u
 
 from flext_infra import FlextInfraUtilities, config
 from tests import c, m, p, r, t, tm
-from tests._utilities import TestsFlextInfraUtilitiesSemanticCutover
-from tests.utilities_codegen import TestsFlextInfraUtilitiesCodegen
-from tests.utilities_deps import TestsFlextInfraUtilitiesDeps
-from tests.utilities_fixture_docs import TestsFlextInfraUtilitiesDocsFixture
-from tests.utilities_fixture_project import TestsFlextInfraUtilitiesProjectFixture
-from tests.utilities_fixture_tooling import TestsFlextInfraUtilitiesToolingFixture
-from tests.utilities_fixture_workspace import TestsFlextInfraUtilitiesWorkspaceFixture
-from tests.utilities_gates import TestsFlextInfraUtilitiesGates
-from tests.utilities_git import TestsFlextInfraUtilitiesGit
-from tests.utilities_hermetic_git import TestsFlextInfraUtilitiesHermeticGit
-from tests.utilities_promoted import TestsFlextInfraUtilitiesPromoted
-from tests.utilities_release import TestsFlextInfraUtilitiesRelease
-from tests.utilities_toml import TestsFlextInfraUtilitiesToml
-from tests.utilities_workspace_env import TestsFlextInfraUtilitiesWorkspaceEnv
+from tests._utilities import (
+    TestsFlextInfraUtilitiesCodegen,
+    TestsFlextInfraUtilitiesDeps,
+    TestsFlextInfraUtilitiesDocsFixture,
+    TestsFlextInfraUtilitiesGates,
+    TestsFlextInfraUtilitiesGit,
+    TestsFlextInfraUtilitiesHermeticGit,
+    TestsFlextInfraUtilitiesProjectFixture,
+    TestsFlextInfraUtilitiesPromoted,
+    TestsFlextInfraUtilitiesRelease,
+    TestsFlextInfraUtilitiesSemanticCutover,
+    TestsFlextInfraUtilitiesToml,
+    TestsFlextInfraUtilitiesToolingFixture,
+    TestsFlextInfraUtilitiesWorkspaceEnv,
+    TestsFlextInfraUtilitiesWorkspaceFixture,
+)
 
 
 class TestsFlextInfraUtilities(FlextInfraUtilities):
@@ -38,20 +40,20 @@ class TestsFlextInfraUtilities(FlextInfraUtilities):
 
     class Tests(
         flext_tests_u.Tests,
-        TestsFlextInfraUtilitiesToml,
-        TestsFlextInfraUtilitiesProjectFixture,
-        TestsFlextInfraUtilitiesWorkspaceFixture,
-        TestsFlextInfraUtilitiesToolingFixture,
-        TestsFlextInfraUtilitiesDocsFixture,
-        TestsFlextInfraUtilitiesPromoted,
-        TestsFlextInfraUtilitiesRelease,
-        TestsFlextInfraUtilitiesGit,
-        TestsFlextInfraUtilitiesHermeticGit,
-        TestsFlextInfraUtilitiesGates,
         TestsFlextInfraUtilitiesCodegen,
         TestsFlextInfraUtilitiesDeps,
-        TestsFlextInfraUtilitiesWorkspaceEnv,
+        TestsFlextInfraUtilitiesDocsFixture,
+        TestsFlextInfraUtilitiesProjectFixture,
+        TestsFlextInfraUtilitiesToolingFixture,
+        TestsFlextInfraUtilitiesWorkspaceFixture,
+        TestsFlextInfraUtilitiesGates,
+        TestsFlextInfraUtilitiesGit,
+        TestsFlextInfraUtilitiesHermeticGit,
+        TestsFlextInfraUtilitiesPromoted,
+        TestsFlextInfraUtilitiesRelease,
         TestsFlextInfraUtilitiesSemanticCutover,
+        TestsFlextInfraUtilitiesToml,
+        TestsFlextInfraUtilitiesWorkspaceEnv,
     ):
         """Canonical test helper namespace."""
 
@@ -64,6 +66,7 @@ class TestsFlextInfraUtilities(FlextInfraUtilities):
 
                 system_packages: tuple[t.NonEmptyStr, ...] = ()
                 packages_read: bool = False
+                docs_site_publish: bool = True
                 custom_steps: str = ""
                 custom_post_steps: str = ""
                 has_devcontainer: bool = False
@@ -145,6 +148,7 @@ class TestsFlextInfraUtilities(FlextInfraUtilities):
                     "ci_trigger_branches": ci_trigger_branches,
                     "system_packages": overrides.system_packages,
                     "packages_read": overrides.packages_read,
+                    "docs_site_publish": overrides.docs_site_publish,
                     "python_version": codegen.toolchain.python_version,
                     "github_actions": codegen.github_actions,
                     "toolchain": codegen.toolchain,

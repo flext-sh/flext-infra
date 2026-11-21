@@ -492,6 +492,11 @@ class FlextInfraProtocolsConfigArtifact:
             ...
 
         @property
+        def fresh_import_timeout_seconds(self) -> int:
+            """Deadline of one fresh-import subprocess, in seconds."""
+            ...
+
+        @property
         def lint_snapshot_workers(self) -> int:
             """Concurrent protected-edit lint snapshot threads."""
             ...
@@ -587,6 +592,15 @@ class FlextInfraProtocolsConfigArtifact:
             Distributions whose generated CI gates resolve GitHub Packages (for
             example private GHCR OCI dependencies); only these grant the ci job
             packages: read, every other job and distribution stays contents-only.
+            """
+            ...
+
+        @property
+        def docs_site_unpublished(self) -> tuple[t.NonEmptyStr, ...]:
+            """Structural member projected from the owning model.
+
+            Distributions whose generated docs workflow never publishes the built
+            site to GitHub Pages; every other distribution deploys it from main.
             """
             ...
 

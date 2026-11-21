@@ -20,16 +20,10 @@ from flext_infra._utilities._codemod import FlextInfraUtilitiesCodemodRules
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeRuntime,
     FlextInfraUtilitiesRopeRuntimeModules,
-    FlextInfraUtilitiesRopeStructure,
-)
-from flext_infra._utilities._rope.runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
-)
-from flext_infra._utilities._rope.runtime_types import (
     FlextInfraUtilitiesRopeRuntimeTypes,
-)
-from flext_infra._utilities._rope.source_bases_aliases import (
     FlextInfraUtilitiesRopeSourceBasesAliases,
+    FlextInfraUtilitiesRopeStructure,
 )
 
 

@@ -26,16 +26,12 @@ from flext_infra._utilities import (
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntimeModules,
+    FlextInfraUtilitiesRopeRuntimeRefactors,
+    FlextInfraUtilitiesRopeRuntimeTypes,
     FlextInfraUtilitiesRopeStructure,
 )
-from flext_infra._utilities._rope._analysis.exports import (
+from flext_infra._utilities._rope._analysis import (
     FlextInfraUtilitiesRopeAnalysisExports,
-)
-from flext_infra._utilities._rope.runtime_refactors import (
-    FlextInfraUtilitiesRopeRuntimeRefactors,
-)
-from flext_infra._utilities._rope.runtime_types import (
-    FlextInfraUtilitiesRopeRuntimeTypes,
 )
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesDeclarationPayload,

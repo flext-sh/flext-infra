@@ -152,7 +152,14 @@ class FlextInfraUtilitiesMiseBinary:
         owner_root: Path,
         declared: tuple[str] | tuple[()],
     ) -> p.Result[Path]:
-        """Authenticate the reader and its installed release against the lock pin.
+        """Authenticate the installed self-managed release against the lock pin.
+
+        Why (flext-3iq28): the host reader on PATH is the shared acquisition
+        executable, whose committed release is a floor, not an identity; it is
+        only asked where the tree's pinned release is installed. That installed
+        executable is the reader, and it alone must match the lock pin. Requiring
+        the host reader itself to equal the pin failed on every host whose
+        global Mise is newer, and ``make setup`` could never satisfy it.
 
         Returns:
             The installed self-managed executable, or the physical reader when
@@ -166,23 +173,16 @@ class FlextInfraUtilitiesMiseBinary:
             config.Infra.codegen.toolchain.mise_selector,
             declared[0],
         ).flat_map(
-            lambda pinned: (
-                FlextInfraUtilitiesMiseBinary
-                .mise_self_identity(reader, pinned, owner_root)
-                .flat_map(
-                    lambda qualified: FlextInfraUtilitiesMiseBinary._managed_mise_path(
-                        c.Infra.MISE,
-                        owner_root,
-                        qualified,
-                    ),
-                )
-                .flat_map(
-                    lambda installed: FlextInfraUtilitiesMiseBinary.mise_self_identity(
-                        installed,
-                        pinned,
-                        owner_root,
-                    ),
-                )
+            lambda pinned: FlextInfraUtilitiesMiseBinary._managed_mise_path(
+                c.Infra.MISE,
+                owner_root,
+                reader.resolve(strict=True),
+            ).flat_map(
+                lambda installed: FlextInfraUtilitiesMiseBinary.mise_self_identity(
+                    installed,
+                    pinned,
+                    owner_root,
+                ),
             ),
         )
 

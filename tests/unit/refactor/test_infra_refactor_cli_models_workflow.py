@@ -61,7 +61,6 @@ class TestsFlextInfraModelsRefactorInfraRefactorCliWorkflow:
                 f"--repository-root={root}",
                 f"--consumer-roots={receiver}",
                 f"--consumer-roots={tmp_path / 'absent-receiver'}",
-                "--apply",
             ])
         tm.ok(result != 0)
         tm.that(

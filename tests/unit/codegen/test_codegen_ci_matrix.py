@@ -9,9 +9,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from flext_infra import config
-from tests import c, tm, u
-from tests.unit.codegen.ci_matrix_support import TestsFlextInfraCodegenCiMatrixSupport
+from tests import c, config, tm, u
+from tests.unit.codegen import TestsFlextInfraCodegenCiMatrixSupport
 
 
 @c.Tests.MARK.slow
@@ -262,15 +261,9 @@ class TestsFlextInfraCodegenCiMatrix(TestsFlextInfraCodegenCiMatrixSupport):
         )
         token = f"{make.ci.variable}={make.ci.pre_commit_value}"
         for hook, step in zip(commits, commit_steps, strict=True):
-            # Setup provisions through Make; check runs on the staged files.
-            tm.that(
-                hook["entry"],
-                has=(
-                    f'{token} "$FLEXT" check run'
-                    if step.verb == c.Infra.VERB_CHECK
-                    else f"{token} {step.make_command}"
-                ),
-            )
+            # Every commit row runs its declared verb through Make.
+            tm.that(hook["entry"], has=f"{token} {step.make_command}")
+            tm.that(hook["pass_filenames"], eq=False)
         pushes = [hook for hook in hooks if hook.get("stages") == ["pre-push"]]
         expected = tuple(
             step.verb

@@ -15,6 +15,7 @@ from types import (
     BuiltinFunctionType,
     ClassMethodDescriptorType,
     CodeType,
+    FrameType,
     FunctionType,
     GetSetDescriptorType,
     MemberDescriptorType,
@@ -39,6 +40,8 @@ class FlextInfraTypesBase:
 
     type DocumentationLanguage = t.DocumentationLanguage
     "Supported project-local documentation presentation languages."
+    type SignalHandler = Callable[[int, FrameType | None], object] | int | None
+    "The stdlib SIGTERM action: a callable, SIG_DFL/SIG_IGN, or None."
     type PythonMemberKind = Literal["alias", "attribute", "class", "function"]
     "How a module binds one top-level name: imported, assigned, or defined."
     type AstModule = _ast.Module
@@ -258,6 +261,18 @@ class FlextInfraTypesBase:
     "(success, descriptions, report_lines) — includes what was attempted."
     type LintSnapshot[Receipt] = Mapping[str, Receipt]
     "Native gate receipts or diagnostic deltas, keyed by canonical tool name."
+
+    # ── Protocol projection types ───────────────────────────────────
+
+    type BootstrapProtocolPackage = tuple[
+        Path,
+        Mapping[Path, str],
+        Mapping[Path, str],
+        Mapping[Path, p.Cli.AtomicFileState],
+        Mapping[Path, p.Cli.AtomicFileState],
+        Sequence[tuple[str, str, tuple[str, ...]]],
+    ]
+    "One declared package's prepared bootstrap protocol sources and originals."
 
     # ── Lint policy types ────────────────────────────────────────────
 

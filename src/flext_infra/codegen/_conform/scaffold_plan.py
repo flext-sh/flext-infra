@@ -10,11 +10,9 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import override
 
-from flext_infra import c, deps as dependency_services, m, p, r, u
+from flext_infra import c, deps, m, p, r, settings, u
 from flext_infra.codegen import FlextInfraCodegenLazyInit, FlextInfraCodegenScaffolder
-from flext_infra.codegen._conform.existing_plan import (
-    FlextInfraCodegenConformExistingPlan,
-)
+from flext_infra.codegen._conform import FlextInfraCodegenConformExistingPlan
 
 
 class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan):
@@ -208,7 +206,7 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
                 or entry.destination in required_data_destinations
             )
         )
-        modernizer = dependency_services.FlextInfraPyprojectModernizer(
+        modernizer = deps.FlextInfraPyprojectModernizer(
             repository_root=root,
             skip_check=True,
             managed_artifacts=u.Infra.empty_snapshot().resolution,
@@ -220,9 +218,11 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
         if lazy_sources.failure:
             return r[Sequence[p.Infra.CodegenFilePlan]].from_failure(lazy_sources)
         tooling_request = m.Infra.ToolingContextRequest(
-            # A future scaffold owns its declared runtime (standalone), so the
-            # runtime root is pinned to the scaffold root itself.
-            environment_dir=u.Infra.runtime_environment_dir(root, runtime_root=root),
+            # The declared runtime root (Make's RUNTIME_ROOT) runs the
+            # scaffold's code; undeclared, the scaffold owns its runtime.
+            environment_dir=u.Infra.runtime_environment_dir(
+                root, runtime_root=settings.fetch_global().Infra.runtime_root
+            ),
             planned_sources={
                 plan.path: plan.desired_content.decode(c.DEFAULT_ENCODING)
                 for plan in lazy_sources.value

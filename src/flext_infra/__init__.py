@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_core.lazy import install_lazy_exports
+from flext_core.lazy import defer_lazy_instances, install_lazy_exports
 
 if TYPE_CHECKING:
     from flext_cli import d, e, h, r, x
@@ -141,6 +141,13 @@ install_lazy_exports(
         "x": "flext_cli",
     },
     public_exports=__all__,
+)
+
+defer_lazy_instances(
+    __name__,
+    globals(),
+    {"config": "._config", "settings": "._settings"},
+    ("config", "settings"),
 )
 
 if not TYPE_CHECKING:

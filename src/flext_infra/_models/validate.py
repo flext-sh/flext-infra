@@ -387,6 +387,10 @@ class FlextInfraModelsCore:
             default_factory=tuple,
             description="Public pytest item properties transported by report-log",
         )
+        exitstatus: int | None = m.Field(
+            default=None,
+            description="SessionFinish exit status; absent when the session was killed",
+        )
 
         @m.model_validator(mode="after")
         def require_event_payload(self) -> Self:

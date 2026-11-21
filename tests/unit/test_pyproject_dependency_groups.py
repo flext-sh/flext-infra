@@ -18,9 +18,51 @@ from tests import c, m, p, t, tm, u
 class TestsFlextInfraPyprojectDependencyGroups:
     """Exercise the same public TOML boundary consumed by native resolution."""
 
-    @c.Tests.MARK.parametrize(
-        "variant", ["same", "extras", "marker", "origin", "bound"]
-    )
+    def test_policy_floor_replaces_a_declared_constraint_of_its_distribution(
+        self,
+    ) -> None:
+        """The SSOT floor wins by name over a projection's raised constraint."""
+        own = self._workspace(c.Infra.MakeProfile.STANDALONE).repository.distribution
+        floor = "composition-floor>=1.0,<3.0"
+        raised = f"{Requirement(floor).name}>=2.0,<3.0"
+        policy = config.Infra.codegen.scaffold.project.model_copy(
+            update={"dev": (floor,), "required_flext_dev": ()},
+        )
+
+        composed = u.Infra.project_development_requirements(
+            policy,
+            distribution=own,
+            declared=(raised,),
+        )
+
+        tm.that(tuple(composed), eq=(floor,))
+        source = self._source(f"dev = {tm.ok(u.Cli.json_dumps([raised]))}")
+        rendered = tm.ok(
+            self._conform(
+                source,
+                c.Infra.MakeProfile.STANDALONE,
+                required_dev_dependencies=composed,
+            ),
+        )
+        groups = u.Tests.toml_mapping(
+            u.Tests.toml_mapping(u.Tests.toml_doc(rendered))["dependency-groups"],
+        )
+        tm.that(
+            tuple(Requirement(entry) for entry in u.Tests.toml_strings(groups["dev"])),
+            eq=(Requirement(floor),),
+        )
+        tm.that(
+            tm.ok(
+                self._conform(
+                    rendered,
+                    c.Infra.MakeProfile.STANDALONE,
+                    required_dev_dependencies=composed,
+                ),
+            ),
+            eq=rendered,
+        )
+
+    @c.Tests.MARK.parametrize("variant", ["same", "extras", "marker", "origin"])
     def test_development_composition_preserves_complete_requirement_identity(
         self,
         variant: str,
@@ -268,7 +310,7 @@ class TestsFlextInfraPyprojectDependencyGroups:
         self,
         role: c.Infra.MakeProfile,
     ) -> None:
-        """Floors retain authored bounds, extras, markers and Git occurrences."""
+        """A floor replaces its own authored bound; extras, markers and Git stay."""
         authored_name, source, seed = self._variant_authored_sources()
         floor = "variant-floor>=2.0"
         overlaid = tm.ok(u.Infra.overlay_preserved(seed, source))
@@ -334,10 +376,9 @@ class TestsFlextInfraPyprojectDependencyGroups:
         source: str,
         authored_name: str,
     ) -> None:
-        """Require the conformed floor group to retain every authored variant."""
+        """Require the floor to replace its own bound and keep every other variant."""
         name = "variant-floor"
         floor = f"{name}>=2.0"
-        authored_bound = f"{name}>=1.0"
         extra = f"{name}[feature]>=1.0,<3.0"
         marked = f"{name}>=1.0; sys_platform == 'linux'"
         origin = u.Tests.repository_ref(name)
@@ -347,7 +388,6 @@ class TestsFlextInfraPyprojectDependencyGroups:
         )
         expected: t.JsonList = [
             floor,
-            authored_bound,
             marked,
             {"include-group": "base"},
             extra,

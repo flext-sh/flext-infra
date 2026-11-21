@@ -25,21 +25,17 @@ class FlextInfraTestmonDbInspector(s[p.Infra.TestmonCacheState]):
 
     @m.model_validator(mode="after")
     def _validate_absolute_db(self) -> Self:
-        """Reject relative or in-checkout database paths.
+        """Reject a relative database path.
 
         Returns:
             The resulting ``Self``.
 
         Raises:
-            ValueError: If testmon db_path must be absolute; or if testmon database must
-                be outside the repository checkout.
+            ValueError: If testmon db_path is not absolute.
 
         """
         if not self.db_path.is_absolute():
             msg = "testmon db_path must be absolute"
-            raise ValueError(msg)
-        if self.db_path.resolve().is_relative_to(self.root.resolve()):
-            msg = "testmon database must be outside the repository checkout"
             raise ValueError(msg)
         return self
 
@@ -94,6 +90,21 @@ class FlextInfraTestmonDbInspector(s[p.Infra.TestmonCacheState]):
         if not tables:
             msg = "testmon schema empty"
             raise RuntimeError(msg)
+
+    @staticmethod
+    def seed_file(source: Path, destination: Path) -> None:
+        """Seed an absent checkout database from the canonical one.
+
+        SQLite's backup API reads one consistent snapshot, its WAL included,
+        into a staging file that then replaces the destination atomically.
+        """
+        staging = destination.with_name(f"{destination.name}.seed")
+        with (
+            closing(sqlite3.connect(f"file:{source}?mode=ro", uri=True)) as origin,
+            closing(sqlite3.connect(staging)) as target,
+        ):
+            origin.backup(target)
+        staging.replace(destination)
 
     def _inspect_existing(self) -> p.Result[p.Infra.TestmonCacheState]:
         """Validate one on-disk DB after pytest has closed it.

@@ -9,10 +9,9 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from flext_infra import FlextInfraConfig, config
 from flext_infra.gates import FlextInfraGatesLayout
-from tests import c, m, p, t, tm, u
-from tests.unit.codegen.layout_support import TestsFlextInfraCodegenLayoutSupport
+from tests import FlextInfraConfig, c, config, m, p, t, tm, u
+from tests.unit.codegen import TestsFlextInfraCodegenLayoutSupport
 
 
 class TestsFlextInfraCodegenLayout:

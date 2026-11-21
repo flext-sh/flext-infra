@@ -313,6 +313,16 @@ class FlextInfraModelsCodegenRender(FlextInfraModelsCodegenLazyInit):
                 ),
             ),
         ] = False
+        docs_site_publish: Annotated[
+            bool,
+            m.Field(
+                default=True,
+                description=(
+                    "Upload the built docs site and deploy it to GitHub Pages "
+                    "from main; False keeps the docs workflow a build-only proof"
+                ),
+            ),
+        ] = True
         superproject: Annotated[
             FlextInfraModelsConfigProvider.CiSuperprojectCheckoutSpec | None,
             m.Field(
@@ -353,15 +363,6 @@ class FlextInfraModelsCodegenRender(FlextInfraModelsCodegenLazyInit):
         make: Annotated[
             FlextInfraModelsConfigMake.MakeSpec,
             m.Field(description="Canonical workflow command contract"),
-        ]
-        scenario_data_roots: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(
-                description=(
-                    "Scenario-data roots the staged-file hook never hands to "
-                    "a gate (codegen.exclusions.scenario_data_roots)"
-                ),
-            ),
         ]
 
     class GitHookRenderSpec(FlextInfraModelsConfigContract.ConfigContract):

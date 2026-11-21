@@ -14,7 +14,7 @@ from typing import Annotated, ClassVar, Literal, Self
 from flext_cli import m
 
 from flext_infra import c, p, t
-from flext_infra._constants.config import FlextInfraConstantsConfig
+from flext_infra._constants import FlextInfraConstantsConfig
 from flext_infra._models._config import (
     FlextInfraModelsConfigBeads,
     FlextInfraModelsConfigContexts,
@@ -253,6 +253,15 @@ class FlextInfraModelsConfigWorkspace:
                 ),
             ),
         ] = ()
+        deferred_facades: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                description=(
+                    "Own root facade classes beyond the namespace families whose "
+                    "in-package bases are published as stand-ins"
+                ),
+            ),
+        ] = ()
         examples_module: Annotated[
             t.NonEmptyStr | None,
             m.Field(
@@ -288,12 +297,12 @@ class FlextInfraModelsConfigWorkspace:
             m.Field(description="Own ordered `make help` sections"),
         ] = ()
 
-        @m.field_validator("deferred_instances")
+        @m.field_validator("deferred_instances", "deferred_facades")
         @classmethod
         def _validate_deferred_instances(
             cls, values: tuple[str, ...]
         ) -> tuple[str, ...]:
-            """Require each deferred configuration root to be a unique identifier.
+            """Require each deferred root to be a unique identifier.
 
             Returns:
                 The declared export names, in declared order.
@@ -304,10 +313,10 @@ class FlextInfraModelsConfigWorkspace:
             """
             invalid = [value for value in values if not value.isidentifier()]
             if invalid:
-                msg = f"deferred instances must be identifiers: {invalid}"
+                msg = f"deferred roots must be identifiers: {invalid}"
                 raise ValueError(msg)
             if len(set(values)) != len(values):
-                msg = "deferred instances must be unique"
+                msg = "deferred roots must be unique"
                 raise ValueError(msg)
             return values
 

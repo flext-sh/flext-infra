@@ -10,7 +10,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from re import escape
 
-from flext_infra import FlextInfraCli, config
+from flext_infra import FlextInfraCli, FlextInfraConfig, config
 from flext_infra.check import FlextInfraWorkspaceChecker
 from flext_infra.codemod import FlextInfraModGateEngine
 from flext_infra.gates import FlextInfraGatesCodemod
@@ -257,7 +257,7 @@ class TestsFlextInfraCodemodGate:
         delta: t.JsonValue = {
             "codegen": declared.model_dump(mode="json", include={"artifacts"}),
         }
-        prefix = type(config).model_config.get("env_prefix")
+        prefix = FlextInfraConfig.model_config.get("env_prefix")
         if prefix is None:
             tm.reject("The config owner must declare its environment prefix")
         try:
@@ -266,7 +266,7 @@ class TestsFlextInfraCodemodGate:
                     u.Cli.json_dumps(delta),
                 ),
             }):
-                type(config).reset_for_testing()
+                FlextInfraConfig.reset_for_testing()
                 elected = next(
                     artifact
                     for artifact in config.Infra.codegen.artifacts
@@ -315,7 +315,7 @@ class TestsFlextInfraCodemodGate:
                 )
                 tm.ok(u.Cli.atomic_verify_binary_file_states(before))
         finally:
-            type(config).reset_for_testing()
+            FlextInfraConfig.reset_for_testing()
 
     @c.Tests.MARK.parametrize("target_scope", ["in_tree", "foreign", "broken"])
     def test_stub_symlink_keeps_the_owned_path_name(

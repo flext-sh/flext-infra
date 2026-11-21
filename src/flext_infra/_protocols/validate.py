@@ -369,6 +369,11 @@ class FlextInfraProtocolsValidate:
             """Public pytest item properties transported by report-log."""
             ...
 
+        @property
+        def exitstatus(self) -> int | None:
+            """SessionFinish exit status; absent when the session was killed."""
+            ...
+
     @runtime_checkable
     class PytestWarningEvent(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""

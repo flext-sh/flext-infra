@@ -19,7 +19,7 @@ from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeRuntimeModules,
     FlextInfraUtilitiesRopeRuntimeTypes,
 )
-from flext_infra._utilities._semantic_cutover.edits import (
+from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverEdits,
 )
 
