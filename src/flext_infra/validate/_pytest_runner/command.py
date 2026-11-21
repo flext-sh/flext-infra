@@ -199,12 +199,14 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         )
 
     def _config_testmon_digest(self) -> str:
-        """Fingerprint the project's current ``config/*.yaml`` behavior inputs.
+        """Fingerprint the project's and its package's ``config/*.yaml`` inputs.
 
         testmon tracks Python sources only, while a FLEXT project's behavior
-        is declared in its config: an edited YAML must select a fresh
-        environment in the same external database instead of a cache hit.
-        Read on every command construction, never memoized.
+        is declared in its config: the project-root layer and the packaged
+        defaults its config class loads from ``<package>/config``. An edited
+        YAML must select a fresh environment in the same external database
+        instead of a cache hit. Read on every command construction, never
+        memoized.
 
         Returns:
             The digest of every config source path and content.
@@ -213,14 +215,18 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             ValueError: If a required config source disappears mid-read.
 
         """
+        root = self.repository_root.resolve()
+        layout = u.Infra.layout(root)
         digest = hashlib.sha256()
-        for state in u.Infra.snapshot_config_sources(self.repository_root).unwrap():
+        for state in (
+            state
+            for source in (root, *(() if layout is None else (layout.package_dir,)))
+            for state in u.Infra.snapshot_config_sources(source).unwrap()
+        ):
             if state.content is None:
                 msg = f"required test configuration disappeared: {state.path}"
                 raise ValueError(msg)
-            digest.update(
-                state.path.relative_to(self.repository_root).as_posix().encode()
-            )
+            digest.update(state.path.relative_to(root).as_posix().encode())
             digest.update(b"\0")
             digest.update(hashlib.sha256(state.content).digest())
         return digest.hexdigest()[:8]
