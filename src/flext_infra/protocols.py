@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, TypeAlias
 
-from flext_cli import FlextCliProtocols
+from flext_cli import p
 
 from flext_infra._protocols import (
     FlextInfraProtocolsBase,
@@ -60,7 +60,7 @@ from flext_infra._protocols import (
 )
 
 
-class FlextInfraProtocols(FlextCliProtocols):
+class FlextInfraProtocols(p):
     """Structural contracts for flext-infra."""
 
     class Infra(

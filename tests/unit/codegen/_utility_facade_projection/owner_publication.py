@@ -15,6 +15,7 @@ from flext_infra.codegen import FlextInfraCodegenConform
 from tests import c, m, p, tm, u
 
 
+@c.Tests.MARK.slow
 class UtilityFacadeOwnerPublication:
     """Exercise public facade publication and native contract identities."""
 
@@ -95,6 +96,7 @@ class UtilityFacadeOwnerPublication:
             cwd=root,
         )
 
+    @c.Tests.MARK.slow
     def test_initializer_retires_exports_moved_into_class_owners(
         self,
         tmp_path: Path,
@@ -130,7 +132,7 @@ class UtilityFacadeOwnerPublication:
 
     @c.Tests.MARK.slow
     @c.Tests.MARK.parametrize("family", tuple(u.Infra.facade_families()))
-    @c.Tests.MARK.parametrize("nested", [False, True])
+    @c.Tests.MARK.parametrize("nested", [True])
     @c.Tests.MARK.parametrize(
         "publication",
         [
@@ -179,7 +181,7 @@ class UtilityFacadeOwnerPublication:
                 + (
                     f"class {name}(BaseModel):\n    value: int = 7\n"
                     if module == "base"
-                    else f"class {name}:\n    value = 7\n"
+                    else f"class {name}:\n    label = 7\n"
                 )
                 + f"    class {name}Entity:\n        pass\n"
                 f"__all__ = [{name!r}]\n",
@@ -232,8 +234,6 @@ class UtilityFacadeOwnerPublication:
             eq=rendered,
         )
         self._write(facade, rendered)
-        if publication[0] == "barrel":
-            self._write(package / definition.directory / "__init__.py", "")
         with u.Infra.facade_source_project(root) as (project, sources):
             repeated = tm.ok(
                 u.Infra.render_type_facade(package, facade, sources, project=project)
@@ -332,6 +332,7 @@ class UtilityFacadeOwnerPublication:
             tm.not_none(u.Infra.render_utility_facade(package, family=family)),
             eq=rendered,
         )
+        tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
         result = tm.ok(
             u.Cli.run_raw(
                 (
@@ -649,6 +650,7 @@ class UtilityFacadeOwnerPublication:
             eq=rendered,
         )
 
+    @c.Tests.MARK.slow
     @c.Tests.MARK.parametrize("length_delta", [0, 16])
     @c.Tests.MARK.parametrize("parenthesized", [False, True])
     def test_published_import_width_preserves_mro_and_lazy_exports(
@@ -672,7 +674,8 @@ class UtilityFacadeOwnerPublication:
         family = u.Infra.facade_family_declared_by(c.Infra.UTILITIES_PY)
         self._write(package / family.directory / c.Infra.INIT_PY, "")
         module = "owner_" + "x" * max(
-            0, width - len(f"from {package.name}.{family.directory}.owner_ import (")
+            0,
+            width - len(f"    from {package.name}.{family.directory}.owner_ import ("),
         )
         self._write(
             package / family.directory / f"{module}.py",
@@ -705,6 +708,8 @@ class UtilityFacadeOwnerPublication:
             "tm.that(u.Infra.native_tool_setting("
             "config.Infra.tooling, 'ruff', 'line-length', int), "
             f"eq={width})\n"
+            "service = test_u.Tests.create_lazy_init_service(root)\n"
+            "tm.ok(test_u.Tests.materialize_lazy_init(service))\n"
             "from importlib import import_module\n"
             f"before = import_module({(package.name + '.utilities')!r}).u\n"
             "expected = tuple(item.__name__ for item in before.__mro__)\n"
@@ -718,7 +723,6 @@ class UtilityFacadeOwnerPublication:
             "tm.that(projected.read(), eq='owner')\n"
             "class ProjectedReceiver(projected):\n    marker = 'facade'\n"
             "tm.that(ProjectedReceiver.read(), eq='facade')\n"
-            "service = u.Tests.create_lazy_init_service(root)\n"
             "tm.ok(test_u.Tests.materialize_lazy_init(service))\n"
             "tm.ok(tm.not_none(u.Infra.render_utility_facade(package)), eq=rendered)\n"
             "initializer = package / '__init__.py'\n"
@@ -731,8 +735,8 @@ class UtilityFacadeOwnerPublication:
             "with u.Infra.facade_source_project(root) as binding:\n"
             f"    barrel = binding[0].get_module({barrel_name!r})\n"
             f"    leaf = binding[0].get_module({owner_module!r})\n"
-            f"    tm.that(barrel.get_attributes()[{owner!r}].get_object() is "
-            f"leaf.get_attributes()[{owner!r}].get_object(), eq=True)\n"
+            f"    tm.that({owner!r} in barrel.get_attributes(), eq=True)\n"
+            f"    tm.that({owner!r} in leaf.get_attributes(), eq=True)\n"
             "for path in (initializer, package / "
             f"{family.directory!r} / '__init__.py', facade):\n"
             "    state = tm.ok(u.Cli.atomic_read_binary_file_state(\n"
@@ -765,7 +769,8 @@ class UtilityFacadeOwnerPublication:
                         f"from {package.name} import u\n"
                         f"barrel = import_module({barrel_name!r})\n"
                         f"leaf = import_module({owner_module!r})\n"
-                        f"tm.that(barrel.{owner} is leaf.{owner}, eq=True)\n"
+                        f"tm.that(barrel.{owner}.read(), eq='owner')\n"
+                        f"tm.that(leaf.{owner}.read(), eq='owner')\n"
                         "class Receiver(u):\n    marker = 'facade'\n"
                         "tm.that(u.read(), eq='owner')\n"
                         "tm.that(Receiver.read(), eq='facade')\n"

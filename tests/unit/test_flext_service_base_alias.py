@@ -43,7 +43,6 @@ class TestsFlextInfraServiceBaseAlias:
         service.write_text(permitted, encoding=c.DEFAULT_ENCODING)
         u.Tests.declare_workspace_projects(mod_workspace, (project.name,))
         rules = (
-            "facade-base-by-class-name",
             "ban-class-wrong-facade-layer",
             "ban-long-facade-name-import",
         )

@@ -370,10 +370,7 @@ class FlextInfraConstantsRefactor:
             "ban-test-namespace-alias",
         ),
         SemanticCutoverPhase.TEST_ASSERT_TO_MATCHER: ("ban-test-assert",),
-        SemanticCutoverPhase.FACADE_BASE: (
-            "facade-base-by-class-name",
-            "require-facade-mro-completeness",
-        ),
+        SemanticCutoverPhase.FACADE_BASE: ("require-facade-mro-completeness",),
         SemanticCutoverPhase.MODEL_FIELDS: (
             "rewire-getattr-model-fields-to-direct-access",
         ),

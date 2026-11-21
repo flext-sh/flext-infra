@@ -15,14 +15,14 @@ from typing import Protocol, runtime_checkable
 
 from flext_tests import p as flext_tests_p
 
-from flext_infra import FlextInfraProtocols
+from flext_infra import p
 from tests._protocols import (
     TestsFlextInfraProtocolsBase,
     TestsFlextInfraProtocolsSemanticCutover,
 )
 
 
-class TestsFlextInfraProtocols(FlextInfraProtocols):
+class TestsFlextInfraProtocols(p):
     """Protocol definitions for FLEXT infra tests."""
 
     class Tests(
