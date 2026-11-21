@@ -369,6 +369,7 @@ def cached_runner_project(tmp_path: Path) -> Path:
     tests_root = project_root / policy.target_directory
     package_root.mkdir(parents=True)
     tests_root.mkdir(parents=True)
+    # Python source discovery reads a Git checkout, as every real consumer is.
     u.Tests.initialize_git_repo(project_root)
     # A faithful consumer project carries the fleet-standard coverage
     # boundary: the Cython provider mapping of dependency_injector is not
