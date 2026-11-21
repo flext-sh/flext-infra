@@ -10,6 +10,7 @@ import hashlib
 import os
 import shutil
 import sys
+import sysconfig
 import time
 from collections.abc import Mapping, Sequence
 from functools import cache
@@ -421,8 +422,43 @@ class TestsFlextInfraUtilitiesToolingFixture:
             [str(binary.value), "venv", "--python", sys.executable, str(environment)],
             cwd=root,
         )
-        if created.failure or not dependency_projects:
+        if created.failure:
             return created
+        fixture_site = next(environment.glob("lib/python*/site-packages"), None)
+        if fixture_site is None:
+            return r[bool].fail(
+                f"fixture environment has no site-packages: {environment}",
+            )
+        runtime_bound = u.Cli.files_write_text(
+            fixture_site / "flext-fixture-runtime.pth",
+            f"{Path(sysconfig.get_paths()['purelib'])}\n",
+        )
+        if runtime_bound.failure:
+            return r[bool].from_failure(runtime_bound)
+        if not dependency_projects:
+            return created
+        return TestsFlextInfraUtilitiesToolingFixture._install_dependency_wheels(
+            binary.value,
+            root,
+            environment,
+            dependency_projects,
+            session_runtime,
+        )
+
+    @staticmethod
+    def _install_dependency_wheels(
+        uv: Path,
+        root: Path,
+        environment: Path,
+        dependency_projects: Sequence[Path],
+        session_runtime: p.Tests.SessionRuntime | None,
+    ) -> p.Result[bool]:
+        """Install session-built real dependency wheels into the fixture venv.
+
+        Returns:
+            The installation result.
+
+        """
         if session_runtime is None:
             return r[bool].fail("Fixture dependency builds require a session runtime")
         wheels = TestsFlextInfraUtilitiesToolingFixture.python_dependency_wheels(
@@ -446,7 +482,7 @@ class TestsFlextInfraUtilitiesToolingFixture:
             return r[bool].from_failure(bound)
         return u.Cli.run_checked(
             (
-                str(binary.value),
+                str(uv),
                 "pip",
                 "install",
                 "--python",

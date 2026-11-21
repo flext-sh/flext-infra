@@ -13,14 +13,15 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import signal
 import time
-from collections.abc import Generator, MutableMapping, Sequence
+from collections.abc import Callable, Generator, MutableMapping, Sequence
 from hashlib import sha256
 from importlib.metadata import version
 from pathlib import Path
 from sys import modules, monitoring
 from traceback import format_exception
-from types import CodeType, ModuleType, SimpleNamespace
+from types import CodeType, FrameType, ModuleType, SimpleNamespace
 from typing import ClassVar, TypeIs, cast
 from warnings import WarningMessage
 
@@ -658,6 +659,16 @@ class FlextInfraUtilitiesPytestCollection:
         When every collected item has already completed, nothing is left to
         stop and the stop request would only recolor a finished green suite
         red, so the request is suppressed at that boundary.
+
+        An item still in flight at the process deadline (a class fixture is
+        not bounded by the per-item ``timeout_func_only`` budget) receives the
+        runner's SIGTERM. The controller turns it into pytest's own
+        interruption, so testmon saves its unflushed batch and the session
+        still writes its junit, report log and durations inside the
+        termination grace instead of dying with ``executed=unknown``. Once
+        pytest is already unwinding from an interruption, a later deadline
+        signal is ignored: a second signal must never kill the finalization
+        that publishes the executed prefix.
         """
 
         def __init__(self, *, stop_at_monotonic: float) -> None:
@@ -665,10 +676,44 @@ class FlextInfraUtilitiesPytestCollection:
             self.session: t.Infra.Pytest.Session | None = None
             self.completed_items: set[str] = set()
             self.selected_count = 0
+            self.stopping = False
+            self.previous_sigterm: (
+                Callable[[int, FrameType | None], object] | int | None
+            ) = signal.SIG_DFL
 
         def pytest_sessionstart(self, session: t.Infra.Pytest.Session) -> None:
-            """Bind the controller session that owns the stop decision."""
+            """Bind the controller session and its graceful wall interruption."""
             self.session = session
+            self.previous_sigterm = signal.signal(signal.SIGTERM, self._interrupt)
+
+        def pytest_keyboard_interrupt(
+            self,
+            excinfo: t.Infra.Pytest.ExceptionInfo[BaseException],
+        ) -> None:
+            """Keep the announced interruption terminal for the rest of the process."""
+            del excinfo
+            self.stopping = True
+
+        def pytest_unconfigure(self) -> None:
+            """Restore the SIGTERM action unless the interruption must stay terminal."""
+            if signal.getsignal(signal.SIGTERM) != self._interrupt:
+                return
+            if self.stopping:
+                signal.signal(signal.SIGTERM, signal.SIG_IGN)
+                return
+            signal.signal(signal.SIGTERM, self.previous_sigterm)
+
+        def _interrupt(self, _signum: int, _frame: FrameType | None) -> None:
+            """Unwind the session through pytest's native interruption path.
+
+            Raises:
+                KeyboardInterrupt: Until pytest has caught the interruption, so
+                    it runs its interrupt hooks; later signals only skip.
+
+            """
+            if self.stopping:
+                return
+            raise KeyboardInterrupt
 
         @FlextInfraUtilitiesPytest.Pytest.hookimpl(trylast=True)
         def pytest_collection_finish(self, session: t.Infra.Pytest.Session) -> None:
