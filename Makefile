@@ -546,6 +546,8 @@ _bootstrap_setup_tools:
 			sh "$${mise_stage}/install.sh" ;; \
 	esac; \
 	fi; \
+	bootstrap_stage=trust; \
+	"$(BOOTSTRAP_MISE)" trust "$(PROJECT_ROOT)/.mise.toml"; \
 	bootstrap_stage=lock-pin; \
 	if MISE_LOCKED=1 "$(BOOTSTRAP_MISE)" -C "$(PROJECT_ROOT)" install --yes "github:jdx/mise"; then :; else \
 		printf 'ERROR: mise.lock pins no usable github:jdx/mise release for this tree; run make upg\n' >&2; \
@@ -794,13 +796,15 @@ SYNC_UPGRADE_EXECUTOR_WITH = $(call TARGET_ENVIRONMENT,$(FLEXT_INFRA_EXECUTOR_VE
 	$(VERIFY_ENVIRONMENT)
 
 # Setup checks native lock freshness without writing the lock. Native uv selects
-# every member's declared extras and groups, without copying dependency graphs.
+# every member's declared extras and groups, without copying dependency graphs,
+# and compiles the bytecode once, so the first import in a new lane never pays
+# the compilation inside a test's time limit.
 
 
-override SETUP_SYNC_ARGS := --all-extras --all-groups --link-mode clone
+override SETUP_SYNC_ARGS := --all-extras --all-groups --link-mode clone --compile-bytecode
 
 ifeq ($(CI),Y)
-override SETUP_SYNC_ARGS := --all-extras --all-groups --link-mode clone --no-editable
+override SETUP_SYNC_ARGS := --all-extras --all-groups --link-mode clone --compile-bytecode --no-editable
 endif
 
 # Custom hooks are declared in CI too; load their selected physical Makefile.
@@ -865,7 +869,7 @@ VERB_ARGUMENTS_check := CHECK_PHASE
 VERB_DESCRIPTION_tests := Run native incremental tests through the persistent Testmon selection.
 VERB_ARGUMENTS_tests :=
 
-VERB_DESCRIPTION_tests-full := Run the complete selected inventory once without Testmon.
+VERB_DESCRIPTION_tests-full := Run the complete selected inventory once and record it in Testmon.
 VERB_ARGUMENTS_tests-full :=
 
 VERB_DESCRIPTION_tests-harness := Run only the harness gate tests, through the persistent Testmon selection, under the harness that provides their inputs; MARKER=<harness gate marker> narrows the run to one.
@@ -1257,6 +1261,8 @@ _upg_toolchain: _builtin_require_workspace _builtin_require_github_credential
 			sh "$${mise_stage}/install.sh" ;; \
 	esac; \
 	fi; \
+	bootstrap_stage=trust; \
+	"$(BOOTSTRAP_MISE)" trust "$(PROJECT_ROOT)/.mise.toml"; \
 	MISE_LOCKFILE=0 "$(BOOTSTRAP_MISE)" -C "$(PROJECT_ROOT)" install --yes "github:jdx/mise"; \
 	mise_reader="$$(MISE_LOCKFILE=0 "$(BOOTSTRAP_MISE)" -C "$(PROJECT_ROOT)" which mise)"; \
 	if [ "$${OS:-}" = Windows_NT ]; then mise_reader="$$(cygpath --unix "$$mise_reader")"; fi; \

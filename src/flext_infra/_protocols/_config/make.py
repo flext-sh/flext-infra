@@ -671,6 +671,15 @@ class FlextInfraProtocolsConfigMake:
         """Structural data contract projected from the owning model."""
 
         @property
+        def host_load_gate(self) -> bool:
+            """Structural member projected from the owning model.
+
+            Whether rendered verbs refuse above max_load5; false only for test-
+            fabric fixture projects (ADR-032).
+            """
+            ...
+
+        @property
         def overrides(
             self,
         ) -> Mapping[

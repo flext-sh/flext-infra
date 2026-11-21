@@ -650,9 +650,7 @@ class FlextInfraProtocolsWorkspace:
             ...
 
         @property
-        def target(
-            self,
-        ) -> FlextInfraProtocolsConfigRepository.RepositoryConformTarget:
+        def target(self) -> FlextInfraProtocolsConfigRepository.RepositoryConformTarget:
             """Effective governed project properties."""
             ...
 
@@ -662,9 +660,7 @@ class FlextInfraProtocolsWorkspace:
             ...
 
         @property
-        def runtime(
-            self,
-        ) -> FlextInfraProtocolsWorkspace.WorkspaceRuntimeContext:
+        def runtime(self) -> FlextInfraProtocolsWorkspace.WorkspaceRuntimeContext:
             """Physical environment and native resolver ownership."""
             ...
 
