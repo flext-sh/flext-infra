@@ -433,14 +433,9 @@ override export MISE_AUTO_INSTALL := 0
 # line and owns none. No other input selects it, and it is never shared with
 # another checkout.
 override RUNTIME_VENV := $(RUNTIME_ROOT)/.venv
-# The upgrade executor (make.executor_environment) is a separate uv-created
-# environment under the runtime root: it runs only `make upg`'s residual
-# flext-infra step and never imports the project or the runtime environment.
-override FLEXT_INFRA_EXECUTOR_VENV := $(RUNTIME_ROOT)/.flext/executor
 ifeq ($(OS),Windows_NT)
 override RUNTIME_BIN := $(RUNTIME_VENV)/Scripts
 override RUNTIME_PYTHON := $(RUNTIME_BIN)/python.exe
-override FLEXT_INFRA_EXECUTOR_PYTHON := $(FLEXT_INFRA_EXECUTOR_VENV)/Scripts/python.exe
 NORMALIZED_CALLER_PATH := $(shell cygpath --path "$(CALLER_PATH)")
 ifneq ($(.SHELLSTATUS),0)
 $(error cygpath failed to normalize PATH)
@@ -455,7 +450,6 @@ CALLER_VIRTUAL_ENV_BIN := $(NORMALIZED_CALLER_VIRTUAL_ENV)/Scripts
 else
 override RUNTIME_BIN := $(RUNTIME_VENV)/bin
 override RUNTIME_PYTHON := $(RUNTIME_BIN)/python
-override FLEXT_INFRA_EXECUTOR_PYTHON := $(FLEXT_INFRA_EXECUTOR_VENV)/bin/python
 NORMALIZED_CALLER_PATH := $(CALLER_PATH)
 NORMALIZED_CALLER_VIRTUAL_ENV := $(CALLER_VIRTUAL_ENV)
 CALLER_VIRTUAL_ENV_BIN := $(NORMALIZED_CALLER_VIRTUAL_ENV)/bin
@@ -704,6 +698,11 @@ INSTALL_GIT_HOOKS_RECIPE = set -eu; \
 	}; \
 	$(GOVERNED_CHECKOUTS); \
 	for checkout in $$checkouts; do \
+		configured_hooks_path="$$(git -C "$$root/$$checkout" config --get core.hooksPath || true)"; \
+		if [ "$$configured_hooks_path" = /dev/null ]; then \
+			printf 'ERROR[setup] core.hooksPath is set to /dev/null in %s; unset it to install hooks\n' "$$checkout" >&2; \
+			exit 2; \
+		fi; \
 		hooks_dir="$$(git -C "$$root/$$checkout" rev-parse --path-format=absolute --git-path hooks)"; \
 		mkdir -p "$$hooks_dir"; \
 		for stage in pre-push; do \
@@ -755,7 +754,7 @@ REQUIRE_WORKSPACE_ENVIRONMENT = case "$(PROJECT_ROOT)/" in \
 	"$(RUNTIME_ROOT)/"*) ;; \
 	*) printf 'ERROR: runtime workspace does not contain this project: %s\n' "$(RUNTIME_ROOT)" >&2; exit 2 ;; \
 	esac; \
-	for environment_path in "$$(dirname "$(RUNTIME_VENV)")" "$(RUNTIME_VENV)" "$(RUNTIME_BIN)" "$(PROJECT_ROOT)/.venv" "$(PROJECT_ROOT)/.venv/bin" "$(PROJECT_ROOT)/.venv/Scripts" "$$(dirname "$(FLEXT_INFRA_EXECUTOR_VENV)")" "$(FLEXT_INFRA_EXECUTOR_VENV)"; do \
+	for environment_path in "$$(dirname "$(RUNTIME_VENV)")" "$(RUNTIME_VENV)" "$(RUNTIME_BIN)" "$(PROJECT_ROOT)/.venv" "$(PROJECT_ROOT)/.venv/bin" "$(PROJECT_ROOT)/.venv/Scripts"; do \
 		if [ -L "$$environment_path" ]; then \
 			printf 'ERROR: workspace environment must be physical, not a symlink: %s\n' "$$environment_path" >&2; exit 2; \
 		fi; \
@@ -771,27 +770,6 @@ override UV_RUN = env -u VIRTUAL_ENV -u UV_PROJECT -u PROJECT_ROOT PATH="$(RUNTI
 # Native locked workspace membership owns control imports, never caller overlays.
 override PROJECT_INFRA_RUN = env -u MISE_PYTHON_UV_VENV_AUTO -u UV_PROJECT -u UV_WORKING_DIR -u UV_CONFIG_FILE -u UV_PROJECT_ENVIRONMENT -u UV_PYTHON -u UV_PYTHON_DOWNLOADS -u UV_NO_CONFIG -u UV_NO_SOURCES -u UV_FROZEN -u UV_LOCKED -u VIRTUAL_ENV -u PYTHONHOME -u PYTHONPATH -u PYTHONDONTWRITEBYTECODE "$(FLEXT_INFRA_PYTHON)"
 override PROJECT_FLEXT_INFRA := $(PROJECT_INFRA_RUN) -m flext_infra
-# The upgrade executor (make.executor_environment) runs isolated (-I: no working
-# directory, PYTHONPATH or user site on sys.path) from its own environment, so
-# `make upg`'s residual flext-infra step imports neither the project's source nor
-# the runtime environment.
-override EXECUTOR_FLEXT_INFRA = env -u MISE_PYTHON_UV_VENV_AUTO -u UV_PROJECT -u UV_WORKING_DIR -u UV_CONFIG_FILE -u UV_PROJECT_ENVIRONMENT -u UV_PYTHON -u UV_PYTHON_DOWNLOADS -u UV_NO_CONFIG -u UV_NO_SOURCES -u UV_FROZEN -u UV_LOCKED -u VIRTUAL_ENV -u PYTHONHOME -u PYTHONPATH -u PYTHONDONTWRITEBYTECODE "$(FLEXT_INFRA_EXECUTOR_PYTHON)" -I -m flext_infra
-# Native uv syncs the executor from the dependency group that pins flext-infra,
-# without editable installs, into its own environment (recreated first when it
-# is not a uv environment, and refreshed, so a sync never targets a Mise base
-# interpreter). A consumer excludes the project, so the executor never imports
-# its source. A project in flext-infra's own runtime closure (derived from the
-# installed metadata) supplies part of the executor, so its locked non-editable
-# build is installed, never the editable source. upg's pre-resolution executor
-# follows the declared sources (--no-frozen) so a Makefile generated from the
-# current tip can run commands the committed lock predates; its post-resolution
-# executor is frozen from the written locks for the last repair.
-SYNC_UPGRADE_EXECUTOR_RECIPE = $(call SYNC_UPGRADE_EXECUTOR_WITH,--frozen)
-SYNC_UPGRADE_EXECUTOR_PRE_RESOLUTION_RECIPE = $(call SYNC_UPGRADE_EXECUTOR_WITH,--no-frozen --upgrade)
-SYNC_UPGRADE_EXECUTOR_WITH = $(call TARGET_ENVIRONMENT,$(FLEXT_INFRA_EXECUTOR_VENV)); \
-	env -u MISE_PYTHON_UV_VENV_AUTO -u UV_PROJECT -u UV_WORKING_DIR -u UV_CONFIG_FILE -u UV_PROJECT_ENVIRONMENT -u UV_PYTHON -u UV_PYTHON_DOWNLOADS -u UV_NO_CONFIG -u UV_NO_SOURCES -u UV_FROZEN -u UV_LOCKED -u VIRTUAL_ENV -u PYTHONHOME -u PYTHONPATH -u PYTHONDONTWRITEBYTECODE UV_PROJECT_ENVIRONMENT="$$install_environment" timeout --signal=TERM --kill-after=5s 118s $(UV) sync $(1) --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads --no-default-groups --group "dev" --no-editable --link-mode clone; \
-	$(INSTALL_FLEXT_INFRA) --help >/dev/null; \
-	$(VERIFY_ENVIRONMENT)
 
 # Setup checks native lock freshness without writing the lock. Native uv selects
 # every member's declared extras and groups, without copying dependency graphs.
@@ -1331,8 +1309,7 @@ _upg_lifecycle:
 	mise_bin="$(MISE)"; \
 	$(RESOLVE_DESIRED_PYTHON); \
 	[ -f "$(RUNTIME_ROOT)/uv.lock" ] || $(UV) lock --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads; \
-	$(SYNC_UPGRADE_EXECUTOR_PRE_RESOLUTION_RECIPE); \
-	PATH="$$(dirname "$$mise_bin"):$$PATH" $(EXECUTOR_FLEXT_INFRA) deps cooldown-admission --repository-root "$(RUNTIME_ROOT)"; \
+	PATH="$$(dirname "$$mise_bin"):$$PATH" $(PROJECT_FLEXT_INFRA) deps cooldown-admission --repository-root "$(RUNTIME_ROOT)"; \
 	bootstrap_stage=network-auth; \
 	if git config --global --get-regexp '^url\.https?://[^ /]+:[^ /]+@.*\.insteadof$$' >/dev/null; then \
 		printf 'ERROR: Global Git URL rewrite configuration embeds credentials and shadows the fleet SSH route; correct that configuration at its owner\n' >&2; \
@@ -1358,7 +1335,7 @@ _upg_lifecycle:
 	done; \
 	set +f; \
 	$(UV) lock$$upg_pkg_flags --project "$(PROJECT_ROOT)" --python "$$desired_python" --no-python-downloads; \
-	PATH="$$(dirname "$$mise_bin"):$$PATH" $(EXECUTOR_FLEXT_INFRA) deps upg-bounds --repository-root "$(RUNTIME_ROOT)"; \
+	PATH="$$(dirname "$$mise_bin"):$$PATH" $(PROJECT_FLEXT_INFRA) deps upg-bounds --repository-root "$(RUNTIME_ROOT)"; \
 	bootstrap_stage=network-auth; \
 	if git config --global --get-regexp '^url\.https?://[^ /]+:[^ /]+@.*\.insteadof$$' >/dev/null; then \
 		printf 'ERROR: Global Git URL rewrite configuration embeds credentials and shadows the fleet SSH route; correct that configuration at its owner\n' >&2; \
@@ -1382,9 +1359,8 @@ _upg_lifecycle:
 	set +f; \
 	$(UV) lock --project "$(PROJECT_ROOT)" --python "$$desired_python" --no-python-downloads; \
 	$(INSTALL_RUNTIME_RECIPE); \
-	$(SYNC_UPGRADE_EXECUTOR_RECIPE); \
-	PATH="$$(dirname "$$mise_bin"):$$PATH" $(EXECUTOR_FLEXT_INFRA) deps repair-mise-platforms --repository-root "$(RUNTIME_ROOT)"; \
-	PATH="$$(dirname "$$mise_bin"):$$PATH" $(EXECUTOR_FLEXT_INFRA) deps verify-pin-convergence --repository-root "$(RUNTIME_ROOT)"; \
+	PATH="$$(dirname "$$mise_bin"):$$PATH" $(PROJECT_FLEXT_INFRA) deps repair-mise-platforms --repository-root "$(RUNTIME_ROOT)"; \
+	PATH="$$(dirname "$$mise_bin"):$$PATH" $(PROJECT_FLEXT_INFRA) deps verify-pin-convergence --repository-root "$(RUNTIME_ROOT)"; \
 	case " $(CUSTOM_DECLARED_TARGETS) " in \
 		*" post-upg "*) $(SELF_MAKE) post-upg ;; \
 	esac; \

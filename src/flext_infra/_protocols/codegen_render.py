@@ -103,36 +103,34 @@ class FlextInfraProtocolsCodegenRender:
             """The generated value contract's responsibility."""
             ...
 
-    @runtime_checkable
-    class ModelProtocolRenderContextModelProtocolContract(
-        FlextCliProtocols.BaseModel, Protocol
-    ):
-        """Structural data contract projected from the owning model."""
+        @runtime_checkable
+        class ModelProtocolContract(FlextCliProtocols.BaseModel, Protocol):
+            """Structural data contract projected from the owning model."""
 
-        @property
-        def name(self) -> t.NonEmptyStr:
-            """The nested structural contract."""
-            ...
+            @property
+            def name(self) -> t.NonEmptyStr:
+                """The nested structural contract."""
+                ...
 
-        @property
-        def depth(self) -> int:
-            """The contract's nesting depth beneath its owner."""
-            ...
+            @property
+            def depth(self) -> int:
+                """The contract's nesting depth beneath its owner."""
+                ...
 
-        @property
-        def type_parameters(self) -> tuple[str, ...]:
-            """Complete parameter declarations with bounds and defaults."""
-            ...
+            @property
+            def type_parameters(self) -> tuple[str, ...]:
+                """Complete parameter declarations with bounds and defaults."""
+                ...
 
-        @property
-        def bases(self) -> tuple[str, ...]:
-            """Authenticated structural capabilities of the contract."""
-            ...
+            @property
+            def bases(self) -> tuple[str, ...]:
+                """Authenticated structural capabilities of the contract."""
+                ...
 
-        @property
-        def declarations(self) -> tuple[str, ...]:
-            """Field declarations retaining their annotation metadata."""
-            ...
+            @property
+            def declarations(self) -> tuple[str, ...]:
+                """Field declarations retaining their annotation metadata."""
+                ...
 
     @runtime_checkable
     class GithubWorkflowProjectRenderSpec(

@@ -761,15 +761,6 @@ class FlextInfraModelsConfigMake(
                 default_factory=TestmonCacheSpec,
             ),
         ]
-        executor_environment: Annotated[
-            ExecutorEnvironmentSpec,
-            m.Field(
-                description=(
-                    "Isolated environment that runs the residual flext-infra "
-                    "upgrade step without importing the project"
-                )
-            ),
-        ]
         gate_acceptance_policy: Annotated[
             FlextInfraConstantsConfig.GateAcceptancePolicy,
             m.Field(description="Policy recorded by original gate execution receipts"),
