@@ -1007,10 +1007,13 @@ class FlextInfraPytestRunnerExecution(
             # An unbounded FULL waits under the lock owner's own bound.
             if deadline is None:
                 return None
-            admission_ends = (
-                deadline.expires_at_monotonic - deadline.termination_grace_seconds
-            )
             return max(0.0, admission_ends - time.monotonic())
+
+        admission_ends = (
+            (deadline.expires_at_monotonic - deadline.termination_grace_seconds)
+            if deadline is not None
+            else float("inf")
+        )
 
         self._cache_publication = None
         lease_started = time.monotonic()
