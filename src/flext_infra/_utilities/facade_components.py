@@ -1849,8 +1849,6 @@ class FlextInfraUtilitiesFacadeComponents:
                     and base.get_name() in declared_names
                 ):
                     continue
-            else:
-                pass
             bases.append((source[start:end], base))
         return FlextInfraUtilitiesFacadeComponents._facade_namespace_bindings(
             module, index, namespace, path

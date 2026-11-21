@@ -627,8 +627,10 @@ SYNC_UPGRADE_EXECUTOR_WITH = $(call TARGET_ENVIRONMENT,$(FLEXT_INFRA_EXECUTOR_VE
 	$(VERIFY_ENVIRONMENT)
 
 # Setup checks native lock freshness without writing the lock. Native uv selects
-# every member's declared extras and groups, without copying dependency graphs.
-{% set setup_sync_arguments = ["--all-extras", "--all-groups", "--link-mode", uv_link_mode] %}
+# every member's declared extras and groups, without copying dependency graphs,
+# and compiles the bytecode once, so the first import in a new lane never pays
+# the compilation inside a test's time limit.
+{% set setup_sync_arguments = ["--all-extras", "--all-groups", "--link-mode", uv_link_mode, "--compile-bytecode"] %}
 {% if make_profile == "workspace" %}{% set setup_sync_arguments = setup_sync_arguments + ["--all-packages"] %}{% endif %}
 override SETUP_SYNC_ARGS := {{ setup_sync_arguments | join(" ") }}
 
