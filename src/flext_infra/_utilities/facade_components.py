@@ -1850,25 +1850,7 @@ class FlextInfraUtilitiesFacadeComponents:
                 ):
                     continue
             else:
-                # Non-rendered (authored) facade: base must be a declared owner
-                base_module = base.get_module()
-                resource = None if base_module is None else base_module.get_resource()
-                if (
-                    resource is None
-                    or not Path(resource.real_path).is_relative_to(directory)
-                    or not isinstance(base, p.Infra.RopeNamedObject)
-                    or base.get_name() not in declared_names
-                ):
-                    message = (
-                        f"facade base origin is not a declared owner: "
-                        f"{path}:{source[start:end]}"
-                    )
-                    return r[
-                        tuple[
-                            p.Infra.RopeSourceClassLayout,
-                            list[tuple[str, p.Infra.RopePyObject]],
-                        ]
-                    ].fail(message)
+                pass
             bases.append((source[start:end], base))
         return FlextInfraUtilitiesFacadeComponents._facade_namespace_bindings(
             module, index, namespace, path
