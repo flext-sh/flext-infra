@@ -6,13 +6,9 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import re
-from typing import TYPE_CHECKING, ClassVar
+from typing import ClassVar
 
 from flext_core import c
-
-if TYPE_CHECKING:
-    from flext_infra import t
 
 
 class FlextInfraConstantsCodegenDetection:
@@ -38,14 +34,6 @@ class FlextInfraConstantsCodegenDetection:
         "()",
     })
     "Literal values considered trivial for constant detection heuristics."
-    DETECTION_FINAL_DECL_RE: ClassVar[t.RegexPattern] = re.compile(
-        r"^(?P<indent>\s*)(?P<name>[A-Z_][A-Z0-9_]*)"
-        r"\s*:\s*(?P<ann>Final\[.*?\])\s*=\s*(?P<value>.+?)\s*(?:#.*)?$",
-        re.MULTILINE,
-    )
-    "Regex: NAME: ClassVar[TYPE] = VALUE (with optional inline comment)."
-    DETECTION_CLASS_DECL_RE: ClassVar[t.RegexPattern] = re.compile(r"class\s+(\w+)")
-    "Regex: class ClassName (captures class name)."
 
 
 __all__: list[str] = ["FlextInfraConstantsCodegenDetection"]
