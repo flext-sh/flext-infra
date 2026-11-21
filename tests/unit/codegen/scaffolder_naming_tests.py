@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
 from collections.abc import Callable, Mapping, Sequence
 from functools import partial
 from typing import TYPE_CHECKING
@@ -34,7 +35,10 @@ def _validate_class_names(
     """Validate expected class names exist in the generated modules."""
     for filename, expected_class in filename_to_expected_class.items():
         source = (base_dir / filename).read_text(encoding="utf-8")
-        class_names = c.Infra.DETECTION_CLASS_DECL_RE.findall(source)
+        tree = ast.parse(source)
+        class_names = [
+            node.name for node in ast.walk(tree) if isinstance(node, ast.ClassDef)
+        ]
         tm.that(
             expected_class in class_names,
             eq=True,
