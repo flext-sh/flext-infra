@@ -419,10 +419,13 @@ class TestsFlextInfraGitFacetWorktreeStatus:
         request = m.Infra.GitRepoRequest(repo_root=repository)
         merge = m.Infra.GitCommitishRequest(repo_root=repository, commitish="incoming")
 
+        tm.that(tm.ok(u.Infra.git_merge_incoming_paths(request)), eq=())
         tm.fail(u.Infra.git_merge_no_edit(merge))
         tm.that(tm.ok(u.Infra.git_conflicted_paths(request)), eq=("shared.txt",))
+        tm.that(tm.ok(u.Infra.git_merge_incoming_paths(request)), eq=("shared.txt",))
         tm.ok(u.Infra.git_merge_abort(request))
         tm.that(tm.ok(u.Infra.git_conflicted_paths(request)), eq=())
+        tm.that(tm.ok(u.Infra.git_merge_incoming_paths(request)), eq=())
         tm.that(shared.read_text(encoding="utf-8"), eq="local\n")
 
         tm.fail(u.Infra.git_merge_no_edit(merge))
