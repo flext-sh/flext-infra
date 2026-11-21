@@ -785,9 +785,11 @@ class FlextInfraModelsConfigArtifact(
             declared = {verb.name for verb in self.make.verbs} | {
                 verb.name for verb in self.repository.extra_verbs
             }
-            unknown = sorted(set(self.make.admission.overrides) - declared)
+            admission = self.make.admission
+            named = {*admission.overrides, *admission.ungated_verbs}
+            unknown = sorted(named - declared)
             if unknown:
-                msg = f"make.admission.overrides name undeclared verbs: {unknown}"
+                msg = f"make.admission names undeclared verbs: {unknown}"
                 raise ValueError(msg)
             return self
 

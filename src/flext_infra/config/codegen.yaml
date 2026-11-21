@@ -707,6 +707,10 @@ Infra:
         max_processes: 2
         # Operator 2026-11-19: every verb admits at max_load5 20; no verb
         # declares a higher load override.
+        # Operator 2026-11-21: setup only bootstraps and deploys the committed
+        # locks (upg alone resolves and writes them), so it must always run on
+        # its own; the load gate never refuses it, the run limits still apply.
+        ungated_verbs: [setup]
         refusal_guidance:
         - Do not wait for the load to drop; run the lighter form now, it runs at idle priority.
         - Prefer make tests (incremental Testmon) over make tests-full; run tests-full only occasionally.

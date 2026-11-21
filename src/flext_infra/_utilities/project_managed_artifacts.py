@@ -623,20 +623,21 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
                     retained_beads = retained_beads.get(namespace)
                 if isinstance(retained_beads, dict):
                     retained_beads.pop("ownership_command_prefix", None)
-            # ADR-032: a tracked project layer never disables the host load
-            # gate; only the packaged SSOT and an untracked local layer
-            # declare it (operator decision 2026-11-19, flext-lgbai).
-            gate_path = ("Infra", "codegen", "make", "admission", "host_load_gate")
-            if (
-                len(sources) > 1
-                and path == sources[1]
-                and u.Cli.json_walk_path(values, gate_path) is not None
-            ):
-                msg = (
-                    f"{path}: make.admission.host_load_gate is declared only by "
-                    "the packaged SSOT or the untracked local layer (ADR-032)"
-                )
-                raise ValueError(msg)
+            # ADR-032: a tracked project layer never disables or bypasses the
+            # host load gate; only the packaged SSOT and an untracked local
+            # layer declare it (operator decision 2026-11-19, flext-lgbai).
+            for gate_key in ("host_load_gate", "ungated_verbs"):
+                gate_path = ("Infra", "codegen", "make", "admission", gate_key)
+                if (
+                    len(sources) > 1
+                    and path == sources[1]
+                    and u.Cli.json_walk_path(values, gate_path) is not None
+                ):
+                    msg = (
+                        f"{path}: make.admission.{gate_key} is declared only by "
+                        "the packaged SSOT or the untracked local layer (ADR-032)"
+                    )
+                    raise ValueError(msg)
             merged = FlextStrictYamlConfigSource.merge_values(merged, values)
         return merged
 
