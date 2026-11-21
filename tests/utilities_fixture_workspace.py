@@ -169,6 +169,12 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
         package_dir.mkdir(parents=True, exist_ok=True)
         (package_dir / "__init__.py").write_text("", encoding="utf-8")
         (project_dir / c.PYPROJECT_FILENAME).write_text(pyproject, encoding="utf-8")
+        # The checker elects a project's runtime from Git and refuses a plain
+        # directory; this fixture owns the project tree, so it also owns the
+        # checkout identity every caller needs. ``initialize_git_repo`` is
+        # idempotent, so ``mk_project`` callers keep their single checkout.
+        if not (project_dir / ".git").exists():
+            TestsFlextInfraUtilitiesGit.initialize_git_repo(project_dir)
         return package_dir
 
     @staticmethod

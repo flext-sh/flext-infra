@@ -654,7 +654,12 @@ class FlextInfraUtilitiesImportLawRoutes(
             if scope.direct_imports and scope.namespace != c.Infra.DIR_TESTS
             else tuple(sorted(cls._import_law_unbound_root_aliases(state)))
         )
-        root_names = tuple(sorted(set(missing) | set(root_bindings)))
+        family_letter = scope.family_letter
+        root_names = tuple(
+            name
+            for name in sorted(set(missing) | set(root_bindings))
+            if name != family_letter
+        )
         if root_names:
             anchor = cls._import_law_import_anchor(state.tree)
             edits.append(
@@ -697,6 +702,13 @@ class FlextInfraUtilitiesImportLawRoutes(
                 kept: list[ast.alias] = []
                 for alias in node.names:
                     bound = alias.asname or alias.name
+                    if bound == scope.family_letter:
+                        # A facade-family module assembles its own letter from
+                        # the upstream package, never from its tier root: a root
+                        # binding here oscillates against the family rule and
+                        # can close a runtime cycle through the tier facade.
+                        kept.append(alias)
+                        continue
                     published = state.root_exports.get(bound)
                     if published is not None and published.startswith(
                         f"{scope.namespace}."

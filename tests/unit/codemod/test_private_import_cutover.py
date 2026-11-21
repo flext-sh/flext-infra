@@ -99,6 +99,46 @@ class TestsFlextInfraPrivateImportCutover(
         sources = {consumer: "from flext_sample import c\nvalue = c.Profile.Value\n"}
         tm.that(self._edits(tmp_path, sources, consumer, statement), empty=True)
 
+    def test_layer_zero_module_keeps_its_own_helper_direct_import(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """A settings module keeps its layer-zero helper, never the root route."""
+        package = u.Tests.src_package(
+            tmp_path / "flext-sample",
+            "flext_sample",
+            pyproject=(
+                "[project]\nname='flext-sample'\nversion='1.0.0'\n"
+                "license = 'MIT'\nauthors = [{name = 'FLEXT'}]\n"
+            ),
+        )
+        consumer = package / "_settings.py"
+        helper = package / "_settings_models.py"
+        statement = "from flext_sample._settings_models import SettingsModels"
+        helper.write_text(
+            "class SettingsModels:\n"
+            "    class SettingsRoot:\n"
+            "        pass\n"
+            "__all__ = ['SettingsModels']\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        consumer.write_text(
+            f"{statement}\nsettings = SettingsModels\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        tm.that(
+            self._edits(
+                tmp_path,
+                {
+                    consumer: consumer.read_text(encoding=c.DEFAULT_ENCODING),
+                    helper: helper.read_text(encoding=c.DEFAULT_ENCODING),
+                },
+                consumer,
+                statement,
+            ),
+            empty=True,
+        )
+
     @c.Tests.MARK.parametrize("bad_source_reachable", [False, True])
     def test_installed_import_validation_follows_public_reachability(
         self,

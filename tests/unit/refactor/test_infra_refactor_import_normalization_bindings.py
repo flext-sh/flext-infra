@@ -47,6 +47,17 @@ class TestsFlextInfraRefactorImportNormalizationBindings(
             eq=source,
         )
 
+    @staticmethod
+    def test_root_layer_zero_helper_keeps_its_root_layer_rank() -> None:
+        """A ``<root>_<suffix>`` declaration helper ranks with its root layer."""
+        layer = u.Infra.module_import_layer
+        tm.that(layer("demo_pkg._settings_models"), eq=layer("demo_pkg._settings"))
+        tm.that(layer("demo_pkg._config_models"), eq=layer("demo_pkg._config"))
+        tm.that(
+            layer("demo_pkg._settings_models"),
+            ne=layer("demo_pkg._utilities.helper"),
+        )
+
     @classmethod
     @c.Tests.MARK.parametrize("letter", sorted(u.Infra.facade_families()))
     def test_missing_reverse_runtime_letter_is_not_synthesized(
