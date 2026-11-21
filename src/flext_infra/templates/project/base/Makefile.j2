@@ -71,6 +71,7 @@ override ADMISSION_MEMORY_LIMIT_BYTES := {{ limits.memory_limit_bytes }}
 override ADMISSION_MAX_PROCESSES := {{ limits.max_processes }}
 endif
 {%- endfor %}
+{%- if make.admission.host_load_gate %}
 override ADMISSION_LOAD5 := $(shell awk -v limit=$(ADMISSION_MAX_LOAD5) '$$2 > limit { print $$2 }' /proc/loadavg)
 ifneq ($(.SHELLSTATUS),0)
 $(error Cannot read the 5-minute load average from /proc/loadavg)
@@ -81,6 +82,7 @@ $(info {{ line }})
 {%- endfor %}
 $(error Refused: 5-minute load average $(ADMISSION_LOAD5) exceeds the admission limit $(ADMISSION_MAX_LOAD5) of '$(or $(ADMISSION_VERB),$(MAKECMDGOALS))'; run its lighter form now, or declare make.admission.overrides.<verb>.max_load5 in config/codegen.yaml (flext-infra for canonical verbs, the project for its own extra_verbs))
 endif
+{%- endif %}
 override ADMISSION_SYSTEMD_RUN := $(shell command -v systemd-run)
 ifeq ($(ADMISSION_SYSTEMD_RUN),)
 $(error The run limits require systemd-run and a cgroup v2 user manager)
