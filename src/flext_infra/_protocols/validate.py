@@ -291,8 +291,8 @@ class FlextInfraProtocolsValidate:
         def testmon_db(self) -> Path | None:
             """Structural member projected from the owning model.
 
-            External pytest-testmon database for incremental operations; absent for
-            full and coverage execution.
+            External pytest-testmon database for incremental and full operations;
+            absent for coverage execution.
             """
             ...
 
@@ -300,14 +300,18 @@ class FlextInfraProtocolsValidate:
         def testmon_lease_acquired(self) -> bool | None:
             """Structural member projected from the owning model.
 
-            Whether an incremental phase acquired its Testmon lease; absent for full
-            and coverage execution.
+            Whether an incremental or full phase acquired its Testmon lease; absent
+            for coverage execution.
             """
             ...
 
         @property
-        def deadline_monotonic(self) -> float:
-            """Shared absolute deadline across all execution phases."""
+        def deadline_monotonic(self) -> float | None:
+            """Structural member projected from the owning model.
+
+            Shared absolute deadline across all execution phases; absent for the
+            unbounded FULL operation.
+            """
             ...
 
         @property

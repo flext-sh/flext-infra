@@ -1777,8 +1777,11 @@ teardown. The next `make tests` selects only the unexecuted remainder, so repeat
 invocations converge to a complete run that exits 0. No budget grows, no test is
 deselected, and the stop never waits for a batch-size flush. The explicitly
 requested `make tests-full` executes the complete
-applicable population once without Testmon or an incremental pre-run, preserving
-the persistent database untouched. It is a distinct operation, not an alias for
+applicable population once and records every item in Testmon without selecting,
+under the environment of its own marker scope. Locally that scope, and therefore
+the environment, is the one `make tests` reads, so one `make tests-full` warms a
+cold lane (a fresh worktree, or a lock or toolchain change) and the next
+`make tests` is incremental. It is a distinct operation, not an alias for
 incremental execution. Checks and tests are independent native operations.
 `flext-infra workspace tests --repository-root <root> --scope all` runs without
 requiring a prior check receipt. Generated Make consumers use `make tests`; bare

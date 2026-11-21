@@ -127,7 +127,11 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
         # held past the hard deadline expires with the pointer lock named.
         with u.Cli.file_changes_lock(
             latest.with_name(f"{latest.name}.lock"),
-        ).acquire(timeout=max(0.0, context.deadline_monotonic - time.monotonic())):
+        ).acquire(
+            timeout=None
+            if context.deadline_monotonic is None
+            else max(0.0, context.deadline_monotonic - time.monotonic())
+        ):
             u.Cli.atomic_write_text_file(latest, f"{report_dir.name}\n").unwrap()
 
     @staticmethod

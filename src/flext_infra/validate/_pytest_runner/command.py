@@ -22,7 +22,8 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
     """Build the single supported pytest command family.
 
     One suite builder owns every flag. Global incremental and explicit FULL
-    share the same inventory scope; only incremental execution uses Testmon.
+    share the same inventory scope; incremental execution selects through
+    Testmon, FULL only records into it.
     Local/slow callers retain their marker partitions. Coverage owns its
     separate measurement plugin. Every operation shares its entrypoint
     deadline across collection and execution.
@@ -61,7 +62,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         execution_mode: c.Infra.PytestExecutionMode = (
             c.Infra.PytestExecutionMode.INCREMENTAL
         ),
-    ) -> float:
+    ) -> float | None:
         """Derive the graceful suite stop instant from the entrypoint deadline.
 
         Selection and inventory consume the same clock, so the instant leaves
@@ -71,9 +72,11 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         promising a synthetic unit completion window.
 
         Returns:
-            The resulting ``float``.
+            The stop instant, or None when the run owns no deadline.
 
         """
+        if self.run_timeout_seconds is None:
+            return None
         pytest = self.pytest_policy()
         if self.carries_slow_items(execution_mode):
             reserve = (
@@ -276,11 +279,6 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             "-p",
             pytest.enforcement_plugin,
             f"--timeout={pytest.ordinary_timeout_seconds}",
-            *(
-                c.Infra.TEST_SELECTION_DISABLE_PLUGIN_ARGS
-                if execution_mode == c.Infra.PytestExecutionMode.FULL
-                else ()
-            ),
             "-p",
             "no:metadata",
             "-o",
@@ -327,8 +325,8 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         workers reading the database while a third writes it collect different
         sets, which xdist aborts with "Different tests were collected". This
         pass runs no test and records its collection and warning evidence.
-        Unselected full and coverage inventories own no Testmon plugin, so
-        they never read or write the persistent database.
+        FULL collects in its suite and coverage owns no Testmon plugin, so
+        neither runs this pass.
 
         Returns:
             The resulting ``tuple[str, ...],``.
@@ -395,8 +393,9 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         Workers record dependencies without selecting those IDs a second time.
         Their ``--testmon-noselect`` freezes only the accepted selection, never
         elects the global inventory for regular incremental execution.
-        FULL execution uses no Testmon plugin and publishes its inventory from
-        this suite's own collection, without an earlier selection process.
+        FULL publishes its inventory from this suite's own collection, without
+        an earlier selection process, and records every item in Testmon under
+        its own environment without selecting.
 
         Returns:
             The resulting ``tuple[str, ...],``.
@@ -461,13 +460,14 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
                         "--testmon",
                         *(
                             ("--testmon-noselect",)
-                            if selection_plan is not None and bool(selection)
+                            if bool(selection)
+                            or execution_mode == c.Infra.PytestExecutionMode.FULL
                             else ("--testmon-forceselect",)
                         ),
                         "--testmon-env",
                         self.testmon_environment(execution_mode),
                     )
-                    if execution_mode.is_incremental
+                    if execution_mode.records_testmon
                     else ()
                 ),
                 *self._NO_COVERAGE,
@@ -523,14 +523,18 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         """Return the aggregate graceful suite stop deadline.
 
         Returns:
-            The bounded suite's time-limit arguments.
+            The bounded suite's time-limit arguments; none for an unbounded run.
 
         """
         suite_stop = self.suite_stop_monotonic(
             serial=workers == c.ParserBooleanToken.ZERO,
             execution_mode=execution_mode,
         )
-        return (f"{c.Infra.PYTEST_SUITE_STOP_OPTION}={suite_stop!r}",)
+        return (
+            ()
+            if suite_stop is None
+            else (f"{c.Infra.PYTEST_SUITE_STOP_OPTION}={suite_stop!r}",)
+        )
 
     def _suite_argv(
         self,

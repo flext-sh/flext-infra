@@ -81,9 +81,13 @@ class TestsFlextInfraCProfileReport:
                 if selected_file is None
                 else c.Infra.PytestExecutionMode.FULL
             ),
-            testmon_db=tmp_path / "testmon" if selected_file is None else None,
-            testmon_lease_acquired=True if selected_file is None else None,
-            deadline_monotonic=monotonic() + policy.run_timeout_seconds,
+            testmon_db=tmp_path / "testmon",
+            testmon_lease_acquired=True,
+            deadline_monotonic=(
+                monotonic() + policy.run_timeout_seconds
+                if selected_file is None
+                else None
+            ),
             report_directory=directory,
         )
         (directory / "run-context.json").write_text(

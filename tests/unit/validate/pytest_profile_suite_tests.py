@@ -130,7 +130,7 @@ class TestsFlextInfraPytestProfileSuite:
         receipt = m.Infra.PytestRunContext.model_validate_json(original)
         # The profiled incremental operation is bounded, so its receipt names
         # a deadline.
-        deadline = receipt.deadline_monotonic
+        deadline = tm.not_none(receipt.deadline_monotonic)
         tm.ok(isfinite(deadline))
         tm.that(deadline, gt=0)
         receipt_path.write_text(

@@ -130,7 +130,7 @@ class FlextInfraWorkspaceRoutes:
     def _tests_full(
         cls, params: p.Infra.WorkspaceTestsRequest
     ) -> p.Cli.ErasedCommandResult:
-        """Run one complete native suite without Testmon or an incremental pre-run.
+        """Run one complete native suite and record it in Testmon without selecting.
 
         Returns:
             The native result, preserving the first failing status.
@@ -486,7 +486,7 @@ class FlextInfraWorkspaceRoutes:
                 ),
                 (
                     c.Infra.VERB_TEST_FULL,
-                    "Run the complete selected tests once without Testmon",
+                    "Run the complete selected tests once and record them in Testmon",
                     m.Infra.WorkspaceTestsRequest,
                     cls._tests_full,
                     None,
