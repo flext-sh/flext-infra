@@ -6,6 +6,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from git import GitCommandError
 
 from flext_infra import c, m, p, r
@@ -60,6 +62,38 @@ class FlextInfraUtilitiesGitSemanticPublish(FlextInfraUtilitiesGitRepo):
         except (OSError, ValueError) as exc:
             return r[tuple[str, ...]].fail(
                 f"failed to list conflicted paths: {exc}",
+                exception=exc,
+            )
+        return r[tuple[str, ...]].ok(tuple(path for path in listed.split("\0") if path))
+
+    @classmethod
+    def git_merge_incoming_paths(
+        cls,
+        request: p.Infra.GitRepoRequest,
+    ) -> p.Result[tuple[str, ...]]:
+        """List the paths an open merge brings from its merged-in side.
+
+        The merged-in side changed these paths since its merge base with
+        ``HEAD`` (``HEAD...MERGE_HEAD``).
+
+        Returns:
+            The merged-in paths, empty when no merge is in progress.
+
+        """
+        try:
+            repo = cls._repo(request.repo_root)
+            marker = Path(repo.working_dir) / repo.git.rev_parse(
+                "--git-path",
+                "MERGE_HEAD",
+            )
+            if not marker.is_file():
+                return r[tuple[str, ...]].ok(())
+            listed = repo.git.diff("--name-only", "-z", "HEAD...MERGE_HEAD", "--")
+        except GitCommandError as exc:
+            return r[tuple[str, ...]].fail(str(exc), exception=exc)
+        except (OSError, ValueError) as exc:
+            return r[tuple[str, ...]].fail(
+                f"failed to list merged-in paths: {exc}",
                 exception=exc,
             )
         return r[tuple[str, ...]].ok(tuple(path for path in listed.split("\0") if path))
