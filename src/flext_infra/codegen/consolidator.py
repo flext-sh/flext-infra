@@ -49,8 +49,12 @@ class FlextInfraCodegenConsolidator(s[str]):
                 if project_layout is None or not project_layout.init_path.is_file():
                     continue
                 constants_file = project_layout.package_dir / c.Infra.CONSTANTS_PY
-                value_map = self._build_value_map_from_constants_file(constants_file)
-                if value_map.failure or not value_map.value:
+                value_map = self._build_value_map_from_constants_file(
+                    rope_project, constants_file
+                )
+                if value_map.failure:
+                    return r[str].from_failure(value_map)
+                if not value_map.value:
                     continue
                 for python_file in (
                     path
@@ -162,39 +166,72 @@ class FlextInfraCodegenConsolidator(s[str]):
     @classmethod
     def _build_value_map_from_constants_file(
         cls,
+        rope_project: t.Infra.RopeProject,
         constants_file: Path,
     ) -> p.Result[Mapping[str, str]]:
-        """Build value map from a constants file.
+        """Map each ``Final`` value of a constants module to its ``c.*`` path.
 
-        Missing file → empty map (nothing to consolidate); an existing-but-unreadable
-        file is surfaced as a failure (never silently treated as empty).
+        ``Final`` identity comes from the typing-aware Rope matches; values and
+        class nesting come from the Rope binding index of one module snapshot.
+        The outermost class is the ``c`` facade itself, so ``Outer.Inner.NAME``
+        maps to ``Inner.NAME``.
 
         Returns:
-            The resulting ``p.Result[Mapping[str, str]]``.
+            The value map; empty when the constants file does not exist.
 
         """
         if not constants_file.is_file():
             return r[Mapping[str, str]].ok({})
-        read = u.Cli.files_read_text(constants_file)
-        if read.failure:
-            return r[Mapping[str, str]].from_failure(read)
+        resource = u.Infra.resolve_resource_from_path(rope_project, constants_file)
+        if resource is None:
+            return r[Mapping[str, str]].fail(
+                f"constants file is outside the rope project: {constants_file}"
+            )
+        pymodule = u.Infra.resolve_pymodule(rope_project, resource)
+        finals = u.Infra.constant_bindings(pymodule)
+        index = pymodule.get_source_binding_index()
         value_map: t.MutableStrMapping = {}
-        for name, _, raw, class_path, _ in u.Infra.parse_final_constant_definitions(
-            read.value.splitlines(),
-        ):
-            if not raw:
+        cls._record_constants(value_map, pymodule, finals, index.assignment_layouts())
+        pending: list[tuple[p.Infra.RopeScope, t.StrTuple]] = [
+            (scope, ()) for scope in pymodule.get_scope().get_scopes()
+        ]
+        while pending:
+            scope, outer = pending.pop()
+            if scope.get_kind() != c.Infra.RopeScopeKind.CLASS:
                 continue
-            canonical = f"{class_path}.{name}" if class_path else name
+            path = (*outer, scope.pyobject.get_name())
+            pending.extend((child, path) for child in scope.get_scopes())
+            cls._record_constants(
+                value_map, pymodule, finals, index.assignment_layouts(scope), path[1:]
+            )
+        return r[Mapping[str, str]].ok(value_map)
+
+    @staticmethod
+    def _record_constants(
+        value_map: t.MutableStrMapping,
+        pymodule: t.Infra.RopePyModule,
+        finals: frozenset[tuple[int, str]],
+        layouts: Sequence[p.Infra.RopeSourceAssignmentLayout],
+        path: t.StrTuple = (),
+    ) -> None:
+        """Record the ``Final`` layouts of one scope, with quoted string variants."""
+        source = pymodule.source_code
+        for layout in layouts:
+            if layout.value is None or not layout.targets:
+                continue
+            name, (start, _) = layout.targets[0]
+            raw = source[layout.value[0] : layout.value[1]].strip()
+            if not raw or (pymodule.lines.get_line_number(start), name) not in finals:
+                continue
+            canonical = ".".join((*path, name))
             value_map[raw] = canonical
             if (
                 len(raw) >= c.Infra.DETECTION_MIN_QUOTED_LITERAL_LEN
                 and raw[0] in {'"', "'"}
                 and raw[-1] == raw[0]
             ):
-                inner = raw[1:-1]
-                value_map[f"'{inner}'"] = canonical
-                value_map[f'"{inner}"'] = canonical
-        return r[Mapping[str, str]].ok(value_map)
+                value_map[f"'{raw[1:-1]}'"] = canonical
+                value_map[f'"{raw[1:-1]}"'] = canonical
 
     def _scan_file(
         self,
