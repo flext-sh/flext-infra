@@ -1833,6 +1833,11 @@ Infra:
       - name: "Private local config layers"
         patterns:
         - "/config/*.local.yaml"
+      # The host publishes a per-machine OpenMoat command policy into each
+      # checkout; it is projection, never source.
+      - name: "Host command policy projection (runtime state, never source)"
+        patterns:
+        - "/.moat/policy.yaml"
       - name: "Gas City skill projections (runtime state, never source)"
         patterns:
         - ".agents/skills/.gc-skill-ownership.json"
