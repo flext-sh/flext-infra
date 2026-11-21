@@ -377,3 +377,7 @@ CLAUDE.local.md
 !config/beads.yaml
 !conftest.py
 !.vscode/settings.json
+
+# BEGIN ai-hub projection destinations (generated from config/workspaces.yaml; do not edit; regenerate: make workspace-config in ai-hub)
+/.moat/policy.yaml
+# END ai-hub projection destinations
