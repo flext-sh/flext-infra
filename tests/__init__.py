@@ -47,9 +47,16 @@ if TYPE_CHECKING:
     )
     from tests.base import TestsFlextInfraServiceBase, s
     from tests.constants import TestsFlextInfraConstants, c
+    from tests.fixtures import (
+        TestsFlextInfraGateAdmissionHolder,
+        TestsImportedModelCollision,
+        TestsImportedModelReference,
+    )
     from tests.models import TestsFlextInfraModels, m
     from tests.protocols import TestsFlextInfraProtocols, p
+    from tests.refactor import TestsFlextInfraRefactorRopeStubs
     from tests.typings import TestsFlextInfraTypes, t
+    from tests.unit import TestsFlextInfraModelsPytestMarkdown
     from tests.utilities import TestsFlextInfraUtilities, u
 
 
@@ -76,11 +83,16 @@ __all__: tuple[str, ...] = (
     "FlextInfraVersion",
     "FlextInfraWorktreeService",
     "TestsFlextInfraConstants",
+    "TestsFlextInfraGateAdmissionHolder",
     "TestsFlextInfraModels",
+    "TestsFlextInfraModelsPytestMarkdown",
     "TestsFlextInfraProtocols",
+    "TestsFlextInfraRefactorRopeStubs",
     "TestsFlextInfraServiceBase",
     "TestsFlextInfraTypes",
     "TestsFlextInfraUtilities",
+    "TestsImportedModelCollision",
+    "TestsImportedModelReference",
     "c",
     "config",
     "d",
@@ -127,11 +139,16 @@ install_lazy_exports(
         "FlextInfraVersion": "flext_infra",
         "FlextInfraWorktreeService": "flext_infra",
         "TestsFlextInfraConstants": ".constants",
+        "TestsFlextInfraGateAdmissionHolder": ".fixtures",
         "TestsFlextInfraModels": ".models",
+        "TestsFlextInfraModelsPytestMarkdown": ".unit",
         "TestsFlextInfraProtocols": ".protocols",
+        "TestsFlextInfraRefactorRopeStubs": ".refactor",
         "TestsFlextInfraServiceBase": ".base",
         "TestsFlextInfraTypes": ".typings",
         "TestsFlextInfraUtilities": ".utilities",
+        "TestsImportedModelCollision": ".fixtures",
+        "TestsImportedModelReference": ".fixtures",
         "c": ".constants",
         "config": "flext_infra",
         "d": "flext_infra",

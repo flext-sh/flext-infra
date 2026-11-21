@@ -112,5 +112,39 @@ class TestsFlextInfraLazyInitTestNamespace:
         tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
         tm.that(u.Tests.generated_init(tests_root), eq=first)
 
+    @staticmethod
+    def test_tests_root_republishes_non_family_child_packages(tmp_path: Path) -> None:
+        """Republish non-family child exports ahead of src names, never family ones."""
+        repository_root, package_root = u.Tests.demo_lazy_init_workspace(tmp_path)
+        u.Tests.write_lazy_init_namespace_module(
+            package_root / "models.py",
+            class_name="FlextDemoA",
+            alias="m",
+        )
+        tests_root = repository_root / c.Infra.DIR_TESTS
+        tests_root.mkdir()
+        tests_root.joinpath(c.Infra.INIT_PY).write_text("", encoding=c.DEFAULT_ENCODING)
+        for child, module, exports in (
+            ("helpers", "owners", '"DemoHelper", "FlextDemoA"'),
+            ("_utilities", "part", '"TestsDemoUtilitiesPart"'),
+        ):
+            child_dir = tests_root / child
+            child_dir.mkdir()
+            child_dir.joinpath(c.Infra.INIT_PY).write_text(
+                "", encoding=c.DEFAULT_ENCODING
+            )
+            child_dir.joinpath(f"{module}.py").write_text(
+                f"from __future__ import annotations\n\n__all__ = [{exports}]\n",
+                encoding=c.DEFAULT_ENCODING,
+            )
+
+        tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
+        first = u.Tests.generated_init(tests_root)
+        tm.that(first, has='"DemoHelper": (".helpers"')
+        tm.that(first, has='"FlextDemoA": (".helpers"')
+        tm.that(first, lacks="TestsDemoUtilitiesPart")
+        tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
+        tm.that(u.Tests.generated_init(tests_root), eq=first)
+
 
 __all__: list[str] = ["TestsFlextInfraLazyInitTestNamespace"]
