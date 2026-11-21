@@ -1,6 +1,6 @@
 """Tests for scaffolder generated code validity and naming conventions.
 
-Validates AST parseability and {Prefix}{Suffix} class naming convention
+Validates compilation and {Prefix}{Suffix} class naming convention
 for both src/ and tests/ generated modules.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
@@ -31,15 +31,19 @@ def _validate_class_names(
     base_dir: Path,
     filename_to_expected_class: Mapping[str, str],
 ) -> None:
-    """Validate expected class names exist in the generated modules."""
-    for filename, expected_class in filename_to_expected_class.items():
-        source = (base_dir / filename).read_text(encoding="utf-8")
-        class_names = c.Infra.DETECTION_CLASS_DECL_RE.findall(source)
-        tm.that(
-            expected_class in class_names,
-            eq=True,
-            msg=f"{filename} should contain {expected_class}",
-        )
+    """Validate expected classes are declared by the generated modules."""
+    with u.Infra.open_project(base_dir) as rope_project:
+        for filename, expected_class in filename_to_expected_class.items():
+            resource = tm.not_none(
+                u.Infra.fetch_python_resource(rope_project, base_dir / filename)
+            )
+            module = u.Infra.resolve_pymodule(rope_project, resource)
+            class_names = [
+                scope.pyobject.get_name()
+                for scope in module.get_scope().get_scopes()
+                if scope.get_kind() == c.Infra.RopeScopeKind.CLASS
+            ]
+            tm.that(class_names, has=expected_class)
 
 
 class TestsFlextInfraCodegenScaffolderNaming:

@@ -199,29 +199,34 @@ class FlextInfraUtilitiesFacadeNamespace:
         layout: p.Infra.RopeSourceClassLayout,
         parts: Sequence[tuple[tuple[int, int], p.Infra.RopeSourceClass]],
     ) -> list[tuple[int, int, str]]:
-        """Delete each part base and one adjacent separator, nothing else.
+        """Delete each run of adjacent part bases and one separator, nothing else.
+
+        A run is one edit, so edits never overlap: two overlapping deletions
+        applied in turn would remove source beyond the bases.
 
         Returns:
-            One ``(start, end, "")`` edit per part span.
+            One ``(start, end, "")`` edit per run of adjacent part spans.
 
         """
         items = sorted((*layout.bases, *layout.keywords))
         removed = {span for span, _part in parts}
         edits: list[tuple[int, int, str]] = []
-        for position, (start, end) in enumerate(items):
-            if (start, end) not in removed:
+        for position, (start, _end) in enumerate(items):
+            if items[position] not in removed or (
+                position and items[position - 1] in removed
+            ):
                 continue
-            following = next(
-                (item for item in items[position + 1 :] if item not in removed), None
-            )
-            if following is not None:
-                edits.append((start, following[0], ""))
-                continue
-            previous = next(
-                (item for item in reversed(items[:position]) if item not in removed),
-                None,
-            )
-            edits.append((start if previous is None else previous[1], end, ""))
+            last = position
+            while last + 1 < len(items) and items[last + 1] in removed:
+                last += 1
+            if last + 1 < len(items):
+                edits.append((start, items[last + 1][0], ""))
+            else:
+                edits.append((
+                    items[position - 1][1] if position else start,
+                    items[last][1],
+                    "",
+                ))
         return edits
 
     @staticmethod
