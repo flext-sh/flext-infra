@@ -689,6 +689,15 @@ class FlextInfraProtocolsConfigMake:
             ...
 
         @property
+        def ungated_verbs(self) -> tuple[t.NonEmptyStr, ...]:
+            """Structural member projected from the owning model.
+
+            Bootstrap verbs the load gate never refuses; they still run inside the
+            run limits.
+            """
+            ...
+
+        @property
         def refusal_guidance(self) -> tuple[str, ...]:
             """Structural member projected from the owning model.
 

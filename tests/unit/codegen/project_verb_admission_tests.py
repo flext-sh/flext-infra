@@ -110,12 +110,18 @@ class TestsFlextInfraCodegenProjectVerbAdmission:
         )
         tm.fail(
             u.Infra.load_codegen_inputs(root),
-            has="make.admission.overrides name undeclared verbs: ['undeclared-verb']",
+            has="make.admission names undeclared verbs: ['undeclared-verb']",
         )
 
     @staticmethod
+    @c.Tests.MARK.parametrize(
+        ("gate_key", "gate_value"),
+        [("host_load_gate", False), ("ungated_verbs", ["check"])],
+    )
     def test_tracked_project_layer_cannot_declare_the_load_gate(
         tmp_path: Path,
+        gate_key: str,
+        gate_value: t.JsonValue,
     ) -> None:
         """Only the packaged SSOT or the untracked local layer owns the gate."""
         root = TestsFlextInfraCodegenProjectVerbAdmission._declare(tmp_path, (), {})
@@ -129,7 +135,7 @@ class TestsFlextInfraCodegenProjectVerbAdmission:
                     {
                         "Infra": {
                             "codegen": {
-                                "make": {"admission": {"host_load_gate": False}},
+                                "make": {"admission": {gate_key: gate_value}},
                             },
                         },
                     },
@@ -138,27 +144,40 @@ class TestsFlextInfraCodegenProjectVerbAdmission:
         )
         tm.fail(
             u.Infra.load_codegen_inputs(root),
-            has="make.admission.host_load_gate is declared only by",
+            has=f"make.admission.{gate_key} is declared only by",
         )
 
     @staticmethod
-    @c.Tests.MARK.parametrize("gate", [True, False])
+    @c.Tests.MARK.parametrize(
+        ("gate", "ungated", "refused"),
+        [
+            (True, [], True),
+            (False, [], False),
+            (True, ["help"], False),
+        ],
+    )
     def test_local_layer_load_gate_decides_the_refusal(
         tmp_path: Path,
         *,
         gate: bool,
+        ungated: list[t.JsonValue],
+        refused: bool,
     ) -> None:
-        """A limit below any host load refuses a verb only while the gate is on."""
+        """A limit below any host load refuses a verb unless ungated or gate off."""
         root, _ = u.Tests.render_make_environment(
             tmp_path,
             c.Infra.MakeProfile.STANDALONE,
             shape=u.Tests.MakeEnvironmentShape(
-                local_admission={"host_load_gate": gate, "max_load5": 0.001},
+                local_admission={
+                    "host_load_gate": gate,
+                    "max_load5": 0.001,
+                    "ungated_verbs": ungated,
+                },
             ),
         )
         process = tm.ok(
             u.Tests.run_isolated_make(["--no-print-directory", "help"], cwd=root)
         )
-        tm.that(u.Cli.process_succeeded(process.outcome), eq=not gate)
-        if gate:
+        tm.that(u.Cli.process_succeeded(process.outcome), eq=not refused)
+        if refused:
             tm.that(process.stderr, has="Refused: 5-minute load average")
