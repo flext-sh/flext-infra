@@ -167,6 +167,7 @@ class FlextInfraConstantsMake(FlextInfraConstantsConfig):
     PYTEST_WARNING_EVENTS_SUFFIX: ClassVar[str] = ".warnings.jsonl"
     PYTEST_INHERITED_ENV_REMOVE_KEYS: ClassVar[Sequence[str]] = (
         "PYTEST_ADDOPTS",
+        "PYTHONDONTWRITEBYTECODE",
         "PYTHONPATH",
     )
 

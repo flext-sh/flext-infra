@@ -201,19 +201,27 @@ class TestsFlextInfraPytestRunner:
         *,
         ci_context: bool,
     ) -> None:
-        """CI children cannot import code from a caller's source path."""
+        """CI children cannot import code from a caller's source path.
+
+        A caller's bytecode disable never reaches the suite either: pytest
+        caches rewritten modules only as bytecode, so an inherited disable
+        would re-rewrite every imported module on every run.
+        """
         inherited = cached_runner_project.parent / "inherited-source"
         inherited.mkdir()
         (inherited / "inherited_marker.py").write_text("VALUE = 42\n", encoding="utf-8")
         monkeypatch.setenv(c.Infra.ORCHESTRATOR_ENV_PYTHONPATH, str(inherited))
+        monkeypatch.setenv("PYTHONDONTWRITEBYTECODE", "1")
         source = cached_runner_project / c.Infra.DEFAULT_SRC_DIR
         runner = u.Tests.PytestRunner.runner_for(
             cached_runner_project, ci_context=ci_context
         )
         (cached_runner_project / runner.target / "test_import_boundary.py").write_text(
             "import importlib.util\n"
-            "import os\n\n"
+            "import os\n"
+            "import sys\n\n"
             "def test_import_boundary() -> None:\n"
+            "    assert sys.dont_write_bytecode is False\n"
             "    paths = os.environ.get('PYTHONPATH', '').split(os.pathsep)\n"
             f"    assert ({str(source)!r} in paths) is {not ci_context!r}\n"
             "    available = importlib.util.find_spec('inherited_marker') is not None\n"
