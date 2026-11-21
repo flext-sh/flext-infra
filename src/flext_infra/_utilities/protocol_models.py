@@ -10,12 +10,14 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+import collections.abc as _collections_abc
 import copy
 import importlib
 import operator
 import re
 import textwrap
 import tomllib
+import typing as _typing
 from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -4663,7 +4665,16 @@ class FlextInfraUtilitiesModelsProtocol:
                 for symbol in ast.walk(annotation)
                 if isinstance(symbol, ast.Name)
             }
+            base_subscript_names = {
+                symbol.id
+                for node, _path, _tree in classes
+                for base in node.bases
+                if isinstance(base, ast.Subscript)
+                for symbol in ast.walk(base.slice)
+                if isinstance(symbol, ast.Name)
+            }
             self._source_require_bindable_roots(classes, roots)
+            roots |= base_subscript_names
             runtime_imports: list[str] = []
             in_family = (
                 destination is not None
@@ -4723,6 +4734,21 @@ class FlextInfraUtilitiesModelsProtocol:
                 )
                 type_imports.extend(type_part)
                 runtime_imports.extend(runtime_part)
+            # Stdlib/runtime names read only from class base subscripts (e.g.
+            # ``RootModel[MutableMapping[...]]``) must still receive an import
+            # even when the inherited root field no longer binds them.
+            already = "\n".join(runtime_imports + type_imports)
+            for name in sorted(base_subscript_names):
+                if name in excluded:
+                    continue
+                if name in getattr(self, "source_family_classes", {}):
+                    continue
+                if f" {name}" in already or f",{name}" in already:
+                    continue
+                if hasattr(_collections_abc, name):
+                    runtime_imports.append(f"from collections.abc import {name}")
+                elif hasattr(_typing, name):
+                    runtime_imports.append(f"from typing import {name}")
             if type_imports:
                 runtime_imports.append(
                     "if TYPE_CHECKING:\n"
