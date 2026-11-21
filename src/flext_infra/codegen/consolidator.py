@@ -52,7 +52,9 @@ class FlextInfraCodegenConsolidator(s[str]):
                 value_map = self._build_value_map_from_constants_file(
                     rope_project, constants_file
                 )
-                if value_map.failure or not value_map.value:
+                if value_map.failure:
+                    return r[str].from_failure(value_map)
+                if not value_map.value:
                     continue
                 for python_file in (
                     path
@@ -167,93 +169,67 @@ class FlextInfraCodegenConsolidator(s[str]):
         rope_project: t.Infra.RopeProject,
         constants_file: Path,
     ) -> p.Result[Mapping[str, str]]:
-        """Build value map from a constants file using Rope-native assignment layouts.
+        """Map each ``Final`` value of a constants module to its ``c.*`` path.
 
-        Missing file → empty map (nothing to consolidate); an existing-but-unreadable
-        file is surfaced as a failure (never silently treated as empty).
+        ``Final`` identity comes from the typing-aware Rope matches; values and
+        class nesting come from the Rope binding index of one module snapshot.
+        The outermost class is the ``c`` facade itself, so ``Outer.Inner.NAME``
+        maps to ``Inner.NAME``.
 
         Returns:
-            The resulting ``p.Result[Mapping[str, str]]``.
+            The value map; empty when the constants file does not exist.
 
         """
         if not constants_file.is_file():
             return r[Mapping[str, str]].ok({})
         resource = u.Infra.resolve_resource_from_path(rope_project, constants_file)
         if resource is None:
-            return r[Mapping[str, str]].ok({})
-        read = u.Cli.files_read_text(constants_file)
-        if read.failure:
-            return r[Mapping[str, str]].from_failure(read)
-        source = read.value
+            return r[Mapping[str, str]].fail(
+                f"constants file is outside the rope project: {constants_file}"
+            )
         pymodule = u.Infra.resolve_pymodule(rope_project, resource)
-        binding_index = pymodule.get_source_binding_index()
+        finals = u.Infra.constant_bindings(pymodule)
+        index = pymodule.get_source_binding_index()
         value_map: t.MutableStrMapping = {}
-        for layout in binding_index.assignment_layouts():
-            entry = cls._extract_constant_entry(source, binding_index, layout)
-            if entry is not None:
-                raw, canonical = entry
-                value_map[raw] = canonical
-                cls._add_quoted_variants(value_map, raw, canonical)
+        cls._record_constants(value_map, pymodule, finals, index.assignment_layouts())
+        pending = [(scope, ()) for scope in pymodule.get_scope().get_scopes()]
+        while pending:
+            scope, outer = pending.pop()
+            if scope.get_kind() != c.Infra.RopeScopeKind.CLASS:
+                continue
+            path = (*outer, scope.pyobject.get_name())
+            pending.extend((child, path) for child in scope.get_scopes())
+            cls._record_constants(
+                value_map, pymodule, finals, index.assignment_layouts(scope), path[1:]
+            )
         return r[Mapping[str, str]].ok(value_map)
 
-    @classmethod
-    def _extract_constant_entry(
-        cls,
-        source: str,
-        binding_index: p.Infra.RopeSourceBindingIndex,
-        layout: p.Infra.RopeSourceAssignmentLayout,
-    ) -> tuple[str, str] | None:
-        """Extract a single Final constant entry from an assignment layout.
-
-        Returns:
-            Tuple of (raw_value, canonical_name) or None if not a Final constant.
-
-        """
-        if layout.annotation is None:
-            return None
-        annotation_text = source[layout.annotation[0]:layout.annotation[1]]
-        if "Final" not in annotation_text:
-            return None
-        if not layout.targets or layout.value is None:
-            return None
-        name = layout.targets[0][0]
-        raw = source[layout.value[0]:layout.value[1]].strip()
-        if not raw:
-            return None
-        # Determine class path from structural scope
-        context = binding_index.context_at(layout.region[0])
-        scope = context.structural_scope
-        class_path = ""
-        if scope is not None and scope.get_kind() == "Class":
-            pyobject = scope.pyobject
-            if hasattr(pyobject, "get_name"):
-                class_path = pyobject.get_name()
-        canonical = f"{class_path}.{name}" if class_path else name
-        return raw, canonical
-
-    @classmethod
-    def _add_quoted_variants(
-        cls,
+    @staticmethod
+    def _record_constants(
         value_map: t.MutableStrMapping,
-        raw: str,
-        canonical: str,
+        pymodule: t.Infra.RopePyModule,
+        finals: frozenset[tuple[int, str]],
+        layouts: Sequence[p.Infra.RopeSourceAssignmentLayout],
+        path: t.StrTuple = (),
     ) -> None:
-        """Add single- and double-quoted variants for string literals.
-
-        Args:
-            value_map: The mapping to populate.
-            raw: The raw string literal value.
-            canonical: The canonical name to map to.
-
-        """
-        if (
-            len(raw) >= c.Infra.DETECTION_MIN_QUOTED_LITERAL_LEN
-            and raw[0] in {'"', "'"}
-            and raw[-1] == raw[0]
-        ):
-            inner = raw[1:-1]
-            value_map[f"'{inner}'"] = canonical
-            value_map[f'"{inner}"'] = canonical
+        """Record the ``Final`` layouts of one scope, with quoted string variants."""
+        source = pymodule.source_code
+        for layout in layouts:
+            if layout.value is None or not layout.targets:
+                continue
+            name, (start, _) = layout.targets[0]
+            raw = source[layout.value[0] : layout.value[1]].strip()
+            if not raw or (pymodule.lines.get_line_number(start), name) not in finals:
+                continue
+            canonical = ".".join((*path, name))
+            value_map[raw] = canonical
+            if (
+                len(raw) >= c.Infra.DETECTION_MIN_QUOTED_LITERAL_LEN
+                and raw[0] in {'"', "'"}
+                and raw[-1] == raw[0]
+            ):
+                value_map[f"'{raw[1:-1]}'"] = canonical
+                value_map[f'"{raw[1:-1]}"'] = canonical
 
     def _scan_file(
         self,

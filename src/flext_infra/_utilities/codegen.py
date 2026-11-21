@@ -11,7 +11,7 @@ from typing import NoReturn
 
 from flext_cli import u
 
-from flext_infra import c, config, e, m, p, r
+from flext_infra import c, config, e, m, p
 from flext_infra._utilities import (
     FlextInfraUtilitiesBase,
     FlextInfraUtilitiesCodegenFacades,
@@ -93,63 +93,6 @@ class FlextInfraUtilitiesCodegen(
                 for path in workspace.external_dependency_paths
                 if (workspace_root / path / c.PYPROJECT_FILENAME).is_file()
                 and (workspace_root / path / c.Infra.MISE_LOCK_FILENAME).is_file()
-            ),
-        )
-
-    @classmethod
-    def workspace_runtime_codegen(
-        cls,
-        repository_root: Path,
-        workspace: p.Infra.WorkspaceSpec,
-        codegen: p.Infra.CodegenConfigSpec,
-    ) -> p.Result[p.Infra.CodegenConfigSpec]:
-        """Compose attached members' declared tools into the workspace runtime.
-
-        An attached member (a gitlink rendered on the WORKSPACE profile) runs
-        on its superproject's Mise runtime, so the workspace toolchain carries
-        every tool its attached members declare. One tool declared with two
-        effective versions fails with both declarations named.
-
-        Returns:
-            The workspace codegen with the composed toolchain, or the conflict.
-
-        """
-        result_type = r[p.Infra.CodegenConfigSpec]
-        toolchain = codegen.toolchain
-        tools = {entry.name: entry for entry in toolchain.tools}
-        versions = dict(toolchain.tool_versions)
-        owners = dict.fromkeys(tools, repository_root.name)
-        for member in workspace.subprojects:
-            if member.role != c.Infra.MakeProfile.WORKSPACE:
-                continue
-            loaded = cls.load_codegen_inputs(repository_root / member.path)
-            if loaded.failure:
-                return result_type.from_failure(loaded)
-            member_toolchain = loaded.value.spec.toolchain
-            for entry in member_toolchain.tools:
-                version = member_toolchain.tool_versions[entry.name]
-                if entry.name not in tools:
-                    tools[entry.name] = entry
-                    versions[entry.name] = version
-                    owners[entry.name] = member.name
-                elif versions[entry.name] != version:
-                    return result_type.fail(
-                        f"workspace toolchain conflict for {entry.name}: "
-                        f"{owners[entry.name]} declares {versions[entry.name]}, "
-                        f"{member.name} declares {version}",
-                    )
-        if len(tools) == len(toolchain.tools):
-            return result_type.ok(codegen)
-        return result_type.ok(
-            codegen.model_copy(
-                update={
-                    "toolchain": toolchain.model_copy(
-                        update={
-                            "tools": tuple(tools.values()),
-                            "tool_version_pins": versions,
-                        },
-                    ),
-                },
             ),
         )
 
