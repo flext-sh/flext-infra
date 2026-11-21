@@ -133,16 +133,20 @@ endif
 # else, outside CI, the declared command when its executable is installed, else
 # anonymous. A selected command that fails or prints nothing stops the network
 # verbs (_builtin_require_github_credential), never degrading to anonymous.
-# The value stays in the environment and is never printed.
+# The value stays in the environment and is never printed. The command is a
+# Mise-managed executable, refused in a checkout whose .mise.toml is not trusted
+# yet, so a bare `make setup` resolves it only after trusting the checkout.
 GITHUB_TOKEN := $(firstword $(GITHUB_TOKEN) $(GH_TOKEN) $(MISE_GITHUB_TOKEN))
 GITHUB_CREDENTIAL_SOURCE := $(if $(GITHUB_TOKEN),environment,anonymous)
 ifeq ($(GITHUB_TOKEN),)
 ifneq ($(strip $({{ make.ci.variable }})),{{ make.ci.value }})
+ifneq ($(MAKECMDGOALS),setup)
 GITHUB_CREDENTIAL_EXECUTABLE := $(shell command -v {{ make.github_credential_command[0] }})
 ifneq ($(GITHUB_CREDENTIAL_EXECUTABLE),)
 GITHUB_CREDENTIAL_SOURCE := command
 GITHUB_TOKEN := $(shell "$(GITHUB_CREDENTIAL_EXECUTABLE)"{% for argument in make.github_credential_command[1:] %} {{ argument }}{% endfor %})
 GITHUB_CREDENTIAL_STATUS := $(.SHELLSTATUS)
+endif
 endif
 endif
 endif
@@ -748,8 +752,21 @@ ifeq ($(VERB_CONTRACT),)
 # `setup` keeps its own recipe (it must not require the environment it is about
 # to build), but it still runs the pre-/post-setup lifecycle hooks so a project
 # declaring them in the custom handler surface is actually honoured.
+# A fresh checkout is trusted first; the provisioning half then reruns Make so
+# the credential command resolves inside the trusted checkout.
 ifeq ($(PROJECT_ROOT),$(RUNTIME_ROOT))
-setup: _builtin_require_github_credential _bootstrap_setup_tools
+.PHONY: _setup_trust _setup_provision
+setup: _setup_trust
+	+@$(SELF_MAKE) _setup_provision
+_setup_trust:
+	+@set -eu; \
+	mise_stage=; bootstrap_status=0; \
+	trap 'bootstrap_status=$$?; trap - EXIT; \
+		{{ mise_staging_cleanup() }} \
+		exit "$${bootstrap_status}"' EXIT; \
+	trap 'exit 129' HUP; trap 'exit 130' INT; trap 'exit 143' TERM; \
+	{{ mise_acquisition("$(PROJECT_ROOT)", toolchain) }}
+_setup_provision: _builtin_require_github_credential _bootstrap_setup_tools
 else
 setup: _builtin_require_workspace
 	+@"$(SELF_MAKE_EXECUTABLE)" --no-print-directory -C "$(RUNTIME_ROOT)" -f "$(RUNTIME_ROOT)/Makefile" setup
