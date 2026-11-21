@@ -16,7 +16,7 @@ from collections.abc import (
     MutableSequence,
     Sequence,
 )
-from functools import partial
+from functools import lru_cache, partial
 from pathlib import Path
 from typing import NamedTuple
 
@@ -280,11 +280,10 @@ class FlextInfraUtilitiesSemanticContracts(
         if state.content is None:
             message = f"Rope contract catalogue disappeared: {catalogue}"
             raise ValueError(message)
-        declared = u.Cli.config_decode(
-            u.Cli.yaml_parse(state.content.decode(c.DEFAULT_ENCODING)).unwrap(),
-            m.Infra.RopeContractRules,
-            source_path=catalogue,
-            metadata=m.Infra.RopeContractOrigin(owner_root=owner_root),
+        declared = FlextInfraUtilitiesSemanticContracts._decoded_contract_rules(
+            state.content,
+            catalogue,
+            owner_root,
         )
         if declared.method_transfers and owner_root is None:
             message = "method ownership transfer requires its project catalogue"
@@ -297,6 +296,29 @@ class FlextInfraUtilitiesSemanticContracts(
                 raise ValueError(message)
             rules.append(rule)
         return declared, state
+
+    @staticmethod
+    @lru_cache(maxsize=c.Infra.CONTENT_CACHE_MAXSIZE)
+    def _decoded_contract_rules(
+        content: bytes,
+        catalogue: Path,
+        owner_root: Path | None,
+    ) -> p.Infra.RopeContractRules:
+        """Memoize the immutable decode of exact catalogue bytes per origin.
+
+        The source observation is still read on every call; only parsing and
+        validation of identical bytes are shared. Exceptions are never cached.
+
+        Returns:
+            The validated, immutable contract declarations.
+
+        """
+        return u.Cli.config_decode(
+            u.Cli.yaml_parse(content.decode(c.DEFAULT_ENCODING)).unwrap(),
+            m.Infra.RopeContractRules,
+            source_path=catalogue,
+            metadata=m.Infra.RopeContractOrigin(owner_root=owner_root),
+        )
 
     @classmethod
     def plan_contract_rules(
