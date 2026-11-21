@@ -192,7 +192,9 @@ class FlextInfraCodegenConsolidator(s[str]):
         index = pymodule.get_source_binding_index()
         value_map: t.MutableStrMapping = {}
         cls._record_constants(value_map, pymodule, finals, index.assignment_layouts())
-        pending = [(scope, ()) for scope in pymodule.get_scope().get_scopes()]
+        pending: list[tuple[p.Infra.RopeScope, t.StrTuple]] = [
+            (scope, ()) for scope in pymodule.get_scope().get_scopes()
+        ]
         while pending:
             scope, outer = pending.pop()
             if scope.get_kind() != c.Infra.RopeScopeKind.CLASS:
