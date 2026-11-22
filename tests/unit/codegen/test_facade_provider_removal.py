@@ -99,6 +99,109 @@ class TestsFlextInfraFacadeProviderRemoval:
                     family=c.Infra.FacadeFamily.U,
                 )
             )
-        ast.parse(rendered)
-        tm.that(rendered, has="FlextSampleUtilitiesKept")
+        owner = next(
+            node
+            for node in ast.parse(rendered).body
+            if isinstance(node, ast.ClassDef) and node.name == "FlextSampleUtilities"
+        )
+        tm.that(
+            [base.id for base in owner.bases if isinstance(base, ast.Name)],
+            eq=["FlextSampleUtilitiesKept"],
+        )
         tm.that("FlextSampleUtilitiesGone" in rendered, eq=False)
+
+    @staticmethod
+    def test_owner_keeps_the_parts_its_namespace_composes(tmp_path: Path) -> None:
+        """An owner base the elected namespace composes is never retired.
+
+        Premise: the generated owner class publishes its family parts at the
+        root (``u.that``) and the nested namespace composes the same parts.
+        Regeneration re-derives the namespace from the providers that exist;
+        a base it composes is a live provider, so the owner header keeps it.
+        """
+        root, package = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-sample",
+            package_name="flext_sample",
+        )
+        family = u.Infra.facade_family_declared_by(c.Infra.UTILITIES_PY)
+        directory = package / family.directory
+        directory.mkdir(parents=True, exist_ok=True)
+        (package / c.Infra.INIT_PY).write_text("", encoding=c.DEFAULT_ENCODING)
+        parts = {"matchers": "Matchers", "governance": "Governance"}
+        for module, suffix in parts.items():
+            (directory / f"{module}.py").write_text(
+                f'"""Provider {suffix}."""\n\n'
+                f"class FlextSampleUtilities{suffix}:\n"
+                f"    {suffix.upper()} = '{module}'\n\n"
+                f"__all__ = ['FlextSampleUtilities{suffix}']\n",
+                encoding=c.DEFAULT_ENCODING,
+            )
+        (directory / c.Infra.INIT_PY).write_text(
+            f"{c.Infra.AUTOGEN_HEADER}\n"
+            '"""Previous lazy projection."""\n\n'
+            "from __future__ import annotations\n\n"
+            "from types import MappingProxyType\n"
+            "from typing import TYPE_CHECKING\n\n"
+            "from flext_core.lazy import install_lazy_exports\n\n"
+            "if TYPE_CHECKING:\n"
+            "    from flext_sample._utilities.governance import (\n"
+            "        FlextSampleUtilitiesGovernance,\n"
+            "    )\n"
+            "    from flext_sample._utilities.matchers import "
+            "FlextSampleUtilitiesMatchers\n\n"
+            "__all__: tuple[str, ...] = (\n"
+            "    'FlextSampleUtilitiesGovernance',\n"
+            "    'FlextSampleUtilitiesMatchers',\n"
+            ")\n\n"
+            "install_lazy_exports(\n"
+            "    __name__,\n"
+            "    globals(),\n"
+            "    MappingProxyType({\n"
+            "        'FlextSampleUtilitiesGovernance': '.governance',\n"
+            "        'FlextSampleUtilitiesMatchers': '.matchers',\n"
+            "    }),\n"
+            "    public_exports=__all__,\n"
+            ")\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        facade = package / c.Infra.UTILITIES_PY
+        facade.write_text(
+            f"{c.Infra.AUTOGEN_HEADER}\n"
+            '"""Previous facade projection."""\n\n'
+            "from __future__ import annotations\n\n"
+            "from flext_sample._utilities import (\n"
+            "    FlextSampleUtilitiesGovernance,\n"
+            "    FlextSampleUtilitiesMatchers,\n"
+            ")\n\n\n"
+            "class FlextSampleUtilities(\n"
+            "    FlextSampleUtilitiesGovernance,\n"
+            "    FlextSampleUtilitiesMatchers,\n"
+            "):\n"
+            "    class Sample(\n"
+            "        FlextSampleUtilitiesGovernance,\n"
+            "        FlextSampleUtilitiesMatchers,\n"
+            "    ):\n"
+            "        pass\n\n\n"
+            "u = FlextSampleUtilities\n"
+            "__all__ = ['FlextSampleUtilities', 'u']\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        with FlextInfraRopeWorkspace.open_workspace(root) as rope:
+            rendered = tm.ok(
+                u.Infra.facade_component_source(
+                    rope.rope_project,
+                    facade,
+                    directory,
+                    family=c.Infra.FacadeFamily.U,
+                )
+            )
+        owner = next(
+            node
+            for node in ast.parse(rendered).body
+            if isinstance(node, ast.ClassDef) and node.name == "FlextSampleUtilities"
+        )
+        tm.that(
+            sorted(base.id for base in owner.bases if isinstance(base, ast.Name)),
+            eq=["FlextSampleUtilitiesGovernance", "FlextSampleUtilitiesMatchers"],
+        )

@@ -2659,14 +2659,16 @@ class FlextInfraUtilitiesFacadeComponents:
         scope: p.Infra.RopeScope,
         prefix: str,
         dropped: frozenset[str],
+        composed: frozenset[str],
     ) -> tuple[str, frozenset[str]]:
-        """Drop unresolved bases from the header of the class holding the namespace.
+        """Drop retired bases from the header of the class holding the namespace.
 
         A generated facade's headers are its previous projection. The elected
-        namespace re-derives its bases; the owner class that holds it is
-        copied with the prefix, so a base that no longer resolves to a class
-        there (the namespace rule) is removed with its separator, and its line
-        when it stands alone.
+        namespace re-derives its bases (``composed``), which proves each of
+        them is a live provider; the owner class that holds it is copied with
+        the prefix, so a base the namespace no longer composes and that no
+        longer resolves to a class there (the namespace rule) is removed with
+        its separator, and its line when it stands alone.
 
         Returns:
             The prefix with the owner header rewritten, and ``dropped`` (the
@@ -2686,6 +2688,7 @@ class FlextInfraUtilitiesFacadeComponents:
             span
             for span, binding in layout.base_bindings
             if span[1] <= len(prefix)
+            and prefix[span[0] : span[1]] not in composed
             and (
                 binding is None
                 or not FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(
@@ -2796,6 +2799,7 @@ class FlextInfraUtilitiesFacadeComponents:
                 for first, last in layout.bases
                 if source[first:last] not in desired_bases
             ),
+            frozenset(desired_bases),
         )
         context = m.Infra.ModuleSkeletonRenderContext(
             class_name=actual.get_name(),
