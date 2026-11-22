@@ -82,6 +82,8 @@ class FlextInfraConstantsMake(FlextInfraConstantsConfig):
     VERB_CHECK: ClassVar[str] = "check"
     VERB_TEST: ClassVar[str] = "tests"
     VERB_TEST_FULL: ClassVar[str] = "tests-full"
+    ADMISSION_FULL_FORMS: ClassVar[tuple[str, ...]] = ("check-full", "mod-full")
+    "Admission names of the full check and mod forms (rendered by the Makefile)."
     VERB_TEST_HARNESS: ClassVar[str] = "tests-harness"
     VERB_NATIVE_GATE: ClassVar[str] = "native-gate"
     RUFF_UNSAFE_FIXES_FLAG: ClassVar[str] = "--unsafe-fixes"
