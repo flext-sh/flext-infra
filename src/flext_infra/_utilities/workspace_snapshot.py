@@ -419,6 +419,9 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
     ) -> tuple[Path, ...]:
         """Return one member's Python modules, listed through one project view.
 
+        Only the declared source roots (``source_scan.roots``) are listed;
+        files outside them never enter the snapshot.
+
         The snapshot's engine lists once per member; a planned view project
         (with proposed additions and retirements) lists through itself.
         Sources of a member nested inside this one belong to that member.
@@ -426,7 +429,7 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
         detected by path alone, never decoded or analyzed as modules.
 
         Returns:
-            The member's Python module paths in path order.
+            The member's Python module paths, root by root in path order.
 
         """
         member = member.resolve()
@@ -441,8 +444,9 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
             )
             listed = tuple(
                 path
+                for root in config.Infra.source_scan.roots
                 for path in FlextInfraUtilitiesProjectDiscovery.discover_python_files(
-                    member / c.Infra.DEFAULT_SRC_DIR,
+                    member / root,
                     workspace_excluded_top_dirs=frozenset(),
                     source_project=view,
                 )
