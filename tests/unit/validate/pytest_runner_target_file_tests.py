@@ -97,13 +97,7 @@ class TestsFlextInfraPytestTargetFile:
         modes = [c.Infra.PytestExecutionMode.FULL]
         tm.that([receipt.execution_mode for receipt in receipts], eq=modes)
         tm.that(len({receipt.testmon_db for receipt in receipts}), eq=1)
-        tm.that(
-            {receipt.deadline_monotonic for receipt in receipts},
-            eq={
-                runner.started_at_monotonic
-                + config.Infra.tooling.tools.pytest.run_timeout_seconds,
-            },
-        )
+        tm.that({receipt.deadline_monotonic for receipt in receipts}, eq={None})
         if expected and not failure:
             TestsFlextInfraPytestTargetFile._assert_rerun_executes_again(
                 root,

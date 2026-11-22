@@ -64,7 +64,7 @@ class TestsFlextInfraPytestRunnerCleanupOutcome:
         tm.that(prctl(get_child_subreaper, ctypes.byref(previous), 0, 0, 0), eq=0)
         tm.that(prctl(set_child_subreaper, 1, 0, 0, 0), eq=0)
         try:
-            exit_code = tm.ok(runner.execute_full())
+            exit_code = tm.ok(runner.execute())
         finally:
             tm.that(prctl(set_child_subreaper, previous.value, 0, 0, 0), eq=0)
             if pid_file.is_file():
