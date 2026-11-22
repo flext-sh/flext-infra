@@ -4358,6 +4358,10 @@ native Git inventory and the declared head, index, refs and object files
 after the existing Make and systemd admission. The Git metadata belongs to
 the source project itself, with its own object store. The selected checkout
 owns its own Testmon state.
+The launcher authenticates the declared runtime roots on the retained
+read-only mount descriptors for a whole-project incremental run. A scoped
+or complete run captures the elected runtime version before its first phase
+and verifies that version at each launch.
 Projects without this election keep the ordinary checkout database.
 
 Toolchain caches hold one immutable entry per lock state: the key is the OS,
