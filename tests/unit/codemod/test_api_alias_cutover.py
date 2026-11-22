@@ -235,6 +235,8 @@ class TestsFlextInfraApiAliasCutover:
             actionable=False,
             classification=c.Infra.ModScanFindingClass.DETECTION_ONLY,
         )
+        # Source discovery inventories a real Git checkout, as in production.
+        u.Tests.initialize_git_repo(tmp_path)
 
         with infra.rope_workspace(tmp_path) as rope:
             planned = u.Infra.plan_semantic_cutover(
@@ -331,6 +333,8 @@ class TestsFlextInfraApiAliasCutover:
             actionable=False,
             classification=c.Infra.ModScanFindingClass.DETECTION_ONLY,
         )
+        # Source discovery inventories a real Git checkout, as in production.
+        u.Tests.initialize_git_repo(tmp_path)
 
         with infra.rope_workspace(tmp_path) as rope:
             planned = u.Infra.plan_semantic_cutover(
@@ -462,6 +466,8 @@ class TestsFlextInfraApiAliasCutover:
             actionable=False,
             classification=c.Infra.ModScanFindingClass.DETECTION_ONLY,
         )
+        # Source discovery inventories a real Git checkout, as in production.
+        u.Tests.initialize_git_repo(tmp_path)
 
         with infra.rope_workspace(tmp_path) as rope:
             planned = u.Infra.plan_semantic_cutover(
@@ -532,6 +538,8 @@ class TestsFlextInfraApiAliasCutover:
             actionable=False,
             classification=c.Infra.ModScanFindingClass.DETECTION_ONLY,
         )
+        # Source discovery inventories a real Git checkout, as in production.
+        u.Tests.initialize_git_repo(tmp_path)
 
         with infra.rope_workspace(tmp_path) as rope:
             planned = u.Infra.plan_semantic_cutover(
