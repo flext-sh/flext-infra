@@ -174,12 +174,18 @@ class FlextInfraPytestRunnerExecution(
         if selection_manifest is not None:
             inputs = (
                 *inputs,
-                u.Cli.atomic_read_binary_file_state(
-                    selection_manifest, required=True
-                ).unwrap(),
+                m.Cli.AtomicFileState.model_validate(
+                    u.Cli.atomic_read_binary_file_state(
+                        selection_manifest, required=True
+                    ).unwrap(),
+                    from_attributes=True,
+                ),
             )
         checkout = fixture.checkout_root
-        output_inventory = u.Cli.atomic_inventory_physical_tree(output).unwrap()
+        output_inventory = m.Cli.AtomicPhysicalTreeManifest.model_validate(
+            u.Cli.atomic_inventory_physical_tree(output).unwrap(),
+            from_attributes=True,
+        )
         isolation = m.Cli.ProcessFixtureIsolation(
             platform=admitted.platform,
             architecture=admitted.architecture,
@@ -192,9 +198,10 @@ class FlextInfraPytestRunnerExecution(
             runtime_files=inputs,
             environment=tuple(environment.items()),
             output_directory=output_inventory,
-            persistent_directory=u.Cli.atomic_inventory_physical_tree(
-                config_receipts,
-            ).unwrap(),
+            persistent_directory=m.Cli.AtomicPhysicalTreeManifest.model_validate(
+                u.Cli.atomic_inventory_physical_tree(config_receipts).unwrap(),
+                from_attributes=True,
+            ),
             private_checkout=m.Cli.ProcessFixtureCheckout(
                 backing=self._fixture_backing(database),
                 source_root=self.repository_root,
@@ -226,7 +233,7 @@ class FlextInfraPytestRunnerExecution(
             ),
         )
 
-    def _fixture_backing(self, database: Path) -> p.Cli.AtomicPhysicalTreeManifest:
+    def _fixture_backing(self, database: Path) -> m.Cli.AtomicPhysicalTreeManifest:
         """Authenticate the database family before native SQLite opens it.
 
         Returns:
@@ -237,7 +244,10 @@ class FlextInfraPytestRunnerExecution(
 
         """
         checkout = database.parent
-        inventory = u.Cli.atomic_inventory_physical_tree(checkout).unwrap()
+        inventory = m.Cli.AtomicPhysicalTreeManifest.model_validate(
+            u.Cli.atomic_inventory_physical_tree(checkout).unwrap(),
+            from_attributes=True,
+        )
         names = self._fixture_database_names(database)
         uid = os.getuid()
         if (
