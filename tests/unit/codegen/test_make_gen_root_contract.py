@@ -132,25 +132,26 @@ class TestsFlextInfraMakeGenRootContract:
             )
 
     @staticmethod
-    def test_generation_rejects_a_root_outside_the_declared_topology(
+    def test_generation_admits_topology_before_requiring_an_interpreter(
         tmp_path: Path,
     ) -> None:
-        """Even bootstrap generation rejects a root outside the declared topology."""
+        """Only a declared external root reaches the interpreter prerequisite."""
         root = tmp_path / "fixture-workspace"
         u.Tests.WorktreeFixture.governed_workspace_with_member(root)
         stray = root / "stray"
         stray.mkdir()
-        result = infra.codegen_generate(
-            m.Infra.CodegenGenerateRequest(
-                root=stray,
-                what=c.Infra.CodegenConformSurface.MAKEFILE,
-                scope=c.Infra.CodegenConformScope.SELF,
+        for target, reason in (
+            (stray, "generation root must be the workspace root or a declared member"),
+            (root, "has no provisioned Python environment"),
+        ):
+            result = infra.codegen_generate(
+                m.Infra.CodegenGenerateRequest(
+                    root=target,
+                    what=c.Infra.CodegenConformSurface.DEPENDENCIES,
+                    scope=c.Infra.CodegenConformScope.SELF,
+                )
             )
-        )
-        tm.fail(
-            result,
-            has="generation root must be the workspace root or a declared member",
-        )
+            tm.fail(result, has=reason)
 
     @staticmethod
     def _attached_member(root: Path, tmp_path: Path, name: str) -> Path:
