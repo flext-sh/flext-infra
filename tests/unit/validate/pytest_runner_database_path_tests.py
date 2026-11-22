@@ -87,7 +87,7 @@ class TestsFlextInfraPytestRunnerDatabase:
             f"import os\n\nassert os.environ[{variable!r}] == {str(database)!r}\n",
             encoding=c.DEFAULT_ENCODING,
         )
-        (nested_root / "test_nested_root.py").write_text(
+        (nested_root / "test_runtime.py").write_text(
             "from pathlib import Path\n\n"
             "def test_nested_root(pytestconfig):\n"
             "    assert pytestconfig.rootpath == Path(__file__).parent\n",
