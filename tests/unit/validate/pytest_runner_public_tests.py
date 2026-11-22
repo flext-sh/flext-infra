@@ -19,6 +19,7 @@ class TestsFlextInfraPytestRunner:
     """Exercise the real pytest, testmon, coverage, and report lifecycle."""
 
     @staticmethod
+    @c.Tests.MARK.slow
     @c.Tests.MARK.parametrize("has_origin", [False, True])
     def test_original_suite_receipt_binds_public_process_and_accounting(
         cached_runner_project: Path,
@@ -27,7 +28,6 @@ class TestsFlextInfraPytestRunner:
     ) -> None:
         """A real suite produces its own public proof input without another run."""
         root = cached_runner_project
-        u.Tests.git_bootstrap(root, ("init", "-b", c.Infra.GIT_MAIN))
         for key, value in (
             ("user.name", "Original Suite Test"),
             ("user.email", "suite@example.test"),
@@ -39,11 +39,13 @@ class TestsFlextInfraPytestRunner:
                 root,
                 (
                     "remote",
-                    "add",
+                    "set-url",
                     c.Infra.GIT_ORIGIN,
                     "https://github.example/flext/suite.git",
                 ),
             )
+        else:
+            u.Tests.git_bootstrap(root, ("remote", "remove", c.Infra.GIT_ORIGIN))
         tracked = root / "shared-tracked.txt"
         tracked.write_text("initial\n", encoding=c.DEFAULT_ENCODING)
         cache = config.Infra.codegen.make.testmon_cache
@@ -93,7 +95,7 @@ class TestsFlextInfraPytestRunner:
             "pending\n", encoding=c.DEFAULT_ENCODING
         )
         runner = u.Tests.PytestRunner.runner_for(root)
-        (root / runner.target / "test_shared_worktree.py").write_text(
+        (root / runner.target / "test_runtime.py").write_text(
             "import subprocess\nfrom pathlib import Path\n\n"
             "def test_shared_worktree() -> None:\n"
             f"    root = Path({str(root)!r})\n"
@@ -194,6 +196,7 @@ class TestsFlextInfraPytestRunner:
         )
 
     @staticmethod
+    @c.Tests.MARK.slow
     @c.Tests.MARK.parametrize("ci_context", [False, True])
     def test_child_imports_respect_the_installed_ci_boundary(
         cached_runner_project: Path,
@@ -216,7 +219,7 @@ class TestsFlextInfraPytestRunner:
         runner = u.Tests.PytestRunner.runner_for(
             cached_runner_project, ci_context=ci_context
         )
-        (cached_runner_project / runner.target / "test_import_boundary.py").write_text(
+        (cached_runner_project / runner.target / "test_runtime.py").write_text(
             "import importlib.util\n"
             "import os\n"
             "import sys\n\n"
@@ -435,13 +438,10 @@ class TestsFlextInfraPytestRunner:
         u.Tests.PytestRunner.declare_parallel_project(cached_runner_project)
         policy = config.Infra.tooling.tools.pytest
         cache = config.Infra.codegen.make.testmon_cache
-        (cached_runner_project / cache.target_directory / "test_phases.py").write_text(
+        (cached_runner_project / cache.target_directory / "test_runtime.py").write_text(
             "import pytest\nfrom runner_sample import answer\n\n"
-            + "".join(
-                f"def test_budgeted_{index}() -> None:\n    assert answer()\n\n"
-                for index in range(1)
-            )
-            + f"@pytest.mark.{policy.slow_marker}\n"
+            "def test_budgeted() -> None:\n    assert answer()\n\n"
+            f"@pytest.mark.{policy.slow_marker}\n"
             "def test_slow_red() -> None:\n    assert answer() < 0\n",
             encoding="utf-8",
         )
@@ -748,7 +748,7 @@ class TestsFlextInfraPytestRunner:
         *,
         ci_context: bool,
     ) -> None:
-        """A bounded full execution records its scope and skips harness gates."""
+        """A full execution records its scope and skips harness gates."""
         policy = config.Infra.tooling.tools.pytest
         markers = tuple(
             sorted({
@@ -791,10 +791,7 @@ class TestsFlextInfraPytestRunner:
         tm.that({context.testmon_db for context in parsed}, eq={database})
         tm.ok(database.is_file())
         tm.that(parsed[-1].execution_mode, eq=c.Infra.PytestExecutionMode.FULL)
-        tm.that(
-            parsed[-1].deadline_monotonic,
-            eq=u.Tests.approx(runner.started_at_monotonic + policy.run_timeout_seconds),
-        )
+        tm.that(parsed[-1].deadline_monotonic, none=True)
         report_dir = contexts[-1].parent
         accounting = m.Infra.TestmonRunAccounting.model_validate_json(
             (report_dir / "run-accounting.json").read_text(),
@@ -826,7 +823,7 @@ class TestsFlextInfraPytestRunner:
             ],
             lacks="--testmon-forceselect",
         )
-        tm.that(recorded, has=c.Infra.PYTEST_SUITE_STOP_OPTION)
+        tm.that(recorded, lacks=c.Infra.PYTEST_SUITE_STOP_OPTION)
         tm.that(recorded, has=f"--timeout={policy.ordinary_timeout_seconds}")
         tm.that(recorded, has=[*not_executed])
         tm.that(
@@ -883,13 +880,7 @@ class TestsFlextInfraPytestRunner:
             / config.Infra.codegen.make.testmon_cache.database_filename,
         )
         tm.ok(database.is_file())
-        tm.that(
-            {context.deadline_monotonic for context in parsed},
-            eq={
-                runner.started_at_monotonic
-                + config.Infra.tooling.tools.pytest.run_timeout_seconds,
-            },
-        )
+        tm.that({context.deadline_monotonic for context in parsed}, eq={None})
         (file_report,) = (path.parent for path in contexts)
         tm.that(
             (file_report / "summary.txt").read_text(),
@@ -915,26 +906,30 @@ class TestsFlextInfraPytestRunner:
 
     @staticmethod
     @c.Tests.MARK.slow
-    def test_full_suite_applies_effective_slow_and_aggregate_policy(
+    def test_full_suite_keeps_item_limits_without_an_aggregate_deadline(
         cached_runner_project: Path,
     ) -> None:
-        """Real pytest enforces slow-item policy within the shared invocation wall."""
+        """Real pytest enforces item policy in an unbounded full invocation."""
         runner = u.Tests.PytestRunner.runner_for(cached_runner_project)
+        policy = config.Infra.tooling.tools.pytest
+        ordinary_limit = policy.ordinary_timeout_seconds
+        slow_limit = policy.slow_timeout_seconds
         reports_root = cached_runner_project / runner.reports
         existing = set(reports_root.glob("*/run-context.json"))
         (cached_runner_project / runner.target / "test_bounded_policy.py").write_text(
             "import pytest\nfrom flext_infra import c\n\n"
             "def test_ordinary_budget(pytestconfig, request):\n"
-            "    assert pytestconfig.getoption('timeout') == 2\n"
+            f"    assert pytestconfig.getoption('timeout') == {ordinary_limit}\n"
             "    assert request.node.get_closest_marker('timeout') is None\n\n"
-            f"@pytest.mark.{config.Infra.tooling.tools.pytest.slow_marker}\n"
+            f"@pytest.mark.{policy.slow_marker}\n"
             "def test_bounded_policy(pytestconfig, request):\n"
-            "    assert pytestconfig.getoption('timeout') == 2\n"
+            f"    assert pytestconfig.getoption('timeout') == {ordinary_limit}\n"
             "    budget = pytestconfig.getini(c.Infra.FLEXT_SLOW_TIMEOUT_SECONDS)\n"
-            "    assert budget == '20'\n"
+            f"    assert budget == {str(slow_limit)!r}\n"
             "    marker = request.node.get_closest_marker('timeout')\n"
-            "    assert marker is not None and marker.args == (20,)\n"
-            "    assert pytestconfig.getoption(c.Infra.PYTEST_SUITE_STOP_OPTION) > 0\n",
+            f"    assert marker is not None and marker.args == ({slow_limit},)\n"
+            "    stop_at = pytestconfig.getoption(c.Infra.PYTEST_SUITE_STOP_OPTION)\n"
+            "    assert stop_at is None\n",
             encoding="utf-8",
         )
 
@@ -949,13 +944,7 @@ class TestsFlextInfraPytestRunner:
             [context.execution_mode for context in parsed],
             eq=[c.Infra.PytestExecutionMode.FULL],
         )
-        tm.that(
-            {context.deadline_monotonic for context in parsed},
-            eq={
-                runner.started_at_monotonic
-                + config.Infra.tooling.tools.pytest.run_timeout_seconds,
-            },
-        )
+        tm.that({context.deadline_monotonic for context in parsed}, eq={None})
         tm.that({context.testmon_db for context in parsed}, eq={runner.testmon_db})
 
     @staticmethod
