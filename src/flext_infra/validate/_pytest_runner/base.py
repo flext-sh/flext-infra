@@ -68,7 +68,7 @@ class FlextInfraPytestRunnerBase(s[int]):
             gt=0,
             description=(
                 "Explicit suite timeout for a bounded operation. Otherwise the "
-                "elected tooling policy supplies the budget. FULL owns none."
+                "elected tooling policy supplies the budget. Unconfined FULL owns none."
             ),
         ),
     ] = None

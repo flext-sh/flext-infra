@@ -1264,6 +1264,7 @@ class FlextInfraPytestRunnerExecution(
             report_dir,
             m.Infra.PytestRunContext(
                 execution_mode=execution_mode,
+                isolated_fixture=self.fixture is not None,
                 testmon_db=database,
                 deadline_monotonic=self._deadline_monotonic(
                     execution_mode=execution_mode,
