@@ -17,6 +17,8 @@ from flext_infra.codemod import FlextInfraCodemodSemanticApply
 from flext_infra.validate import FlextInfraNamespaceValidator
 from tests import c, m, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraCodemodImportCycleSourceScan:
     """A source-scan-ignored tree is not a missing production module."""

@@ -17,6 +17,8 @@ from tests.unit.codegen.test_make_bootstrap_publication import (
     TestsMakeBootstrapPublication as _BootstrapWorkspace,
 )
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsLiveEditableProvenance:
     """Local editable provenance authenticates the live checkout independently."""

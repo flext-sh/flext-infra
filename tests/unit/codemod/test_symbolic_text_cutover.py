@@ -18,6 +18,8 @@ from flext_infra.codemod import (
 )
 from tests import c, p, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraSymbolicTextCutover:
     """Exercise native findings, binding snapshots, and public publication."""

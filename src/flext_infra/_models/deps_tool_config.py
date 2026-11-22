@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from pathlib import Path
 from typing import Annotated, Literal, Self
 
 from flext_cli import m
@@ -16,6 +17,7 @@ from flext_infra._models import (
     FlextInfraModelsDepsToolConfigLinters,
     FlextInfraModelsDepsToolConfigTypeCheckers,
     FlextInfraModelsDuplication,
+    FlextInfraModelsMiseToolchainBase,
 )
 
 
@@ -225,6 +227,41 @@ class FlextInfraModelsDepsToolConfig(
                 raise ValueError(msg)
             return self
 
+    class PytestFixtureConfig(FlextInfraModelsMiseToolchainBase.SchemaRecord):
+        """Elect an existing prepared, setup-qualified pytest fixture."""
+
+        checkout_root: Path = m.Field(
+            alias="checkout-root",
+            description="Physical private checkout owning the native Testmon state",
+        )
+        setup_root: Path = m.Field(
+            alias="setup-root",
+            description="Repository that issued the current native tool setup receipt",
+        )
+        git_inputs: tuple[Path, ...] = m.Field(
+            alias="git-inputs",
+            min_length=1,
+            description=(
+                "Approved repository-relative Git metadata for native discovery"
+            ),
+        )
+        runtime_trees: tuple[Path, ...] = m.Field(
+            alias="runtime-trees",
+            min_length=1,
+            description="Disjoint physical executable runtime roots",
+        )
+        runtime_files: tuple[Path, ...] = m.Field(
+            alias="runtime-files",
+            default=(),
+            description="Individual qualified executable and loader inputs",
+        )
+        environment: Mapping[
+            Literal["PATH", "LD_LIBRARY_PATH", "TERM", "TERMINFO"], str
+        ] = m.Field(
+            default_factory=dict,
+            description="Explicit executable, loader and terminal environment",
+        )
+
     class PytestConfig(m.ArbitraryTypesModel):
         """Pytest baseline settings loaded from YAML."""
 
@@ -259,6 +296,10 @@ class FlextInfraModelsDepsToolConfig(
             gt=0,
             le=1800,
             description="Aggregate wall-clock maximum for one pytest operation.",
+        )
+        fixture: FlextInfraModelsDepsToolConfig.PytestFixtureConfig | None = m.Field(
+            default=None,
+            description="Prepared private fixture selected for this project's tests",
         )
         harness_run_timeout_seconds: int = m.Field(
             alias="harness-run-timeout-seconds",

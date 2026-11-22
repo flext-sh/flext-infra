@@ -152,6 +152,7 @@ class TestsFlextInfraApiAliasCutover:
         tm.ok(u.Cli.process_succeeded(outcome.outcome))
 
     @staticmethod
+    @c.Tests.MARK.slow
     @c.Tests.MARK.parametrize(
         ("consumer", "reason"),
         [
@@ -190,6 +191,7 @@ class TestsFlextInfraApiAliasCutover:
         )
 
     @staticmethod
+    @c.Tests.MARK.slow
     @c.Tests.MARK.parametrize(
         ("owner_file", "owner_module"),
         [
@@ -243,6 +245,7 @@ class TestsFlextInfraApiAliasCutover:
         # Source discovery inventories a real Git checkout, as in production.
         u.Tests.initialize_git_repo(tmp_path)
 
+        u.Tests.initialize_git_repo(tmp_path)
         with infra.rope_workspace(tmp_path) as rope:
             planned = u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.COMPAT_ALIAS,
@@ -264,6 +267,7 @@ class TestsFlextInfraApiAliasCutover:
         tm.that(by_path[consumer], lacks="import sample")
 
     @staticmethod
+    @c.Tests.MARK.slow
     @c.Tests.MARK.parametrize(
         ("module", "receiver"),
         [
@@ -341,6 +345,7 @@ class TestsFlextInfraApiAliasCutover:
         # Source discovery inventories a real Git checkout, as in production.
         u.Tests.initialize_git_repo(tmp_path)
 
+        u.Tests.initialize_git_repo(tmp_path)
         with infra.rope_workspace(tmp_path) as rope:
             planned = u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.COMPAT_ALIAS,
@@ -369,6 +374,7 @@ class TestsFlextInfraApiAliasCutover:
         tm.ok(converged, eq=())
 
     @staticmethod
+    @c.Tests.MARK.slow
     @c.Tests.MARK.parametrize(
         ("consumer_source", "diagnostic"),
         [
@@ -474,6 +480,7 @@ class TestsFlextInfraApiAliasCutover:
         # Source discovery inventories a real Git checkout, as in production.
         u.Tests.initialize_git_repo(tmp_path)
 
+        u.Tests.initialize_git_repo(tmp_path)
         with infra.rope_workspace(tmp_path) as rope:
             planned = u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.COMPAT_ALIAS,
@@ -485,6 +492,7 @@ class TestsFlextInfraApiAliasCutover:
         tm.fail(planned, has=diagnostic)
 
     @staticmethod
+    @c.Tests.MARK.slow
     @c.Tests.MARK.parametrize(
         ("module_import", "receiver"),
         [
@@ -546,6 +554,7 @@ class TestsFlextInfraApiAliasCutover:
         # Source discovery inventories a real Git checkout, as in production.
         u.Tests.initialize_git_repo(tmp_path)
 
+        u.Tests.initialize_git_repo(tmp_path)
         with infra.rope_workspace(tmp_path) as rope:
             planned = u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.COMPAT_ALIAS,

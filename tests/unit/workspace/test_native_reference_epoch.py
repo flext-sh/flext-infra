@@ -10,6 +10,8 @@ from pathlib import Path
 
 from tests import c, p, t, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsNativeReferenceEpoch:
     """Native container traversal preserves source and declaration change guards."""

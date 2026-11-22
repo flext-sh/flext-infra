@@ -11,6 +11,8 @@ from pathlib import Path
 from flext_infra import FlextInfraWorktreeService
 from tests import c, m, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraWorktreeTopology(u.Tests.WorktreeFixture):
     """Group cohesive worktree behavior."""

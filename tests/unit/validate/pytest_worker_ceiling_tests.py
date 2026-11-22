@@ -16,6 +16,8 @@ from flext_infra import config
 from flext_infra.validate import FlextInfraPytestRunner
 from tests import c, m, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 @c.Tests.MARK.unit
 class TestsFlextInfraPytestWorkerCeiling:

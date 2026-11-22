@@ -13,6 +13,8 @@ from pathlib import Path
 from flext_infra import config
 from tests import c, m, p, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraUtilitiesformatting:
     @staticmethod

@@ -11,6 +11,8 @@ from pathlib import Path
 
 from tests import c, m, p, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 @c.Tests.MARK.parametrize("stale_model_base", [False, True])
 @c.Tests.MARK.parametrize("annotated", [False, True])

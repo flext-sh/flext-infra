@@ -16,6 +16,8 @@ from pathlib import Path
 from flext_infra import FlextInfraFlextInfraPytest
 from tests import c, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraCProfileInterruption:
     """Exercise publication and continuation through real Python processes."""

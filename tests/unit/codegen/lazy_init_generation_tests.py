@@ -16,6 +16,8 @@ from flext_infra import config
 from flext_infra.gates import FlextInfraGatesRuffLint
 from tests import c, m, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraLazyInitGeneration:
     """Validate rendered initializers produced from fixture packages."""

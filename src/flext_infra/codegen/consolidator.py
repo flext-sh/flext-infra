@@ -50,7 +50,8 @@ class FlextInfraCodegenConsolidator(s[str]):
                     continue
                 constants_file = project_layout.package_dir / c.Infra.CONSTANTS_PY
                 value_map = self._build_value_map_from_constants_file(
-                    rope_project, constants_file
+                    rope_project,
+                    constants_file,
                 )
                 if value_map.failure:
                     return r[str].from_failure(value_map)
@@ -192,6 +193,18 @@ class FlextInfraCodegenConsolidator(s[str]):
         index = pymodule.get_source_binding_index()
         value_map: t.MutableStrMapping = {}
         cls._record_constants(value_map, pymodule, finals, index.assignment_layouts())
+        cls._process_nested_class_scopes(value_map, pymodule, finals, index)
+        return r[Mapping[str, str]].ok(value_map)
+
+    @classmethod
+    def _process_nested_class_scopes(
+        cls,
+        value_map: t.MutableStrMapping,
+        pymodule: t.Infra.RopePyModule,
+        finals: frozenset[tuple[int, str]],
+        index: t.Infra.RopeBindingIndex,
+    ) -> None:
+        """Process nested class scopes for constant bindings."""
         pending: list[tuple[p.Infra.RopeScope, t.StrTuple]] = [
             (scope, ()) for scope in pymodule.get_scope().get_scopes()
         ]
@@ -204,7 +217,6 @@ class FlextInfraCodegenConsolidator(s[str]):
             cls._record_constants(
                 value_map, pymodule, finals, index.assignment_layouts(scope), path[1:]
             )
-        return r[Mapping[str, str]].ok(value_map)
 
     @staticmethod
     def _record_constants(

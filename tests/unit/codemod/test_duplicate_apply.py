@@ -15,6 +15,8 @@ from flext_infra.codemod import FlextInfraCodemodDuplicateApply, FlextInfraModGa
 from flext_infra.codemod.loop import FlextInfraCodemodLoopPhaseDuplicateApply
 from tests import c, m, p, t, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 _CORE_CONSTANT = "SHARED_LIMIT = 42\n"
 _SIDE_CONSTANT = "SHARED_LIMIT = 42\n"
 

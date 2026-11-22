@@ -17,6 +17,8 @@ from flext_infra.docs import (
 )
 from tests import c, m, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraDocsMainCommands:
     """Public service execution tests for docs commands."""

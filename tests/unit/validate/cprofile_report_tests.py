@@ -14,6 +14,8 @@ from time import monotonic
 from flext_infra import FlextInfraCli, config, validate
 from tests import c, m, t, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraCProfileReport:
     """Prove real pstats artifacts render through the typed owner."""

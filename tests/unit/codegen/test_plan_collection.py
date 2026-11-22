@@ -11,6 +11,8 @@ from pathlib import Path
 from flext_infra.docs import FlextInfraDocCollector
 from tests import c, m, p, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 def _projection_config(projection: Path) -> p.Infra.PlanCollectionConfig:
     """Build the projection-rooted home source configuration.

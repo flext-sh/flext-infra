@@ -18,6 +18,8 @@ from pathlib import Path
 
 from tests import c, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsProtocolMirrorOwnHolderImports:
     """Exercise the public projection on physical source trees."""

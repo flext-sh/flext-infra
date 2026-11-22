@@ -870,14 +870,15 @@ Infra:
       - { identity: setup, verb: setup, contexts: [ local, ci, pre_commit ] }
       # Initial behavioral admission requires global source evidence, not full check.
       - { identity: check-primary, verb: check, phase: primary, contexts: [ local, ci, pre_push ] }
-      # Operator decision 2026-11-19: a project that opts into the pre-push
-      # stage runs its incremental tests there after the primary check, since
-      # CI runs setup and the primary check only (ruling 2026-11-12).
+      # Operator decision 2026-11-22 (supersedes the 2026-11-12 ruling): CI runs
+      # the fast tests after the primary check, with no external infrastructure
+      # and no Docker; the runner deselects the docker, remote and slow markers.
+      # A project that opts into the pre-push stage runs them there too.
       - identity: tests-primary
         verb: tests
-        contexts: [ local, pre_push ]
+        contexts: [ local, ci, pre_push ]
         requires:
-        - { step: check-primary, contexts: [ local, pre_push ] }
+        - { step: check-primary, contexts: [ local, ci, pre_push ] }
       # CI never generates: check's `codegen conform --mode check` is the
       # read-only projection verdict of the LOCKED generator, so a stale or
       # skewed projection fails there, while CI generation would run the
@@ -1792,6 +1793,7 @@ Infra:
         - ".claude/shell-snapshots/"
         - ".claude/worktrees/"
         - ".claude/settings.local.json.bak"
+        - ".trigger-tree/"
       # Provider surfaces are REAL files, so the ArgoCD symlink hazard that
       # once justified blocking `.agents/` in non-root checkouts no longer
       # applies: the catalog owner materializes them via

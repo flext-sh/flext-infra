@@ -15,6 +15,8 @@ from flext_infra.codemod import FlextInfraCodemodSemanticApply
 from flext_infra.workspace import FlextInfraRopeWorkspace
 from tests import c, m, p, r, t, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 if TYPE_CHECKING:
     from pathlib import Path
 

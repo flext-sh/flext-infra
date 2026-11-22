@@ -15,6 +15,8 @@ from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, m, p, tm, u
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraCodegenLazyInitFilePlans:
     """Prove lazy-init describes effects without owning publication."""

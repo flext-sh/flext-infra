@@ -8,7 +8,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tests import m, p, tm, u
+from tests import c, m, p, tm, u
+
+pytestmark = c.Tests.MARK.slow
 
 
 class TestsFlextInfraGitStateCheckpoint:

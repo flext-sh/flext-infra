@@ -12,6 +12,8 @@ from pathlib import Path
 from flext_infra.deps import FlextInfraDependencyDetectionService
 from tests import c, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraDepsDetectionDeptry:
     """Exercise native deptry against real project declarations and sources."""

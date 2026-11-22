@@ -12,6 +12,8 @@ from typing import TYPE_CHECKING
 from flext_infra import config
 from tests import c, p, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 if TYPE_CHECKING:
     from flext_infra.codegen import FlextInfraCodegenLazyInit
 

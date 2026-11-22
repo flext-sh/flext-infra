@@ -11,6 +11,8 @@ from pathlib import Path
 from flext_infra.docs import FlextInfraDocGenerator
 from tests import c, m, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraDocsGeneratorPlan:
     """Read-only publication-plan contracts for generated documentation."""
