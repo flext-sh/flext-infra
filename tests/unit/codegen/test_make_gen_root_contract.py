@@ -273,6 +273,7 @@ class TestsFlextInfraMakeGenRootContract:
         )
 
     @staticmethod
+    @c.Tests.MARK.slow
     def test_generation_admits_a_governed_attached_member(tmp_path: Path) -> None:
         """The public service generates inside a declared governed member."""
         root = u.Tests.WorktreeFixture.governed_workspace(tmp_path, "attached-ws")
