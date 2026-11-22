@@ -341,16 +341,14 @@ class FlextInfraUtilitiesPytestCollection:
 
     @classmethod
     def collection_selection_active(cls, config: t.Infra.Pytest.Config) -> bool:
-        """Return whether this is a runner selection collection under Testmon.
+        """Return whether the runner observes native Testmon selection.
 
         Returns:
-            Whether the manifest is requested by a read-only collection that
-            Testmon's selecting plugin also steers.
+            Whether the invocation requests a manifest while Testmon selects.
 
         """
         return (
             config.pluginmanager.get_plugin(cls.testmon_select_plugin) is not None
-            and bool(config.getoption("collectonly"))
             and config.getoption(c.Infra.PYTEST_COLLECTION_MANIFEST_OPTION) is not None
         )
 

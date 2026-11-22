@@ -4337,9 +4337,11 @@ operation takes the same lease.
 
 Each pytest child receives authenticated source and runtime inputs and a
 separate writable report directory. Its home, temporary files and Python
-bytecode output use that private directory. The execution child reads the selection
-manifest from the completed collection as a sealed input. The original source
-identity still binds the parent receipts. The requested fixture uses the
+bytecode output use that private directory. A qualified whole-project fixture
+selects and executes incrementally in one native Testmon invocation with its
+default environment. Native worker observations bind the complete inventory and
+selection to the suite receipt. The original source identity still binds
+the parent receipts. The requested fixture uses the
 bootstrap-qualified launcher and policy compiler from the original setup
 report. The receipt binds their physical identities. A guest that changes
 those identities obtains a fresh receipt from `make setup` before replaying

@@ -333,11 +333,7 @@ class FlextInfraPytestRunnerExecution(
         # marker. All are empty scopes; the harness caller fails a run that
         # executes no harness item at all. A whole-suite budgeted inventory
         # that collects nothing stays a failure.
-        scope_may_be_empty = (
-            self.slow_phase
-            or self.target_file is not None
-            or execution_mode == c.Infra.PytestExecutionMode.HARNESS
-        )
+        scope_may_be_empty = self._scope_may_be_empty(execution_mode)
         # The selection pass executes the collected items only to fingerprint
         # their dependencies. An item failure is the suite's outcome, not a
         # failed collection: the manifest is still complete, and the real suite
@@ -516,6 +512,13 @@ class FlextInfraPytestRunnerExecution(
                 if any(base.rglob(pattern)):
                     return False
         return True
+
+    def _scope_may_be_empty(self, execution_mode: c.Infra.PytestExecutionMode) -> bool:
+        return (
+            self.slow_phase
+            or self.target_file is not None
+            or execution_mode == c.Infra.PytestExecutionMode.HARNESS
+        )
 
     def _process_deadline(
         self, *, execution_mode: c.Infra.PytestExecutionMode
@@ -1161,6 +1164,7 @@ class FlextInfraPytestRunnerExecution(
         selection = self._selection_from_suite(report_dir, outcome)
         if isinstance(selection, p.Cli.ProcessOutcome):
             return r.ok(selection.raw_return_code)
+        self._record_selection_plan(selection, report_dir, cache_restored=False)
         if not u.Cli.process_succeeded(outcome) and not self._completed_failure(
             outcome, report_dir
         ):
@@ -1285,10 +1289,10 @@ class FlextInfraPytestRunnerExecution(
         execution_mode: c.Infra.PytestExecutionMode,
         report_dir: Path,
     ) -> p.Result[int]:
-        """Run one selected testmon phase on the native database.
+        """Run incremental pytest on its native database.
 
-        The incremental selection retains its complete collection preflight
-        and the original database through execution and finalization.
+        A qualified fixture observes native selection in the suite itself.
+        The same checkout database remains authoritative through finalization.
 
         Returns:
             The resulting ``p.Result[int]``.
@@ -1296,15 +1300,17 @@ class FlextInfraPytestRunnerExecution(
         """
         pre_digest = FlextInfraTestmonDbInspector.digest_file(database)
         cache_restored = self._preflight_cache(pre_digest, report_dir, database)
-        selection_plan = self._collect_selection(
-            report_dir,
-            execution_mode=execution_mode,
-        )
-        if isinstance(selection_plan, p.Cli.ProcessOutcome):
-            return r.ok(selection_plan.raw_return_code)
-        self._record_selection_plan(
-            selection_plan, report_dir, cache_restored=cache_restored
-        )
+        selection_plan: p.Infra.PytestSelectionPlan | None = None
+        if not self._native_fixture_dispatch:
+            observed = self._collect_selection(
+                report_dir, execution_mode=execution_mode
+            )
+            if isinstance(observed, p.Cli.ProcessOutcome):
+                return r.ok(observed.raw_return_code)
+            selection_plan = observed
+            self._record_selection_plan(
+                selection_plan, report_dir, cache_restored=cache_restored
+            )
         command = self.build_command(
             self._pytest_child_reports(report_dir, "suite"),
             selection_plan,
@@ -1315,14 +1321,27 @@ class FlextInfraPytestRunnerExecution(
             report_dir,
             execution_mode=execution_mode,
             selection_manifest=(
-                None
-                if selection_plan.owns_no_tests
-                and not selection_plan.manifest_path.is_file()
-                else selection_plan.manifest_path
+                selection_plan.manifest_path
+                if selection_plan is not None
+                and (
+                    not selection_plan.owns_no_tests
+                    or selection_plan.manifest_path.is_file()
+                )
+                else None
             ),
         )
         if not published:
             return self._unfinished_result(outcome, report_dir)
+        if selection_plan is None:
+            observed = self._selection_from_suite(
+                report_dir, outcome, execution_mode=execution_mode
+            )
+            if isinstance(observed, p.Cli.ProcessOutcome):
+                return self._unfinished_result(observed, report_dir)
+            selection_plan = observed
+            self._record_selection_plan(
+                selection_plan, report_dir, cache_restored=cache_restored
+            )
         selection = selection_plan.node_ids
         # A declared file executes its complete collected inventory, so an empty
         # incremental suite selection never grants a cache hit to a file request.
@@ -1442,8 +1461,10 @@ class FlextInfraPytestRunnerExecution(
         self,
         report_dir: Path,
         outcome: p.Cli.ProcessOutcome,
+        *,
+        execution_mode: c.Infra.PytestExecutionMode = c.Infra.PytestExecutionMode.FULL,
     ) -> p.Infra.PytestSelectionPlan | p.Cli.ProcessOutcome:
-        """Bind a FULL plan only to the suite's observed complete inventory.
+        """Bind the plan to the suite's actual collection and selection.
 
         Interrupted processes retain their recorded native outcome before any
         potentially partial manifest or diagnostic event can be consumed.
@@ -1470,7 +1491,9 @@ class FlextInfraPytestRunnerExecution(
             if manifest_path.exists() or manifest_path.is_symlink()
             else None
         )
-        if manifest is None or not manifest.node_ids:
+        if manifest is None or (
+            not manifest.node_ids and not execution_mode.is_incremental
+        ):
             if u.Cli.process_succeeded(outcome):
                 if manifest is None:
                     raise FileNotFoundError(manifest_path)
@@ -1484,19 +1507,33 @@ class FlextInfraPytestRunnerExecution(
                 outcome=outcome,
             )
             return outcome
+        inventory = manifest.node_ids
+        if execution_mode.is_incremental:
+            empty_allowed = self._scope_may_be_empty(execution_mode) or (
+                not manifest.inventory_node_ids and self._owns_no_tests()
+            )
+            if not manifest.inventory_node_ids and (
+                manifest.node_ids or not empty_allowed
+            ):
+                msg = "native Testmon suite did not record its complete inventory"
+                raise RuntimeError(msg)
+            inventory = self._manifest_inventory(
+                manifest,
+                no_tests_collected=(
+                    outcome.raw_return_code == c.Infra.PytestExitCode.NO_TESTS_COLLECTED
+                ),
+                empty_allowed=empty_allowed,
+            )
         plan = m.Infra.PytestSelectionPlan(
             manifest_path=manifest_path,
             node_ids=manifest.node_ids,
-            whole_target=True,
+            whole_target=set(manifest.node_ids) == set(inventory),
             inventory_collected=True,
+            owns_no_tests=not inventory,
         )
         u.Cli.atomic_write_text_file(
             report_dir / "testmon-inventory.txt",
-            "\n".join(manifest.node_ids) + "\n",
-        ).unwrap()
-        u.Cli.atomic_write_text_file(
-            report_dir / "selection-plan.json",
-            plan.model_dump_json(indent=2) + "\n",
+            "\n".join(inventory) + "\n",
         ).unwrap()
         return plan
 

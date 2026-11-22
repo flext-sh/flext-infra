@@ -385,6 +385,11 @@ class FlextInfraPytestRunnerBase(s[int]):
             msg = "pytest fixture requires native Testmon state at its checkout root"
             raise ValueError(msg)
 
+    @property
+    def _native_fixture_dispatch(self) -> bool:
+        """Whether the fixture owns whole-project native Testmon dispatch."""
+        return self.fixture is not None and self.target_file is None
+
     def _validate_target_file(self) -> Self:
         """Require the declared single-file target to be repository-contained.
 
