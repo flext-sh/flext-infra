@@ -138,6 +138,9 @@ endif
 # The value stays in the environment and is never printed. The command is a
 # Mise-managed executable, refused in a checkout whose .mise.toml is not trusted
 # yet, so a bare `make setup` resolves it only after trusting the checkout.
+# It runs in the host Mise scope, where the runtime-scoped Mise variables a
+# parent Make exported cannot hide the host's own declaration of the command.
+override HOST_MISE_SCOPE := env -u MISE_CONFIG_DIR -u MISE_OVERRIDE_CONFIG_FILENAMES -u MISE_GLOBAL_CONFIG_FILE -u MISE_SYSTEM_CONFIG_DIR -u MISE_CEILING_PATHS -u MISE_AUTO_INSTALL
 GITHUB_TOKEN := $(firstword $(GITHUB_TOKEN) $(GH_TOKEN) $(MISE_GITHUB_TOKEN))
 GITHUB_CREDENTIAL_SOURCE := $(if $(GITHUB_TOKEN),environment,anonymous)
 ifeq ($(GITHUB_TOKEN),)
@@ -146,7 +149,7 @@ ifneq ($(MAKECMDGOALS),setup)
 GITHUB_CREDENTIAL_EXECUTABLE := $(shell command -v {{ make.github_credential_command[0] }})
 ifneq ($(GITHUB_CREDENTIAL_EXECUTABLE),)
 GITHUB_CREDENTIAL_SOURCE := command
-GITHUB_TOKEN := $(shell "$(GITHUB_CREDENTIAL_EXECUTABLE)"{% for argument in make.github_credential_command[1:] %} {{ argument }}{% endfor %})
+GITHUB_TOKEN := $(shell $(HOST_MISE_SCOPE) "$(GITHUB_CREDENTIAL_EXECUTABLE)"{% for argument in make.github_credential_command[1:] %} {{ argument }}{% endfor %})
 GITHUB_CREDENTIAL_STATUS := $(.SHELLSTATUS)
 endif
 endif
@@ -755,7 +758,7 @@ ifeq ($(VERB_CONTRACT),)
 # to build), but it still runs the pre-/post-setup lifecycle hooks so a project
 # declaring them in the custom handler surface is actually honoured.
 # A fresh checkout is trusted first; the provisioning half then reruns Make so
-# the credential command resolves inside the trusted checkout, in the caller's
+# the credential command resolves inside the trusted checkout, in the host
 # Mise scope (the rerun re-exports the runtime-scoped Mise variables itself).
 {% if not runtime_supplies_infra %}
 # A workspace member's own dev group never declares {{ infra_cli }} (the
@@ -770,7 +773,7 @@ setup:
 {% else %}
 .PHONY: _setup_trust _setup_provision
 setup: _setup_trust
-	+@env -u MISE_CONFIG_DIR -u MISE_OVERRIDE_CONFIG_FILENAMES -u MISE_GLOBAL_CONFIG_FILE -u MISE_SYSTEM_CONFIG_DIR -u MISE_CEILING_PATHS -u MISE_AUTO_INSTALL $(SELF_MAKE) _setup_provision
+	+@$(HOST_MISE_SCOPE) $(SELF_MAKE) _setup_provision
 _setup_trust:
 	+@set -eu; \
 	mise_stage=; bootstrap_status=0; \
