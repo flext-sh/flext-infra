@@ -187,6 +187,10 @@ class TestsFlextInfraMakeGenRootContract:
         )
         u.Tests.git_bootstrap(
             root,
+            ("submodule", "set-url", name, u.Tests.repository_ref(name).url),
+        )
+        u.Tests.git_bootstrap(
+            root,
             (
                 "config",
                 "-f",
