@@ -283,7 +283,9 @@ class FlextInfraUtilitiesGitStateSnapshot(FlextInfraUtilitiesGitRepo):
         if request.base is None:
             return None
         repo = cls._repo(root)
-        base = repo.commit(request.base).hexsha
+        # rev-parse fails as a GitCommandError naming an unknown base; the
+        # object lookup would raise outside the snapshot's typed failures.
+        base = repo.git.rev_parse("--verify", f"{request.base}^{{commit}}")
         if request.paths and base != head:
             changed = tuple(
                 path
