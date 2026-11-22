@@ -313,6 +313,15 @@ class TestsFlextInfraGitStateCheckpoint:
             refused.error,
             eq="claimed paths conflict with the declared base base: README.md",
         )
+        unknown = u.Infra.git_snapshot_worktree_state(
+            m.Infra.GitWorktreeStateRequest(
+                repo_root=source,
+                paths=(Path("README.md"),),
+                base="origin/absent",
+            ),
+        )
+        tm.ok(unknown.failure)
+        tm.that("origin/absent" in (unknown.error or ""), eq=True)
 
     @staticmethod
     def test_empty_scope_is_explicit_and_intent_to_add_is_rejected(
