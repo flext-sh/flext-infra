@@ -108,3 +108,21 @@ class TestsFlextInfraOrphanImport:
         stripped = TestsFlextInfraOrphanImport._strip(tmp_path, source)
         tm.that(stripped, lacks="TYPE_CHECKING")
         tm.that(stripped, has="from typing import ClassVar")
+
+    @staticmethod
+    def test_ellipsis_guard_disappears_without_removing_other_guards(
+        tmp_path: Path,
+    ) -> None:
+        """Only the empty typing guard is removed by the native rewrite."""
+        source = (
+            "from typing import TYPE_CHECKING\n"
+            "\n"
+            "if TYPE_CHECKING:\n"
+            "    ...\n"
+            "\n"
+            "if True:\n"
+            "    pass\n"
+        )
+        stripped = TestsFlextInfraOrphanImport._strip(tmp_path, source)
+        tm.that(stripped, lacks="TYPE_CHECKING")
+        tm.that(stripped, has="if True:\n    pass")
