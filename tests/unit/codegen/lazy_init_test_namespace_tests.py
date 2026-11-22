@@ -148,5 +148,35 @@ class TestsFlextInfraLazyInitTestNamespace:
         tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
         tm.that(u.Tests.generated_init(tests_root), eq=first)
 
+    @staticmethod
+    def test_tests_subpackage_drops_a_name_removed_from_its_module(
+        tmp_path: Path,
+    ) -> None:
+        """A tests subpackage initializer follows its modules' ``__all__``."""
+        repository_root, _ = u.Tests.demo_lazy_init_workspace(tmp_path)
+        tests_root = repository_root / c.Infra.DIR_TESTS
+        helpers_root = tests_root / "helpers"
+        helpers_root.mkdir(parents=True)
+        tests_root.joinpath(c.Infra.INIT_PY).touch()
+        helpers_root.joinpath(c.Infra.INIT_PY).touch()
+        module = helpers_root / "harness.py"
+        u.Tests.write_lazy_init_namespace_module(
+            module, class_name="DemoHelper", alias="demo_helper"
+        )
+
+        tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
+        tm.that(u.Tests.generated_init(helpers_root), has='"demo_helper"')
+        module.write_text(
+            module.read_text(encoding=c.DEFAULT_ENCODING).replace(
+                '"DemoHelper", "demo_helper"', '"DemoHelper"'
+            ),
+            encoding=c.DEFAULT_ENCODING,
+        )
+
+        tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
+        generated = u.Tests.generated_init(helpers_root)
+        tm.that(generated, has='"DemoHelper"')
+        tm.that(generated, lacks='"demo_helper"')
+
 
 __all__: list[str] = ["TestsFlextInfraLazyInitTestNamespace"]
