@@ -130,18 +130,6 @@ $(error Resolution and member propagation are forbidden in CI)
 endif
 endif
 
-# One GitHub credential from declared sources, each selected once before any
-# effect (config make.github_credential_command): the caller's exported token,
-# else, outside CI, the declared command when its executable is installed, else
-# anonymous. A selected command that fails or prints nothing stops the network
-# verbs (_builtin_require_github_credential), never degrading to anonymous.
-# The value stays in the environment and is never printed. The command is a
-# Mise-managed executable, refused in a checkout whose .mise.toml is not trusted
-# yet, so a bare `make setup` resolves it only after trusting the checkout.
-# It runs in the host Mise scope, where the runtime-scoped Mise variables a
-# parent Make exported cannot hide the host's own declaration of the command,
-# through the acquisition Mise, so a stale shared shim never selects the binary.
-override HOST_MISE_SCOPE := env -u MISE_CONFIG_DIR -u MISE_OVERRIDE_CONFIG_FILENAMES -u MISE_GLOBAL_CONFIG_FILE -u MISE_SYSTEM_CONFIG_DIR -u MISE_CEILING_PATHS -u MISE_AUTO_INSTALL
 # The acquisition Mise is the official installer's default executable, shared by
 # every checkout; the committed min_version makes Mise refuse an older one.
 ifeq ($(OS),Windows_NT)
@@ -149,28 +137,6 @@ override BOOTSTRAP_MISE := $(HOME)/.local/bin/mise.exe
 else
 override BOOTSTRAP_MISE := $(HOME)/.local/bin/mise
 endif
-GITHUB_TOKEN := $(firstword $(GITHUB_TOKEN) $(GH_TOKEN) $(MISE_GITHUB_TOKEN))
-GITHUB_CREDENTIAL_SOURCE := $(if $(GITHUB_TOKEN),environment,anonymous)
-ifeq ($(GITHUB_TOKEN),)
-ifneq ($(strip $({{ make.ci.variable }})),{{ make.ci.value }})
-ifneq ($(MAKECMDGOALS),setup)
-GITHUB_CREDENTIAL_EXECUTABLE := $(shell command -v {{ make.github_credential_command[0] }})
-ifneq ($(GITHUB_CREDENTIAL_EXECUTABLE),)
-GITHUB_CREDENTIAL_SOURCE := command
-GITHUB_TOKEN := $(shell $(HOST_MISE_SCOPE) "$(BOOTSTRAP_MISE)" exec --{% for argument in make.github_credential_command %} {{ argument }}{% endfor %})
-GITHUB_CREDENTIAL_STATUS := $(.SHELLSTATUS)
-endif
-endif
-endif
-endif
-ifneq ($(GITHUB_TOKEN),)
-GH_TOKEN := $(GITHUB_TOKEN)
-MISE_GITHUB_TOKEN := $(GITHUB_TOKEN)
-export GITHUB_TOKEN GH_TOKEN MISE_GITHUB_TOKEN
-else
-unexport GITHUB_TOKEN GH_TOKEN MISE_GITHUB_TOKEN
-endif
-unexport GITHUB_API_TOKEN
 
 # Git 2.38+ refuses the local file protocol uv uses to materialize its cached
 # git checkouts (`git clone --no-hardlinks <uv cache db> <checkout>`). Admit it
@@ -259,7 +225,14 @@ endif
 # When attached to a workspace (BOOTSTRAP_ROOT != PROJECT_ROOT), all verbs use
 # the workspace root so they share the workspace's .venv. Standalone checkouts
 # use the native uv workspace reader for non-setup/upg/help verbs.
-ifneq ($(strip $(VERB_CONTRACT) $(filter setup _setup_provision upg,$(MAKECMDGOALS))),)
+override BOOTSTRAP_VERBS := setup _setup_provision upg
+{% if not runtime_supplies_infra %}
+ifeq ($(PROJECT_ROOT),$(GIT_DISCOVERY_ROOT))
+# A member at its own Git root has no containing UV workspace to query.
+override BOOTSTRAP_VERBS += lock
+endif
+{% endif %}
+ifneq ($(strip $(VERB_CONTRACT) $(filter $(BOOTSTRAP_VERBS),$(MAKECMDGOALS))),)
 override REPOSITORY_ROOT := $(BOOTSTRAP_ROOT)
 else ifeq ($(strip $(filter-out help _builtin-help _setup_native_prepare pre-upg post-upg,$(MAKECMDGOALS))),)
 override REPOSITORY_ROOT := $(BOOTSTRAP_ROOT)
@@ -338,6 +311,46 @@ CALLER_VIRTUAL_ENV := $(patsubst %/,%,$(VIRTUAL_ENV))
 ifneq ($(origin RUNTIME_ROOT),command line)
 override RUNTIME_ROOT := $(REPOSITORY_ROOT)
 endif
+{% if not runtime_supplies_infra %}
+override MEMBER_PROVISIONING_VERB := $(firstword $(filter setup upg lock,$(MAKECMDGOALS)))
+ifeq ($(VERB_CONTRACT),)
+ifeq ($(PROJECT_ROOT),$(RUNTIME_ROOT))
+ifneq ($(MEMBER_PROVISIONING_VERB),)
+$(error ERROR[$(MEMBER_PROVISIONING_VERB)]: {{ dist }} is a workspace member; its own runtime has no {{ infra_cli }} supplier: $(PROJECT_ROOT). Run make $(MEMBER_PROVISIONING_VERB) from a workspace-shaped lane that attaches {{ dist }} as a member.)
+endif
+endif
+endif
+{% endif %}
+
+# Resolve the approved invocation's GitHub credential before network effects.
+# Outside CI, an absent caller token selects the configured command when
+# installed. A failing command is surfaced by _builtin_require_github_credential.
+# Bare setup trusts the checkout before its provisioning rerun selects a token.
+# Use the acquisition Mise in host scope to avoid runtime-scoped config and shims.
+override HOST_MISE_SCOPE := env -u MISE_CONFIG_DIR -u MISE_OVERRIDE_CONFIG_FILENAMES -u MISE_GLOBAL_CONFIG_FILE -u MISE_SYSTEM_CONFIG_DIR -u MISE_CEILING_PATHS -u MISE_AUTO_INSTALL
+GITHUB_TOKEN := $(firstword $(GITHUB_TOKEN) $(GH_TOKEN) $(MISE_GITHUB_TOKEN))
+GITHUB_CREDENTIAL_SOURCE := $(if $(GITHUB_TOKEN),environment,anonymous)
+ifeq ($(GITHUB_TOKEN),)
+ifneq ($(strip $({{ make.ci.variable }})),{{ make.ci.value }})
+ifneq ($(MAKECMDGOALS),setup)
+GITHUB_CREDENTIAL_EXECUTABLE := $(shell command -v {{ make.github_credential_command[0] }})
+ifneq ($(GITHUB_CREDENTIAL_EXECUTABLE),)
+GITHUB_CREDENTIAL_SOURCE := command
+GITHUB_TOKEN := $(shell $(HOST_MISE_SCOPE) "$(BOOTSTRAP_MISE)" exec --{% for argument in make.github_credential_command %} {{ argument }}{% endfor %})
+GITHUB_CREDENTIAL_STATUS := $(.SHELLSTATUS)
+endif
+endif
+endif
+endif
+ifneq ($(GITHUB_TOKEN),)
+GH_TOKEN := $(GITHUB_TOKEN)
+MISE_GITHUB_TOKEN := $(GITHUB_TOKEN)
+export GITHUB_TOKEN GH_TOKEN MISE_GITHUB_TOKEN
+else
+unexport GITHUB_TOKEN GH_TOKEN MISE_GITHUB_TOKEN
+endif
+unexport GITHUB_API_TOKEN
+
 # Git and Mise discovery share the runtime boundary: an attached member's
 # verbs read workspace paths through the workspace runtime.
 override export GIT_CEILING_DIRECTORIES := $(shell cd "$(RUNTIME_ROOT)/.." && pwd -P)
@@ -765,17 +778,8 @@ ifeq ($(VERB_CONTRACT),)
 # A fresh checkout is trusted first; the provisioning half then reruns Make so
 # the credential command resolves inside the trusted checkout, in the host
 # Mise scope (the rerun re-exports the runtime-scoped Mise variables itself).
-{% if not runtime_supplies_infra %}
-# A workspace member's own dev group never declares {{ infra_cli }} (the
-# workspace supplies it), so a checkout of this member that is its own runtime
-# has no supplier: setup, upg and lock refuse there before any effect.
-REFUSE_MEMBER_RUNTIME = printf 'ERROR[%s]: %s is a workspace member; its own runtime has no {{ infra_cli }} supplier: %s\nRun make %s from a workspace-shaped lane that attaches {{ dist }} as a member.\n' '$@' '{{ dist }}' "$(PROJECT_ROOT)" '$@' >&2; exit 2
-{% endif %}
 ifeq ($(PROJECT_ROOT),$(RUNTIME_ROOT))
-{% if not runtime_supplies_infra %}
-setup:
-	@$(REFUSE_MEMBER_RUNTIME)
-{% else %}
+{% if runtime_supplies_infra %}
 .PHONY: _setup_trust _setup_provision
 setup: _setup_trust
 	+@$(HOST_MISE_SCOPE) $(SELF_MAKE) _setup_provision
@@ -803,9 +807,6 @@ ifeq ($(PROJECT_ROOT),$(RUNTIME_ROOT))
 {% if runtime_supplies_infra %}
 upg: _builtin_require_workspace _builtin_require_github_credential _upg_toolchain
 	+@$(SELF_MAKE) _upg_lifecycle
-{% else %}
-upg:
-	@$(REFUSE_MEMBER_RUNTIME)
 {% endif %}
 else
 upg: _builtin_require_workspace
@@ -818,9 +819,6 @@ ifeq ($(PROJECT_ROOT),$(RUNTIME_ROOT))
 {% if runtime_supplies_infra %}
 lock: _builtin_require_workspace _builtin_require_github_credential
 	+@$(SELF_MAKE) _lock_lifecycle
-{% else %}
-lock:
-	@$(REFUSE_MEMBER_RUNTIME)
 {% endif %}
 else
 lock: _builtin_require_workspace
