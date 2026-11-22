@@ -217,6 +217,7 @@ print(json.dumps({
     WORKSPACE_NATIVE_POLICY_COMPILER_ROLE: ClassVar[Literal["policy-compiler"]] = (
         "policy-compiler"
     )
+    WORKSPACE_BOOTSTRAP_RELATIVE_ROOT: ClassVar[Path] = Path()
     WORKSPACE_BOOTSTRAP_REPORT_RELATIVE_PATH: ClassVar[Path] = (
         WORKSPACE_OPERATION_REPORT_DIRECTORY / "tool-bootstrap.json"
     )

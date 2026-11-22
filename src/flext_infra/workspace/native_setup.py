@@ -594,18 +594,20 @@ class FlextInfraNativeSetup:
             report.candidate_sha,
             report.operation,
         )
-        expected = (root, root, identity.head_oid, "tool-bootstrap")
+        relative_root = c.Infra.WORKSPACE_BOOTSTRAP_RELATIVE_ROOT
+        expected = (relative_root, root, identity.head_oid, "tool-bootstrap")
         if (
             not identity.head_oid
             or observed != expected
-            or report.scope != (root,)
+            or report.scope != (relative_root,)
+            or report.candidate_read_exit_code != 0
             or len(report.receipts) != len(report.scope)
         ):
             msg = f"fixture setup receipt does not bind the elected candidate: {path}"
             raise ValueError(msg)
         receipt = report.receipts[0]
         if (
-            receipt.root != root
+            receipt.root != relative_root
             or not receipt.completed
             or receipt.native_exit_code != 0
         ):
