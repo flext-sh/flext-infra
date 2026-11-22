@@ -94,6 +94,11 @@ class FlextInfraUtilitiesPytestConfigDependencies:
                     self.sources[os.path.realpath(source)] = self.relative(source)
             if package_dir is not None and find_spec(package_dir.name) is not None:
                 singleton = getattr(import_module(package_dir.name), "config", None)
+                if not isinstance(singleton, p.BaseModel):
+                    # A FLEXT package publishes its root as a lazy stand-in;
+                    # the root's own fetch_global() publishes and returns it.
+                    fetch = getattr(singleton, "fetch_global", None)
+                    singleton = fetch() if callable(fetch) else None
                 if isinstance(singleton, p.BaseModel):
                     self.observe(singleton)
             sys.addaudithook(self.audit)
