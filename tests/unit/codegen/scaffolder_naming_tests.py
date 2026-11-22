@@ -123,9 +123,7 @@ class TestsFlextInfraCodegenScaffolderNaming:
             scaffolder = FlextInfraCodegenScaffolder(repository_root=tmp_path)
             tm.ok(
                 scaffolder.run(
-                    projects=[
-                        u.Tests.create_project_info(project, name=project.name)
-                    ]
+                    projects=[u.Tests.create_project_info(project, name=project.name)]
                 )
             )
             validate(target)

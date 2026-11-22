@@ -36,6 +36,5 @@ class FlextInfraConstantsCodegenDetection:
     "Literal values considered trivial for constant detection heuristics."
 
 
-
-
 __all__: list[str] = ["FlextInfraConstantsCodegenDetection"]
+
