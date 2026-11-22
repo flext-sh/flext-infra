@@ -212,11 +212,7 @@ class FlextInfraPytestRunnerExecution(
         )
         return (
             u.Cli.run_to_file(
-                (
-                    *command,
-                    c.Infra.PYTEST_BENCHMARK_STORAGE_OPTION,
-                    f"file://{output}",
-                ),
+                command,
                 stdout_file,
                 cwd=checkout,
                 options=m.Cli.ProcessOptions(
@@ -547,7 +543,13 @@ class FlextInfraPytestRunnerExecution(
         if self.fixture is None:
             return command
         cache = child_reports / c.Infra.PYTEST_CACHE_DIRECTORY
-        return (*command, "-o", f"cache_dir={cache}")
+        return (
+            *command,
+            "-o",
+            f"cache_dir={cache}",
+            c.Infra.PYTEST_BENCHMARK_STORAGE_OPTION,
+            f"file://{child_reports}",
+        )
 
     def _run_suite(
         self,
