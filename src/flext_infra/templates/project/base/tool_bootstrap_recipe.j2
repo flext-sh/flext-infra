@@ -92,8 +92,7 @@
     locks and never writes them, while upgrade installs the pins its preceding
     resolution published. The caller elects the executable: every lock write
     belongs to the declared self-managed release, never to the host bootstrap. -#}
-{% macro mise_install(project_root, install_tools, bin_dir, mise, locked=true) -%}
-	export MISE_SHIMS_DIR="{{ project_root }}/{{ bin_dir }}/shims"; \
+{% macro mise_install(project_root, install_tools, mise, locked=true) -%}
 	export MISE_LOCKED={{ "1" if locked else "0" }}; \
 	bootstrap_stage=tool-install; \
 	{{ mise }} -C "{{ project_root }}" install --yes{% for tool in install_tools %} "{{ tool }}"{% endfor %};
@@ -143,10 +142,10 @@
 
 {#- Setup acquires the declared Mise, provisions the committed self pin, and
     installs the declared toolchain from that pin before the lifecycle. -#}
-{% macro mise_toolchain_provision(project_root, toolchain, install_tools, bin_dir) -%}
+{% macro mise_toolchain_provision(project_root, toolchain, install_tools) -%}
 {{ mise_acquisition(project_root, toolchain) }} \
 	{{ mise_locked_reader(project_root, toolchain) }}
-	{{ mise_install(project_root, install_tools, bin_dir, locked=true, mise='"$$mise_reader"') }}
+	{{ mise_install(project_root, install_tools, locked=true, mise='"$$mise_reader"') }}
 {%- endmacro %}
 
 {#- Syntax preflight of one committed TOML lock (a projection never
@@ -238,7 +237,7 @@ if [ "$$("{{ mise }}" -C {{ lock_root }} lock --bump --dry-run --json)" = "[]" ]
 		esac; \
 	else bootstrap_git_status=$$?; fi; \
 	{{ mise_network_admission() }} \
-	{{ mise_toolchain_provision(project_root, toolchain, install_tools, make.bootstrap_bin_dir) }} \
+	{{ mise_toolchain_provision(project_root, toolchain, install_tools) }} \
 	mise_active="$$(MISE_LOCKED=1 "$${mise_reader}" -C "{{ project_root }}" tool "{{ mise_selector }}" --active)"; \
 	mise_binary="$${mise_reader}"; \
 	{#- A hosted runner hands later steps only the GITHUB_PATH entries. They are
