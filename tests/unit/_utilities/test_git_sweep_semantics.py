@@ -361,23 +361,60 @@ class TestsFlextInfraGitSweepSemantics:
         tm.ok(activity.epoch_seconds >= committed)
 
     @staticmethod
-    def test_commit_rejected_by_a_hook_is_a_failure(tmp_path: Path) -> None:
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize("linked", [False, True])
+    def test_commit_rejected_by_a_hook_is_a_failure(
+        tmp_path: Path, *, linked: bool
+    ) -> None:
         """A rejecting pre-commit hook yields a failed result, never an exception."""
         repository = u.Tests.git_repository(tmp_path)
         hook = repository / c.GIT_DIR_NAME / "hooks" / "pre-commit"
         hook.parent.mkdir(parents=True, exist_ok=True)
-        hook.write_text("#!/bin/sh\nexit 1\n", encoding="utf-8")
+        hook.write_text(
+            "#!/bin/sh\nprintf '%s\\n' 'refused by the common Git hook' >&2\nexit 73\n",
+            encoding="utf-8",
+        )
         hook.chmod(0o755)
-        (repository / "gated.txt").write_text("gated\n", encoding="utf-8")
-        _ = u.Tests.git_run(repository, "add", "gated.txt")
-        head = u.Tests.git_capture(repository, "rev-parse", c.Infra.GIT_HEAD)
+        worktree = repository
+        if linked:
+            worktree = tmp_path / "linked"
+            _ = u.Tests.git_run(
+                repository, "worktree", "add", "-b", "linked]", str(worktree)
+            )
+        (worktree / "gated.txt").write_text("gated\n", encoding="utf-8")
+        _ = u.Tests.git_run(worktree, "add", "gated.txt")
+        head = u.Tests.git_capture(worktree, "rev-parse", c.Infra.GIT_HEAD)
 
         gated = u.Infra.git_commit(
-            m.Infra.GitCommitRequest(repo_root=repository, message="gated"),
+            m.Infra.GitCommitRequest(repo_root=worktree, message="gated"),
         )
 
-        tm.ok(gated.failure)
+        tm.fail(gated, has="refused by the common Git hook")
         tm.that(
-            u.Tests.git_capture(repository, "rev-parse", c.Infra.GIT_HEAD),
+            u.Tests.git_capture(worktree, "rev-parse", c.Infra.GIT_HEAD),
             eq=head,
+        )
+        tm.that(
+            u.Tests.git_capture(worktree, "diff", "--cached", "--name-only"),
+            eq="gated.txt",
+        )
+        hook.write_text(
+            "#!/bin/sh\nprintf '%s\\n' 'hook output'\n"
+            "printf '%s\\n' qualified > gated.txt\ngit add -- gated.txt\n",
+            encoding="utf-8",
+        )
+        committed = tm.ok(
+            u.Infra.git_commit(
+                m.Infra.GitCommitRequest(
+                    repo_root=worktree, message=f"gated {head}] with hook"
+                ),
+            ),
+        )
+        tm.that(
+            committed.oid,
+            eq=u.Tests.git_capture(worktree, "rev-parse", c.Infra.GIT_HEAD),
+        )
+        tm.that(
+            u.Tests.git_capture(worktree, "show", f"{committed.oid}:gated.txt"),
+            eq="qualified",
         )

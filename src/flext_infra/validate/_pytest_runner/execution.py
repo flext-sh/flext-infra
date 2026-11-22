@@ -196,6 +196,7 @@ class FlextInfraPytestRunnerExecution(
             compiler_declaration=admitted.compiler_declaration,
             sources=admitted.sources,
             runtime_trees=admitted.runtime_trees,
+            runtime_tree_roots=self.fixture_runtime_tree_roots,
             runtime_files=inputs,
             environment=tuple(environment.items()),
             output_directory=output_inventory,
@@ -1116,7 +1117,10 @@ class FlextInfraPytestRunnerExecution(
         if not execution_mode.is_global:
             msg = f"global pytest operation requires a global mode: {execution_mode}"
             raise ValueError(msg)
-        return self._execute_testmon(execution_mode=execution_mode)
+        runner = self._fixture_runner_for_mode(execution_mode)
+        return FlextInfraPytestRunnerExecution._execute_testmon(
+            runner, execution_mode=execution_mode
+        )
 
     def execute_file(self) -> p.Result[int]:
         """Run and record the complete declared file once.

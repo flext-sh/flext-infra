@@ -4349,8 +4349,23 @@ the parent receipts. The requested fixture uses the
 bootstrap-qualified launcher and policy compiler from the original setup
 report. The receipt binds their physical identities. A guest that changes
 those identities obtains a fresh receipt from `make setup` before replaying
-the fixture. The API binding is independent of the parent Make and systemd
-admission.
+the fixture.
+
+A project may elect an independently prepared private fixture with
+`Infra.tooling.tools.pytest.fixture` in its effective `config/tooling.yaml`.
+The declaration identifies its physical `checkout-root`, the original
+`setup-root`, approved repository-relative `git-inputs`, and the admitted
+`runtime-trees` and `runtime-files`. Its optional environment contains only
+executable, loader and terminal inputs. The runner captures the project's
+native Git inventory and the declared head, index, refs and object files
+after the existing Make and systemd admission. The Git metadata belongs to
+the source project itself, with its own object store. The selected checkout
+owns its own Testmon state.
+The launcher authenticates the declared runtime roots on the retained
+read-only mount descriptors for a whole-project incremental run. A scoped
+or complete run captures the elected runtime version before its first phase
+and verifies that version at each launch.
+Projects without this election keep the ordinary checkout database.
 
 Toolchain caches hold one immutable entry per lock state: the key is the OS,
 Python runtime and content hash of `uv.lock`, `mise.lock`, `pyproject.toml` and

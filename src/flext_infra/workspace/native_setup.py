@@ -17,7 +17,7 @@ from pathlib import Path
 
 from flext_cli import config as cli_config
 
-from flext_infra import c, codegen, config, m, p, r, u
+from flext_infra import c, codegen, config, m, p, r, t, u
 
 _PRIVATE_EXECUTABLE_MODE = 0o500
 
@@ -533,7 +533,9 @@ class FlextInfraNativeSetup:
             m.Cli.ProcessNativeToolEvidence.model_validate({
                 "role": role,
                 "artifact_receipt": (
-                    artifact if role == "policy-compiler" else inputs.launcher
+                    artifact
+                    if role == c.Infra.WORKSPACE_NATIVE_POLICY_COMPILER_ROLE
+                    else inputs.launcher
                 ),
                 "declaration_inputs": inputs.declaration,
                 "installation_inputs": inputs.installation,
@@ -550,8 +552,97 @@ class FlextInfraNativeSetup:
                 "architecture": architecture,
             })
             for profile, outcome, observations in qualified
-            for role in ("isolation-launcher", "policy-compiler")
+            for role in (
+                c.Infra.WORKSPACE_NATIVE_LAUNCHER_ROLE,
+                c.Infra.WORKSPACE_NATIVE_POLICY_COMPILER_ROLE,
+            )
         )
+
+    @staticmethod
+    def fixture_tools(
+        root: Path,
+    ) -> tuple[
+        m.Cli.ProcessNativeToolQualification,
+        m.Cli.ProcessNativeToolQualification,
+    ]:
+        """Read the original current setup qualifications for the fixture policy.
+
+        Returns:
+            The qualified launcher and compiler from one current setup.
+
+        Raises:
+            ValueError: If the setup candidate or fixture roles do not match.
+
+        """
+        if not root.is_absolute() or root.resolve(strict=True) != root:
+            msg = "fixture setup root must identify a physical repository"
+            raise ValueError(msg)
+        path = root / c.Infra.WORKSPACE_BOOTSTRAP_REPORT_RELATIVE_PATH
+        issuer = u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
+        if issuer.content is None:
+            msg = f"fixture setup receipt has no content: {path}"
+            raise ValueError(msg)
+        report = m.Cli.ProcessNativeQualificationReport[
+            t.JsonValue, t.JsonValue, t.JsonValue
+        ].model_validate_json(issuer.content)
+        identity = u.Infra.git_identity(
+            m.Infra.GitRepoRequest(repo_root=root), include_status=False
+        ).unwrap()
+        observed = (
+            report.root,
+            identity.repo_root,
+            report.candidate_sha,
+            report.operation,
+        )
+        relative_root = c.Infra.WORKSPACE_BOOTSTRAP_RELATIVE_ROOT
+        expected = (relative_root, root, identity.head_oid, "tool-bootstrap")
+        if (
+            not identity.head_oid
+            or observed != expected
+            or report.scope != (relative_root,)
+            or report.candidate_read_exit_code != 0
+            or len(report.receipts) != len(report.scope)
+        ):
+            msg = f"fixture setup receipt does not bind the elected candidate: {path}"
+            raise ValueError(msg)
+        receipt = report.receipts[0]
+        if (
+            receipt.root != relative_root
+            or not receipt.completed
+            or receipt.native_exit_code != 0
+        ):
+            msg = f"fixture setup receipt did not complete: {path}"
+            raise ValueError(msg)
+        policy = u.Cli.native_process_policy_identity(fixture=True)
+        tools = [
+            item
+            for item in receipt.native_tool_qualifications
+            if item.policy_sha256 == policy
+        ]
+        by_role = {item.role: item for item in tools}
+        launcher = c.Infra.WORKSPACE_NATIVE_LAUNCHER_ROLE
+        compiler = c.Infra.WORKSPACE_NATIVE_POLICY_COMPILER_ROLE
+        expected_roles = {launcher, compiler}
+        if len(tools) != len(expected_roles) or set(by_role) != expected_roles:
+            msg = f"fixture setup receipt lacks one qualified tool of each role: {path}"
+            raise ValueError(msg)
+        return (
+            FlextInfraNativeSetup._fixture_tool(by_role[launcher], issuer),
+            FlextInfraNativeSetup._fixture_tool(by_role[compiler], issuer),
+        )
+
+    @staticmethod
+    def _fixture_tool(
+        evidence: m.Cli.ProcessNativeToolEvidence, issuer: p.Cli.AtomicFileState
+    ) -> m.Cli.ProcessNativeToolQualification:
+        artifact = u.Cli.atomic_read_binary_file_state(
+            evidence.artifact_receipt.path, required=True
+        ).unwrap()
+        return m.Cli.ProcessNativeToolQualification.model_validate({
+            **evidence.model_dump(),
+            "artifact": artifact,
+            "issuer_receipt": issuer,
+        })
 
     @staticmethod
     def _validate_tool_abi(candidate: Path, expected: tuple[int, int, int]) -> None:

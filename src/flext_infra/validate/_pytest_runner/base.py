@@ -14,6 +14,7 @@ from typing import Annotated, Self
 
 from flext_infra import c, m, p, s, settings, t, u
 from flext_infra._utilities import FlextInfraUtilitiesProjectManagedArtifacts
+from flext_infra.validate._pytest_runner.fixture import FlextInfraPytestFixtureElection
 
 
 class FlextInfraPytestRunnerBase(s[int]):
@@ -44,6 +45,10 @@ class FlextInfraPytestRunnerBase(s[int]):
         m.Infra.PytestFixture | None,
         m.Field(description="Optional qualified private test checkout and inputs."),
     ] = None
+    fixture_runtime_tree_roots: Annotated[
+        tuple[Path, ...],
+        m.Field(description="Physical runtime candidates elected by project tooling."),
+    ] = ()
     testmon_db: Annotated[
         Path | None,
         m.Field(
@@ -173,6 +178,15 @@ class FlextInfraPytestRunnerBase(s[int]):
         cache = make.testmon_cache
         tooling = cls._elect_tooling(root)
         fixture = context.pytest_fixture
+        declaration = tooling.tools.pytest.fixture
+        runtime_tree_roots: tuple[Path, ...] = ()
+        if (
+            fixture is None
+            and declaration is not None
+            and execution_mode.records_testmon
+        ):
+            fixture = FlextInfraPytestFixtureElection.elect(context, declaration)
+            runtime_tree_roots = declaration.runtime_trees
         checkout = fixture.checkout_root if fixture is not None else root
         return cls(
             repository_root=root,
@@ -183,6 +197,7 @@ class FlextInfraPytestRunnerBase(s[int]):
             target_file=target_file,
             reports=cache.reports_directory,
             fixture=fixture,
+            fixture_runtime_tree_roots=runtime_tree_roots,
             testmon_db=(
                 checkout / cache.database_filename
                 if execution_mode.records_testmon
@@ -196,6 +211,37 @@ class FlextInfraPytestRunnerBase(s[int]):
             ci_context=u.Infra.env_value(make.ci.variable) == make.ci.value,
             profile_enabled=settings.Infra.profile,
             harness_marker=harness_marker,
+        )
+
+    def _fixture_runner_for_mode(
+        self, execution_mode: c.Infra.PytestExecutionMode
+    ) -> Self:
+        """Elect a common runtime version when the effective mode needs one.
+
+        Returns:
+            The runner bound to runtime roots or its invocation-local snapshot.
+
+        """
+        fixture = self.fixture
+        roots = self.fixture_runtime_tree_roots
+        if (
+            fixture is None
+            or not roots
+            or (self.target_file is None and execution_mode.is_incremental)
+        ):
+            return self
+        isolation = fixture.isolation.model_copy(
+            update={
+                "runtime_trees": FlextInfraPytestFixtureElection.capture_runtime_trees(
+                    roots
+                ),
+            },
+        )
+        return self.model_copy(
+            update={
+                "fixture": fixture.model_copy(update={"isolation": isolation}),
+                "fixture_runtime_tree_roots": (),
+            },
         )
 
     def _pytest_child_reports(self, report_dir: Path, phase: str) -> Path:
