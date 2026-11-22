@@ -167,6 +167,7 @@ class FlextInfraPytestRunnerExecution(
             environment.pop(key, None)
         environment.update(options.env or {})
         environment.update({
+            "HOME": str(output),
             c.Infra.TEMPORARY_DIRECTORY_VARIABLE: str(output),
             c.Infra.PYTEST_ENV_PYCACHE_PREFIX: str(output / c.Infra.DUNDER_PYCACHE),
         })

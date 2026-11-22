@@ -4332,7 +4332,8 @@ termination, integrity inspection and the run receipt. The complete-suite
 operation takes the same lease.
 
 Each pytest child receives authenticated source and runtime inputs and a
-separate writable report directory. The execution child reads the selection
+separate writable report directory. Its home, temporary files and Python
+bytecode output use that private directory. The execution child reads the selection
 manifest from the completed collection as a sealed input. The original source
 identity still binds the parent receipts. The requested fixture uses the
 bootstrap-qualified launcher and policy compiler from the original setup
