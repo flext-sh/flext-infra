@@ -15,7 +15,7 @@ from pathlib import Path
 
 from flext_tests import u as flext_tests_u
 
-from flext_infra import FlextInfraUtilities, config
+from flext_infra import FlextInfraConfig, FlextInfraUtilities, config
 from tests import c, m, p, r, t, tm
 from tests._utilities import (
     TestsFlextInfraUtilitiesCodegen,
@@ -357,7 +357,7 @@ class TestsFlextInfraUtilities(FlextInfraUtilities):
             # (ADR-032; a tracked project layer cannot declare it).
             tm.ok(
                 u.Cli.yaml_dump(
-                    config.config_layer_paths_for_repository(
+                    FlextInfraConfig.config_layer_paths_for_repository(
                         project_root, filename=c.Infra.CODEGEN_CONFIG_FILENAME
                     )[-1],
                     {

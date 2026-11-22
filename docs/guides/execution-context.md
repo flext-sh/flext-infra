@@ -222,9 +222,9 @@ written. After resolution,
 floor (`floors = [...]`) or pin (`pins = [...]`) from the project's own
 `uv.lock`, so an owned bound is always inside the window, and the locks record
 it without upgrading. Last,
-`flext-infra deps repair-mise-platforms --repository-root <root>` writes only
-the Mise locks of tools missing a declared platform, without generation,
-installation or another resolver.
+`flext-infra deps repair-mise-platforms --repository-root <root>` delegates
+version-3 lock migration to native `mise lock --upgrade`, keeping the locked
+tool versions, before repairing any remaining missing platforms.
 Installed `workspace verify-lock` delegates freshness and closure checks to native
 `uv lock --check`, not an Infra marker evaluator or graph walker. These commands remove
 inherited project/interpreter selectors through `make.native_environment_unset` and
@@ -365,9 +365,11 @@ toolchain nor a corrupt lock stops it:
    then the setup installation of exactly that lock.
 6. Last, the isolated upgrade executor (`make.executor_environment`, a declared
    ignored artifact of the `.gitignore` projection) runs
-   `deps repair-mise-platforms`, which locks the tools missing a platform that
-   `toolchain.mise_lockfile_platforms` declares: Mise reports no preview for that
-   gap. Native uv syncs the executor from the project's frozen lock, only the
+   `deps repair-mise-platforms`. An explicit version-3 lock runs one native
+   format upgrade over the declared platform set. Only tools still missing a
+   platform from `toolchain.mise_lockfile_platforms` are relocked. The earlier
+   version-resolution step can still emit a format warning on the migration run.
+   Native uv syncs the executor from the project's frozen lock, only the
    dependency group that pins flext-infra, without the project and without
    editable installs, and runs it with `python -I`, so the step never imports
    the project's source. Bytecode follows uv's native default: Python compiles
@@ -644,10 +646,9 @@ updated and run to validate it, without mocks, tautologies or policy hardcodes.
 Resolve the test entry from the selected repository's current native help. The
 current catalog declares `make tests` and the explicitly requested `make tests-full`,
 without file or match inputs. The first executes persistent Testmon selection
-once; the second executes the complete applicable population once without
-Testmon, a preliminary incremental run or any cache read.
-The existing database remains untouched. The operator's latest 2026-10-28
-clarification is owned by
+once. The second executes the complete applicable population once and records
+it in the same checkout's Testmon database without an incremental selection
+pass. The current execution contract is owned by
 [ADR-029](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/029-always-working-one-complete-cycle.md).
 Tests execute independently of quality checks; no green check receipt is a
 prerequisite. Both operations retain applicability, original failure and the
@@ -1988,6 +1989,27 @@ receipt and report are non-generic read projections of that original payload; th
 not base classes for domain fields. Original execution, outcome, stage and completion
 remain observable when CLI reads the shared native-tool evidence.
 
+Fixture qualification requires an explicit workspace profile. A workspace can
+elect it in its [local codegen layer](local-config-overrides.md). A tool
+declaration alone does not elect qualification. An elected profile
+requires the locked native launcher and compiler SDK, the compiler resource from
+the CLI distribution's installed RECORD, the required kernel capabilities and
+successful real subprocess observations. Failure in any of these requirements
+fails setup. A workspace without a fixture profile issues no fixture evidence.
+The elected SDK download and static archive extractor are authenticated by
+their declared digests and lock. Setup copies the exact archive into private
+staging and invokes the extractor inside the authenticated launcher. The
+isolated build reads the extracted sysroot and the exact libseccomp headers
+and archive. A changed SDK, extractor or lock invalidates the previous
+qualification and requires the profile to run setup again.
+Setup validates the compiler's numeric seccomp ABI probe and records the
+native machine name used by CLI to admit the qualified process. Run setup
+again to replace a receipt that records the token as its architecture.
+When a profile is elected, setup installs the locked packages as wheels so
+the qualification reads the original resource entries rather than editable paths.
+Operating-system restrictions in the native toolchain elect eligible tools before
+installation. An eligible tool without a valid lock remains a setup failure.
+
 Upgrade installs the newly resolved lock through its existing frozen provisioning
 owner and verifies its runtime provenance before the next producer. Package election
 resolves the current physical import path independently of loaded-module caches;
@@ -2842,9 +2864,10 @@ prefix for these verbs.
   `make tests`, `gen` and `gen-scope` are not limited either; they still queue for a
   slot.
 
-Heavy routes resolve the declared toolchain before entering the queue. When
-`make gen ROOT=...` targets another checkout and needs a provisioned
-environment, generation rejects a missing target interpreter before admission.
+Heavy routes resolve the declared toolchain before entering the queue. Generation
+admits the requested root against its workspace topology first. If the admitted
+root belongs to another checkout and the selected surface requires a provisioned
+environment, generation rejects a missing target interpreter before queueing.
 Run `make setup` and `make gen` in the target checkout so facade resolution
 uses that checkout's own dependencies.
 The per-verb load, processor and memory limits are owned by the Make admission
@@ -3256,6 +3279,10 @@ CI classification and caller precedence are unchanged. An invalid supplied token
 preserves the backend's native error, without an
 anonymous retry or source switch. CI jobs inject `GITHUB_TOKEN`; containers receive
 the variable or a BuildKit secret explicitly.
+
+The Make test launcher strips inherited GitHub credential aliases. The caller
+credential test supplies one alias explicitly. The host credential test supplies
+only its own `gh` configuration and lets Make select the declared host producer.
 
 ## Evidence and checkpoints
 
@@ -4281,18 +4308,49 @@ resolution and lock publication.
 
 The ordinary `tests` operation uses incremental Testmon selection
 ([ADR-029](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/029-always-working-one-complete-cycle.md)).
-The explicit `tests-full` operation executes the applicable suite once without
-Testmon, an incremental pre-run or database access. Marker applicability remains
-owned by the declared execution context; neither operation invents exclusions.
+The explicit `tests-full` operation executes the applicable suite once and records
+dependencies in Testmon without an incremental pre-run. The declared execution
+context determines which markers apply to each operation.
 The incremental database is Testmon's native `.testmondata` at the checkout root,
-ignored by `.gitignore`; no variable, setting or Make value relocates it, and full
-execution leaves it untouched.
-The explicit single-file operation runs incremental selection followed by complete
-execution of that file, including its declared slow tests, on the same database.
+ignored by `.gitignore`. The runner binds Testmon to that path for selection and
+execution, even when pytest discovers a nested configuration root. The same
+path goes into the run receipt and SQLite integrity inspection. The runner
+discards an inherited `TESTMON_DATAFILE` value.
+The explicit single-file operation runs that file once and records it in the
+same database. The file uses the full execution mode with per-item deadlines,
+including for its declared slow tests. It has no aggregate deadline even when
+the caller originally constructed the runner for incremental execution.
 No empty marker phase is invoked or converted to success. Zero execution is accepted
 only as an integrity-checked cache hit with complete inventory/deselection accounting.
 The SQLite owner checkpoints and checks the integrity of that database before
 and after the run.
+
+A caller supplying a qualified fixture to `workspace_tests` elects a single
+source project and a disjoint private working checkout. Testmon uses its
+regular checkout-root database and SQLite sidecars in that working checkout.
+Project identity reads Git status without optionally refreshing the index.
+The fixture supplies authenticated read-only inputs for the child's native
+Git source inventory. Pytest's benchmark plugin initializes its storage in
+the private phase output directory even when benchmarking is disabled.
+The configuration receipt recorder uses its declared directory beside the
+database, preserving configuration dependencies across invocations.
+The runner holds one checkout lease from preflight through native child
+termination, integrity inspection and the run receipt. The complete-suite
+operation takes the same lease. Each isolated fixture uses the elected
+operation deadline to qualify the native policy compiler and child lifecycle.
+
+Each pytest child receives authenticated source and runtime inputs and a
+separate writable report directory. Its home, temporary files and Python
+bytecode output use that private directory. A qualified whole-project fixture
+selects and executes incrementally in one native Testmon invocation with its
+default environment. Native worker observations bind the complete inventory and
+selection to the suite receipt. The original source identity still binds
+the parent receipts. The requested fixture uses the
+bootstrap-qualified launcher and policy compiler from the original setup
+report. The receipt binds their physical identities. A guest that changes
+those identities obtains a fresh receipt from `make setup` before replaying
+the fixture. The API binding is independent of the parent Make and systemd
+admission.
 
 Toolchain caches hold one immutable entry per lock state: the key is the OS,
 Python runtime and content hash of `uv.lock`, `mise.lock`, `pyproject.toml` and

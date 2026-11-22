@@ -7,11 +7,12 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import os
+import sys
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, Self
 
-from flext_infra import c, config, m, p, s, settings, t, u
+from flext_infra import c, m, p, s, settings, t, u
 from flext_infra._utilities import FlextInfraUtilitiesProjectManagedArtifacts
 
 
@@ -39,6 +40,10 @@ class FlextInfraPytestRunnerBase(s[int]):
         ),
     ] = None
     reports: Annotated[Path, m.Field(description="Repository-relative report root.")]
+    fixture: Annotated[
+        m.Infra.PytestFixture | None,
+        m.Field(description="Optional qualified private test checkout and inputs."),
+    ] = None
     testmon_db: Annotated[
         Path | None,
         m.Field(
@@ -48,17 +53,25 @@ class FlextInfraPytestRunnerBase(s[int]):
             ),
         ),
     ] = None
+    config_receipts: Annotated[
+        Path | None,
+        m.Field(
+            description=(
+                "Checkout-root directory of the typed config receipts Testmon "
+                "records beside each test's Python dependencies."
+            ),
+        ),
+    ] = None
     run_timeout_seconds: Annotated[
         int | None,
         m.Field(
             gt=0,
             description=(
-                "Repository-elected suite wall-clock maximum. The election "
-                "always includes the packaged fleet default as its merge base, "
-                "so this single source decides the deadline. FULL owns none."
+                "Explicit suite timeout for a bounded operation. Otherwise the "
+                "elected tooling policy supplies the budget. Unconfined FULL owns none."
             ),
         ),
-    ]
+    ] = None
     termination_grace_seconds: Annotated[
         int,
         m.Field(
@@ -159,20 +172,24 @@ class FlextInfraPytestRunnerBase(s[int]):
         make = u.Infra.load_codegen_inputs(root).unwrap().spec.make
         cache = make.testmon_cache
         tooling = cls._elect_tooling(root)
-        run_timeout_seconds, termination_grace_seconds = cls._elected_deadline(
-            tooling, execution_mode=execution_mode
-        )
+        fixture = context.pytest_fixture
+        checkout = fixture.checkout_root if fixture is not None else root
         return cls(
             repository_root=root,
             started_at_monotonic=started_at_monotonic,
             tooling=tooling,
-            run_timeout_seconds=run_timeout_seconds,
-            termination_grace_seconds=termination_grace_seconds,
+            termination_grace_seconds=tooling.tools.pytest.termination_grace_seconds,
             target=cache.target_directory,
             target_file=target_file,
             reports=cache.reports_directory,
+            fixture=fixture,
             testmon_db=(
-                root / cache.database_filename
+                checkout / cache.database_filename
+                if execution_mode.records_testmon
+                else None
+            ),
+            config_receipts=(
+                checkout / cache.config_receipts_directory
                 if execution_mode.records_testmon
                 else None
             ),
@@ -180,6 +197,15 @@ class FlextInfraPytestRunnerBase(s[int]):
             profile_enabled=settings.Infra.profile,
             harness_marker=harness_marker,
         )
+
+    def _pytest_child_reports(self, report_dir: Path, phase: str) -> Path:
+        """Elect the writable report root passed to one pytest child.
+
+        Returns:
+            The phase output for a fixture, or the native shared report directory.
+
+        """
+        return report_dir if self.fixture is None else report_dir / phase
 
     @classmethod
     def _elect_tooling(cls, repository_root: Path) -> m.Infra.ToolConfigDocument:
@@ -204,29 +230,30 @@ class FlextInfraPytestRunnerBase(s[int]):
             raise ValueError(msg)
         return m.Infra.ToolConfigDocument.model_validate(tooling.value.document)
 
-    @staticmethod
-    def _elected_deadline(
-        tooling: m.Infra.ToolConfigDocument,
-        *,
-        execution_mode: c.Infra.PytestExecutionMode,
-    ) -> tuple[int | None, int]:
-        """Return the suite deadline; the harness scope owns its own clock.
+    def _deadline_monotonic(
+        self, *, execution_mode: c.Infra.PytestExecutionMode
+    ) -> float | None:
+        """Derive the suite clock for the operation being executed.
 
-        FULL is local, load-admitted and unbounded: it elects no run timeout.
+        A public runner can switch operations after construction. Isolated
+        fixtures use the bounded native lifecycle in every mode. Unconfined
+        FULL has no suite deadline.
 
         Returns:
-            The elected run timeout (absent for FULL) and termination grace.
+            The absolute monotonic deadline, if the operation has one.
 
         """
-        pytest_section = tooling.tools.pytest
-        return (
-            None
-            if execution_mode == c.Infra.PytestExecutionMode.FULL
-            else pytest_section.harness_run_timeout_seconds
-            if execution_mode == c.Infra.PytestExecutionMode.HARNESS
-            else pytest_section.run_timeout_seconds,
-            pytest_section.termination_grace_seconds,
-        )
+        if execution_mode == c.Infra.PytestExecutionMode.FULL and self.fixture is None:
+            return None
+        timeout = self.run_timeout_seconds
+        if timeout is None:
+            policy = self.pytest_policy()
+            timeout = (
+                policy.harness_run_timeout_seconds
+                if execution_mode == c.Infra.PytestExecutionMode.HARNESS
+                else policy.run_timeout_seconds
+            )
+        return self.started_at_monotonic + timeout
 
     def pytest_policy(self) -> p.Infra.PytestConfig:
         """Return the pytest policy of this runner's elected tooling document.
@@ -258,22 +285,19 @@ class FlextInfraPytestRunnerBase(s[int]):
             ValueError: If the Make-owned pytest repository root is not absolute.
 
         """
-        ci = config.Infra.codegen.make.ci
         repository_root = Path(
             settings.env_required(c.Infra.PYTEST_ENV_REPOSITORY_ROOT)
         )
         if not repository_root.is_absolute():
             msg = "Make-owned pytest repository root must be absolute"
             raise ValueError(msg)
+        make = u.Infra.load_codegen_inputs(repository_root).unwrap().spec.make
+        ci = make.ci
         tooling = cls._elect_tooling(repository_root)
-        run_timeout_seconds, termination_grace_seconds = cls._elected_deadline(
-            tooling, execution_mode=execution_mode
-        )
         return cls(
             repository_root=repository_root,
             tooling=tooling,
-            run_timeout_seconds=run_timeout_seconds,
-            termination_grace_seconds=termination_grace_seconds,
+            termination_grace_seconds=tooling.tools.pytest.termination_grace_seconds,
             started_at_monotonic=started_at_monotonic,
             collection_command_prefix=collection_command_prefix,
             profile_enabled=profile_enabled,
@@ -285,8 +309,12 @@ class FlextInfraPytestRunnerBase(s[int]):
             ),
             reports=Path(cls._environment_value(c.Infra.PYTEST_ENV_REPORTS)),
             testmon_db=(
-                repository_root
-                / config.Infra.codegen.make.testmon_cache.database_filename
+                repository_root / make.testmon_cache.database_filename
+                if execution_mode.records_testmon
+                else None
+            ),
+            config_receipts=(
+                repository_root / make.testmon_cache.config_receipts_directory
                 if execution_mode.records_testmon
                 else None
             ),
@@ -330,7 +358,38 @@ class FlextInfraPytestRunnerBase(s[int]):
         if self.testmon_db is not None and not self.testmon_db.is_absolute():
             msg = "testmon database path must be absolute"
             raise ValueError(msg)
+        self._validate_fixture()
         return self._validate_target_file()
+
+    def _validate_fixture(self) -> None:
+        if self.fixture is None:
+            return
+        if sys.platform != self.fixture.isolation.platform:
+            msg = "pytest fixture requires the qualified native platform"
+            raise ValueError(msg)
+        checkout = self.fixture.checkout_root
+        source = self.repository_root.resolve(strict=True)
+        if (
+            checkout.resolve(strict=True) != checkout
+            or not checkout.is_dir()
+            or checkout.is_relative_to(source)
+            or source.is_relative_to(checkout)
+        ):
+            msg = "pytest fixture requires a disjoint physical checkout"
+            raise ValueError(msg)
+        if (
+            self.testmon_db is None
+            or self.testmon_db.parent != checkout
+            or self.config_receipts is None
+            or self.config_receipts.parent != checkout
+        ):
+            msg = "pytest fixture requires native Testmon state at its checkout root"
+            raise ValueError(msg)
+
+    @property
+    def _native_fixture_dispatch(self) -> bool:
+        """Whether the fixture owns whole-project native Testmon dispatch."""
+        return self.fixture is not None and self.target_file is None
 
     def _validate_target_file(self) -> Self:
         """Require the declared single-file target to be repository-contained.

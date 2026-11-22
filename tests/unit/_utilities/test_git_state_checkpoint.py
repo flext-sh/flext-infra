@@ -226,6 +226,104 @@ class TestsFlextInfraGitStateCheckpoint:
         )
 
     @staticmethod
+    def _source_behind_a_base(parent: Path, *, base_file: str) -> Path:
+        """Commit a baseline, then a ``base`` branch one commit ahead of HEAD.
+
+        Returns:
+            The source checkout, left on its original branch.
+
+        """
+        source = u.Tests.git_repository(parent)
+        (source / "README.md").write_text("baseline\n", encoding="utf-8")
+        u.Tests.git_run(source, "add", "README.md")
+        u.Tests.git_run(source, "commit", "-m", "baseline")
+        u.Tests.git_run(source, "switch", "-q", "-c", "base")
+        (source / base_file).write_text("integration tip\n", encoding="utf-8")
+        u.Tests.git_run(source, "add", base_file)
+        u.Tests.git_run(source, "commit", "-m", "integration tip")
+        u.Tests.git_run(source, "switch", "-q", "-")
+        return source
+
+    def test_capture_materializes_onto_a_declared_base(self, tmp_path: Path) -> None:
+        """A destination on the declared base carries only the claimed paths.
+
+        Why (flext-lmqph): a capture bound to the source HEAD forced every
+        lane onto the primary's stale branch instead of the integration tip.
+        """
+        source = self._source_behind_a_base(tmp_path, base_file="tip.txt")
+        head = u.Tests.git_capture(source, "rev-parse", "HEAD").strip()
+        (source / "README.md").write_text("claimed\n", encoding="utf-8")
+        (source / "new.txt").write_text("claimed addition\n", encoding="utf-8")
+        snapshot = tm.ok(
+            u.Infra.git_snapshot_worktree_state(
+                m.Infra.GitWorktreeStateRequest(
+                    repo_root=source,
+                    paths=(Path("README.md"), Path("new.txt")),
+                    base="base",
+                ),
+            ),
+        )
+        base = u.Tests.git_capture(source, "rev-parse", "base").strip()
+        tm.that((snapshot.head, snapshot.base), eq=(head, base))
+        checkpoint = tm.ok(
+            u.Infra.git_checkpoint_worktree_state(snapshot, "refs/captures/test/base"),
+        )
+        lane = tmp_path / "lane"
+        u.Tests.git_run(source, "worktree", "add", "--detach", str(lane), base)
+
+        tm.ok(u.Infra.git_apply_worktree_checkpoint(checkpoint, lane))
+
+        tm.that(tm.ok(u.Infra.git_verify_worktree_state(snapshot, lane)), eq=True)
+        tm.that(tm.ok(u.Infra.git_verify_worktree_state(snapshot, source)), eq=True)
+        tm.that((lane / "README.md").read_text(encoding="utf-8"), eq="claimed\n")
+        tm.that((lane / "tip.txt").read_text(encoding="utf-8"), eq="integration tip\n")
+        u.Tests.git_run(lane, "add", "README.md", "new.txt")
+        u.Tests.git_run(lane, "commit", "-m", "save claim on the base")
+        saved = u.Tests.git_capture(lane, "rev-parse", "HEAD").strip()
+        tm.ok(u.Infra.git_verify_worktree_checkpoint_commit(checkpoint, lane, saved))
+        tm.ok(
+            u.Infra.git_cleanup_worktree_state(
+                checkpoint,
+                lane,
+                saved,
+                publication=self._publish(tmp_path, checkpoint),
+            ),
+        )
+        tm.that(u.Tests.git_capture(source, "status", "--porcelain=v1"), eq="")
+        tm.that(u.Tests.git_capture(source, "rev-parse", "HEAD").strip(), eq=head)
+
+    def test_declared_base_refuses_a_claimed_path_it_changed(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """A claimed path the base changed fails loudly, naming the path."""
+        source = self._source_behind_a_base(tmp_path, base_file="README.md")
+        (source / "README.md").write_text("claimed\n", encoding="utf-8")
+
+        refused = u.Infra.git_snapshot_worktree_state(
+            m.Infra.GitWorktreeStateRequest(
+                repo_root=source,
+                paths=(Path("README.md"),),
+                base="base",
+            ),
+        )
+
+        tm.ok(refused.failure)
+        tm.that(
+            refused.error,
+            eq="claimed paths conflict with the declared base base: README.md",
+        )
+        unknown = u.Infra.git_snapshot_worktree_state(
+            m.Infra.GitWorktreeStateRequest(
+                repo_root=source,
+                paths=(Path("README.md"),),
+                base="origin/absent",
+            ),
+        )
+        tm.ok(unknown.failure)
+        tm.that("origin/absent" in (unknown.error or ""), eq=True)
+
+    @staticmethod
     def test_empty_scope_is_explicit_and_intent_to_add_is_rejected(
         tmp_path: Path,
     ) -> None:

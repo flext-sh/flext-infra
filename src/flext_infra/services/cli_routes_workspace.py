@@ -16,6 +16,21 @@ class FlextInfraWorkspaceRoutes:
     """Own release and workspace command routes."""
 
     @staticmethod
+    def _qualify_setup(
+        params: p.Infra.NativeSetupQualificationRequest,
+    ) -> p.Cli.ErasedCommandResult:
+        """Execute the elected native qualification within setup.
+
+        Returns:
+            The observation count or the original setup failure.
+
+        """
+        return workspace.FlextInfraNativeSetup.qualify_pending(
+            params.repository_root,
+            params.pending_report,
+        )
+
+    @staticmethod
     def _editable_members(
         params: p.Infra.WorkspaceRequest,
     ) -> p.Cli.ErasedCommandResult:
@@ -437,6 +452,12 @@ class FlextInfraWorkspaceRoutes:
 
         """
         return (
+            m.Cli.ResultCommandRoute(
+                name="qualify-setup",
+                help_text="Attach elected native process observations to this setup",
+                model_cls=m.Infra.NativeSetupQualificationRequest,
+                handler=cls._qualify_setup,
+            ),
             m.Cli.ResultCommandRoute(
                 name="signing-identity",
                 help_text="Inspect native public signing references without key access",

@@ -111,16 +111,14 @@ class FlextInfraLockIntegrityVerifier(s[bool]):
         request: p.Infra.WorkspaceRequest,
         runner: p.Cli.CommandRunner,
     ) -> p.Result[bool]:
-        """Lock, per governed repository, the locked tools missing a platform.
+        """Migrate legacy locks or repair missing platforms for governed repositories.
 
         Generated ``make upg`` owns every native stage before this one: it
         relocks the tools whose ``mise lock --bump --dry-run`` preview is not
-        ``[]`` and writes the UV lock, all before any FLEXT Python. Mise
-        reports no preview for a locked version that lacks a table for a
-        platform ``toolchain.mise_lockfile_platforms`` declares, so this
-        repair alone reads each governed ``mise.lock`` (the runtime root and
-        every declared member) and locks exactly those tools. It runs from the
-        isolated upgrade executor and never imports the project.
+        ``[]`` and writes the UV lock. This repair reads each governed
+        ``mise.lock`` in the isolated upgrade executor. An explicit version-3
+        lock needs a native format upgrade over all declared platforms,
+        then any tool still missing a platform table is repaired.
 
         Returns:
             Success when no declared platform is missing, or the first failure.
@@ -166,7 +164,7 @@ class FlextInfraLockIntegrityVerifier(s[bool]):
         root: Path,
         mise: Path,
     ) -> p.Result[bool]:
-        """Lock the platform-incomplete tools of one governed repository.
+        """Choose the native repair for one governed lock.
 
         Returns:
             Success when its lock covers every platform, or the native failure.
@@ -175,19 +173,75 @@ class FlextInfraLockIntegrityVerifier(s[bool]):
         return (
             u.Cli
             .toml_read_json(root / c.Infra.MISE_LOCK_FILENAME)
+            .flat_map(lambda lock: cls._migrate_mise_format(runner, root, mise, lock))
             .flat_map(cls._incomplete_mise_tools)
             .flat_map(lambda tools: cls._lock_mise_tools(runner, root, mise, tools))
         )
 
-    @staticmethod
-    def _mise_lock_command(runtime_root: Path, mise: Path) -> Sequence[str]:
-        """Native Mise lock re-resolving moving selectors for this runtime.
+    @classmethod
+    def _migrate_mise_format(
+        cls,
+        runner: p.Cli.CommandRunner,
+        root: Path,
+        mise: Path,
+        lock: t.JsonMapping,
+    ) -> p.Result[t.JsonMapping]:
+        """Migrate an explicit version-3 lock before checking coverage.
 
         Returns:
-            The command prefix every Mise lock invocation shares.
+            The current lock document, or the first native failure.
 
         """
-        return (str(mise), "-C", str(runtime_root), "lock", "--bump")
+        version = lock.get(c.Infra.MISE_LOCK_VERSION_KEY)
+        if (
+            isinstance(version, int)
+            and version == c.Infra.MISE_LOCK_MIGRATION_SOURCE_VERSION
+        ):
+            lock_path = root / c.Infra.MISE_LOCK_FILENAME
+            return cls._run_mise_lock(runner, root, mise, "--upgrade").flat_map(
+                lambda _: cls._read_upgraded_mise_lock(lock_path),
+            )
+        return r[t.JsonMapping].ok(lock)
+
+    @staticmethod
+    def _read_upgraded_mise_lock(path: Path) -> p.Result[t.JsonMapping]:
+        """Read the native writer's migrated lock before platform repair.
+
+        Returns:
+            The upgraded lock document, or its first invalid result.
+
+        """
+        result = u.Cli.toml_read_json(path)
+        if result.failure:
+            return result
+        version = result.value.get(c.Infra.MISE_LOCK_VERSION_KEY)
+        if (
+            not isinstance(version, int)
+            or version <= c.Infra.MISE_LOCK_MIGRATION_SOURCE_VERSION
+        ):
+            return r[t.JsonMapping].fail(
+                f"{path}: mise lock --upgrade left lockfile version {version!r}",
+            )
+        return result
+
+    @staticmethod
+    def _run_mise_lock(
+        runner: p.Cli.CommandRunner,
+        root: Path,
+        mise: Path,
+        *args: str,
+    ) -> p.Result[bool]:
+        """Run the elected native lock write in its owning checkout.
+
+        Returns:
+            Success, or the original Mise failure.
+
+        """
+        return runner.run_live(
+            (str(mise), "-C", str(root), "lock", *args),
+            cwd=root,
+            timeout=c.Infra.TIMEOUT_LONG,
+        ).map(lambda _output: True)
 
     @classmethod
     def _lock_mise_tools(
@@ -209,11 +263,7 @@ class FlextInfraLockIntegrityVerifier(s[bool]):
                 "platform; nothing to lock",
             )
             return r[bool].ok(value=True)
-        return runner.run_live(
-            (*cls._mise_lock_command(runtime_root, mise), *tools),
-            cwd=runtime_root,
-            timeout=c.Infra.TIMEOUT_LONG,
-        ).map(lambda _output: True)
+        return cls._run_mise_lock(runner, runtime_root, mise, "--bump", *tools)
 
     @staticmethod
     def _incomplete_mise_tools(lock: t.JsonMapping) -> p.Result[Sequence[str]]:

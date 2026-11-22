@@ -25,6 +25,16 @@ class FlextInfraModelsCore:
     - ``ContractModel`` reserved for immutable settings/settings contracts.
     """
 
+    class PytestFixture(m.FrozenModel):
+        """Explicitly qualified inputs and physical working checkout for pytest."""
+
+        checkout_root: Path = m.Field(
+            description="Private checkout where Testmon uses its native path",
+        )
+        isolation: m.Cli.ProcessReadOnlyIsolation = m.Field(
+            description="CLI-qualified sources, runtime and bootstrap evidence",
+        )
+
     class ValidationReport(m.ArbitraryTypesModel):
         """Validation report model with violations and summary."""
 
@@ -302,6 +312,10 @@ class FlextInfraModelsCore:
         execution_mode: c.Infra.PytestExecutionMode = m.Field(
             description="Canonical test operation for this report directory",
         )
+        isolated_fixture: bool = m.Field(
+            default=False,
+            description="A setup-qualified private checkout owns the child lifecycle",
+        )
         testmon_db: Path | None = m.Field(
             description=(
                 "Native pytest-testmon database for incremental and full "
@@ -313,7 +327,7 @@ class FlextInfraModelsCore:
             allow_inf_nan=False,
             description=(
                 "Shared absolute deadline across all execution phases; "
-                "absent for the unbounded FULL operation"
+                "absent for unconfined FULL"
             ),
         )
         report_directory: Path | None = m.Field(
@@ -338,16 +352,21 @@ class FlextInfraModelsCore:
                     state.
 
             """
-            if (self.deadline_monotonic is None) != (
+            unbounded_full = (
                 self.execution_mode == c.Infra.PytestExecutionMode.FULL
-            ):
-                msg = "only full execution owns no deadline"
+                and not self.isolated_fixture
+            )
+            if (self.deadline_monotonic is None) != unbounded_full:
+                msg = "only unconfined full execution owns no deadline"
                 raise ValueError(msg)
             if self.execution_mode.records_testmon != (self.testmon_db is not None):
                 msg = (
                     "incremental and full execution require a Testmon database; "
                     "coverage execution owns none"
                 )
+                raise ValueError(msg)
+            if self.isolated_fixture and self.testmon_db is None:
+                msg = "an isolated fixture requires its native Testmon database"
                 raise ValueError(msg)
             return self
 

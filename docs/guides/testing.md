@@ -98,18 +98,26 @@ with a file or narrower directory. The runner accounts for collection, selection
 execution and declared exclusions through its existing typed receipts. Never
 clear or replace the database, or invoke the underlying runner directly.
 
-The supported Testmon environment combines installed toolchain provenance with current
-`config/*.yaml` content. Declare additional template and resource directories in the
-workspace manifest's `test_inputs.templates` and `test_inputs.resources`. Declare
-behavior-affecting environment variable names in `test_inputs.environment`; only their
-digests enter the environment identifier, never their values. Missing and empty values
-remain distinct. Directory creation, removal, and content changes invalidate the
-selection conservatively while preserving the same external database. Each downstream
-workspace owns its own declarations; the infrastructure template catalog does not stand
-in for downstream inputs. Declared directories use the existing authenticated physical
-inventory contract: symbolic links and multiply linked files fail explicitly. This is
-not an unrestricted filesystem dependency scanner; declare physical source inputs and
-repair the inventory owner if a legitimate native consumer requires another shape.
+The Testmon environment combines installed toolchain provenance, the elected pytest
+policy and the marker scope. Config edits never open a new environment. Testmon
+tracks Python coverage, so the runner also records each test's config dependencies
+as Testmon file dependencies, and an edited `config/*.yaml` selects only the tests
+that consume it:
+
+- a project or packaged `config/*.yaml` file opened while a test runs;
+- each typed leaf (`root.namespace.file.section`) of the package's `config`
+  singleton the test reads, through a one-line digest receipt under
+  `testmon_cache.config_receipts_directory` (git-ignored). A YAML edit that leaves
+  every typed value unchanged, such as a comment, selects nothing;
+- every config file, when the test starts a child process outside
+  `testmon_cache.config_insensitive_executables`: the child reads config that
+  Testmon cannot observe.
+
+A read made by module-level code (an import, a class body, a parametrize argument)
+belongs to the tests that cover that module, as the module's own top-level code
+does. Any other read outside a test belongs to every test. The cost is the scope of
+the consumers: a leaf that collection or a shared module reads at import still
+selects every test of that module.
 
 For an explicitly requested complete execution, use:
 

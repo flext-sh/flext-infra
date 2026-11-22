@@ -461,7 +461,15 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecution[bool]):
                 ),
             ),
         )
-        declared = (*runtime_entries, *toolchain.tools)
+        host_os = platform_name.value.split("-", maxsplit=1)[0]
+        declared = (
+            *runtime_entries,
+            *(
+                entry
+                for entry in toolchain.tools
+                if not entry.os or host_os in entry.os
+            ),
+        )
         order = u.Cli.dag_order({
             entry.selector or entry.name: entry.depends for entry in declared
         })

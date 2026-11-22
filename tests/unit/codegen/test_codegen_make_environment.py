@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 import re
+import shutil
 import sys
 from collections.abc import Mapping
 from pathlib import Path
@@ -99,15 +100,75 @@ class TestsFlextInfraCodegenMakeEnvironment:
         tm.that(resolved, has=f"{os.sep}installs{os.sep}uv{os.sep}")
 
     @staticmethod
+    def _lane_scope_over_host_gh(
+        tmp_path: Path,
+        project_root: Path,
+        credential: str,
+    ) -> dict[str, str]:
+        """Return a parent Make's runtime Mise scope over a host declaring gh.
+
+        The consumer's toolchain declares no gh (a generation before gh joined
+        it), so in that scope the host's gh shim has no version; only the host's
+        own Mise configuration selects the real gh, which reads the credential.
+        The shared shim on PATH is stale, bound to a release that cannot run gh
+        (as another checkout's reshim leaves it), so only the acquisition Mise
+        resolving the declared command reaches the real gh.
+        """
+        mise_toml = project_root / c.Infra.MISE_TOML_FILENAME
+        document = u.Tests.toml_doc(mise_toml.read_text(encoding="utf-8"))
+        del tm.not_none(u.Cli.toml_table_child(document, "tools"))["gh"]
+        tm.ok(u.Cli.atomic_write_text_file(mise_toml, u.Cli.toml_dumps(document)))
+        checkout = tm.not_none(u.Infra.project_root(Path(__file__)))
+        mise = tm.ok(u.Infra.managed_mise_self(checkout))
+        version = tm.ok(
+            u.Cli.capture(
+                [str(mise), "-C", str(checkout), "current", "gh"],
+                cwd=checkout,
+            ),
+        ).strip()
+        host_config = tmp_path / "host-config"
+        gh_config = tmp_path / "host-gh"
+        shims = tmp_path / "host-shims"
+        for directory in (host_config / "mise", gh_config, shims):
+            directory.mkdir(parents=True)
+        (host_config / "mise" / "config.toml").write_text(
+            f'[tools]\ngh = "{version}"\n',
+            encoding="utf-8",
+        )
+        (gh_config / "hosts.yml").write_text(
+            f"github.com:\n    oauth_token: {credential}\n    user: fixture\n",
+            encoding="utf-8",
+        )
+        (shims / "gh").symlink_to(tm.not_none(shutil.which("false")))
+        runtime = project_root / ".mise"
+        return {
+            config.Infra.codegen.make.ci.variable: "",
+            "XDG_CONFIG_HOME": str(host_config),
+            "GH_CONFIG_DIR": str(gh_config),
+            "PATH": os.pathsep.join((str(shims), os.environ["PATH"])),
+            "MISE_CONFIG_DIR": str(runtime),
+            "MISE_GLOBAL_CONFIG_FILE": str(runtime / "config.toml"),
+            "MISE_SYSTEM_CONFIG_DIR": str(runtime),
+            "MISE_OVERRIDE_CONFIG_FILENAMES": c.Infra.MISE_TOML_FILENAME,
+            "MISE_CEILING_PATHS": str(project_root.parent),
+            "MISE_AUTO_INSTALL": "0",
+        }
+
+    @staticmethod
+    @c.Tests.MARK.parametrize("host_command", [False, True])
     def test_make_hands_the_selected_credential_to_the_real_mise_child(
         tmp_path: Path,
+        *,
+        host_command: bool,
     ) -> None:
         """A public verb hands one selected GitHub credential to a real Mise child.
 
         The generated Makefile selects the first non-empty caller credential
         (``GITHUB_TOKEN``, ``GH_TOKEN``, ``MISE_GITHUB_TOKEN``) and exports that
         one value under every name gh, uv and mise read, so no inherited alias
-        can shadow it inside the Mise child.
+        can shadow it inside the Mise child. Without a caller credential the
+        declared command runs in the host Mise scope, so a parent Make's
+        runtime-scoped Mise variables never hide the host's gh from it.
         """
         project_root, _ = u.Tests.render_make_environment(
             tmp_path,
@@ -134,16 +195,21 @@ class TestsFlextInfraCodegenMakeEnvironment:
             encoding="utf-8",
         )
         credential = "caller-selected-test-credential"
-        unset = ""
         process = tm.ok(
             u.Tests.run_isolated_make(
                 ["--no-print-directory", "status"],
                 cwd=project_root,
                 env={
-                    "GITHUB_TOKEN": unset,
-                    "GH_TOKEN": unset,
-                    "MISE_GITHUB_TOKEN": credential,
                     "EXPECTED_CREDENTIAL": credential,
+                    **(
+                        TestsFlextInfraCodegenMakeEnvironment._lane_scope_over_host_gh(
+                            tmp_path,
+                            project_root,
+                            credential,
+                        )
+                        if host_command
+                        else {"MISE_GITHUB_TOKEN": credential}
+                    ),
                 },
             ),
         )

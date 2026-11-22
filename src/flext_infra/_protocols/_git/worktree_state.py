@@ -74,6 +74,14 @@ class FlextInfraProtocolsGitWorktreeState:
             """Literal owned relative paths; empty selects nothing."""
             ...
 
+        @property
+        def base(self) -> str | None:
+            """Structural member projected from the owning model.
+
+            Declared commit a destination stands on; absent keeps the source HEAD.
+            """
+            ...
+
     @runtime_checkable
     class GitWorktreeIndexEntry(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
@@ -219,6 +227,15 @@ class FlextInfraProtocolsGitWorktreeState:
         @property
         def head(self) -> str:
             """Original HEAD commit object identifier."""
+            ...
+
+        @property
+        def base(self) -> str | None:
+            """Structural member projected from the owning model.
+
+            Resolved declared commit a destination stands on; absent means the
+            original HEAD.
+            """
             ...
 
         @property

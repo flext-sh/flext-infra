@@ -348,7 +348,7 @@ Infra:
       # platform lock section must carry one.
       # Base toolchain: only what this generator's own verbs run (python, the
       # self-managed mise, uv, direnv, taplo, ast-grep, gitleaks, scc, qlty,
-      # jscpd, waza, prek). A project that needs more
+      # jscpd, waza, prek, gh). A project that needs more
       # (kubectl, helm, kind, kubeconform, go, ...) declares them as additions
       # in its own config/codegen.yaml under Infra.codegen.toolchain.tools;
       # the config loader concatenates them onto this base. The library never
@@ -451,6 +451,13 @@ Infra:
           binary: prek
           arguments: [ --version ]
           pattern: "^prek {version}$"
+      # The declared GitHub credential command (make.github_credential_command).
+      - name: gh
+        version: latest
+        version_probe:
+          binary: gh
+          arguments: [ --version ]
+          pattern: "^gh version {version} "
       # Pins layered over the tools table by the override files.
       tool_version_pins: {}
       # False keeps Python resolution and installation on precompiled builds:
@@ -483,8 +490,12 @@ Infra:
       # every later `mise` resolved through the mise-managed shims runs exactly
       # that release. The host bootstrap mise only needs to read the committed
       # lockfile format.
+      # 2026.11.11 enters before the 10-day dependency cooldown by operator
+      # decision 2026-11-22 (cooldown exception): the host registry already
+      # runs it and lockfile_version 4 written by it must be readable by every
+      # governed shell (ai-hub aihub-vkb1j.14).
       mise_selector: github:jdx/mise
-      mise_version: "2026.10.3"
+      mise_version: "2026.11.11"
       beads:
         ownership_command_prefix: [ direnv, exec, ., bd ]
         # Beads ledger projection (.beads/config.yaml, .beads/metadata.yaml).
@@ -759,11 +770,19 @@ Infra:
       # drift is red at check time. fix never formats.
       fmt_gates: [ format, markdown-format, markdown-code ]
       # Testmon's native default database file at the checkout root
-      # (git-ignored) and the root-relative runner paths.
+      # (git-ignored) and the root-relative runner paths. Testmon tracks
+      # Python coverage only, so each test also records the config files it
+      # opens and the typed config leaves it reads: one receipt per leaf under
+      # config_receipts_directory (git-ignored by `.testmondata*`). An edited
+      # YAML then selects only its consumers. A test starting any child
+      # process outside config_insensitive_executables depends on every
+      # config file, since the child reads config Testmon cannot observe.
       testmon_cache:
         database_filename: .testmondata
         target_directory: tests
         reports_directory: .reports/tests
+        config_receipts_directory: .testmondata-config
+        config_insensitive_executables: [ git ]
       # Isolated environment that runs `make upg`'s one residual flext-infra
       # step (the Mise platform-gap repair). Native uv syncs it from the
       # project's own frozen lock, the dependency group that pins flext-infra,

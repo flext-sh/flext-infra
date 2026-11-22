@@ -17,11 +17,27 @@ from flext_cli import FlextCliProtocols
 from flext_infra._protocols import FlextInfraProtocolsMixins
 
 if TYPE_CHECKING:
+    from flext_cli import p
+
     from flext_infra import c, t
 
 
 class FlextInfraProtocolsValidate:
     """Own the structural contracts declared by its model source."""
+
+    @runtime_checkable
+    class PytestFixture(FlextCliProtocols.BaseModel, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def checkout_root(self) -> Path:
+            """Private checkout where Testmon uses its native path."""
+            ...
+
+        @property
+        def isolation(self) -> p.Cli.ProcessReadOnlyIsolation:
+            """CLI-qualified sources, runtime and bootstrap evidence."""
+            ...
 
     @runtime_checkable
     class ValidationReport(FlextCliProtocols.BaseModel, Protocol):
@@ -288,6 +304,11 @@ class FlextInfraProtocolsValidate:
             ...
 
         @property
+        def isolated_fixture(self) -> bool:
+            """A setup-qualified private checkout owns the child lifecycle."""
+            ...
+
+        @property
         def testmon_db(self) -> Path | None:
             """Structural member projected from the owning model.
 
@@ -300,8 +321,8 @@ class FlextInfraProtocolsValidate:
         def deadline_monotonic(self) -> float | None:
             """Structural member projected from the owning model.
 
-            Shared absolute deadline across all execution phases; absent for the
-            unbounded FULL operation.
+            Shared absolute deadline across all execution phases; absent for
+            unconfined FULL.
             """
             ...
 

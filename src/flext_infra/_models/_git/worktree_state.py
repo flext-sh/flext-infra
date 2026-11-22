@@ -69,6 +69,15 @@ class FlextInfraModelsGitWorktreeState:
             tuple[Path, ...],
             m.Field(description="Literal owned relative paths; empty selects nothing"),
         ]
+        base: Annotated[
+            str | None,
+            m.Field(
+                description=(
+                    "Declared commit a destination stands on; absent keeps the "
+                    "source HEAD"
+                ),
+            ),
+        ] = None
 
     class GitWorktreeIndexEntry(m.ContractModel):
         """One stage-zero Git index entry."""
@@ -193,6 +202,15 @@ class FlextInfraModelsGitWorktreeState:
             str,
             m.Field(description="Original HEAD commit object identifier"),
         ]
+        base: Annotated[
+            str | None,
+            m.Field(
+                description=(
+                    "Resolved declared commit a destination stands on; absent "
+                    "means the original HEAD"
+                ),
+            ),
+        ] = None
         branch: Annotated[
             str | None,
             m.Field(description="Original native branch; absent for detached HEAD"),

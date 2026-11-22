@@ -44,6 +44,7 @@ class TestsFlextInfraPytestFullInventory:
             u.Cli.toml_write_mapping(
                 project / c.PYPROJECT_FILENAME,
                 {
+                    "project": {"name": project.name, "version": "0.1.0"},
                     "tool": {
                         "pytest": {
                             "ini_options": {

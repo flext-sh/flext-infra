@@ -61,6 +61,9 @@ class TestsFlextInfraUtilitiesToolingFixture:
                 target_file=target_file,
                 reports=cache.reports_directory,
                 testmon_db=testmon_db,
+                config_receipts=(
+                    cached_runner_project / cache.config_receipts_directory
+                ),
                 slow_phase=slow_phase,
                 run_timeout_seconds=policy.run_timeout_seconds,
                 termination_grace_seconds=policy.termination_grace_seconds,
@@ -78,17 +81,16 @@ class TestsFlextInfraUtilitiesToolingFixture:
 
             """
             pyproject = project_root / c.PYPROJECT_FILENAME
-            pyproject.write_text(
-                pyproject.read_text(encoding=c.DEFAULT_ENCODING)
-                + f'\n[project]\nname = "{name}"\nversion = "0.1.0"\n',
-                encoding=c.DEFAULT_ENCODING,
-            )
+            document = tm.ok(u.Cli.toml_read_document(pyproject))
+            project = tm.not_none(u.Cli.toml_table_child(document, "project"))
+            project["name"] = name
+            tm.ok(u.Cli.atomic_write_text_file(pyproject, u.Cli.toml_dumps(document)))
             return TestsFlextInfraUtilitiesToolingFixture.PytestRunner.runner_for(
                 project_root,
             )
 
-        @staticmethod
-        def declare_parallel_project(project_root: Path) -> None:
+        @classmethod
+        def declare_parallel_project(cls, project_root: Path) -> None:
             """Select the fixture identity from the configured worker policy."""
             policy = config.Infra.tooling.tools.pytest
             parallel_project = next(
@@ -101,15 +103,7 @@ class TestsFlextInfraUtilitiesToolingFixture:
                     and ceiling.workers > 1
                 )
             )
-            pyproject = project_root / c.PYPROJECT_FILENAME
-            pyproject.write_text(
-                f'[project]\nname = "{parallel_project}"\nversion = "0.0.0"\n'
-                + pyproject.read_text(encoding=c.DEFAULT_ENCODING),
-                encoding=c.DEFAULT_ENCODING,
-            )
-            runner = TestsFlextInfraUtilitiesToolingFixture.PytestRunner.runner_for(
-                project_root,
-            )
+            runner = cls.declared_project_runner(project_root, parallel_project)
             tm.that(runner.parallel_worker_budget(policy) > 1, truth=True)
 
         @staticmethod

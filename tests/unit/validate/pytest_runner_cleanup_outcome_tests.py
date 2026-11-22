@@ -37,9 +37,13 @@ class TestsFlextInfraPytestRunnerCleanupOutcome:
         a timed-out suite instead of crashing without ``suite-outcome.json``.
         """
         cache = config.Infra.codegen.make.testmon_cache
+        runner = u.Tests.PytestRunner.runner_for(cached_runner_project)
+        policy = runner.pytest_policy()
         pid_file = cached_runner_project.parent / "orphan.pid"
-        (cached_runner_project / cache.target_directory / "test_orphan.py").write_text(
+        (cached_runner_project / cache.target_directory / "test_runtime.py").write_text(
             "import signal, subprocess, sys, time\n\n"
+            "import pytest\n\n"
+            f"@pytest.mark.{policy.slow_marker}\n"
             "def test_orphan() -> None:\n"
             "    signal.signal(signal.SIGINT, signal.SIG_IGN)\n"
             "    signal.signal(signal.SIGTERM, signal.SIG_IGN)\n"
@@ -50,8 +54,6 @@ class TestsFlextInfraPytestRunnerCleanupOutcome:
             "    time.sleep(60)\n",
             encoding="utf-8",
         )
-        runner = u.Tests.PytestRunner.runner_for(cached_runner_project)
-        policy = runner.pytest_policy()
         runner = runner.model_copy(
             update={
                 "started_at_monotonic": time.monotonic()
@@ -64,7 +66,7 @@ class TestsFlextInfraPytestRunnerCleanupOutcome:
         tm.that(prctl(get_child_subreaper, ctypes.byref(previous), 0, 0, 0), eq=0)
         tm.that(prctl(set_child_subreaper, 1, 0, 0, 0), eq=0)
         try:
-            exit_code = tm.ok(runner.execute_full())
+            exit_code = tm.ok(runner.execute())
         finally:
             tm.that(prctl(set_child_subreaper, previous.value, 0, 0, 0), eq=0)
             if pid_file.is_file():

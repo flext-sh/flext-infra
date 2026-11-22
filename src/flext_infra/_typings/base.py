@@ -42,6 +42,17 @@ class FlextInfraTypesBase:
     "Supported project-local documentation presentation languages."
     type SignalHandler = Callable[[int, FrameType | None], object] | int | None
     "The stdlib SIGTERM action: a callable, SIG_DFL/SIG_IGN, or None."
+    type ConfigLeafReads = tuple[Mapping[str, frozenset[str]], frozenset[str]]
+    "One config node's receipts per leaf field, and all receipts under it."
+    type ConfigLeafValue = (
+        t.JsonValue
+        | p.BaseModel
+        | Mapping[str, t.JsonValue]
+        | Sequence[t.JsonValue]
+        | frozenset[str]
+        | pathlib.Path
+    )
+    "One typed config leaf value as a model field holds it."
     type PythonMemberKind = Literal["alias", "attribute", "class", "function"]
     "How a module binds one top-level name: imported, assigned, or defined."
     type AstModule = _ast.Module
