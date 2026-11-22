@@ -19,6 +19,7 @@ class TestsFlextInfraPytestRunner:
     """Exercise the real pytest, testmon, coverage, and report lifecycle."""
 
     @staticmethod
+    @c.Tests.MARK.slow
     @c.Tests.MARK.parametrize("has_origin", [False, True])
     def test_original_suite_receipt_binds_public_process_and_accounting(
         cached_runner_project: Path,
@@ -27,7 +28,6 @@ class TestsFlextInfraPytestRunner:
     ) -> None:
         """A real suite produces its own public proof input without another run."""
         root = cached_runner_project
-        u.Tests.git_bootstrap(root, ("init", "-b", c.Infra.GIT_MAIN))
         for key, value in (
             ("user.name", "Original Suite Test"),
             ("user.email", "suite@example.test"),
@@ -39,11 +39,13 @@ class TestsFlextInfraPytestRunner:
                 root,
                 (
                     "remote",
-                    "add",
+                    "set-url",
                     c.Infra.GIT_ORIGIN,
                     "https://github.example/flext/suite.git",
                 ),
             )
+        else:
+            u.Tests.git_bootstrap(root, ("remote", "remove", c.Infra.GIT_ORIGIN))
         tracked = root / "shared-tracked.txt"
         tracked.write_text("initial\n", encoding=c.DEFAULT_ENCODING)
         cache = config.Infra.codegen.make.testmon_cache
@@ -93,7 +95,7 @@ class TestsFlextInfraPytestRunner:
             "pending\n", encoding=c.DEFAULT_ENCODING
         )
         runner = u.Tests.PytestRunner.runner_for(root)
-        (root / runner.target / "test_shared_worktree.py").write_text(
+        (root / runner.target / "test_runtime.py").write_text(
             "import subprocess\nfrom pathlib import Path\n\n"
             "def test_shared_worktree() -> None:\n"
             f"    root = Path({str(root)!r})\n"
