@@ -702,15 +702,6 @@ class TestsFlextInfraPytestRunner:
             else pytest_policy.harness_gate_markers
         )
         cache = config.Infra.codegen.make.testmon_cache
-        marker_lines = "".join(
-            f'  "{marker}",\n' for marker in pytest_policy.standard_markers
-        )
-        (cached_runner_project / c.PYPROJECT_FILENAME).write_text(
-            "[tool.pytest.ini_options]\n"
-            f'pythonpath = ["{c.Infra.DEFAULT_SRC_DIR}"]\n'
-            f"markers = [\n{marker_lines}]\n",
-            encoding="utf-8",
-        )
         (
             cached_runner_project / cache.target_directory / "test_external.py"
         ).write_text(
@@ -771,13 +762,6 @@ class TestsFlextInfraPytestRunner:
         # incremental scope does.
         not_executed = tuple(sorted(set(policy.harness_gate_markers)))
         executable = tuple(marker for marker in markers if marker not in not_executed)
-        marker_lines = "".join(f'  "{marker}",\n' for marker in policy.standard_markers)
-        (cached_runner_project / c.PYPROJECT_FILENAME).write_text(
-            "[tool.pytest.ini_options]\n"
-            f'pythonpath = ["{c.Infra.DEFAULT_SRC_DIR}"]\n'
-            f"markers = [\n{marker_lines}]\n",
-            encoding="utf-8",
-        )
         runner = u.Tests.PytestRunner.runner_for(
             cached_runner_project, ci_context=ci_context
         )
