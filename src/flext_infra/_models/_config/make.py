@@ -522,21 +522,40 @@ class FlextInfraModelsConfigMake(
                 Path,
                 m.Field(description="Repository-relative pytest reports root"),
             ]
+            config_receipts_directory: Annotated[
+                t.NonEmptyStr,
+                m.Field(
+                    description=(
+                        "Checkout-root directory of the typed config receipts "
+                        "Testmon fingerprints as per-test dependencies"
+                    )
+                ),
+            ]
+            config_insensitive_executables: Annotated[
+                tuple[t.NonEmptyStr, ...],
+                m.Field(
+                    description=(
+                        "Programs whose child processes never read project config; "
+                        "any other child makes its test depend on every config file"
+                    )
+                ),
+            ] = ()
 
             @m.model_validator(mode="after")
             def require_database_filename(self) -> Self:
-                """Keep the database a bare filename at the checkout root.
+                """Keep the database and the receipts bare names at the checkout root.
 
                 Returns:
                     The resulting ``Self``.
 
                 Raises:
-                    ValueError: If database_filename is not a bare filename.
+                    ValueError: If a checkout-root name is not a bare filename.
 
                 """
-                if Path(self.database_filename).name != self.database_filename:
-                    msg = "testmon cache database_filename must be a filename"
-                    raise ValueError(msg)
+                for name in (self.database_filename, self.config_receipts_directory):
+                    if Path(name).name != name:
+                        msg = f"testmon cache name must be a filename: {name}"
+                        raise ValueError(msg)
                 return self
 
         class ExecutorEnvironmentSpec(FlextInfraModelsConfigContract.ConfigContract):

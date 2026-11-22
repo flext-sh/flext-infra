@@ -2856,9 +2856,10 @@ prefix for these verbs.
   `make tests`, `gen` and `gen-scope` are not limited either; they still queue for a
   slot.
 
-Heavy routes resolve the declared toolchain before entering the queue. When
-`make gen ROOT=...` targets another checkout and needs a provisioned
-environment, generation rejects a missing target interpreter before admission.
+Heavy routes resolve the declared toolchain before entering the queue. Generation
+admits the requested root against its workspace topology first. If the admitted
+root belongs to another checkout and the selected surface requires a provisioned
+environment, generation rejects a missing target interpreter before queueing.
 Run `make setup` and `make gen` in the target checkout so facade resolution
 uses that checkout's own dependencies.
 The per-verb load, processor and memory limits are owned by the Make admission

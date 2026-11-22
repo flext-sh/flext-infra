@@ -770,11 +770,19 @@ Infra:
       # drift is red at check time. fix never formats.
       fmt_gates: [ format, markdown-format, markdown-code ]
       # Testmon's native default database file at the checkout root
-      # (git-ignored) and the root-relative runner paths.
+      # (git-ignored) and the root-relative runner paths. Testmon tracks
+      # Python coverage only, so each test also records the config files it
+      # opens and the typed config leaves it reads: one receipt per leaf under
+      # config_receipts_directory (git-ignored by `.testmondata*`). An edited
+      # YAML then selects only its consumers. A test starting any child
+      # process outside config_insensitive_executables depends on every
+      # config file, since the child reads config Testmon cannot observe.
       testmon_cache:
         database_filename: .testmondata
         target_directory: tests
         reports_directory: .reports/tests
+        config_receipts_directory: .testmondata-config
+        config_insensitive_executables: [ git ]
       # Isolated environment that runs `make upg`'s one residual flext-infra
       # step (the Mise platform-gap repair). Native uv syncs it from the
       # project's own frozen lock, the dependency group that pins flext-infra,

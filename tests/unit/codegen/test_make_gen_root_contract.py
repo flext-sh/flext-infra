@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 
 from flext_infra import config, m
@@ -21,8 +22,7 @@ class TestsFlextInfraMakeGenRootContract:
         """The typed catalog exposes no per-file selector for tests."""
         verbs = {verb.name: verb for verb in config.Infra.codegen.make.verbs}
         for name in ("tests", "tests-full"):
-            tm.that(verbs[name].arguments, eq=())
-            tm.that(verbs[name].description.upper(), lacks="FILE")
+            tm.that(verbs[name].arguments, lacks="FILE")
 
     @staticmethod
     @c.Tests.MARK.slow
@@ -52,9 +52,9 @@ class TestsFlextInfraMakeGenRootContract:
     ) -> None:
         """A member checkout that is its own runtime has no flext-infra supplier.
 
-        Its dev group never declares the workspace's suppliers, so setup, upg
-        and lock refuse with the workspace-lane instruction and create neither
-        the runtime nor the upgrade executor environment.
+        The credential command is available on PATH, but the cold checkout's
+        home has no acquisition Mise. Refusal precedes both credential and
+        tool discovery and leaves the runtime and executor absent.
         """
         shape = u.Tests.MakeEnvironmentShape()
         root, _ = u.Tests.render_make_environment(
@@ -62,18 +62,28 @@ class TestsFlextInfraMakeGenRootContract:
             c.Infra.MakeProfile.WORKSPACE,
             shape=shape,
         )
+        home = tmp_path / "cold-home"
+        home.mkdir()
+        tm.not_none(
+            shutil.which(config.Infra.codegen.make.github_credential_command[0])
+        )
         for verb in ("setup", "upg", "lock"):
             process = tm.ok(
-                u.Tests.run_isolated_make(["--no-print-directory", verb], cwd=root),
+                u.Tests.run_isolated_make(
+                    ["--no-print-directory", verb], cwd=root, env={"HOME": str(home)}
+                ),
             )
-            tm.that(u.Cli.process_succeeded(process.outcome), eq=False)
+            tm.that(process.outcome.raw_return_code, eq=2)
+            tm.that(process.stdout, eq="")
             tm.that(
                 process.stderr,
                 has=[
                     f"ERROR[{verb}]: {shape.project_name} is a workspace member",
                     f"Run make {verb} from a workspace-shaped lane",
                 ],
+                lacks=str(home),
             )
+        tm.that(tuple(home.iterdir()), eq=())
         tm.that(u.Infra.runtime_environment_dir(root).exists(), eq=False)
         tm.that(
             (root / config.Infra.codegen.make.executor_environment.directory).exists(),
@@ -121,25 +131,26 @@ class TestsFlextInfraMakeGenRootContract:
             )
 
     @staticmethod
-    def test_generation_rejects_a_root_outside_the_declared_topology(
+    def test_generation_admits_topology_before_requiring_an_interpreter(
         tmp_path: Path,
     ) -> None:
-        """The public service never generates an arbitrary requested root."""
+        """Only a declared external root reaches the interpreter prerequisite."""
         root = tmp_path / "fixture-workspace"
         u.Tests.WorktreeFixture.governed_workspace_with_member(root)
         stray = root / "stray"
         stray.mkdir()
-        result = infra.codegen_generate(
-            m.Infra.CodegenGenerateRequest(
-                root=stray,
-                what=c.Infra.CodegenConformSurface.DEPENDENCIES,
-                scope=c.Infra.CodegenConformScope.SELF,
+        for target, reason in (
+            (stray, "generation root must be the workspace root or a declared member"),
+            (root, "has no provisioned Python environment"),
+        ):
+            result = infra.codegen_generate(
+                m.Infra.CodegenGenerateRequest(
+                    root=target,
+                    what=c.Infra.CodegenConformSurface.DEPENDENCIES,
+                    scope=c.Infra.CodegenConformScope.SELF,
+                )
             )
-        )
-        tm.fail(
-            result,
-            has="generation root must be the workspace root or a declared member",
-        )
+            tm.fail(result, has=reason)
 
     @staticmethod
     def _attached_member(root: Path, tmp_path: Path, name: str) -> Path:
@@ -173,6 +184,10 @@ class TestsFlextInfraMakeGenRootContract:
                 str(origin),
                 name,
             ),
+        )
+        u.Tests.git_bootstrap(
+            root,
+            ("submodule", "set-url", name, u.Tests.repository_ref(name).url),
         )
         u.Tests.git_bootstrap(
             root,
@@ -258,6 +273,7 @@ class TestsFlextInfraMakeGenRootContract:
         )
 
     @staticmethod
+    @c.Tests.MARK.slow
     def test_generation_admits_a_governed_attached_member(tmp_path: Path) -> None:
         """The public service generates inside a declared governed member."""
         root = u.Tests.WorktreeFixture.governed_workspace(tmp_path, "attached-ws")

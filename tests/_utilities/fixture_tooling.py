@@ -61,6 +61,9 @@ class TestsFlextInfraUtilitiesToolingFixture:
                 target_file=target_file,
                 reports=cache.reports_directory,
                 testmon_db=testmon_db,
+                config_receipts=(
+                    cached_runner_project / cache.config_receipts_directory
+                ),
                 slow_phase=slow_phase,
                 run_timeout_seconds=policy.run_timeout_seconds,
                 termination_grace_seconds=policy.termination_grace_seconds,
