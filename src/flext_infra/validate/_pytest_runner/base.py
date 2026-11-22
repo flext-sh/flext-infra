@@ -53,12 +53,11 @@ class FlextInfraPytestRunnerBase(s[int]):
         m.Field(
             gt=0,
             description=(
-                "Repository-elected suite wall-clock maximum. The election "
-                "always includes the packaged fleet default as its merge base, "
-                "so this single source decides the deadline. FULL owns none."
+                "Explicit suite timeout for a bounded operation. Otherwise the "
+                "elected tooling policy supplies the budget. FULL owns none."
             ),
         ),
-    ]
+    ] = None
     termination_grace_seconds: Annotated[
         int,
         m.Field(
@@ -159,15 +158,11 @@ class FlextInfraPytestRunnerBase(s[int]):
         make = u.Infra.load_codegen_inputs(root).unwrap().spec.make
         cache = make.testmon_cache
         tooling = cls._elect_tooling(root)
-        run_timeout_seconds, termination_grace_seconds = cls._elected_deadline(
-            tooling, execution_mode=execution_mode
-        )
         return cls(
             repository_root=root,
             started_at_monotonic=started_at_monotonic,
             tooling=tooling,
-            run_timeout_seconds=run_timeout_seconds,
-            termination_grace_seconds=termination_grace_seconds,
+            termination_grace_seconds=tooling.tools.pytest.termination_grace_seconds,
             target=cache.target_directory,
             target_file=target_file,
             reports=cache.reports_directory,
@@ -204,29 +199,29 @@ class FlextInfraPytestRunnerBase(s[int]):
             raise ValueError(msg)
         return m.Infra.ToolConfigDocument.model_validate(tooling.value.document)
 
-    @staticmethod
-    def _elected_deadline(
-        tooling: m.Infra.ToolConfigDocument,
-        *,
-        execution_mode: c.Infra.PytestExecutionMode,
-    ) -> tuple[int | None, int]:
-        """Return the suite deadline; the harness scope owns its own clock.
+    def _deadline_monotonic(
+        self, *, execution_mode: c.Infra.PytestExecutionMode
+    ) -> float | None:
+        """Derive the suite clock for the operation being executed.
 
-        FULL is local, load-admitted and unbounded: it elects no run timeout.
+        A public runner can switch operations after construction. A bounded
+        operation keeps an explicitly supplied timeout, and FULL owns none.
 
         Returns:
-            The elected run timeout (absent for FULL) and termination grace.
+            The absolute monotonic deadline, if the operation has one.
 
         """
-        pytest_section = tooling.tools.pytest
-        return (
-            None
-            if execution_mode == c.Infra.PytestExecutionMode.FULL
-            else pytest_section.harness_run_timeout_seconds
-            if execution_mode == c.Infra.PytestExecutionMode.HARNESS
-            else pytest_section.run_timeout_seconds,
-            pytest_section.termination_grace_seconds,
-        )
+        if execution_mode == c.Infra.PytestExecutionMode.FULL:
+            return None
+        timeout = self.run_timeout_seconds
+        if timeout is None:
+            policy = self.pytest_policy()
+            timeout = (
+                policy.harness_run_timeout_seconds
+                if execution_mode == c.Infra.PytestExecutionMode.HARNESS
+                else policy.run_timeout_seconds
+            )
+        return self.started_at_monotonic + timeout
 
     def pytest_policy(self) -> p.Infra.PytestConfig:
         """Return the pytest policy of this runner's elected tooling document.
@@ -267,14 +262,10 @@ class FlextInfraPytestRunnerBase(s[int]):
         make = u.Infra.load_codegen_inputs(repository_root).unwrap().spec.make
         ci = make.ci
         tooling = cls._elect_tooling(repository_root)
-        run_timeout_seconds, termination_grace_seconds = cls._elected_deadline(
-            tooling, execution_mode=execution_mode
-        )
         return cls(
             repository_root=repository_root,
             tooling=tooling,
-            run_timeout_seconds=run_timeout_seconds,
-            termination_grace_seconds=termination_grace_seconds,
+            termination_grace_seconds=tooling.tools.pytest.termination_grace_seconds,
             started_at_monotonic=started_at_monotonic,
             collection_command_prefix=collection_command_prefix,
             profile_enabled=profile_enabled,
