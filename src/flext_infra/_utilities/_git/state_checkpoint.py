@@ -46,6 +46,7 @@ class FlextInfraUtilitiesGitStateCheckpoint(FlextInfraUtilitiesGitStateTrees):
                 repo_root=snapshot.repo_root,
                 paths=snapshot.paths,
                 retained_commits=snapshot.retained_commits,
+                base=snapshot.base,
             ),
         )
         if actual != snapshot:
@@ -169,8 +170,9 @@ class FlextInfraUtilitiesGitStateCheckpoint(FlextInfraUtilitiesGitStateTrees):
         ):
             msg = "save commit or destination repository identity does not match"
             raise ValueError(msg)
-        if not repo.is_ancestor(repo.commit(snapshot.head), repo.commit(saved_commit)):
-            msg = "save commit is not descended from the captured HEAD"
+        expected_head = cls.state_expected_head(snapshot, destination_root)
+        if not repo.is_ancestor(repo.commit(expected_head), repo.commit(saved_commit)):
+            msg = "save commit is not descended from the captured HEAD or base"
             raise ValueError(msg)
         if snapshot.paths and repo.git.status(
             "--porcelain=v1",

@@ -243,10 +243,11 @@ class FlextInfraUtilitiesGitStateTransition(
         actual = cls._state_snapshot(
             m.Infra.GitWorktreeStateRequest(repo_root=root, paths=snapshot.paths),
         )
-        if actual.common_dir != snapshot.common_dir or actual.head != snapshot.head:
+        expected_head = cls.state_expected_head(snapshot, root)
+        if actual.common_dir != snapshot.common_dir or actual.head != expected_head:
             msg = "state transition requires the captured repository and HEAD"
             raise ValueError(msg)
-        baseline = cls._state_tree_entries(root, snapshot.head, snapshot.paths)
+        baseline = cls._state_tree_entries(root, expected_head, snapshot.paths)
         cls._state_verify_transition(snapshot, actual, root, baseline, cleanup=cleanup)
         return baseline
 
