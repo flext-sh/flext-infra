@@ -135,7 +135,7 @@ class TestsFlextInfraMakeGenRootContract:
     def test_generation_rejects_a_root_outside_the_declared_topology(
         tmp_path: Path,
     ) -> None:
-        """The public service never generates an arbitrary requested root."""
+        """Even bootstrap generation rejects a root outside the declared topology."""
         root = tmp_path / "fixture-workspace"
         u.Tests.WorktreeFixture.governed_workspace_with_member(root)
         stray = root / "stray"
@@ -143,7 +143,7 @@ class TestsFlextInfraMakeGenRootContract:
         result = infra.codegen_generate(
             m.Infra.CodegenGenerateRequest(
                 root=stray,
-                what=c.Infra.CodegenConformSurface.DEPENDENCIES,
+                what=c.Infra.CodegenConformSurface.MAKEFILE,
                 scope=c.Infra.CodegenConformScope.SELF,
             )
         )
