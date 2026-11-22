@@ -211,8 +211,12 @@ print(json.dumps({
     WORKSPACE_OPERATION_REPORT_DIRECTORY: ClassVar[Path] = (
         Path(FlextInfraConstantsSourceCode.REPORTS_DIR_NAME) / "setup-operations"
     )
-    WORKSPACE_NATIVE_LAUNCHER_ROLE: ClassVar[str] = "isolation-launcher"
-    WORKSPACE_NATIVE_POLICY_COMPILER_ROLE: ClassVar[str] = "policy-compiler"
+    WORKSPACE_NATIVE_LAUNCHER_ROLE: ClassVar[Literal["isolation-launcher"]] = (
+        "isolation-launcher"
+    )
+    WORKSPACE_NATIVE_POLICY_COMPILER_ROLE: ClassVar[Literal["policy-compiler"]] = (
+        "policy-compiler"
+    )
     WORKSPACE_BOOTSTRAP_REPORT_RELATIVE_PATH: ClassVar[Path] = (
         WORKSPACE_OPERATION_REPORT_DIRECTORY / "tool-bootstrap.json"
     )

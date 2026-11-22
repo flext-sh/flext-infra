@@ -17,7 +17,7 @@ from pathlib import Path
 
 from flext_cli import config as cli_config
 
-from flext_infra import c, codegen, config, m, p, r, u
+from flext_infra import c, codegen, config, m, p, r, t, u
 
 _PRIVATE_EXECUTABLE_MODE = 0o500
 
@@ -582,7 +582,9 @@ class FlextInfraNativeSetup:
         if issuer.content is None:
             msg = f"fixture setup receipt has no content: {path}"
             raise ValueError(msg)
-        report = m.Infra.WorkspaceOperationReport.model_validate_json(issuer.content)
+        report = m.Cli.ProcessNativeQualificationReport[
+            t.JsonValue, t.JsonValue, t.JsonValue
+        ].model_validate_json(issuer.content)
         identity = u.Infra.git_identity(
             m.Infra.GitRepoRequest(repo_root=root), include_status=False
         ).unwrap()

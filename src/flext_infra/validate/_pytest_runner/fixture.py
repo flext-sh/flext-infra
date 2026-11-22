@@ -9,6 +9,7 @@ from __future__ import annotations
 import os
 import sys
 from pathlib import Path
+from time import monotonic
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, u
@@ -53,6 +54,19 @@ class FlextInfraPytestFixtureElection:
         tool_declaration = cls._capture(
             declaration.setup_root / c.Infra.MISE_TOML_FILENAME
         )
+        started = monotonic()
+        runtime_trees = tuple(
+            m.Cli.AtomicPhysicalTreeManifest.model_validate(
+                u.Cli.atomic_inventory_physical_tree(path).unwrap(),
+                from_attributes=True,
+            )
+            for path in declaration.runtime_trees
+        )
+        elapsed = monotonic() - started
+        u.Cli.info(
+            f"pytest fixture: runtime trees={len(runtime_trees)} "
+            f"capture_seconds={elapsed:.3f}"
+        )
         return m.Infra.PytestFixture(
             checkout_root=checkout,
             isolation=m.Cli.ProcessReadOnlyIsolation(
@@ -63,13 +77,7 @@ class FlextInfraPytestFixtureElection:
                 policy_compiler=compiler,
                 compiler_declaration=tool_declaration,
                 sources=tuple(cls._capture(path) for path in source_paths),
-                runtime_trees=tuple(
-                    m.Cli.AtomicPhysicalTreeManifest.model_validate(
-                        u.Cli.atomic_inventory_physical_tree(path).unwrap(),
-                        from_attributes=True,
-                    )
-                    for path in declaration.runtime_trees
-                ),
+                runtime_trees=runtime_trees,
                 runtime_files=tuple(
                     cls._capture(path) for path in declaration.runtime_files
                 ),
