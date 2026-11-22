@@ -50,12 +50,13 @@ class FlextInfraPytestRunnerExecution(
     def _selection_process_options(
         self,
         *,
+        execution_mode: c.Infra.PytestExecutionMode,
         live: bool = False,
     ) -> p.Cli.ProcessOptions:
         """Declare child overrides and removals at the process boundary.
 
-        No child inherits a Testmon database location: Testmon keeps its
-        native ``.testmondata`` in the checkout.
+        Testmon children receive the checkout database the parent inspects.
+        An inherited database location never controls a child.
 
         Returns:
             The process options shared by every runner invocation.
@@ -90,6 +91,8 @@ class FlextInfraPytestRunnerExecution(
             overrides[c.Infra.PYTEST_PROFILE_PROCESS_DIRECTORY_ENV] = (
                 self.pytest_policy().profile_process_directory
             )
+        if execution_mode.records_testmon and self.testmon_db is not None:
+            overrides[c.Infra.PYTEST_ENV_TESTMON_DATAFILE] = str(self.testmon_db)
         remove_keys = (
             *c.Infra.PYTEST_INHERITED_ENV_REMOVE_KEYS,
             c.Infra.PYTEST_ENV_TESTMON_DATAFILE,
@@ -145,7 +148,7 @@ class FlextInfraPytestRunnerExecution(
                 command,
                 selection_log,
                 cwd=self.repository_root,
-                options=self._selection_process_options(),
+                options=self._selection_process_options(execution_mode=execution_mode),
             ),
             report_log=report_log,
             raw_log=selection_log,
@@ -396,7 +399,10 @@ class FlextInfraPytestRunnerExecution(
                 command,
                 report_dir / "pytest.log",
                 cwd=self.repository_root,
-                options=self._selection_process_options(live=True),
+                options=self._selection_process_options(
+                    execution_mode=execution_mode,
+                    live=True,
+                ),
             ),
             report_log=report_dir / "events.jsonl",
             raw_log=report_dir / "pytest.log",

@@ -11,7 +11,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, Self
 
-from flext_infra import c, config, m, p, s, settings, t, u
+from flext_infra import c, m, p, s, settings, t, u
 from flext_infra._utilities import FlextInfraUtilitiesProjectManagedArtifacts
 
 
@@ -258,13 +258,14 @@ class FlextInfraPytestRunnerBase(s[int]):
             ValueError: If the Make-owned pytest repository root is not absolute.
 
         """
-        ci = config.Infra.codegen.make.ci
         repository_root = Path(
             settings.env_required(c.Infra.PYTEST_ENV_REPOSITORY_ROOT)
         )
         if not repository_root.is_absolute():
             msg = "Make-owned pytest repository root must be absolute"
             raise ValueError(msg)
+        make = u.Infra.load_codegen_inputs(repository_root).unwrap().spec.make
+        ci = make.ci
         tooling = cls._elect_tooling(repository_root)
         run_timeout_seconds, termination_grace_seconds = cls._elected_deadline(
             tooling, execution_mode=execution_mode
@@ -285,8 +286,7 @@ class FlextInfraPytestRunnerBase(s[int]):
             ),
             reports=Path(cls._environment_value(c.Infra.PYTEST_ENV_REPORTS)),
             testmon_db=(
-                repository_root
-                / config.Infra.codegen.make.testmon_cache.database_filename
+                repository_root / make.testmon_cache.database_filename
                 if execution_mode.records_testmon
                 else None
             ),
