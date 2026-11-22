@@ -4333,7 +4333,8 @@ The configuration receipt recorder uses its declared directory beside the
 database, preserving configuration dependencies across invocations.
 The runner holds one checkout lease from preflight through native child
 termination, integrity inspection and the run receipt. The complete-suite
-operation takes the same lease.
+operation takes the same lease. Each isolated fixture uses the elected
+operation deadline to qualify the native policy compiler and child lifecycle.
 
 Each pytest child receives authenticated source and runtime inputs and a
 separate writable report directory. Its home, temporary files and Python

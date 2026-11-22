@@ -235,14 +235,15 @@ class FlextInfraPytestRunnerBase(s[int]):
     ) -> float | None:
         """Derive the suite clock for the operation being executed.
 
-        A public runner can switch operations after construction. A bounded
-        operation keeps an explicitly supplied timeout, and FULL owns none.
+        A public runner can switch operations after construction. Isolated
+        fixtures use the bounded native lifecycle in every mode. Unconfined
+        FULL has no suite deadline.
 
         Returns:
             The absolute monotonic deadline, if the operation has one.
 
         """
-        if execution_mode == c.Infra.PytestExecutionMode.FULL:
+        if execution_mode == c.Infra.PytestExecutionMode.FULL and self.fixture is None:
             return None
         timeout = self.run_timeout_seconds
         if timeout is None:
