@@ -951,17 +951,6 @@ class TestsFlextInfraCodegenMakeEnvironment:
         # Testmon keeps its native in-checkout default: Make exports no path.
         tm.that(makefile, lacks=c.Infra.PYTEST_ENV_TESTMON_DATAFILE)
         tm.that(makefile, lacks="$(subst /,_,$(PROJECT_ROOT))")
-        # The declarative cache policy (bead flext-j0u23) keeps an ascending
-        # quota ladder and bounded generations whatever values config declares.
-        policy = config.Infra.codegen.make.testmon_cache_policy
-        tm.that(
-            policy.warning_threshold_percent
-            < policy.maintenance_threshold_percent
-            < policy.block_threshold_percent,
-            eq=True,
-        )
-        tm.that(policy.max_bootstrap_generations, gt=0)
-        tm.that(policy.max_stable_generations, gt=0)
         for forced in ("PROJECT_STATE_ROOT", "PROJECT_SCRATCH", 'TMPDIR="$$test_tmp"'):
             tm.that(makefile, lacks=forced)
         # The Make layer names no gate: each repair verb asks the checker for

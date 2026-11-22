@@ -437,6 +437,92 @@ class TestsFlextInfraMisePinBootstrap:
         tm.that(upgrade, has='"$$mise_reader" -C "$$lock_root" lock')
         tm.that(upgrade, lacks='"$(BOOTSTRAP_MISE)" -C "$$lock_root"')
 
+    @c.Tests.MARK.parametrize(
+        ("pin", "acquires"),
+        [("installed", False), ("2000.1.1", False), ("9999.1.1", True)],
+    )
+    def test_acquisition_raises_an_older_installed_mise_to_the_pin(
+        self,
+        tmp_path: Path,
+        pin: str,
+        *,
+        acquires: bool,
+    ) -> None:
+        """An installed acquisition Mise older than the pin is re-acquired.
+
+        The committed min_version makes an older Mise refuse every later
+        command, so only absence or an older release runs the installer; a
+        release at or above the pin is kept. The installer download is routed
+        to a closed local port, so re-acquisition fails loudly at curl instead
+        of reaching the network.
+        """
+        host_mise = Path(tm.not_none(shutil.which("mise"))).resolve()
+        bin_dir = tmp_path / "home" / ".local" / "bin"
+        bin_dir.mkdir(parents=True)
+        (bin_dir / "mise").symlink_to(host_mise)
+        installed = tm.ok(
+            u.Cli.run_raw(
+                [str(host_mise), "--version"],
+                options=m.Cli.ProcessOptions(env=self.environment(tmp_path)),
+            ),
+        ).stdout.split()[0]
+        toolchain = config.Infra.codegen.toolchain.model_copy(
+            update={"mise_version": installed if pin == "installed" else pin},
+        )
+        shutil.copyfile(
+            u.Infra.codegen_templates_root(config.Infra.codegen)
+            / "base"
+            / "tool_bootstrap_recipe.j2",
+            tmp_path / "tool_bootstrap_recipe.j2",
+        )
+        template = tmp_path / "acquisition.j2"
+        template.write_text(
+            '{% from "tool_bootstrap_recipe.j2" import mise_acquisition, '
+            "mise_staging_cleanup %}"
+            "BOOTSTRAP_MISE := $(HOME)/.local/bin/mise\n"
+            "PROJECT_ROOT := $(CURDIR)\n"
+            "setup:\n"
+            "\t+@set -eu; \\\n"
+            "\tbootstrap_status=0; mise_stage=; \\\n"
+            "\ttrap 'bootstrap_status=$$?; trap - EXIT; \\\n"
+            "\t\t{{ mise_staging_cleanup() }} \\\n"
+            '\t\texit "$${bootstrap_status}"\' EXIT; \\\n'
+            '\t{{ mise_acquisition("$(PROJECT_ROOT)", toolchain) }}\n',
+            encoding="utf-8",
+        )
+        (tmp_path / "Makefile").write_text(
+            tm.ok(
+                u.Cli.template_render(
+                    template,
+                    TestsFlextInfraMisePinBootstrap.WriterRenderContext(
+                        toolchain=toolchain,
+                        install_tools=(),
+                    ),
+                ),
+            ),
+            encoding="utf-8",
+        )
+        (tmp_path / c.Infra.MISE_TOML_FILENAME).write_text(
+            "[tools]\n", encoding="utf-8"
+        )
+
+        setup = tm.ok(
+            u.Tests.run_isolated_make(
+                ["--no-print-directory", "setup"],
+                cwd=tmp_path,
+                env={
+                    **self.environment(tmp_path),
+                    "https_proxy": "http://127.0.0.1:9",
+                    "HTTPS_PROXY": "http://127.0.0.1:9",
+                },
+            ),
+        )
+
+        output = setup.stdout + setup.stderr
+        tm.that(u.Cli.process_succeeded(setup.outcome), eq=not acquires, msg=output)
+        tm.that("curl:" in output, eq=acquires, msg=output)
+        tm.that((bin_dir / "mise").resolve(), eq=host_mise)
+
     @c.Tests.MARK.slow
     def test_lock_stage_rewrites_a_foreign_entry_to_the_declared_spec(
         self,

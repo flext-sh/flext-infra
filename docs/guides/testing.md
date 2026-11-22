@@ -91,7 +91,7 @@ make tests
 ```
 
 `make tests` discovers the complete applicable inventory and executes native
-incremental Testmon selection once, retaining the project's persistent database.
+incremental Testmon selection once on the checkout's native `.testmondata`.
 It does not add a full rerun. The generated Make boundary fixes the population
 to the typed project/workspace declarations; caller variables cannot replace it
 with a file or narrower directory. The runner accounts for collection, selection,
@@ -119,8 +119,8 @@ make tests-full
 
 `make tests-full` executes the complete applicable population once, without
 Testmon or a preliminary incremental run. It does not load the Testmon plugin,
-pass its options or database environment, acquire its lease, inspect or modify
-its database, or publish a cache receipt. The existing database remains untouched
+pass its options or database environment, or inspect or modify its database.
+The existing database remains untouched
 for later `make tests` runs. This is the latest operator clarification of
 2026-10-28, recorded in
 ADR-029.
@@ -159,7 +159,7 @@ runner that violates this contract is repaired at its owner and rerun through Ma
 Each phase retains its mode, raw process outcome, collection manifest, and
 diagnostics. The latest receipt names the current attempt even when collection fails.
 Incremental and full phases retain their database and cache accounting. Full
-phases select nothing, record every item under the lease and reconcile execution
+phases select nothing, record every item in the native database and reconcile execution
 against their complete applicable inventory.
 Warning totals include selection, inventory, and suite occurrences, with blocking and
 explicitly suspended warnings reported separately. The existing non-strict MRO

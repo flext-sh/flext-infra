@@ -19,16 +19,18 @@ override SHELL := /bin/sh
 # bounded by MemoryMax and CPUQuota; children and nested Make inherit the
 # scope, and PYTHON_CPU_COUNT sizes Python worker pools to the same CPUs. A
 # verb refuses to start while the 5-minute load average exceeds its limit,
-# except the ungated bootstrap verbs; a mod without RULES or LAWS is the full
-# form, named mod-full. Overrides apply when the invocation names exactly one
-# verb.
+# except the ungated verbs; a mod without RULES or LAWS is the full form,
+# named mod-full, and a check outside the commit stage without
+# CHECK_PHASE=primary is the full form, named check-full. Overrides apply when
+# the invocation names exactly one verb.
 ifeq ($(MAKELEVEL)$(filter Y,$(CI)),0)
 override ADMISSION_VERB := $(if $(word 2,$(MAKECMDGOALS)),,$(or $(MAKECMDGOALS),$(.DEFAULT_GOAL),help))
 override ADMISSION_VERB := $(if $(filter mod,$(ADMISSION_VERB)),$(if $(strip $(RULES)$(LAWS)),mod,mod-full),$(ADMISSION_VERB))
+override ADMISSION_VERB := $(if $(filter check,$(ADMISSION_VERB)),$(if $(filter primary,$(CHECK_PHASE))$(filter C,$(CI)),check,check-full),$(ADMISSION_VERB))
 override ADMISSION_MAX_LOAD5 := 20.0
 override ADMISSION_MEMORY_LIMIT_BYTES := 5368709120
 override ADMISSION_MAX_PROCESSES := 2
-ifeq ($(filter $(ADMISSION_VERB),setup),)
+ifeq ($(filter $(ADMISSION_VERB),setup check tests mod),)
 override ADMISSION_LOAD5 := $(shell awk -v limit=$(ADMISSION_MAX_LOAD5) '$$2 > limit { print $$2 }' /proc/loadavg)
 ifneq ($(.SHELLSTATUS),0)
 $(error Cannot read the 5-minute load average from /proc/loadavg)
@@ -544,9 +546,11 @@ _bootstrap_setup_tools:
 		fi; \
 	fi; \
 	bootstrap_stage=acquisition; \
-	if [ ! -x "$(BOOTSTRAP_MISE)" ]; then \
-	export MISE_INSTALL_FROM_GITHUB=1 MISE_INSTALL_HELP=0; \
+	mise_acquired=; \
+	if [ -x "$(BOOTSTRAP_MISE)" ]; then mise_acquired="$$("$(BOOTSTRAP_MISE)" --version)"; mise_acquired="$${mise_acquired%% *}"; fi; \
+	if [ -z "$${mise_acquired}" ] || [ "$$(printf '%s\n%s\n' "2026.10.3" "$${mise_acquired}" | sort -V | head -n 1)" != "2026.10.3" ]; then \
 	export MISE_VERSION="2026.10.3"; \
+	export MISE_INSTALL_FROM_GITHUB=1 MISE_INSTALL_HELP=0; \
 	case "$${OS:-}" in \
 		(Windows_NT) \
 			powershell.exe -NoProfile -Command '$$ErrorActionPreference = "Stop"; Invoke-RestMethod https://mise.run/powershell | Invoke-Expression' ;; \
@@ -597,10 +601,10 @@ _bootstrap_setup_tools:
 	bootstrap_stage=complete; bootstrap_completed=true
 _bootstrap_setup_tools: _builtin_require_workspace
 
-# CI evaluates only its own repository. Locally, a workspace root's fmt and fix
-# process the root and every governed member together in one checker run
-# (operator ruling 2026-10-25: never member by member); each multi-root tool
-# runs once over their union.
+# A workspace root's verbs act on the workspace project only; ALL=Y extends
+# them to every governed member, processed together in one checker run
+# (operator rulings 2026-10-25: never member by member; 2026-11-22, bead
+# flext-bga5y: members only with ALL=Y). CI evaluates only its own repository.
 GATE_SCOPE := self
 # Local and CI consume the same native project/workspace declarations and lock.
 # Setup always bootstraps: `uv sync --frozen` installs exactly the committed
@@ -867,23 +871,23 @@ VERB_ARGUMENTS_gen-scope := ROOT WHAT MODULE SCOPE
 VERB_DESCRIPTION_mod := Refactor declared source structure through the shared pipeline and publish the complete coherent change; LAWS (ENFORCE ids) or RULES (rule ids) diagnose or repair one law (ADR-028 Decision 18 item 2).
 VERB_ARGUMENTS_mod := LAWS RULES
 
-VERB_DESCRIPTION_fix := Apply declared repairs to authored inputs through their canonical owners.
-VERB_ARGUMENTS_fix :=
+VERB_DESCRIPTION_fix := Apply declared repairs to authored inputs through their canonical owners; in a workspace root ALL=Y includes every governed member.
+VERB_ARGUMENTS_fix := ALL
 
-VERB_DESCRIPTION_fmt := Format authored content through the configured formatters.
-VERB_ARGUMENTS_fmt :=
+VERB_DESCRIPTION_fmt := Format authored content through the configured formatters; in a workspace root ALL=Y includes every governed member.
+VERB_ARGUMENTS_fmt := ALL
 
 VERB_DESCRIPTION_check := Validate declarations, projections, environment, documentation and configured gates without repairs or publication.
 VERB_ARGUMENTS_check := CHECK_PHASE
 
-VERB_DESCRIPTION_tests := Run native incremental tests through the persistent Testmon selection.
-VERB_ARGUMENTS_tests :=
+VERB_DESCRIPTION_tests := Run native incremental tests through the persistent Testmon selection; in a workspace root ALL=Y includes every governed member.
+VERB_ARGUMENTS_tests := ALL
 
-VERB_DESCRIPTION_tests-full := Run the complete selected inventory once and record it in Testmon.
-VERB_ARGUMENTS_tests-full :=
+VERB_DESCRIPTION_tests-full := Run the complete selected inventory once and record it in Testmon; in a workspace root ALL=Y includes every governed member.
+VERB_ARGUMENTS_tests-full := ALL
 
-VERB_DESCRIPTION_tests-harness := Run only the harness gate tests, through the persistent Testmon selection, under the harness that provides their inputs; MARKER=<harness gate marker> narrows the run to one.
-VERB_ARGUMENTS_tests-harness := MARKER
+VERB_DESCRIPTION_tests-harness := Run only the harness gate tests, through the persistent Testmon selection, under the harness that provides their inputs; MARKER=<harness gate marker> narrows the run to one; in a workspace root ALL=Y includes every governed member.
+VERB_ARGUMENTS_tests-harness := ALL MARKER
 
 VERB_DESCRIPTION_help := Discover the declared public interface without effects.
 VERB_ARGUMENTS_help :=
@@ -959,7 +963,9 @@ endif
 # A fresh checkout is trusted first; the provisioning half then reruns Make so
 # the credential command resolves inside the trusted checkout, in the host
 # Mise scope (the rerun re-exports the runtime-scoped Mise variables itself).
+
 ifeq ($(PROJECT_ROOT),$(RUNTIME_ROOT))
+
 .PHONY: _setup_trust _setup_provision
 setup: _setup_trust
 	+@$(HOST_MISE_SCOPE) $(SELF_MAKE) _setup_provision
@@ -977,9 +983,11 @@ _setup_trust:
 		exit "$${bootstrap_status}"' EXIT; \
 	trap 'exit 129' HUP; trap 'exit 130' INT; trap 'exit 143' TERM; \
 	bootstrap_stage=acquisition; \
-	if [ ! -x "$(BOOTSTRAP_MISE)" ]; then \
-	export MISE_INSTALL_FROM_GITHUB=1 MISE_INSTALL_HELP=0; \
+	mise_acquired=; \
+	if [ -x "$(BOOTSTRAP_MISE)" ]; then mise_acquired="$$("$(BOOTSTRAP_MISE)" --version)"; mise_acquired="$${mise_acquired%% *}"; fi; \
+	if [ -z "$${mise_acquired}" ] || [ "$$(printf '%s\n%s\n' "2026.10.3" "$${mise_acquired}" | sort -V | head -n 1)" != "2026.10.3" ]; then \
 	export MISE_VERSION="2026.10.3"; \
+	export MISE_INSTALL_FROM_GITHUB=1 MISE_INSTALL_HELP=0; \
 	case "$${OS:-}" in \
 		(Windows_NT) \
 			powershell.exe -NoProfile -Command '$$ErrorActionPreference = "Stop"; Invoke-RestMethod https://mise.run/powershell | Invoke-Expression' ;; \
@@ -992,6 +1000,7 @@ _setup_trust:
 	bootstrap_stage=trust; \
 	"$(BOOTSTRAP_MISE)" trust "$(PROJECT_ROOT)/.mise.toml";
 _setup_provision: _builtin_require_github_credential _bootstrap_setup_tools
+
 else
 setup: _builtin_require_workspace
 	+@"$(SELF_MAKE_EXECUTABLE)" --no-print-directory -C "$(RUNTIME_ROOT)" -f "$(RUNTIME_ROOT)/Makefile" setup
@@ -1003,8 +1012,10 @@ endif
 # the isolated executor (_upg_lifecycle). Attached members delegate the same
 # operation to their physical workspace owner before resolving anything.
 ifeq ($(PROJECT_ROOT),$(RUNTIME_ROOT))
+
 upg: _builtin_require_workspace _builtin_require_github_credential _upg_toolchain
 	+@$(SELF_MAKE) _upg_lifecycle
+
 else
 upg: _builtin_require_workspace
 	+@"$(SELF_MAKE_EXECUTABLE)" --no-print-directory -C "$(RUNTIME_ROOT)" -f "$(RUNTIME_ROOT)/Makefile" upg
@@ -1013,8 +1024,10 @@ endif
 # Attached members delegate the same operation to their physical workspace owner
 # before resolving anything.
 ifeq ($(PROJECT_ROOT),$(RUNTIME_ROOT))
+
 lock: _builtin_require_workspace _builtin_require_github_credential
 	+@$(SELF_MAKE) _lock_lifecycle
+
 else
 lock: _builtin_require_workspace
 	+@"$(SELF_MAKE_EXECUTABLE)" --no-print-directory -C "$(RUNTIME_ROOT)" -f "$(RUNTIME_ROOT)/Makefile" lock
@@ -1293,9 +1306,11 @@ _upg_toolchain: _builtin_require_workspace _builtin_require_github_credential
 		*" pre-upg "*) $(SELF_MAKE) pre-upg ;; \
 	esac; \
 	bootstrap_stage=acquisition; \
-	if [ ! -x "$(BOOTSTRAP_MISE)" ]; then \
-	export MISE_INSTALL_FROM_GITHUB=1 MISE_INSTALL_HELP=0; \
+	mise_acquired=; \
+	if [ -x "$(BOOTSTRAP_MISE)" ]; then mise_acquired="$$("$(BOOTSTRAP_MISE)" --version)"; mise_acquired="$${mise_acquired%% *}"; fi; \
+	if [ -z "$${mise_acquired}" ] || [ "$$(printf '%s\n%s\n' "2026.10.3" "$${mise_acquired}" | sort -V | head -n 1)" != "2026.10.3" ]; then \
 	export MISE_VERSION="2026.10.3"; \
+	export MISE_INSTALL_FROM_GITHUB=1 MISE_INSTALL_HELP=0; \
 	case "$${OS:-}" in \
 		(Windows_NT) \
 			powershell.exe -NoProfile -Command '$$ErrorActionPreference = "Stop"; Invoke-RestMethod https://mise.run/powershell | Invoke-Expression' ;; \
@@ -1494,13 +1509,13 @@ _builtin_check_all: _builtin_require_environment
 	@$(if $(CHECK_PROFILE),FLEXT_INFRA_PROFILE=$(CHECK_PROFILE) ,)FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/.reports/check/route.pstats" $(PROJECT_FLEXT_INFRA) workspace check --repository-root "$(if $(filter Y,$(CI)),$(PROJECT_ROOT),$(if $(filter primary,$(CHECK_PHASE)),$(RUNTIME_ROOT),$(PROJECT_ROOT)))"$(if $(CHECK_PHASE), --phase "$$CHECK_PHASE")
 
 _builtin_tests_all: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) workspace tests --repository-root "$(PROJECT_ROOT)" --scope "$(GATE_SCOPE)"
+	@FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/.reports/tests/route.pstats" $(PROJECT_FLEXT_INFRA) workspace tests --repository-root "$(PROJECT_ROOT)" --scope "$(GATE_SCOPE)"
 
 _builtin_tests_full_all: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) workspace tests-full --repository-root "$(PROJECT_ROOT)" --scope "$(GATE_SCOPE)"
+	@FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/.reports/tests/route.pstats" $(PROJECT_FLEXT_INFRA) workspace tests-full --repository-root "$(PROJECT_ROOT)" --scope "$(GATE_SCOPE)"
 
 _builtin_tests_harness_all: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) workspace tests-harness --repository-root "$(PROJECT_ROOT)" --scope "$(GATE_SCOPE)"$(if $(MARKER), --marker "$$MARKER")
+	@FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/.reports/tests/route.pstats" $(PROJECT_FLEXT_INFRA) workspace tests-harness --repository-root "$(PROJECT_ROOT)" --scope "$(GATE_SCOPE)"$(if $(MARKER), --marker "$$MARKER")
 
 # fmt is format-only (single-pass verb law): ruff formats Python, the
 # fmt_gates formatters run once through the checker's apply mode, and every
