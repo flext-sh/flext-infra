@@ -398,7 +398,6 @@ class TestsFlextInfraPytestRunner:
                 tm.ok(u.Cli.files_read_text(reports_root / warm_name / receipt)),
             )
             tm.ok(warm_state.restored_accepted)
-            tm.fail(warm_state.seed_needed)
 
     @staticmethod
     @c.Tests.MARK.slow
@@ -806,7 +805,6 @@ class TestsFlextInfraPytestRunner:
             eq=[c.Infra.PytestExecutionMode.FULL],
         )
         tm.that({context.testmon_db for context in parsed}, eq={database})
-        tm.that({context.testmon_lease_acquired for context in parsed}, eq={True})
         tm.ok(database.is_file())
         tm.that(parsed[-1].execution_mode, eq=c.Infra.PytestExecutionMode.FULL)
         tm.that(
@@ -894,20 +892,13 @@ class TestsFlextInfraPytestRunner:
             eq=[c.Infra.PytestExecutionMode.FULL],
         )
         tm.that({context.testmon_db for context in parsed}, eq={database})
-        tm.that({context.testmon_lease_acquired for context in parsed}, eq={True})
         tm.ok(database.is_absolute())
         tm.that(
-            database.is_relative_to(cached_runner_project.resolve()),
-            eq=False,
+            database,
+            eq=cached_runner_project
+            / config.Infra.codegen.make.testmon_cache.database_filename,
         )
         tm.ok(database.is_file())
-        tm.that(
-            (
-                cached_runner_project
-                / config.Infra.codegen.make.testmon_cache.database_filename
-            ).exists(),
-            eq=False,
-        )
         tm.that(
             {context.deadline_monotonic for context in parsed},
             eq={
@@ -982,7 +973,6 @@ class TestsFlextInfraPytestRunner:
             },
         )
         tm.that({context.testmon_db for context in parsed}, eq={runner.testmon_db})
-        tm.that({context.testmon_lease_acquired for context in parsed}, eq={True})
 
     @staticmethod
     @c.Tests.MARK.slow
@@ -1163,13 +1153,8 @@ class TestsFlextInfraPytestRunnerDatabase:
             ),
         )
         context = tm.ok(infra.project_context(repository))
-        cache = config.Infra.codegen.make.testmon_cache
         expected = (
-            u.Infra.real_account_home()
-            / cache.home_cache_directory
-            / cache.external_storage_directory
-            / context.target.canonical_project_name
-            / cache.database_filename
+            repository / config.Infra.codegen.make.testmon_cache.database_filename
         )
         redirected = tmp_path / "redirected-home"
         monkeypatch.setenv("HOME", str(redirected))

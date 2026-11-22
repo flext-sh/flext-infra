@@ -46,6 +46,61 @@ class TestsFlextInfraMakeGenRootContract:
             )
 
     @staticmethod
+    @c.Tests.MARK.slow
+    def test_member_own_runtime_refuses_provisioning_before_any_effect(
+        tmp_path: Path,
+    ) -> None:
+        """A member checkout that is its own runtime has no flext-infra supplier.
+
+        Its dev group never declares the workspace's suppliers, so setup, upg
+        and lock refuse with the workspace-lane instruction and create neither
+        the runtime nor the upgrade executor environment.
+        """
+        shape = u.Tests.MakeEnvironmentShape()
+        root, _ = u.Tests.render_make_environment(
+            tmp_path,
+            c.Infra.MakeProfile.WORKSPACE,
+            shape=shape,
+        )
+        for verb in ("setup", "upg", "lock"):
+            process = tm.ok(
+                u.Tests.run_isolated_make(["--no-print-directory", verb], cwd=root),
+            )
+            tm.that(u.Cli.process_succeeded(process.outcome), eq=False)
+            tm.that(
+                process.stderr,
+                has=[
+                    f"ERROR[{verb}]: {shape.project_name} is a workspace member",
+                    f"Run make {verb} from a workspace-shaped lane",
+                ],
+            )
+        tm.that(u.Infra.runtime_environment_dir(root).exists(), eq=False)
+        tm.that(
+            (root / config.Infra.codegen.make.executor_environment.directory).exists(),
+            eq=False,
+        )
+
+    @staticmethod
+    @c.Tests.MARK.slow
+    def test_standalone_runtime_supplies_its_own_provisioning(
+        tmp_path: Path,
+    ) -> None:
+        """A standalone checkout declares flext-infra and keeps its provisioning."""
+        root, _ = u.Tests.render_make_environment(
+            tmp_path,
+            c.Infra.MakeProfile.STANDALONE,
+        )
+        rendered = (root / c.Infra.MAKEFILE_FILENAME).read_text(
+            encoding=c.Infra.ENCODING_DEFAULT,
+        )
+        tm.that(rendered, lacks="REFUSE_MEMBER_RUNTIME")
+        tm.that(
+            rendered,
+            has="_setup_provision: _builtin_require_github_credential "
+            "_bootstrap_setup_tools",
+        )
+
+    @staticmethod
     def test_typed_root_selection_admits_workspace_and_declared_members(
         tmp_path: Path,
     ) -> None:

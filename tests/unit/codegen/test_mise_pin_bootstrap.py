@@ -339,6 +339,41 @@ class TestsFlextInfraMisePinBootstrap:
             eq=pin,
         )
 
+    @c.Tests.MARK.slow
+    def test_fresh_setup_provisions_before_the_native_workspace_reader(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """A fresh runner's setup rerun reaches provisioning, not the reader.
+
+        Premise (aihub-0p2ee, ai-hub CI run 44970827653): the acquired Mise is
+        present but the declared github:jdx/mise tool is not installed yet, and
+        the _setup_provision rerun ran the native workspace reader first ("mise
+        is not a mise bin", "Cannot resolve the physical workspace"). Offline
+        Mise stops the locked install at its first download.
+        """
+        root, _ = u.Tests.render_make_environment(
+            tmp_path, c.Infra.MakeProfile.STANDALONE
+        )
+        bootstrap_mise = tmp_path / "home/.local/bin/mise"
+        bootstrap_mise.parent.mkdir(parents=True)
+        bootstrap_mise.symlink_to(tm.not_none(shutil.which("mise")))
+        environment = {
+            **self.environment(tmp_path),
+            "PATH": str(self.system_path_without_mise(tmp_path)),
+            config.Infra.codegen.make.ci.variable: config.Infra.codegen.make.ci.value,
+            "MISE_OFFLINE": "1",
+        }
+
+        setup = tm.ok(u.Tests.run_isolated_make(["setup"], cwd=root, env=environment))
+
+        output = setup.stdout + setup.stderr
+        tm.that(output, lacks="Cannot resolve the physical workspace")
+        tm.that(
+            output,
+            has=f"Failed to install {config.Infra.codegen.toolchain.mise_selector}@",
+        )
+
     @staticmethod
     def test_setup_provisions_the_pin_and_never_writes_a_lock(tmp_path: Path) -> None:
         """The rendered setup recipe installs the committed pin, never resolves."""
@@ -401,6 +436,92 @@ class TestsFlextInfraMisePinBootstrap:
         )
         tm.that(upgrade, has='"$$mise_reader" -C "$$lock_root" lock')
         tm.that(upgrade, lacks='"$(BOOTSTRAP_MISE)" -C "$$lock_root"')
+
+    @c.Tests.MARK.parametrize(
+        ("pin", "acquires"),
+        [("installed", False), ("2000.1.1", False), ("9999.1.1", True)],
+    )
+    def test_acquisition_raises_an_older_installed_mise_to_the_pin(
+        self,
+        tmp_path: Path,
+        pin: str,
+        *,
+        acquires: bool,
+    ) -> None:
+        """An installed acquisition Mise older than the pin is re-acquired.
+
+        The committed min_version makes an older Mise refuse every later
+        command, so only absence or an older release runs the installer; a
+        release at or above the pin is kept. The installer download is routed
+        to a closed local port, so re-acquisition fails loudly at curl instead
+        of reaching the network.
+        """
+        host_mise = Path(tm.not_none(shutil.which("mise"))).resolve()
+        bin_dir = tmp_path / "home" / ".local" / "bin"
+        bin_dir.mkdir(parents=True)
+        (bin_dir / "mise").symlink_to(host_mise)
+        installed = tm.ok(
+            u.Cli.run_raw(
+                [str(host_mise), "--version"],
+                options=m.Cli.ProcessOptions(env=self.environment(tmp_path)),
+            ),
+        ).stdout.split()[0]
+        toolchain = config.Infra.codegen.toolchain.model_copy(
+            update={"mise_version": installed if pin == "installed" else pin},
+        )
+        shutil.copyfile(
+            u.Infra.codegen_templates_root(config.Infra.codegen)
+            / "base"
+            / "tool_bootstrap_recipe.j2",
+            tmp_path / "tool_bootstrap_recipe.j2",
+        )
+        template = tmp_path / "acquisition.j2"
+        template.write_text(
+            '{% from "tool_bootstrap_recipe.j2" import mise_acquisition, '
+            "mise_staging_cleanup %}"
+            "BOOTSTRAP_MISE := $(HOME)/.local/bin/mise\n"
+            "PROJECT_ROOT := $(CURDIR)\n"
+            "setup:\n"
+            "\t+@set -eu; \\\n"
+            "\tbootstrap_status=0; mise_stage=; \\\n"
+            "\ttrap 'bootstrap_status=$$?; trap - EXIT; \\\n"
+            "\t\t{{ mise_staging_cleanup() }} \\\n"
+            '\t\texit "$${bootstrap_status}"\' EXIT; \\\n'
+            '\t{{ mise_acquisition("$(PROJECT_ROOT)", toolchain) }}\n',
+            encoding="utf-8",
+        )
+        (tmp_path / "Makefile").write_text(
+            tm.ok(
+                u.Cli.template_render(
+                    template,
+                    TestsFlextInfraMisePinBootstrap.WriterRenderContext(
+                        toolchain=toolchain,
+                        install_tools=(),
+                    ),
+                ),
+            ),
+            encoding="utf-8",
+        )
+        (tmp_path / c.Infra.MISE_TOML_FILENAME).write_text(
+            "[tools]\n", encoding="utf-8"
+        )
+
+        setup = tm.ok(
+            u.Tests.run_isolated_make(
+                ["--no-print-directory", "setup"],
+                cwd=tmp_path,
+                env={
+                    **self.environment(tmp_path),
+                    "https_proxy": "http://127.0.0.1:9",
+                    "HTTPS_PROXY": "http://127.0.0.1:9",
+                },
+            ),
+        )
+
+        output = setup.stdout + setup.stderr
+        tm.that(u.Cli.process_succeeded(setup.outcome), eq=not acquires, msg=output)
+        tm.that("curl:" in output, eq=acquires, msg=output)
+        tm.that((bin_dir / "mise").resolve(), eq=host_mise)
 
     @c.Tests.MARK.slow
     def test_lock_stage_rewrites_a_foreign_entry_to_the_declared_spec(

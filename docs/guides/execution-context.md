@@ -33,7 +33,7 @@
 - [SonarCloud exclusions](#sonarcloud-exclusions)
 - [Bootstrap credentials](#bootstrap-credentials)
 - [Evidence and checkpoints](#evidence-and-checkpoints)
-  - [Publication Receipts, Pytest Profiles, and Testmon Leases](#publication-receipts-pytest-profiles-and-testmon-leases)
+  - [Publication Receipts and Pytest Profiles](#publication-receipts-and-pytest-profiles)
   - [Architecture Checkpoints and AST Rule Catalogs](#architecture-checkpoints-and-ast-rule-catalogs)
   - [Rope Superclass Resolution, Lazy-Init Planners, and Candidate Overlays](#rope-superclass-resolution-lazy-init-planners-and-candidate-overlays)
   - [cProfile Thread Isolation and Performance Diagnosis](#cprofile-thread-isolation-and-performance-diagnosis)
@@ -645,7 +645,7 @@ Resolve the test entry from the selected repository's current native help. The
 current catalog declares `make tests` and the explicitly requested `make tests-full`,
 without file or match inputs. The first executes persistent Testmon selection
 once; the second executes the complete applicable population once without
-Testmon, a preliminary incremental run or any cache read, lease or publication.
+Testmon, a preliminary incremental run or any cache read.
 The existing database remains untouched. The operator's latest 2026-10-28
 clarification is owned by
 [ADR-029](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/029-always-working-one-complete-cycle.md).
@@ -3256,7 +3256,7 @@ the variable or a BuildKit secret explicitly.
 
 ## Evidence and checkpoints
 
-### Publication Receipts, Pytest Profiles, and Testmon Leases
+### Publication Receipts and Pytest Profiles
 
 Each piece of evidence identifies command, directory, observed revision, exit code, and
 decisive result. A run that is in progress, interrupted, or missing its exit code is not
@@ -3322,12 +3322,6 @@ one process-local profiler. Nested profiling subprocesses retain their own profi
 and still execute the original site customization.
 Tests that need sample pstats reuse `native_cprofile`, whose stdlib workload runs
 in a separate process so it cannot compete with the worker's active profiler.
-
-The typed run context is published before waiting for the Testmon lease and
-records whether that lease was acquired. An interrupted wait therefore retains
-its parent profile and authenticated invocation identity without inventing a
-child process outcome. A context with an unacquired lease rejects any selection,
-inventory or suite artifact; it proves no test execution.
 
 Profile reports select the nearest project manifest owning the profile artifact.
 This keeps member reports confined to their member when Make starts at the
@@ -3649,9 +3643,10 @@ when signal registration fails; a cleanup diagnostic cannot replace that cause.
 
 The existing opt-in public CLI form is
 `FLEXT_INFRA_PROFILE=true FLEXT_INFRA_PROFILE_OUTPUT=<file> flext-infra <command> ...`.
-The CLI entry profiles the whole command once. The generated gen, mod and check
-recipes declare the destination through `FLEXT_INFRA_PROFILE_OUTPUT` (make
-`generation_profile_path`, `modification_profile_path` and `check_profile_path`).
+The CLI entry profiles the whole command once. The generated gen, mod, check and
+tests recipes declare the destination through `FLEXT_INFRA_PROFILE_OUTPUT` (make
+`generation_profile_path`, `modification_profile_path`, `check_profile_path` and
+`tests_profile_path`).
 The check route's captured checker child writes its own profile beside its gate
 receipts. The private
 `flext_infra._profile_entry` module survives only as a deprecated pass-through for
@@ -3754,14 +3749,17 @@ filtering must not hide that caller chain from diagnosis. Both views use native 
 and the same complete immutable profile, without running or reconstructing the workload.
 
 The standard Make operations admit the same opt-in setting:
-`FLEXT_INFRA_PROFILE=true make gen`, `FLEXT_INFRA_PROFILE=true make mod` and
-`FLEXT_INFRA_PROFILE=true make check`.
+`FLEXT_INFRA_PROFILE=true make gen`, `FLEXT_INFRA_PROFILE=true make mod`,
+`FLEXT_INFRA_PROFILE=true make check` and `FLEXT_INFRA_PROFILE=true make tests`
+(each pytest child also profiles into the pytest policy's process directory; the
+incremental selection narrows the run to the affected tests).
 `settings.Infra.profile` defaults to false; it never selects a different operation
 or changes source admission, target scope, publication or native failure handling.
 The recipes use the existing shared CLI profiling transport. Their report paths
 come from `Infra.codegen.make.generation_profile_path`,
-`Infra.codegen.make.modification_profile_path` and
-`Infra.codegen.make.check_profile_path`, bound to the selected `PROJECT_ROOT`,
+`Infra.codegen.make.modification_profile_path`,
+`Infra.codegen.make.check_profile_path` and
+`Infra.codegen.make.tests_profile_path`, bound to the selected `PROJECT_ROOT`,
 not the caller's working directory. Disabled capture retains the direct CLI call
 and creates no profile. There is no common profiling verb or legacy alias.
 
@@ -4290,8 +4288,8 @@ The explicit single-file operation runs incremental selection followed by comple
 execution of that file, including its declared slow tests, on the same database.
 No empty marker phase is invoked or converted to success. Zero execution is accepted
 only as an integrity-checked cache hit with complete inventory/deselection accounting.
-The SQLite owner checkpoints and checks integrity before the runner releases its
-lease.
+The SQLite owner checkpoints and checks the integrity of that database before
+and after the run.
 
 Toolchain caches hold one immutable entry per lock state: the key is the OS,
 Python runtime and content hash of `uv.lock`, `mise.lock`, `pyproject.toml` and

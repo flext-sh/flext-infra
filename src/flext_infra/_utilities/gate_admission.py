@@ -329,11 +329,14 @@ class FlextInfraUtilitiesGateAdmission:
             ).unwrap()
 
     @classmethod
-    def gate_health_refuse(cls, repository: Path) -> None:
-        """Refuse a heavy op when check/tests health is missing-failed-stale.
+    def gate_health_refuse(
+        cls, repository: Path, *, gates: Sequence[str] = ("check", "tests")
+    ) -> None:
+        """Refuse a heavy op when the named gates' health is failed or stale.
 
         Missing records are allowed (first-run grace). Exempt contexts (CI,
-        remote, pre-push) bypass.
+        remote, pre-push) bypass. Generation names only ``check``: it projects
+        files and never depends on a green test run (operator 2026-11-22).
 
         Raises:
             SystemExit: When the last recorded health is a failure or stale.
@@ -345,8 +348,12 @@ class FlextInfraUtilitiesGateAdmission:
         root.mkdir(parents=True, exist_ok=True)
         repeat = config.Infra.gate_admission.repeat
         windows = {
-            "health-check": repeat.check.window_seconds,
-            "health-tests": repeat.tests_full.window_seconds,
+            f"health-{gate}": window
+            for gate, window in (
+                ("check", repeat.check.window_seconds),
+                ("tests", repeat.tests_full.window_seconds),
+            )
+            if gate in gates
         }
         remediation = {
             "health-check": "make check",

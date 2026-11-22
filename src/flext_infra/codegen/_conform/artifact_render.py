@@ -1192,6 +1192,21 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                         codegen.infra_repository.distribution,
                     )
                 ),
+                "runtime_supplies_infra": (
+                    u.Infra.dep_name(codegen.infra_repository.distribution)
+                    in {
+                        u.Infra.dep_name(requirement)
+                        for requirement in (
+                            target.repository.distribution,
+                            *u.Infra.project_development_requirements(
+                                codegen.scaffold.project,
+                                distribution=target.repository.distribution,
+                                standalone=target.make_profile
+                                is c.Infra.MakeProfile.STANDALONE,
+                            ),
+                        )
+                    }
+                ),
                 "toolchain": (codegen.toolchain),
                 "python_version": (codegen.toolchain.python_version),
                 "make": (codegen.make),

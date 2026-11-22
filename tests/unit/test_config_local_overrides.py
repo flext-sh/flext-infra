@@ -19,8 +19,6 @@ class TestsFlextInfraConfigLocalOverrides:
     def test_cache_defaults_validate_and_serialize_for_concrete_contracts() -> None:
         """Concrete cache owners preserve validated defaults and native wire values."""
         make = FlextInfraConfig.fetch_global().Infra.codegen.make
-        policy = make.testmon_cache_policy
-        tm.that(type(policy).model_validate_json(policy.model_dump_json()), eq=policy)
         for spec in (make.ruff_cache,):
             cache_type = type(spec)
             cache = cache_type.model_validate(
