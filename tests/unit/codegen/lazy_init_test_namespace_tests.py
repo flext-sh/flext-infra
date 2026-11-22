@@ -12,13 +12,17 @@ from tests import c, tm, u
 
 
 class TestsFlextInfraLazyInitTestNamespace:
-    """The tests facade publishes sibling public APIs, never test modules."""
+    """The tests facade publishes the public ``src`` API, never test modules."""
 
     @staticmethod
-    def test_tests_root_publishes_src_scripts_and_examples_publics(
+    def test_tests_root_publishes_src_publics_only(
         tmp_path: Path,
     ) -> None:
-        """The tests facade exposes sibling public APIs and omits test modules."""
+        """The tests facade re-exports ``src`` publics, never scripts or examples.
+
+        Each tier owns its own namespace: the tests root inherits only the
+        public ``src`` names it does not redeclare, and omits test modules.
+        """
         repository_root, package_root = u.Tests.demo_lazy_init_workspace(tmp_path)
         package_root.joinpath("__version__.py").write_text(
             '__all__: list[str] = ["__version__"]\n__version__ = "0.1.0"\n',
@@ -64,8 +68,8 @@ class TestsFlextInfraLazyInitTestNamespace:
         init_content = u.Tests.generated_init(tests_root)
 
         tm.that(init_content, has='"FlextDemoPublic"')
-        tm.that(init_content, has='"ScriptsPublic"')
-        tm.that(init_content, has='"ExamplesPublic"')
+        tm.that(init_content, lacks="ScriptsPublic")
+        tm.that(init_content, lacks="ExamplesPublic")
         tm.that(init_content, lacks='"__version__"')
         tm.that(init_content, lacks='"TestsNamespaceLeak"')
         compile(init_content, "tests/__init__.py", "exec")
