@@ -719,10 +719,10 @@ Infra:
         max_processes: 2
         # No verb declares a higher load override. The load gate refuses only
         # the full forms (check-full, tests-full, mod-full) and the remaining
-        # heavy verbs; setup and the light forms (commit-stage or primary
+        # heavy verbs; setup, gen and the light forms (commit-stage or primary
         # check, incremental tests, mod with RULES or LAWS) always start and
         # run under the idle-priority run limits (bead flext-8hkfn).
-        ungated_verbs: [setup, check, tests, mod]
+        ungated_verbs: [setup, gen, check, tests, mod]
         refusal_guidance:
         - Do not wait for the load to drop; run the lighter form now, it runs at idle priority.
         - Prefer make tests (incremental Testmon) over make tests-full; run tests-full only occasionally.
