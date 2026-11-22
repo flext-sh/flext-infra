@@ -212,7 +212,11 @@ class FlextInfraPytestRunnerExecution(
         )
         return (
             u.Cli.run_to_file(
-                command,
+                (
+                    *command,
+                    c.Infra.PYTEST_BENCHMARK_STORAGE_OPTION,
+                    f"file://{output}",
+                ),
                 stdout_file,
                 cwd=checkout,
                 options=m.Cli.ProcessOptions(

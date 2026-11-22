@@ -4327,7 +4327,8 @@ source project and a disjoint private working checkout. Testmon uses its
 regular checkout-root database and SQLite sidecars in that working checkout.
 Project identity reads Git status without optionally refreshing the index.
 The fixture supplies authenticated read-only inputs for the child's native
-Git source inventory.
+Git source inventory. Pytest's benchmark plugin initializes its storage in
+the private phase output directory even when benchmarking is disabled.
 The configuration receipt recorder uses its declared directory beside the
 database, preserving configuration dependencies across invocations.
 The runner holds one checkout lease from preflight through native child

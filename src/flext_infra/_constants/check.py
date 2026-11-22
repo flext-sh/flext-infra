@@ -290,6 +290,7 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
     """pytest-testmon option destination that overrides every activation."""
     PYTEST_COLLECTION_MANIFEST_OPTION: ClassVar[str] = "--flext-collection-manifest"
     PYTEST_CONFIG_RECEIPTS_OPTION: ClassVar[str] = "--flext-config-receipts"
+    PYTEST_BENCHMARK_STORAGE_OPTION: ClassVar[str] = "--benchmark-storage"
     """Directory of typed config receipts that Testmon records per test."""
     PYTEST_CONFIG_RECEIPT_SUFFIX: ClassVar[str] = ".sha256"
     """Suffix of one config leaf receipt (Testmon fingerprints it as one block)."""
