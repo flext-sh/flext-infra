@@ -119,12 +119,10 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
             context.model_dump_json(indent=2) + "\n",
         ).unwrap()
         latest = report_dir.parent / "latest.txt"
-        # The pointer lock guards one atomic write, inside and outside the cache
-        # lease alike. Diagnostic publication may consume the termination grace
-        # up to the hard deadline; only the cache lease reserves that grace for
-        # child termination. A contender whose lease wait is spent therefore
-        # still publishes its context before the cache refusal, while a pointer
-        # held past the hard deadline expires with the pointer lock named.
+        # The pointer lock guards one atomic write shared by concurrent runs of
+        # this checkout. Diagnostic publication may consume the termination
+        # grace up to the hard deadline, so a pointer held past the hard
+        # deadline expires with the pointer lock named.
         with u.Cli.file_changes_lock(
             latest.with_name(f"{latest.name}.lock"),
         ).acquire(

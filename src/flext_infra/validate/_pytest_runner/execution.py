@@ -9,14 +9,13 @@ from __future__ import annotations
 import os
 import shlex
 import sys
-import time
 from collections.abc import Sequence
 from pathlib import Path
 from typing import override
 
 from typing_extensions import TypeForm
 
-from flext_infra import c, config, m, p, r, t, u
+from flext_infra import c, m, p, r, t, u
 from flext_infra.validate import FlextInfraTestmonDbInspector
 from flext_infra.validate._pytest_runner import (
     FlextInfraPytestRunnerCommand,
@@ -29,8 +28,6 @@ class FlextInfraPytestRunnerExecution(
     FlextInfraPytestRunnerReports,
 ):
     """Execute pytest once and reject incomplete evidence."""
-
-    _cache_publication: p.Infra.TestmonCachePublication | None = None
 
     def _inspect_cache(
         self,
@@ -53,15 +50,12 @@ class FlextInfraPytestRunnerExecution(
     def _selection_process_options(
         self,
         *,
-        execution_mode: c.Infra.PytestExecutionMode,
-        database: Path | None = None,
         live: bool = False,
     ) -> p.Cli.ProcessOptions:
         """Declare child overrides and removals at the process boundary.
 
-        Unselected full and coverage suites own no Testmon plugin, so their
-        children never inherit a database location: Testmon keeps its native
-        default in the checkout.
+        No child inherits a Testmon database location: Testmon keeps its
+        native ``.testmondata`` in the checkout.
 
         Returns:
             The process options shared by every runner invocation.
@@ -92,16 +86,12 @@ class FlextInfraPytestRunnerExecution(
                 )
                 if path
             )
-        if execution_mode.is_incremental and database is None:
-            msg = "incremental pytest requires its Testmon database"
-            raise ValueError(msg)
         if self.profile_enabled or self.collection_command_prefix:
             overrides[c.Infra.PYTEST_PROFILE_PROCESS_DIRECTORY_ENV] = (
                 self.pytest_policy().profile_process_directory
             )
         remove_keys = (
             *c.Infra.PYTEST_INHERITED_ENV_REMOVE_KEYS,
-            "GITHUB_OUTPUT",
             c.Infra.PYTEST_ENV_TESTMON_DATAFILE,
         )
         return m.Cli.ProcessOptions(
@@ -117,7 +107,6 @@ class FlextInfraPytestRunnerExecution(
         *,
         execution_mode: c.Infra.PytestExecutionMode,
         complete: bool = False,
-        database: Path | None = None,
     ) -> p.Infra.PytestSelectionPlan | p.Cli.ProcessOutcome:
         """Run the one read-only collection and publish its manifest artifacts.
 
@@ -156,9 +145,7 @@ class FlextInfraPytestRunnerExecution(
                 command,
                 selection_log,
                 cwd=self.repository_root,
-                options=self._selection_process_options(
-                    execution_mode=execution_mode, database=database
-                ),
+                options=self._selection_process_options(),
             ),
             report_log=report_log,
             raw_log=selection_log,
@@ -340,7 +327,6 @@ class FlextInfraPytestRunnerExecution(
 
         Returns:
             The absolute deadline shared by every phase of this operation;
-            an incremental run re-arms it when the testmon lease is acquired.
             FULL owns none.
 
         """
@@ -369,7 +355,6 @@ class FlextInfraPytestRunnerExecution(
         report_dir: Path,
         *,
         execution_mode: c.Infra.PytestExecutionMode,
-        database: Path | None = None,
     ) -> p.Cli.ProcessOutcome:
         """Execute one suite argv under the shared deadline and environment.
 
@@ -411,11 +396,7 @@ class FlextInfraPytestRunnerExecution(
                 command,
                 report_dir / "pytest.log",
                 cwd=self.repository_root,
-                options=self._selection_process_options(
-                    execution_mode=execution_mode,
-                    database=database,
-                    live=True,
-                ),
+                options=self._selection_process_options(live=True),
             ),
             report_log=report_dir / "events.jsonl",
             raw_log=report_dir / "pytest.log",
@@ -551,7 +532,13 @@ class FlextInfraPytestRunnerExecution(
 
         """
         junit = report_dir / "junit.xml"
-        if outcome.forwarded_signal is not None or not junit.is_file():
+        # An empty file is a report pytest never wrote: the deadline cut the
+        # suite before its final JUnit, so the native timeout stays the cause.
+        if (
+            outcome.forwarded_signal is not None
+            or not junit.is_file()
+            or not junit.stat().st_size
+        ):
             return False
         if outcome.raw_return_code in c.Infra.PYTEST_COMPLETED_FAILURES:
             return True
@@ -918,13 +905,11 @@ class FlextInfraPytestRunnerExecution(
             raise ValueError(msg)
         return self.execute_full()
 
-    def _execute_complete_suite(
-        self, *, database: Path, report_dir: Path
-    ) -> p.Result[int]:
-        """Run, record and account for one complete suite under the lease.
+    def _execute_complete_suite(self, *, report_dir: Path) -> p.Result[int]:
+        """Run, record and account for one complete suite.
 
-        Testmon selects nothing; it records every executed item, so the
-        incremental run of the same marker scope starts warm.
+        Testmon selects nothing; it records every executed item in its native
+        database, so the incremental run of the same marker scope starts warm.
 
         Returns:
             The original suite status after its complete-inventory evidence.
@@ -935,7 +920,6 @@ class FlextInfraPytestRunnerExecution(
             self.build_command(report_dir, execution_mode=mode),
             report_dir,
             execution_mode=mode,
-            database=database,
         )
         selection = self._selection_from_suite(report_dir, outcome)
         if isinstance(selection, p.Cli.ProcessOutcome):
@@ -957,7 +941,7 @@ class FlextInfraPytestRunnerExecution(
             c.Infra.PytestExecutionMode.INCREMENTAL
         ),
     ) -> p.Result[int]:
-        """Execute one Testmon phase, selected or FULL, under the database lease.
+        """Execute one Testmon phase, selected or FULL, on the native database.
 
         Returns:
             The resulting ``p.Result[int]``.
@@ -985,111 +969,34 @@ class FlextInfraPytestRunnerExecution(
                 if self.target_file is not None
                 else 0,
             )
-        u.Cli.ensure_dir(database.parent).unwrap()
         # Selection, execution, and integrity inspection share this checkout's
-        # database. Its lease and a linked worktree's one-time seed from the
-        # canonical database are admission, like the host gate queue: both are
-        # awaited within this invocation's deadline, and the suite clock is
-        # re-armed once they are done, so neither consumes the budget of
-        # selection and execution.
-        deadline = self._process_deadline()
+        # native database, the file pytest-testmon itself writes.
         report_dir = self._report_directory()
-        context = m.Infra.PytestRunContext(
+        self._write_run_context(
+            report_dir,
+            m.Infra.PytestRunContext(
+                execution_mode=execution_mode,
+                testmon_db=database,
+                deadline_monotonic=self._deadline_monotonic(),
+                report_directory=report_dir,
+            ),
+        )
+        if execution_mode == c.Infra.PytestExecutionMode.FULL:
+            return self._execute_complete_suite(report_dir=report_dir)
+        return self._execute_incremental(
+            database=database,
             execution_mode=execution_mode,
-            testmon_db=database,
-            testmon_lease_acquired=False,
-            deadline_monotonic=self._deadline_monotonic(),
-            report_directory=report_dir,
-        )
-        self._write_run_context(report_dir, context)
-
-        def lease_wait() -> float | None:
-            # An unbounded FULL waits under the lock owner's own bound.
-            if deadline is None:
-                return None
-            return max(0.0, admission_ends - time.monotonic())
-
-        admission_ends = (
-            (deadline.expires_at_monotonic - deadline.termination_grace_seconds)
-            if deadline is not None
-            else float("inf")
+            report_dir=report_dir,
         )
 
-        self._cache_publication = None
-        lease_started = time.monotonic()
-        sys.stderr.write(f"pytest cache lease: acquiring {database}\n")
-        with u.Cli.file_changes_lock(
-            database.with_name(f"{database.name}.lock"),
-        ).acquire(timeout=max(0.0, admission_ends - time.monotonic())):
-            seed = self.testmon_seed_db
-            if seed is not None and not database.exists() and seed.is_file():
-                with u.Cli.file_changes_lock(
-                    seed.with_name(f"{seed.name}.lock")
-                ).acquire(timeout=max(0.0, admission_ends - time.monotonic())):
-                    FlextInfraTestmonDbInspector.seed_file(seed, database)
-                sys.stderr.write(f"pytest cache seed: {database} from {seed}\n")
-            self.started_at_monotonic = time.monotonic()
-            self._write_run_context(
-                report_dir,
-                context.model_copy(
-                    update={
-                        "testmon_lease_acquired": True,
-                        "deadline_monotonic": self._deadline_monotonic(),
-                    },
-                ),
-            )
-            sys.stderr.write(
-                "pytest cache lease: acquired "
-                f"after {self.started_at_monotonic - lease_started:.3f}s\n",
-            )
-            result = (
-                self._execute_complete_suite(database=database, report_dir=report_dir)
-                if execution_mode == c.Infra.PytestExecutionMode.FULL
-                else self._execute_testmon_leased(
-                    database=database,
-                    execution_mode=execution_mode,
-                    report_dir=report_dir,
-                )
-            )
-        # Only the parent publishes, after SQLite closure and lease release.
-        self._publish_cache_output()
-        return result
-
-    def _publish_cache_output(self) -> None:
-        """Publish the checkpoint produced by the completed leased operation.
-
-        Raises:
-            RuntimeError: If the database changed after the checkpoint receipt.
-            ValueError: If the database path contains output delimiters.
-
-        """
-        publication = self._cache_publication
-        output = self._optional_environment_path("GITHUB_OUTPUT")
-        if publication is not None and output is not None:
-            if (
-                FlextInfraTestmonDbInspector.digest_file(publication.database)
-                != publication.digest
-            ):
-                msg = "testmon database changed after the checkpoint receipt"
-                raise RuntimeError(msg)
-            if any(char in str(publication.database) for char in "\r\n"):
-                msg = "testmon publication path cannot contain output delimiters"
-                raise ValueError(msg)
-            with output.open("a", encoding=c.DEFAULT_ENCODING) as stream:
-                stream.write(
-                    f"testmon_database={publication.database}\n"
-                    f"testmon_digest={publication.digest}\n"
-                    f"testmon_saveable={str(publication.saveable).lower()}\n",
-                )
-
-    def _execute_testmon_leased(
+    def _execute_incremental(
         self,
         *,
         database: Path,
         execution_mode: c.Infra.PytestExecutionMode,
         report_dir: Path,
     ) -> p.Result[int]:
-        """Run one testmon phase while holding the database lease.
+        """Run one selected testmon phase on the native database.
 
         The incremental selection retains its complete collection preflight
         and the original database through execution and finalization.
@@ -1097,15 +1004,11 @@ class FlextInfraPytestRunnerExecution(
         Returns:
             The resulting ``p.Result[int]``.
 
-        Raises:
-            RuntimeError: If the testmon cache is unusable.
-
         """
         pre_digest = FlextInfraTestmonDbInspector.digest_file(database)
         cache_restored = self._preflight_cache(pre_digest, report_dir, database)
         selection_plan = self._collect_selection(
             report_dir,
-            database=database,
             execution_mode=execution_mode,
         )
         if isinstance(selection_plan, p.Cli.ProcessOutcome):
@@ -1118,9 +1021,7 @@ class FlextInfraPytestRunnerExecution(
             selection_plan,
             execution_mode=execution_mode,
         )
-        outcome = self._run_suite(
-            command, report_dir, execution_mode=execution_mode, database=database
-        )
+        outcome = self._run_suite(command, report_dir, execution_mode=execution_mode)
         selection = selection_plan.node_ids
         # A declared file executes its complete collected inventory, so an empty
         # incremental suite selection never grants a cache hit to a file request.
@@ -1153,22 +1054,13 @@ class FlextInfraPytestRunnerExecution(
             return self._unfinished_result(outcome, report_dir)
         state = self._inspect_cache(database=database, digest=pre_digest).unwrap()
         self._record_cache_state(report_dir, "cache-after", state)
-        policy = config.Infra.codegen.make.testmon_cache_policy
-        if not policy.save_enabled:
-            self._record_cache_state(report_dir, "cache-policy", state)
-        if not state.restored_accepted and not state.saveable:
-            msg = f"testmon cache is unusable: {state.reason}"
-            raise RuntimeError(msg)
-        result = self._finalize(
+        return self._finalize(
             report_dir,
             cache_restored=cache_restored,
             raw_return_code=outcome.raw_return_code,
             cache_hit=cache_hit,
             interrupted=self._interrupted_suite(outcome),
         )
-        if result.success:
-            self._publish_cache_publication(report_dir, state, policy, database)
-        return result
 
     def _preflight_cache(
         self, pre_digest: str | None, report_dir: Path, database: Path
@@ -1307,38 +1199,6 @@ class FlextInfraPytestRunnerExecution(
         ).unwrap()
         return plan
 
-    def _publish_cache_publication(
-        self,
-        report_dir: Path,
-        state: p.Infra.TestmonCacheState,
-        policy: p.Infra.TestmonCachePolicySpec,
-        database: Path,
-    ) -> None:
-        """Publish the checkpointed database as the run's cache publication.
-
-        Raises:
-            RuntimeError: If completed testmon run has no checkpointed database.
-
-        """
-        accounting = m.Infra.TestmonRunAccounting.model_validate_json(
-            (report_dir / "run-accounting.json").read_text(encoding="utf-8"),
-        )
-        completed = (
-            accounting.executed_count == accounting.reported_count
-            and accounting.inventory_count is not None
-            and accounting.executed_count + accounting.deselected_count
-            == accounting.inventory_count
-        )
-        digest = FlextInfraTestmonDbInspector.digest_file(database)
-        if digest is None:
-            msg = "completed testmon run has no checkpointed database"
-            raise RuntimeError(msg)
-        self._cache_publication = m.Infra.TestmonCachePublication(
-            database=database,
-            digest=digest,
-            saveable=policy.save_enabled and state.saveable and completed,
-        )
-
     def execute_coverage(self) -> p.Result[int]:
         """Execute the whole suite under the coverage plugin (never testmon).
 
@@ -1358,7 +1218,6 @@ class FlextInfraPytestRunnerExecution(
             m.Infra.PytestRunContext(
                 execution_mode=c.Infra.PytestExecutionMode.COVERAGE,
                 testmon_db=None,
-                testmon_lease_acquired=None,
                 deadline_monotonic=self._deadline_monotonic(),
                 report_directory=report_dir,
             ),
