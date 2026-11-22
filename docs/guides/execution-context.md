@@ -3254,6 +3254,10 @@ preserves the backend's native error, without an
 anonymous retry or source switch. CI jobs inject `GITHUB_TOKEN`; containers receive
 the variable or a BuildKit secret explicitly.
 
+The Make test launcher strips inherited GitHub credential aliases. The caller
+credential test supplies one alias explicitly. The host credential test supplies
+only its own `gh` configuration and lets Make select the declared host producer.
+
 ## Evidence and checkpoints
 
 ### Publication Receipts and Pytest Profiles
