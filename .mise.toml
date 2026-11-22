@@ -17,7 +17,7 @@
 # them; a lock whose self entry is missing stops setup with the upgrade remedy.
 
 # The pinned release is the floor of the shared acquisition executable.
-min_version = "2026.10.3"
+min_version = "2026.11.11"
 
 # === SECTION: settings (managed) ===
 # Source: config:codegen.toolchain.mise_lockfile / mise_activate_aggressive / mise_lockfile_platforms /
@@ -47,7 +47,7 @@ compile = false
 [tools]
 python = "3.13"
 # Mise interprets the self entry and its lock; Make never parses release assets.
-"github:jdx/mise" = "2026.10.3"
+"github:jdx/mise" = "2026.11.11"
 # Native toolchain (single source: Infra.codegen.toolchain.tools in codegen.yaml).
 "uv" = "latest"
 "github:direnv/direnv" = { version = "latest", bin = "direnv" }

@@ -548,8 +548,8 @@ _bootstrap_setup_tools:
 	bootstrap_stage=acquisition; \
 	mise_acquired=; \
 	if [ -x "$(BOOTSTRAP_MISE)" ]; then mise_acquired="$$("$(BOOTSTRAP_MISE)" --version)"; mise_acquired="$${mise_acquired%% *}"; fi; \
-	if [ -z "$${mise_acquired}" ] || [ "$$(printf '%s\n%s\n' "2026.10.3" "$${mise_acquired}" | sort -V | head -n 1)" != "2026.10.3" ]; then \
-	export MISE_VERSION="2026.10.3"; \
+	if [ -z "$${mise_acquired}" ] || [ "$$(printf '%s\n%s\n' "2026.11.11" "$${mise_acquired}" | sort -V | head -n 1)" != "2026.11.11" ]; then \
+	export MISE_VERSION="2026.11.11"; \
 	export MISE_INSTALL_FROM_GITHUB=1 MISE_INSTALL_HELP=0; \
 	case "$${OS:-}" in \
 		(Windows_NT) \
@@ -985,8 +985,8 @@ _setup_trust:
 	bootstrap_stage=acquisition; \
 	mise_acquired=; \
 	if [ -x "$(BOOTSTRAP_MISE)" ]; then mise_acquired="$$("$(BOOTSTRAP_MISE)" --version)"; mise_acquired="$${mise_acquired%% *}"; fi; \
-	if [ -z "$${mise_acquired}" ] || [ "$$(printf '%s\n%s\n' "2026.10.3" "$${mise_acquired}" | sort -V | head -n 1)" != "2026.10.3" ]; then \
-	export MISE_VERSION="2026.10.3"; \
+	if [ -z "$${mise_acquired}" ] || [ "$$(printf '%s\n%s\n' "2026.11.11" "$${mise_acquired}" | sort -V | head -n 1)" != "2026.11.11" ]; then \
+	export MISE_VERSION="2026.11.11"; \
 	export MISE_INSTALL_FROM_GITHUB=1 MISE_INSTALL_HELP=0; \
 	case "$${OS:-}" in \
 		(Windows_NT) \
@@ -1308,8 +1308,8 @@ _upg_toolchain: _builtin_require_workspace _builtin_require_github_credential
 	bootstrap_stage=acquisition; \
 	mise_acquired=; \
 	if [ -x "$(BOOTSTRAP_MISE)" ]; then mise_acquired="$$("$(BOOTSTRAP_MISE)" --version)"; mise_acquired="$${mise_acquired%% *}"; fi; \
-	if [ -z "$${mise_acquired}" ] || [ "$$(printf '%s\n%s\n' "2026.10.3" "$${mise_acquired}" | sort -V | head -n 1)" != "2026.10.3" ]; then \
-	export MISE_VERSION="2026.10.3"; \
+	if [ -z "$${mise_acquired}" ] || [ "$$(printf '%s\n%s\n' "2026.11.11" "$${mise_acquired}" | sort -V | head -n 1)" != "2026.11.11" ]; then \
+	export MISE_VERSION="2026.11.11"; \
 	export MISE_INSTALL_FROM_GITHUB=1 MISE_INSTALL_HELP=0; \
 	case "$${OS:-}" in \
 		(Windows_NT) \
@@ -1326,8 +1326,8 @@ _upg_toolchain: _builtin_require_workspace _builtin_require_github_credential
 	mise_reader="$$(MISE_LOCKFILE=0 "$(BOOTSTRAP_MISE)" -C "$(PROJECT_ROOT)" which mise)"; \
 	if [ "$${OS:-}" = Windows_NT ]; then mise_reader="$$(cygpath --unix "$$mise_reader")"; fi; \
 	case "$$(MISE_LOCKFILE=0 "$$mise_reader" --version)" in \
-		"2026.10.3 "*) : ;; \
-		*) printf 'ERROR: the resolved Mise reader %s does not report the declared 2026.10.3; run make upg\n' "$$mise_reader" >&2; exit 2 ;; \
+		"2026.11.11 "*) : ;; \
+		*) printf 'ERROR: the resolved Mise reader %s does not report the declared 2026.11.11; run make upg\n' "$$mise_reader" >&2; exit 2 ;; \
 	esac; \
 	uv_lock="$(RUNTIME_ROOT)/uv.lock"; \
 	if [ -f "$$uv_lock" ]; then \
