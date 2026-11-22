@@ -1,17 +1,21 @@
 {#- The official installer owns acquisition, platform and checksum handling, and
     places Mise at its default $(BOOTSTRAP_MISE), shared by every checkout. It
-    runs only when that executable is absent; the committed min_version makes
-    Mise itself refuse an older one. The checkout's own config is then trusted,
+    runs when that executable is absent or, under a pinned mise_version, older
+    than the pin (the committed min_version would make it refuse every later
+    command); a newer one is kept. The checkout's own config is then trusted,
     so a new worktree provisions through `make setup`/`make upg` alone. Native
     `mise install` provisions the pinned self-managed release, which execution
     resolves through `mise which`. -#}
 {% macro mise_acquisition(project_root, toolchain) -%}
 	bootstrap_stage=acquisition; \
-	if [ ! -x "$(BOOTSTRAP_MISE)" ]; then \
-	export MISE_INSTALL_FROM_GITHUB=1 MISE_INSTALL_HELP=0; \
-{% if toolchain.mise_version == "latest" %}	unset MISE_VERSION; \
-{% else %}	export MISE_VERSION="{{ toolchain.mise_version }}"; \
-{% endif %}	case "$${OS:-}" in \
+{% if toolchain.mise_version == "latest" %}	if [ ! -x "$(BOOTSTRAP_MISE)" ]; then \
+	unset MISE_VERSION; \
+{% else %}	mise_acquired=; \
+	if [ -x "$(BOOTSTRAP_MISE)" ]; then mise_acquired="$$("$(BOOTSTRAP_MISE)" --version)"; mise_acquired="$${mise_acquired%% *}"; fi; \
+	if [ -z "$${mise_acquired}" ] || [ "$$(printf '%s\n%s\n' "{{ toolchain.mise_version }}" "$${mise_acquired}" | sort -V | head -n 1)" != "{{ toolchain.mise_version }}" ]; then \
+	export MISE_VERSION="{{ toolchain.mise_version }}"; \
+{% endif %}	export MISE_INSTALL_FROM_GITHUB=1 MISE_INSTALL_HELP=0; \
+	case "$${OS:-}" in \
 		(Windows_NT) \
 			powershell.exe -NoProfile -Command '$$ErrorActionPreference = "Stop"; Invoke-RestMethod https://mise.run/powershell | Invoke-Expression' ;; \
 		(*) \

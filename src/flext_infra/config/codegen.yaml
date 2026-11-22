@@ -348,7 +348,7 @@ Infra:
       # platform lock section must carry one.
       # Base toolchain: only what this generator's own verbs run (python, the
       # self-managed mise, uv, direnv, taplo, ast-grep, gitleaks, scc, qlty,
-      # jscpd, waza, prek, gh). A project that needs more
+      # jscpd, waza, prek). A project that needs more
       # (kubectl, helm, kind, kubeconform, go, ...) declares them as additions
       # in its own config/codegen.yaml under Infra.codegen.toolchain.tools;
       # the config loader concatenates them onto this base. The library never
@@ -451,16 +451,6 @@ Infra:
           binary: prek
           arguments: [ --version ]
           pattern: "^prek {version}$"
-      # The declared GitHub credential command (make.github_credential_command)
-      # runs gh, so the network verbs resolve it from this locked toolchain; a
-      # lane's runtime-scoped Mise config never sees the host's tool registry.
-      - name: gh
-        selector: aqua:cli/cli
-        version: latest
-        version_probe:
-          binary: gh
-          arguments: [ --version ]
-          pattern: "^gh version {version} "
       # Pins layered over the tools table by the override files.
       tool_version_pins: {}
       # False keeps Python resolution and installation on precompiled builds:
@@ -492,12 +482,9 @@ Infra:
       # (single source: this mise_version; no separate pin file exists), and
       # every later `mise` resolved through the mise-managed shims runs exactly
       # that release. The host bootstrap mise only needs to read the committed
-      # lockfile format. 2026.11.11 enters before the 10-day dependency
-      # cooldown by operator decision 2026-11-22 (cooldown exception): the host
-      # registry already runs it and lockfile_version 4 written by it must be
-      # readable by every governed shell (ai-hub aihub-vkb1j.14).
+      # lockfile format.
       mise_selector: github:jdx/mise
-      mise_version: "2026.11.11"
+      mise_version: "2026.10.3"
       beads:
         ownership_command_prefix: [ direnv, exec, ., bd ]
         # Beads ledger projection (.beads/config.yaml, .beads/metadata.yaml).

@@ -440,6 +440,15 @@ class FlextInfraProtocolsConfigMake:
             ...
 
         @property
+        def tests_profile_path(self) -> Path:
+            """Structural member projected from the owning model.
+
+            Repository-relative profile of the tests route; each pytest child
+            profiles into the pytest policy's directory.
+            """
+            ...
+
+        @property
         def check_report_output_environment_variable(self) -> str:
             """Invocation-owned checker report destination transport."""
             ...
