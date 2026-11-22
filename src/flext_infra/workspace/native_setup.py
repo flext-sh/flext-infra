@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import base64
+import platform
 import shutil
 import socket
 import sys
@@ -498,8 +499,8 @@ class FlextInfraNativeSetup:
             built = cls._build(scratch, inputs, compiler)
             cls._validate_tool_abi(policy, abi)
             abi_probe = cls._run([str(policy)], scratch)
-            architecture = abi_probe.stdout.decode("ascii").strip()
-            if not architecture.isdecimal():
+            seccomp_token = abi_probe.stdout.decode("ascii").strip()
+            if not seccomp_token.isdecimal():
                 msg = "native setup compiler did not provide its numeric ABI"
                 raise ValueError(msg)
             qualified = tuple(
@@ -527,6 +528,7 @@ class FlextInfraNativeSetup:
                     )
                     raise ValueError(msg)
             artifact = cls._receipt(cls._publish_compiler(policy, repository_root))
+        architecture = platform.machine()
         return tuple(
             m.Cli.ProcessNativeToolEvidence.model_validate({
                 "role": role,

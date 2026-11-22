@@ -1998,6 +1998,9 @@ staging and invokes the extractor inside the authenticated launcher. The
 isolated build reads the extracted sysroot and the exact libseccomp headers
 and archive. A changed SDK, extractor or lock invalidates the previous
 qualification and requires the profile to run setup again.
+Setup validates the compiler's numeric seccomp ABI probe and records the
+native machine name used by CLI to admit the qualified process. Run setup
+again to replace a receipt that records the token as its architecture.
 When a profile is elected, setup installs the locked packages as wheels so
 the qualification reads the original resource entries rather than editable paths.
 Operating-system restrictions in the native toolchain elect eligible tools before
