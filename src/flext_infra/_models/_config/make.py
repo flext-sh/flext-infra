@@ -736,12 +736,12 @@ class FlextInfraModelsConfigMake(
             ],
             m.Field(description="Explicit per-verb exceptions to the defaults"),
         ] = m.Field(default_factory=dict)
-        ungated_verbs: Annotated[
+        gated_verbs: Annotated[
             tuple[t.NonEmptyStr, ...],
             m.Field(
                 description=(
-                    "Bootstrap verbs the load gate never refuses; they still run "
-                    "inside the run limits"
+                    "Heavy verb forms the load gate refuses above max_load5; "
+                    "every other verb always starts inside the run limits"
                 ),
             ),
         ] = ()

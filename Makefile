@@ -18,8 +18,8 @@ override SHELL := /bin/sh
 # a cgroup scope of the user's systemd manager at idle CPU and IO weight,
 # bounded by MemoryMax and CPUQuota; children and nested Make inherit the
 # scope, and PYTHON_CPU_COUNT sizes Python worker pools to the same CPUs. A
-# verb refuses to start while the 5-minute load average exceeds its limit,
-# except the ungated verbs; a mod without RULES or LAWS is the full form,
+# gated heavy form refuses to start while the 5-minute load average exceeds
+# its limit and every other verb always starts; a mod without RULES or LAWS is the full form,
 # named mod-full, and a check outside the commit stage without
 # CHECK_PHASE=primary is the full form, named check-full. Overrides apply when
 # the invocation names exactly one verb.
@@ -30,7 +30,7 @@ override ADMISSION_VERB := $(if $(filter check,$(ADMISSION_VERB)),$(if $(filter 
 override ADMISSION_MAX_LOAD5 := 20.0
 override ADMISSION_MEMORY_LIMIT_BYTES := 5368709120
 override ADMISSION_MAX_PROCESSES := 2
-ifeq ($(filter $(ADMISSION_VERB),setup check tests mod),)
+ifneq ($(filter $(ADMISSION_VERB),check-full tests-full mod-full),)
 override ADMISSION_LOAD5 := $(shell awk -v limit=$(ADMISSION_MAX_LOAD5) '$$2 > limit { print $$2 }' /proc/loadavg)
 ifneq ($(.SHELLSTATUS),0)
 $(error Cannot read the 5-minute load average from /proc/loadavg)
