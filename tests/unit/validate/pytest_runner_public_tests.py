@@ -702,15 +702,6 @@ class TestsFlextInfraPytestRunner:
             else pytest_policy.harness_gate_markers
         )
         cache = config.Infra.codegen.make.testmon_cache
-        marker_lines = "".join(
-            f'  "{marker}",\n' for marker in pytest_policy.standard_markers
-        )
-        (cached_runner_project / c.PYPROJECT_FILENAME).write_text(
-            "[tool.pytest.ini_options]\n"
-            f'pythonpath = ["{c.Infra.DEFAULT_SRC_DIR}"]\n'
-            f"markers = [\n{marker_lines}]\n",
-            encoding="utf-8",
-        )
         (
             cached_runner_project / cache.target_directory / "test_external.py"
         ).write_text(
@@ -771,13 +762,6 @@ class TestsFlextInfraPytestRunner:
         # incremental scope does.
         not_executed = tuple(sorted(set(policy.harness_gate_markers)))
         executable = tuple(marker for marker in markers if marker not in not_executed)
-        marker_lines = "".join(f'  "{marker}",\n' for marker in policy.standard_markers)
-        (cached_runner_project / c.PYPROJECT_FILENAME).write_text(
-            "[tool.pytest.ini_options]\n"
-            f'pythonpath = ["{c.Infra.DEFAULT_SRC_DIR}"]\n'
-            f"markers = [\n{marker_lines}]\n",
-            encoding="utf-8",
-        )
         runner = u.Tests.PytestRunner.runner_for(
             cached_runner_project, ci_context=ci_context
         )
@@ -1130,6 +1114,7 @@ class TestsFlextInfraPytestRunnerDatabase:
         [
             c.Infra.PytestExecutionMode.GLOBAL_INCREMENTAL,
             c.Infra.PytestExecutionMode.FULL,
+            c.Infra.PytestExecutionMode.COVERAGE,
         ],
     )
     def test_database_is_the_native_checkout_default(
@@ -1138,7 +1123,7 @@ class TestsFlextInfraPytestRunnerDatabase:
         *,
         mode: c.Infra.PytestExecutionMode,
     ) -> None:
-        """Incremental runs use the checkout-root default; full runs have none.
+        """Both runner entrypoints elect the checkout database for Testmon modes.
 
         A redirected ``HOME`` or ``XDG_CACHE_HOME`` never moves it.
         """
@@ -1153,8 +1138,9 @@ class TestsFlextInfraPytestRunnerDatabase:
             ),
         )
         context = tm.ok(infra.project_context(repository))
+        cache = config.Infra.codegen.make.testmon_cache
         expected = (
-            repository / config.Infra.codegen.make.testmon_cache.database_filename
+            repository / cache.database_filename if mode.records_testmon else None
         )
         redirected = tmp_path / "redirected-home"
         monkeypatch.setenv("HOME", str(redirected))
@@ -1164,7 +1150,46 @@ class TestsFlextInfraPytestRunnerDatabase:
             started_at_monotonic=1.0,
             execution_mode=mode,
         )
-        tm.that(
-            runner.testmon_db,
-            eq=expected if mode.is_incremental else None,
+        tm.that(runner.testmon_db, eq=expected)
+
+        monkeypatch.setenv(c.Infra.PYTEST_ENV_REPOSITORY_ROOT, str(repository))
+        monkeypatch.setenv(c.Infra.PYTEST_ENV_TARGET, str(cache.target_directory))
+        monkeypatch.setenv(c.Infra.PYTEST_ENV_REPORTS, str(cache.reports_directory))
+        monkeypatch.delenv(c.Infra.PYTEST_ENV_TARGET_FILE, raising=False)
+        from_make = validate.FlextInfraPytestRunner.from_environment(
+            started_at_monotonic=1.0,
+            execution_mode=mode,
         )
+        tm.that(from_make.testmon_db, eq=expected)
+
+    @staticmethod
+    def test_testmon_uses_checkout_database_with_nested_pytest_root(
+        cached_runner_project: Path,
+        monkeypatch: t.Tests.MonkeyPatch,
+    ) -> None:
+        """Native selection and execution share the database the runner inspects."""
+        runner = u.Tests.PytestRunner.runner_for(cached_runner_project)
+        database = tm.not_none(runner.testmon_db)
+        nested_root = cached_runner_project / runner.target
+        (nested_root / "pytest.ini").write_text(
+            "[pytest]\n", encoding=c.DEFAULT_ENCODING
+        )
+        variable = c.Infra.PYTEST_ENV_TESTMON_DATAFILE
+        (nested_root / "conftest.py").write_text(
+            f"import os\n\nassert os.environ[{variable!r}] == {str(database)!r}\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        (nested_root / "test_nested_root.py").write_text(
+            "from pathlib import Path\n\n"
+            "def test_nested_root(pytestconfig):\n"
+            "    assert pytestconfig.rootpath == Path(__file__).parent\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        inherited = cached_runner_project.parent / database.name
+        monkeypatch.setenv(variable, str(inherited))
+
+        tm.that(tm.ok(runner.execute()), eq=0)
+
+        tm.that(database.is_file(), truth=True)
+        tm.that((nested_root / database.name).exists(), truth=False)
+        tm.that(inherited.exists(), truth=False)

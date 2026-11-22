@@ -3254,6 +3254,10 @@ preserves the backend's native error, without an
 anonymous retry or source switch. CI jobs inject `GITHUB_TOKEN`; containers receive
 the variable or a BuildKit secret explicitly.
 
+The Make test launcher strips inherited GitHub credential aliases. The caller
+credential test supplies one alias explicitly. The host credential test supplies
+only its own `gh` configuration and lets Make select the declared host producer.
+
 ## Evidence and checkpoints
 
 ### Publication Receipts and Pytest Profiles
@@ -4278,12 +4282,14 @@ resolution and lock publication.
 
 The ordinary `tests` operation uses incremental Testmon selection
 ([ADR-029](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/029-always-working-one-complete-cycle.md)).
-The explicit `tests-full` operation executes the applicable suite once without
-Testmon, an incremental pre-run or database access. Marker applicability remains
-owned by the declared execution context; neither operation invents exclusions.
+The explicit `tests-full` operation executes the applicable suite once and records
+dependencies in Testmon without an incremental pre-run. The declared execution
+context determines which markers apply to each operation.
 The incremental database is Testmon's native `.testmondata` at the checkout root,
-ignored by `.gitignore`; no variable, setting or Make value relocates it, and full
-execution leaves it untouched.
+ignored by `.gitignore`. The runner binds Testmon to that path for selection and
+execution, even when pytest discovers a nested configuration root. The same
+path goes into the run receipt and SQLite integrity inspection. The runner
+discards an inherited `TESTMON_DATAFILE` value.
 The explicit single-file operation runs incremental selection followed by complete
 execution of that file, including its declared slow tests, on the same database.
 No empty marker phase is invoked or converted to success. Zero execution is accepted
