@@ -1285,6 +1285,9 @@ configuration snapshots alongside the destination snapshot, including for a
 no-op. Workspace rendering also receives the local topology so its member
 whitelist agrees with conform; the initial `.gitmodules` snapshot authenticates
 that input even when absent. Packaged defaults do not enumerate consumers.
+The configured `.trigger-tree/` pattern keeps the agent's local session history,
+session state and lock outside versioned project content; it does not remove those
+files or exclude product changes from capture.
 
 `make fix-toolchain` repairs one explicitly selected native installation through
 Mise, using the exact version and checksum authority of the current lock. Set
@@ -5251,6 +5254,9 @@ to public import routing.
 Native provider capture owns resource addressing and source selection. Route traversal
 consumes that capture and one module/name binding identity, so publication policy does
 not duplicate filesystem discovery or expand the resolver's independent inputs.
+The typing-scaffold cleaner skips Rope's unused-import analysis when the candidate
+contains no import of `typing`: only typing imports are eligible for removal there.
+It still authenticates and removes empty typing guards before that decision.
 Facade collision analysis separates lexical guard provenance from declaration
 collection: only a native import binding to `typing.TYPE_CHECKING` or its
 `typing_extensions` counterpart makes a branch type-only. Runtime redeclarations
