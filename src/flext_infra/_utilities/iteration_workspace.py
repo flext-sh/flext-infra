@@ -113,13 +113,14 @@ class FlextInfraUtilitiesIterationWorkspace:
             ValueError: If bootstrap report requires one elected scalar field.
 
         """
+        relative_root = c.Infra.WORKSPACE_BOOTSTRAP_RELATIVE_ROOT
         report = m.Infra.WorkspaceOperationReport(
-            root=Path(),
+            root=relative_root,
             operation="tool-bootstrap",
-            scope=(Path(),),
+            scope=(relative_root,),
             receipts=(
                 m.Infra.WorkspaceOperationReceipt(
-                    root=Path(),
+                    root=relative_root,
                     executed=True,
                     outcome=None,
                 ),
