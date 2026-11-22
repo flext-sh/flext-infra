@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 
 from flext_infra import config, m
@@ -52,9 +53,9 @@ class TestsFlextInfraMakeGenRootContract:
     ) -> None:
         """A member checkout that is its own runtime has no flext-infra supplier.
 
-        Its dev group never declares the workspace's suppliers, so setup, upg
-        and lock refuse with the workspace-lane instruction and create neither
-        the runtime nor the upgrade executor environment.
+        The credential command is available on PATH, but the cold checkout's
+        home has no acquisition Mise. Refusal precedes both credential and
+        tool discovery and leaves the runtime and executor absent.
         """
         shape = u.Tests.MakeEnvironmentShape()
         root, _ = u.Tests.render_make_environment(
@@ -62,18 +63,28 @@ class TestsFlextInfraMakeGenRootContract:
             c.Infra.MakeProfile.WORKSPACE,
             shape=shape,
         )
+        home = tmp_path / "cold-home"
+        home.mkdir()
+        tm.not_none(
+            shutil.which(config.Infra.codegen.make.github_credential_command[0])
+        )
         for verb in ("setup", "upg", "lock"):
             process = tm.ok(
-                u.Tests.run_isolated_make(["--no-print-directory", verb], cwd=root),
+                u.Tests.run_isolated_make(
+                    ["--no-print-directory", verb], cwd=root, env={"HOME": str(home)}
+                ),
             )
-            tm.that(u.Cli.process_succeeded(process.outcome), eq=False)
+            tm.that(process.outcome.raw_return_code, eq=2)
+            tm.that(process.stdout, eq="")
             tm.that(
                 process.stderr,
                 has=[
                     f"ERROR[{verb}]: {shape.project_name} is a workspace member",
                     f"Run make {verb} from a workspace-shaped lane",
                 ],
+                lacks=str(home),
             )
+        tm.that(tuple(home.iterdir()), eq=())
         tm.that(u.Infra.runtime_environment_dir(root).exists(), eq=False)
         tm.that(
             (root / config.Infra.codegen.make.executor_environment.directory).exists(),
