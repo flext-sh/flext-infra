@@ -442,7 +442,18 @@ class FlextInfraModelsWorkspace:
     class NativeSetupInputs(m.ContractModel):
         """One elected and captured native tool build closure."""
 
-        launcher: Annotated[Path, m.Field(description="Locked static launcher")]
+        launcher: Annotated[
+            t.Port[p.Cli.AtomicFileReceipt],
+            m.Field(description="Locked static launcher receipt"),
+        ]
+        extractor: Annotated[
+            t.Port[p.Cli.AtomicFileReceipt],
+            m.Field(description="Locked static SDK extractor receipt"),
+        ]
+        extractor_arguments: Annotated[
+            tuple[str, ...],
+            m.Field(description="Original native SDK extraction arguments"),
+        ]
         compiler_archive: Annotated[
             t.Port[p.Cli.AtomicFileReceipt],
             m.Field(description="Original authenticated SDK archive"),

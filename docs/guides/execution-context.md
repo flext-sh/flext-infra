@@ -1992,11 +1992,12 @@ requires the locked native launcher and compiler SDK, the compiler resource from
 the CLI distribution's installed RECORD, the required kernel capabilities and
 successful real subprocess observations. Failure in any of these requirements
 fails setup. A workspace without a fixture profile issues no fixture evidence.
-The elected SDK download is authenticated by its declared digest and lock.
-Setup copies those exact bytes into its private staging directory and extracts
-the toolchain with bsdtar. The isolated build can read this sysroot and the exact
-libseccomp headers and archive. A changed SDK digest or lock invalidates the
-previous qualification and requires the profile to run setup again.
+The elected SDK download and static archive extractor are authenticated by
+their declared digests and lock. Setup copies the exact archive into private
+staging and invokes the extractor inside the authenticated launcher. The
+isolated build reads the extracted sysroot and the exact libseccomp headers
+and archive. A changed SDK, extractor or lock invalidates the previous
+qualification and requires the profile to run setup again.
 When a profile is elected, setup installs the locked packages as wheels so
 the qualification reads the original resource entries rather than editable paths.
 Operating-system restrictions in the native toolchain elect eligible tools before

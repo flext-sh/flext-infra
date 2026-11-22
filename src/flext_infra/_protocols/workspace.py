@@ -348,8 +348,18 @@ class FlextInfraProtocolsWorkspace:
         """Structural data contract projected from the owning model."""
 
         @property
-        def launcher(self) -> Path:
-            """Locked static launcher."""
+        def launcher(self) -> p.Cli.AtomicFileReceipt:
+            """Locked static launcher receipt."""
+            ...
+
+        @property
+        def extractor(self) -> p.Cli.AtomicFileReceipt:
+            """Locked static SDK extractor receipt."""
+            ...
+
+        @property
+        def extractor_arguments(self) -> tuple[str, ...]:
+            """Original native SDK extraction arguments."""
             ...
 
         @property

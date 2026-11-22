@@ -481,6 +481,14 @@ class FlextInfraModelsMiseToolchain:
             FlextInfraModelsMiseToolchain.NativeIsolationProvider,
             m.Field(description="Authenticated C17 compiler and sysroot archive"),
         ]
+        extractor: Annotated[
+            FlextInfraModelsMiseToolchain.NativeIsolationProvider,
+            m.Field(description="Authenticated static SDK archive extractor"),
+        ]
+        extractor_arguments: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(min_length=1, description="Native archive extraction arguments"),
+        ]
         compiler_member: Annotated[
             Path,
             m.Field(description="Compiler path relative to the SDK archive"),
@@ -985,6 +993,7 @@ class FlextInfraModelsMiseToolchain:
                 providers = (
                     isolation.launcher,
                     isolation.compiler,
+                    isolation.extractor,
                     isolation.seccomp_header,
                     isolation.seccomp_syscalls,
                     isolation.seccomp_archive,

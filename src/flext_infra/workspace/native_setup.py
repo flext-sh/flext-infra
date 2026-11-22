@@ -312,12 +312,13 @@ class FlextInfraNativeSetup:
             for entry in (
                 declared.launcher,
                 declared.compiler,
+                declared.extractor,
                 declared.seccomp_header,
                 declared.seccomp_syscalls,
                 declared.seccomp_archive,
             )
         )
-        launcher, compiler, header, syscalls, archive = installed
+        launcher, compiler, extractor, header, syscalls, archive = installed
         if (
             header.path.parent != syscalls.path.parent
             or header.path.name != "seccomp.h"
@@ -326,7 +327,9 @@ class FlextInfraNativeSetup:
             msg = "elected libseccomp headers must share the SDK include directory"
             raise ValueError(msg)
         return m.Infra.NativeSetupInputs(
-            launcher=launcher.path,
+            launcher=launcher,
+            extractor=extractor,
+            extractor_arguments=declared.extractor_arguments,
             compiler_archive=compiler,
             compiler_member=declared.compiler_member,
             compiler_arguments=declared.compiler_arguments,
@@ -365,10 +368,6 @@ class FlextInfraNativeSetup:
         private: Path,
         inputs: m.Infra.NativeSetupInputs,
     ) -> Path:
-        extractor = shutil.which("bsdtar")
-        if extractor is None:
-            msg = "native setup requires bsdtar to materialize the authenticated SDK"
-            raise ValueError(msg)
         archive = private / "sdk-archive"
         shutil.copyfile(inputs.compiler_archive.path, archive)
         if cls._receipt(archive).sha256 != inputs.compiler_archive.sha256:
@@ -376,7 +375,30 @@ class FlextInfraNativeSetup:
             raise ValueError(msg)
         sdk = private / "sdk"
         sdk.mkdir()
-        cls._run([extractor, "-xf", str(archive), "-C", str(sdk)], private)
+        extractor = str(inputs.extractor.path)
+        cls._run(
+            [
+                *cls._namespace(inputs.launcher.path),
+                "--ro-bind",
+                extractor,
+                extractor,
+                "--ro-bind",
+                str(archive),
+                str(archive),
+                "--bind",
+                str(sdk),
+                str(sdk),
+                "--remount-ro",
+                "/",
+                "--",
+                extractor,
+                *inputs.extractor_arguments,
+                str(archive),
+                "-C",
+                str(sdk),
+            ],
+            private,
+        )
         compiler = (sdk / inputs.compiler_member).resolve(strict=True)
         if not compiler.is_relative_to(sdk):
             msg = "native compiler member escapes the authenticated SDK"
@@ -391,7 +413,7 @@ class FlextInfraNativeSetup:
         compiler: Path,
     ) -> p.Cli.ProcessOutcome:
         policy_source, probe_source = (receipt.path for receipt in inputs.sources)
-        command = cls._namespace(inputs.launcher)
+        command = cls._namespace(inputs.launcher.path)
         for path in (
             compiler.parent,
             *inputs.headers,
@@ -463,7 +485,8 @@ class FlextInfraNativeSetup:
             inputs.abi_reference.path.read_bytes(),
             require_static=False,
         )
-        cls._validate_tool_abi(inputs.launcher, abi)
+        cls._validate_tool_abi(inputs.launcher.path, abi)
+        cls._validate_tool_abi(inputs.extractor.path, abi)
         with tempfile.TemporaryDirectory(prefix="flext-native-setup-") as private:
             root = Path(private)
             compiler = cls._materialize_sdk(root, inputs)
@@ -484,7 +507,7 @@ class FlextInfraNativeSetup:
                     profile,
                     *cls._observe(
                         scratch,
-                        inputs.launcher,
+                        inputs.launcher.path,
                         policy,
                         probe,
                         fixture=profile == "fixture",
@@ -508,9 +531,7 @@ class FlextInfraNativeSetup:
             m.Cli.ProcessNativeToolEvidence.model_validate({
                 "role": role,
                 "artifact_receipt": (
-                    artifact
-                    if role == "policy-compiler"
-                    else cls._receipt(inputs.launcher)
+                    artifact if role == "policy-compiler" else inputs.launcher
                 ),
                 "declaration_inputs": inputs.declaration,
                 "installation_inputs": inputs.installation,

@@ -430,6 +430,16 @@ class FlextInfraProtocolsMiseToolchain:
             ...
 
         @property
+        def extractor(self) -> FlextInfraProtocolsMiseToolchain.NativeIsolationProvider:
+            """Authenticated static SDK archive extractor."""
+            ...
+
+        @property
+        def extractor_arguments(self) -> tuple[t.NonEmptyStr, ...]:
+            """Native archive extraction arguments."""
+            ...
+
+        @property
         def compiler_member(self) -> Path:
             """Compiler path relative to the SDK archive."""
             ...
