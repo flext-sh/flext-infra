@@ -12,6 +12,8 @@ from flext_infra import infra
 from flext_infra.codemod import FlextInfraCodemodSemanticApply
 from tests import c, m, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraSemanticRenameSeed:
     """Source campaigns never weaken the explicit rename artifact contract."""

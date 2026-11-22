@@ -15,6 +15,8 @@ from flext_infra import FlextInfraCli
 from flext_infra.gates import FlextInfraGatesPyrefly
 from tests import c, m, p, t, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraModelEnvelopeContracts:
     """Prove analyzer admission, native transformation and retained model identity."""

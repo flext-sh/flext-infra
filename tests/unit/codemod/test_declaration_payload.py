@@ -11,6 +11,8 @@ from pathlib import Path
 from flext_infra import infra
 from tests import c, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraDeclarationPayload:
     """Exercise semantic identity and inherited declarations without source parsing."""

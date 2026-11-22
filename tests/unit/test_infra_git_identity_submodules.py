@@ -10,6 +10,8 @@ from pathlib import Path
 
 from tests import c, m, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraGitIdentitySubmodules:
     """Report a superproject from the index, never from ``status --porcelain``.

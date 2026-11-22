@@ -16,6 +16,8 @@ from flext_infra import infra
 from flext_infra.transformers import FlextInfraTransformersSemantic
 from tests import c, m, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraSharedHelperPromotion:
     """Keep real consumers working while the original declaration changes owner."""

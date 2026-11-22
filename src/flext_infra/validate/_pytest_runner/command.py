@@ -42,16 +42,22 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         (gate-budget law). A declared file runs its slow items. The coverage
         operation and both global modes include slow items. One predicate
         drives both the marker expression and the stop reserve, so an in-flight
-        slow item always has its slow drain.
+        slow item always has its slow drain. Under the Make CI token the global
+        incremental run is the fast tier (operator decision 2026-11-22): CI
+        runs the fast tests, so slow items stay out of it.
 
         Returns:
             The resulting ``bool``.
 
         """
+        fast_ci = (
+            self.ci_context
+            and execution_mode == c.Infra.PytestExecutionMode.GLOBAL_INCREMENTAL
+        )
         return (
             self.slow_phase
             or self.target_file is not None
-            or execution_mode.is_global
+            or (execution_mode.is_global and not fast_ci)
             or execution_mode == c.Infra.PytestExecutionMode.COVERAGE
         )
 

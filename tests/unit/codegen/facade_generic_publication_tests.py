@@ -10,6 +10,8 @@ from pathlib import Path
 
 from tests import c, m, p, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFacadeGenericPublication:
     """A generic member class keeps its identity and gains one publication."""

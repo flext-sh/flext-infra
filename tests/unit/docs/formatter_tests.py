@@ -12,6 +12,8 @@ from flext_infra import config, infra
 from flext_infra.docs import FlextInfraDocFixer, FlextInfraDocFormatter
 from tests import c, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 if TYPE_CHECKING:
     from pathlib import Path
 

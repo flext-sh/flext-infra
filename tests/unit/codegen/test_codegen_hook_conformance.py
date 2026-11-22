@@ -320,10 +320,11 @@ class TestsFlextInfraCodegenHookConformance:
 
     @staticmethod
     def test_pre_push_runs_the_incremental_tests_after_the_primary_check() -> None:
-        """CI runs setup and the primary check only, so pre-push runs the tests.
+        """Pre-push runs the primary check, then the incremental tests.
 
         Operator decision 2026-11-19: a project that opts into pre-push gets
-        its primary check followed by its incremental tests in that hook.
+        its primary check followed by its incremental tests in that hook; CI
+        runs the same fast tests since the 2026-11-22 decision.
         """
         rendered = tm.ok(
             u.Cli.template_render(

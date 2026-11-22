@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from tests import c, t, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsNativeObservationScaling:
     """Nested declaration inputs remain complete without repeated JSON escaping."""

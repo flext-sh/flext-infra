@@ -12,6 +12,8 @@ from pathlib import Path
 from flext_infra import config, settings
 from tests import c, m, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraMiseToolchainRepair:
     """Exercise process-start settings through the actual public CLI."""

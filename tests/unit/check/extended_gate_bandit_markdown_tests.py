@@ -14,6 +14,8 @@ from flext_infra import config
 from flext_infra.gates import FlextInfraGatesBandit, FlextInfraGatesMarkdown
 from tests import c, m, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 if TYPE_CHECKING:
     from pathlib import Path
 

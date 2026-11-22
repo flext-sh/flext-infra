@@ -11,6 +11,8 @@ from pathlib import Path
 from flext_infra.codemod import FlextInfraModGateEngine
 from tests import c, p, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraModelRoleAdmission:
     """Exercise the elected rule with real packages, models and project metadata."""

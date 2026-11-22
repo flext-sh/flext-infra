@@ -14,6 +14,8 @@ from types import ModuleType
 from flext_infra import config
 from tests import c, m, p, t, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsModelProtocolCallableContracts:
     """Exercise public projection, actual Pydantic models and native consumers."""

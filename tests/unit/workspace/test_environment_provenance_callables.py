@@ -14,6 +14,8 @@ from flext_infra import config
 from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance
 from tests import c, m, p, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraWorkspaceEnvironmentProvenanceCallables:
     """Prove generated and decorated callables authenticate their native origin."""

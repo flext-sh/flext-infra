@@ -21,7 +21,7 @@ from tests import c, m, tm, u
 if TYPE_CHECKING:
     from pathlib import Path
 
-pytestmark = [c.Tests.MARK.integration]
+pytestmark = [c.Tests.MARK.integration, c.Tests.MARK.slow]
 
 
 class TestsFlextInfraIntegrationInfraIntegration:

@@ -19,6 +19,8 @@ from flext_infra.refactor import (
 )
 from tests import c, m, p, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 if TYPE_CHECKING:
     from pathlib import Path
 

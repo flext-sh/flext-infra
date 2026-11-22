@@ -17,6 +17,8 @@ from flext_infra.workspace import (
 )
 from tests import c, m, t, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraWorkspaceEnvironmentProvenanceDeclarations:
     """Prove declaration, alias and descriptor identity against physical sources."""

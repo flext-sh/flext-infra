@@ -12,6 +12,8 @@ from pathlib import Path
 from flext_infra import config
 from tests import c, m, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraMarkdownModule:
     """Exercise registration and cleanup through the installed SDK executor."""

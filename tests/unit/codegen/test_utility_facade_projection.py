@@ -6,11 +6,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from tests import c
 from tests.unit.codegen._utility_facade_projection.behavior import UtilityFacadeBehavior
 from tests.unit.codegen._utility_facade_projection.planning import UtilityFacadePlanning
 from tests.unit.codegen._utility_facade_projection.publication import (
     UtilityFacadePublication,
 )
+
+pytestmark = c.Tests.MARK.slow
 
 
 class TestsFlextInfraUtilityFacadeProjection(
