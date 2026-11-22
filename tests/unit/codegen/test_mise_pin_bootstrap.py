@@ -339,6 +339,41 @@ class TestsFlextInfraMisePinBootstrap:
             eq=pin,
         )
 
+    @c.Tests.MARK.slow
+    def test_fresh_setup_provisions_before_the_native_workspace_reader(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """A fresh runner's setup rerun reaches provisioning, not the reader.
+
+        Premise (aihub-0p2ee, ai-hub CI run 44970827653): the acquired Mise is
+        present but the declared github:jdx/mise tool is not installed yet, and
+        the _setup_provision rerun ran the native workspace reader first ("mise
+        is not a mise bin", "Cannot resolve the physical workspace"). Offline
+        Mise stops the locked install at its first download.
+        """
+        root, _ = u.Tests.render_make_environment(
+            tmp_path, c.Infra.MakeProfile.STANDALONE
+        )
+        bootstrap_mise = tmp_path / "home/.local/bin/mise"
+        bootstrap_mise.parent.mkdir(parents=True)
+        bootstrap_mise.symlink_to(tm.not_none(shutil.which("mise")))
+        environment = {
+            **self.environment(tmp_path),
+            "PATH": str(self.system_path_without_mise(tmp_path)),
+            config.Infra.codegen.make.ci.variable: config.Infra.codegen.make.ci.value,
+            "MISE_OFFLINE": "1",
+        }
+
+        setup = tm.ok(u.Tests.run_isolated_make(["setup"], cwd=root, env=environment))
+
+        output = setup.stdout + setup.stderr
+        tm.that(output, lacks="Cannot resolve the physical workspace")
+        tm.that(
+            output,
+            has=f"Failed to install {config.Infra.codegen.toolchain.mise_selector}@",
+        )
+
     @staticmethod
     def test_setup_provisions_the_pin_and_never_writes_a_lock(tmp_path: Path) -> None:
         """The rendered setup recipe installs the committed pin, never resolves."""
