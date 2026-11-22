@@ -646,10 +646,9 @@ updated and run to validate it, without mocks, tautologies or policy hardcodes.
 Resolve the test entry from the selected repository's current native help. The
 current catalog declares `make tests` and the explicitly requested `make tests-full`,
 without file or match inputs. The first executes persistent Testmon selection
-once; the second executes the complete applicable population once without
-Testmon, a preliminary incremental run or any cache read.
-The existing database remains untouched. The operator's latest 2026-10-28
-clarification is owned by
+once. The second executes the complete applicable population once and records
+it in the same checkout's Testmon database without an incremental selection
+pass. The current execution contract is owned by
 [ADR-029](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/029-always-working-one-complete-cycle.md).
 Tests execute independently of quality checks; no green check receipt is a
 prerequisite. Both operations retain applicability, original failure and the
@@ -4322,6 +4321,30 @@ No empty marker phase is invoked or converted to success. Zero execution is acce
 only as an integrity-checked cache hit with complete inventory/deselection accounting.
 The SQLite owner checkpoints and checks the integrity of that database before
 and after the run.
+
+A caller supplying a qualified fixture to `workspace_tests` elects a single
+source project and a disjoint private working checkout. Testmon uses its
+regular checkout-root database and SQLite sidecars in that working checkout.
+Project identity reads Git status without optionally refreshing the index.
+The fixture supplies authenticated read-only inputs for the child's native
+Git source inventory. Pytest's benchmark plugin initializes its storage in
+the private phase output directory even when benchmarking is disabled.
+The configuration receipt recorder uses its declared directory beside the
+database, preserving configuration dependencies across invocations.
+The runner holds one checkout lease from preflight through native child
+termination, integrity inspection and the run receipt. The complete-suite
+operation takes the same lease.
+
+Each pytest child receives authenticated source and runtime inputs and a
+separate writable report directory. Its home, temporary files and Python
+bytecode output use that private directory. The execution child reads the selection
+manifest from the completed collection as a sealed input. The original source
+identity still binds the parent receipts. The requested fixture uses the
+bootstrap-qualified launcher and policy compiler from the original setup
+report. The receipt binds their physical identities. A guest that changes
+those identities obtains a fresh receipt from `make setup` before replaying
+the fixture. The API binding is independent of the parent Make and systemd
+admission.
 
 Toolchain caches hold one immutable entry per lock state: the key is the OS,
 Python runtime and content hash of `uv.lock`, `mise.lock`, `pyproject.toml` and

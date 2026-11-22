@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import os
 import sys
 import time
 from collections.abc import MutableSequence, Sequence
@@ -22,6 +23,120 @@ if TYPE_CHECKING:
 
 class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
     """Validate and persist pytest evidence."""
+
+    def _publish_fixture_reports(
+        self,
+        report_dir: Path,
+        expected: p.Cli.AtomicPhysicalTreeEntry,
+        phase: str,
+        event_name: str,
+    ) -> None:
+        """Publish authenticated reports from a reaped fixture process.
+
+        Raises:
+            ValueError: If the mounted directory no longer has its original identity.
+
+        """
+        source = expected.path
+        actual = u.Cli.atomic_inventory_physical_directory(source).unwrap().root
+        if (
+            actual.device != expected.device
+            or actual.inode != expected.inode
+            or actual.mount_id != expected.mount_id
+            or actual.uid != expected.uid
+            or actual.mode & 0o022
+        ):
+            msg = f"isolated pytest report directory changed identity: {source}"
+            raise ValueError(msg)
+        warnings = Path(event_name).with_suffix(c.Infra.PYTEST_WARNING_EVENTS_SUFFIX)
+        names = (event_name, warnings.name)
+        if phase == "suite":
+            names = (*names, "junit.xml", "testmon-inventory.json")
+            if self.profile_enabled:
+                policy = self.pytest_policy()
+                self._publish_fixture_profiles(
+                    actual, report_dir, policy.profile_process_directory
+                )
+                names = (*names, policy.profile_suite_filename)
+        else:
+            stem = event_name.removesuffix(".events.jsonl")
+            names = (*names, f"{stem}.json")
+            if self.profile_enabled or self.collection_command_prefix:
+                names = (*names, f"{stem}.pstats")
+        for name in names:
+            self._publish_fixture_report(actual, report_dir / name)
+
+    @classmethod
+    def _publish_fixture_profiles(
+        cls, source: p.Cli.AtomicPhysicalTreeEntry, destination: Path, dirname: str
+    ) -> None:
+        relative = Path(dirname)
+        parent = cls._fixture_profile_directory(source, relative)
+        if parent is None:
+            return
+        target = destination / relative
+        u.Cli.ensure_dir(target).unwrap()
+        for profile in sorted(parent.path.glob("*.pstats")):
+            cls._publish_fixture_report(parent, target / profile.name)
+
+    @staticmethod
+    def _fixture_profile_directory(
+        root: p.Cli.AtomicPhysicalTreeEntry,
+        relative: Path,
+    ) -> p.Cli.AtomicPhysicalTreeEntry | None:
+        """Resolve the declared profile directory under the authenticated phase root.
+
+        Returns:
+            Its physical identity, or None when the child produced no profiles.
+
+        Raises:
+            ValueError: If the relative path or one parent identity is invalid.
+
+        """
+        if relative.is_absolute() or ".." in relative.parts:
+            msg = "isolated pytest profile directory must stay within its report phase"
+            raise ValueError(msg)
+        current = root
+        for part in relative.parts:
+            path = current.path / part
+            if not path.exists() and not path.is_symlink():
+                return None
+            child = u.Cli.atomic_inventory_physical_directory(path).unwrap().root
+            if (
+                child.parent_device != current.device
+                or child.parent_inode != current.inode
+                or child.parent_mount_id != current.mount_id
+                or child.mount_id != current.mount_id
+            ):
+                msg = f"isolated pytest profile directory changed parent: {path}"
+                raise ValueError(msg)
+            current = child
+        return current
+
+    @staticmethod
+    def _publish_fixture_report(
+        parent: p.Cli.AtomicPhysicalTreeEntry, destination: Path
+    ) -> None:
+        captured = u.Cli.atomic_read_binary_file_state(
+            parent.path / destination.name, owner_uid=os.getuid()
+        ).unwrap()
+        if captured.content is None:
+            return
+        if (
+            captured.parent_device != parent.device
+            or captured.parent_inode != parent.inode
+        ):
+            msg = f"isolated pytest report changed parent: {captured.path}"
+            raise ValueError(msg)
+        before = u.Cli.atomic_read_binary_file_state(
+            destination, owner_uid=os.getuid()
+        ).unwrap()
+        if before.content is not None:
+            msg = f"isolated pytest report already published: {destination}"
+            raise ValueError(msg)
+        u.Cli.atomic_write_binary_file_guarded(
+            before, captured.content, permission_mode=0o600
+        ).unwrap()
 
     @staticmethod
     def _reconcile_markdown(
@@ -270,19 +385,8 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
                 f"{log.parent / 'selection-plan.json'}"
             )
             raise RuntimeError(msg)
-        selected = (
-            m.Infra.PytestCollectionManifest.model_validate_json(
-                selection_plan.manifest_path.read_text(encoding="utf-8"),
-            )
-            if (
-                context.execution_mode == c.Infra.PytestExecutionMode.FULL
-                # Full runs and declared single-file selections use the
-                # centrally enforced manifest as the executed selection.
-                or selection_plan.whole_target
-            )
-            else m.Infra.PytestCollectionManifest.model_validate_json(
-                (log.parent / "testmon-selection.json").read_text(encoding="utf-8"),
-            )
+        selected = m.Infra.PytestCollectionManifest.model_validate_json(
+            selection_plan.manifest_path.read_text(encoding="utf-8"),
         )
         # An incremental selection manifest carries the complete inventory it
         # selected from; every other manifest is its own complete collection.

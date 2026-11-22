@@ -589,6 +589,7 @@ class FlextInfra(
         execution_mode: c.Infra.PytestExecutionMode = (
             c.Infra.PytestExecutionMode.GLOBAL_INCREMENTAL
         ),
+        fixture: m.Infra.PytestFixture | None = None,
     ) -> p.Result[int]:
         """Execute native tests in the selected project contexts.
 
@@ -602,6 +603,7 @@ class FlextInfra(
         and records it in Testmon without selecting, warming the incremental run.
         A declared file selects only this repository through that same runner.
         A declared marker narrows only the harness scope to that harness gate.
+        A qualified fixture binds a single project to its private working checkout.
 
         Returns:
             The first failing native test status, or zero after every success.
@@ -622,19 +624,10 @@ class FlextInfra(
         if (
             request.file is not None
             or request.scope == c.Infra.CodegenConformScope.SELF
+            or fixture is not None
         ):
-            return r[int].ok(
-                validate.FlextInfraPytestRunner.execute_project_context(
-                    context,
-                    started_at_monotonic=started_at_monotonic,
-                    execution_mode=(
-                        c.Infra.PytestExecutionMode.FULL
-                        if request.file is not None
-                        else execution_mode
-                    ),
-                    target_file=request.file,
-                    harness_marker=request.marker,
-                )
+            return FlextInfra._workspace_tests_project(
+                request, context, execution_mode, started_at_monotonic, fixture
             )
         members = FlextInfra._workspace_test_members(context)
         if members.failure:
@@ -662,6 +655,39 @@ class FlextInfra(
                     status = outcome
         return r[int].ok(
             status if executed else int(c.Infra.PytestExitCode.NO_TESTS_COLLECTED)
+        )
+
+    @staticmethod
+    def _workspace_tests_project(
+        request: p.Infra.WorkspaceTestsRequest,
+        context: p.Infra.WorkspaceProjectContext,
+        execution_mode: c.Infra.PytestExecutionMode,
+        started_at_monotonic: float,
+        fixture: m.Infra.PytestFixture | None,
+    ) -> p.Result[int]:
+        """Bind a caller-qualified fixture to one explicitly selected project.
+
+        Returns:
+            The original native test status or a fixture scope failure.
+
+        """
+        if fixture is not None:
+            if request.scope != c.Infra.CodegenConformScope.SELF:
+                return r[int].fail("a pytest fixture requires explicit self scope")
+            current = m.Infra.WorkspaceProjectContext.model_validate(context)
+            context = current.model_copy(update={"pytest_fixture": fixture})
+        return r[int].ok(
+            validate.FlextInfraPytestRunner.execute_project_context(
+                context,
+                started_at_monotonic=started_at_monotonic,
+                execution_mode=(
+                    c.Infra.PytestExecutionMode.FULL
+                    if request.file is not None
+                    else execution_mode
+                ),
+                target_file=request.file,
+                harness_marker=request.marker,
+            )
         )
 
     @staticmethod

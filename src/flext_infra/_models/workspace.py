@@ -17,6 +17,7 @@ from flext_infra import c, p, t
 from flext_infra._models import (
     FlextInfraModelsBase,
     FlextInfraModelsCheck,
+    FlextInfraModelsCore,
     FlextInfraModelsMixins,
     FlextInfraModelsRope,
 )
@@ -782,6 +783,10 @@ class FlextInfraModelsWorkspace:
             FlextInfraModelsWorkspace.WorkspaceRuntimeContext,
             m.Field(description="Physical environment and native resolver ownership"),
         ]
+        pytest_fixture: Annotated[
+            FlextInfraModelsCore.PytestFixture | None,
+            m.Field(description="Qualified fixture bound by an explicit test request"),
+        ] = None
 
     class DirectUrlDirectoryInfo(m.ContractModel):
         """PEP 610 directory metadata for one installed distribution."""

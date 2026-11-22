@@ -291,6 +291,8 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
     PYTEST_COLLECTION_MANIFEST_OPTION: ClassVar[str] = "--flext-collection-manifest"
     PYTEST_CONFIG_RECEIPTS_OPTION: ClassVar[str] = "--flext-config-receipts"
     """Directory of typed config receipts that Testmon records per test."""
+    PYTEST_BENCHMARK_STORAGE_OPTION: ClassVar[str] = "--benchmark-storage"
+    """Native pytest-benchmark storage option for private phase output."""
     PYTEST_CONFIG_RECEIPT_SUFFIX: ClassVar[str] = ".sha256"
     """Suffix of one config leaf receipt (Testmon fingerprints it as one block)."""
     PYTEST_CONFIG_RECEIPT_DEPTH: ClassVar[int] = 3

@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import os
+import sys
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, Self
@@ -39,6 +40,10 @@ class FlextInfraPytestRunnerBase(s[int]):
         ),
     ] = None
     reports: Annotated[Path, m.Field(description="Repository-relative report root.")]
+    fixture: Annotated[
+        m.Infra.PytestFixture | None,
+        m.Field(description="Optional qualified private test checkout and inputs."),
+    ] = None
     testmon_db: Annotated[
         Path | None,
         m.Field(
@@ -167,6 +172,8 @@ class FlextInfraPytestRunnerBase(s[int]):
         make = u.Infra.load_codegen_inputs(root).unwrap().spec.make
         cache = make.testmon_cache
         tooling = cls._elect_tooling(root)
+        fixture = context.pytest_fixture
+        checkout = fixture.checkout_root if fixture is not None else root
         return cls(
             repository_root=root,
             started_at_monotonic=started_at_monotonic,
@@ -175,13 +182,14 @@ class FlextInfraPytestRunnerBase(s[int]):
             target=cache.target_directory,
             target_file=target_file,
             reports=cache.reports_directory,
+            fixture=fixture,
             testmon_db=(
-                root / cache.database_filename
+                checkout / cache.database_filename
                 if execution_mode.records_testmon
                 else None
             ),
             config_receipts=(
-                root / cache.config_receipts_directory
+                checkout / cache.config_receipts_directory
                 if execution_mode.records_testmon
                 else None
             ),
@@ -189,6 +197,15 @@ class FlextInfraPytestRunnerBase(s[int]):
             profile_enabled=settings.Infra.profile,
             harness_marker=harness_marker,
         )
+
+    def _pytest_child_reports(self, report_dir: Path, phase: str) -> Path:
+        """Elect the writable report root passed to one pytest child.
+
+        Returns:
+            The phase output for a fixture, or the native shared report directory.
+
+        """
+        return report_dir if self.fixture is None else report_dir / phase
 
     @classmethod
     def _elect_tooling(cls, repository_root: Path) -> m.Infra.ToolConfigDocument:
@@ -340,7 +357,33 @@ class FlextInfraPytestRunnerBase(s[int]):
         if self.testmon_db is not None and not self.testmon_db.is_absolute():
             msg = "testmon database path must be absolute"
             raise ValueError(msg)
+        self._validate_fixture()
         return self._validate_target_file()
+
+    def _validate_fixture(self) -> None:
+        if self.fixture is None:
+            return
+        if sys.platform != self.fixture.isolation.platform:
+            msg = "pytest fixture requires the qualified native platform"
+            raise ValueError(msg)
+        checkout = self.fixture.checkout_root
+        source = self.repository_root.resolve(strict=True)
+        if (
+            checkout.resolve(strict=True) != checkout
+            or not checkout.is_dir()
+            or checkout.is_relative_to(source)
+            or source.is_relative_to(checkout)
+        ):
+            msg = "pytest fixture requires a disjoint physical checkout"
+            raise ValueError(msg)
+        if (
+            self.testmon_db is None
+            or self.testmon_db.parent != checkout
+            or self.config_receipts is None
+            or self.config_receipts.parent != checkout
+        ):
+            msg = "pytest fixture requires native Testmon state at its checkout root"
+            raise ValueError(msg)
 
     def _validate_target_file(self) -> Self:
         """Require the declared single-file target to be repository-contained.
