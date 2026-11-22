@@ -78,9 +78,7 @@ class TestsFlextInfraUtilitiesToolingFixture:
 
             """
             pyproject = project_root / c.PYPROJECT_FILENAME
-            document = u.Tests.toml_doc(
-                pyproject.read_text(encoding=c.DEFAULT_ENCODING),
-            )
+            document = tm.ok(u.Cli.toml_read_document(pyproject))
             project = tm.not_none(u.Cli.toml_table_child(document, "project"))
             project["name"] = name
             tm.ok(u.Cli.atomic_write_text_file(pyproject, u.Cli.toml_dumps(document)))
