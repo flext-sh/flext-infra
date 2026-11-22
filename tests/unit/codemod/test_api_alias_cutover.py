@@ -58,6 +58,7 @@ class TestsFlextInfraApiAliasCutover:
         return root, sources
 
     @staticmethod
+    @c.Tests.MARK.slow
     @c.Tests.MARK.parametrize(
         ("statement", "base", "expected"),
         [
@@ -77,7 +78,11 @@ class TestsFlextInfraApiAliasCutover:
         base: str,
         expected: str,
     ) -> None:
-        """No scanner finding or filename convention substitutes for real identity."""
+        """No scanner finding or filename convention substitutes for real identity.
+
+        Slow by nature: it ends with a fresh interpreter importing the rewritten
+        consumer, the end-to-end runtime proof of the planned cutover.
+        """
         root, sources = TestsFlextInfraApiAliasCutover._service_workspace(
             tmp_path,
             f"{statement}\nclass Consumer({base}[str]):\n    pass\n"
