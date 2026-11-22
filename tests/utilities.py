@@ -357,7 +357,7 @@ class TestsFlextInfraUtilities(FlextInfraUtilities):
             # (ADR-032; a tracked project layer cannot declare it).
             tm.ok(
                 u.Cli.yaml_dump(
-                    type(config).config_layer_paths_for_repository(
+                    config.config_layer_paths_for_repository(
                         project_root, filename=c.Infra.CODEGEN_CONFIG_FILENAME
                     )[-1],
                     {
