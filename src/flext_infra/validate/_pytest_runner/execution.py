@@ -9,9 +9,10 @@ from __future__ import annotations
 import os
 import shlex
 import sys
+import time
 from collections.abc import Sequence
 from pathlib import Path
-from typing import override
+from typing import Literal, override
 
 from typing_extensions import TypeForm
 
@@ -47,19 +48,22 @@ class FlextInfraPytestRunnerExecution(
             pre_run_digest=digest,
         ).execute()
 
-    def _selection_process_options(
+    def _run_pytest_process(
         self,
+        command: tuple[str, ...],
+        stdout_file: Path,
         *,
         execution_mode: c.Infra.PytestExecutionMode,
-        live: bool = False,
-    ) -> p.Cli.ProcessOptions:
-        """Declare child overrides and removals at the process boundary.
+        phase: Literal["selection", "suite"],
+        selection_manifest: Path | None = None,
+    ) -> tuple[p.Result[p.Cli.ProcessOutcome], p.Cli.AtomicPhysicalTreeEntry | None]:
+        """Launch one pytest child at the checkout with its process policy.
 
         Testmon children receive the checkout database the parent inspects.
         An inherited database location never controls a child.
 
         Returns:
-            The process options shared by every runner invocation.
+            The process outcome and the original fixture output directory identity.
 
         Raises:
             ValueError: If test target has no declared project owner.
@@ -76,9 +80,15 @@ class FlextInfraPytestRunnerExecution(
             source_root = target_root
         overrides: t.MutableStrMapping = {}
         if not self.ci_context:
-            inherited_path = u.Cli.process_env().get(
-                c.Infra.ORCHESTRATOR_ENV_PYTHONPATH, ""
-            )
+            if self.fixture is None:
+                inherited_path = u.Cli.process_env().get(
+                    c.Infra.ORCHESTRATOR_ENV_PYTHONPATH, ""
+                )
+            else:
+                inherited_path = ""
+                source_root = self.fixture.checkout_root / source_root.relative_to(
+                    self.repository_root,
+                )
             overrides[c.Infra.ORCHESTRATOR_ENV_PYTHONPATH] = os.pathsep.join(
                 path
                 for path in (
@@ -93,16 +103,161 @@ class FlextInfraPytestRunnerExecution(
             )
         if execution_mode.records_testmon and self.testmon_db is not None:
             overrides[c.Infra.PYTEST_ENV_TESTMON_DATAFILE] = str(self.testmon_db)
-        remove_keys = (
+        inherited_keys = (
             *c.Infra.PYTEST_INHERITED_ENV_REMOVE_KEYS,
             c.Infra.PYTEST_ENV_TESTMON_DATAFILE,
         )
-        return m.Cli.ProcessOptions(
+        options = m.Cli.ProcessOptions(
             env=overrides,
-            remove_env_keys=tuple(key for key in remove_keys if key not in overrides),
-            live=live,
+            remove_env_keys=tuple(
+                key for key in inherited_keys if key not in overrides
+            ),
+            live=phase == "suite",
             deadline=self._process_deadline(execution_mode=execution_mode),
         )
+        if self.fixture is not None:
+            if not execution_mode.records_testmon:
+                msg = "isolated pytest child requires Testmon"
+                raise ValueError(msg)
+            return self._run_fixture_process(
+                command,
+                stdout_file,
+                options,
+                output=self._pytest_child_reports(stdout_file.parent, phase),
+                selection_manifest=selection_manifest,
+            )
+        return (
+            u.Cli.run_to_file(
+                command,
+                stdout_file,
+                cwd=self.repository_root,
+                options=options,
+            ),
+            None,
+        )
+
+    def _run_fixture_process(
+        self,
+        command: tuple[str, ...],
+        stdout_file: Path,
+        options: m.Cli.ProcessOptions,
+        *,
+        output: Path,
+        selection_manifest: Path | None,
+    ) -> tuple[p.Result[p.Cli.ProcessOutcome], p.Cli.AtomicPhysicalTreeEntry]:
+        """Launch pytest against the locked checkout with writable phase output.
+
+        Returns:
+            The native result and the identity of the directory mounted by the child.
+
+        Raises:
+            ValueError: If this launch is missing the elected Testmon state.
+
+        """
+        fixture = self.fixture
+        database = self.testmon_db
+        config_receipts = self.config_receipts
+        if fixture is None or database is None or config_receipts is None:
+            msg = "isolated pytest child has no elected Testmon state"
+            raise ValueError(msg)
+        u.Cli.ensure_dir(output).unwrap()
+        admitted = fixture.isolation
+        environment = dict(admitted.environment)
+        for key in options.remove_env_keys:
+            environment.pop(key, None)
+        environment.update(options.env or {})
+        environment.update({
+            c.Infra.TEMPORARY_DIRECTORY_VARIABLE: str(output),
+            c.Infra.PYTEST_ENV_PYCACHE_PREFIX: str(output / c.Infra.DUNDER_PYCACHE),
+        })
+        inputs = admitted.runtime_files
+        if selection_manifest is not None:
+            inputs = (
+                *inputs,
+                u.Cli.atomic_read_binary_file_state(
+                    selection_manifest, required=True
+                ).unwrap(),
+            )
+        checkout = fixture.checkout_root
+        output_inventory = u.Cli.atomic_inventory_physical_tree(output).unwrap()
+        isolation = m.Cli.ProcessFixtureIsolation(
+            platform=admitted.platform,
+            architecture=admitted.architecture,
+            launcher=admitted.launcher,
+            launcher_declaration=admitted.launcher_declaration,
+            policy_compiler=admitted.policy_compiler,
+            compiler_declaration=admitted.compiler_declaration,
+            sources=admitted.sources,
+            runtime_trees=admitted.runtime_trees,
+            runtime_files=inputs,
+            environment=tuple(environment.items()),
+            output_directory=output_inventory,
+            persistent_directory=u.Cli.atomic_inventory_physical_tree(
+                config_receipts,
+            ).unwrap(),
+            private_checkout=m.Cli.ProcessFixtureCheckout(
+                backing=self._fixture_backing(database),
+                source_root=self.repository_root,
+                persistent_filenames=self._fixture_database_names(database),
+                persistent_directory_suffix=c.Infra.PYTEST_CONFIG_RECEIPT_SUFFIX,
+            ),
+        )
+        return (
+            u.Cli.run_to_file(
+                command,
+                stdout_file,
+                cwd=checkout,
+                options=m.Cli.ProcessOptions(
+                    live=options.live,
+                    deadline=options.deadline,
+                    isolation=isolation,
+                ),
+            ),
+            output_inventory.root,
+        )
+
+    @staticmethod
+    def _fixture_database_names(database: Path) -> t.StrTuple:
+        return (
+            database.name,
+            *(
+                f"{database.name}{suffix}"
+                for suffix in c.Infra.SQLITE_DATABASE_SIDECAR_SUFFIXES
+            ),
+        )
+
+    def _fixture_backing(self, database: Path) -> p.Cli.AtomicPhysicalTreeManifest:
+        """Authenticate the database family before native SQLite opens it.
+
+        Returns:
+            The backing inventory admitted for the database and its sidecars.
+
+        Raises:
+            ValueError: If a database-family path is not an owned regular file.
+
+        """
+        checkout = database.parent
+        inventory = u.Cli.atomic_inventory_physical_tree(checkout).unwrap()
+        names = self._fixture_database_names(database)
+        uid = os.getuid()
+        if (
+            inventory.root.uid != uid
+            or inventory.root.mode & 0o022
+            or any(
+                entry.path.parent == checkout
+                and entry.path.name in names
+                and (
+                    entry.kind != "file"
+                    or entry.link_count != 1
+                    or entry.uid != uid
+                    or entry.mode & 0o022
+                )
+                for entry in inventory.entries
+            )
+        ):
+            msg = "pytest fixture database and sidecars require owned regular files"
+            raise ValueError(msg)
+        return inventory
 
     def _collect_selection(
         self,
@@ -131,9 +286,9 @@ class FlextInfraPytestRunnerExecution(
         selection_log = report_dir / f"{artifact}.log"
         manifest_path = report_dir / f"{artifact}.json"
         report_log = report_dir / f"{artifact}.events.jsonl"
-        command = self.build_selection_command(
-            report_log=report_log,
-            manifest_path=manifest_path,
+        command = self._build_collection_launch(
+            report_log,
+            manifest_path,
             complete=complete,
             execution_mode=execution_mode,
         )
@@ -141,18 +296,20 @@ class FlextInfraPytestRunnerExecution(
             sys.stdout.write(
                 f"pytest {artifact} profile: {manifest_path.with_suffix('.pstats')}\n",
             )
-        outcome = self._record_process_outcome(
+        outcome, published = self._record_process_outcome(
             report_dir,
             "inventory" if complete else "selection",
-            u.Cli.run_to_file(
+            self._run_pytest_process(
                 command,
                 selection_log,
-                cwd=self.repository_root,
-                options=self._selection_process_options(execution_mode=execution_mode),
+                execution_mode=execution_mode,
+                phase="selection",
             ),
             report_log=report_log,
             raw_log=selection_log,
         )
+        if not published:
+            return outcome
         # Exit code 5 is pytest's "no tests ran": testmon selected nothing.
         # For a zero-test project (no test module under the config-owned
         # roots) rc=5 is the DECLARED inventory outcome in both phases.
@@ -236,7 +393,6 @@ class FlextInfraPytestRunnerExecution(
         manifest = m.Infra.PytestCollectionManifest.model_validate_json(
             manifest_path.read_text(encoding="utf-8"),
         )
-        node_ids = manifest.node_ids
         inventory = self._manifest_inventory(
             manifest,
             no_tests_collected=(
@@ -246,17 +402,42 @@ class FlextInfraPytestRunnerExecution(
         )
         u.Cli.atomic_write_text_file(
             report_dir / f"{artifact}.txt",
-            "\n".join(node_ids) + "\n",
+            "\n".join(manifest.node_ids) + "\n",
         ).unwrap()
         return m.Infra.PytestSelectionPlan(
             manifest_path=manifest_path,
-            node_ids=node_ids,
-            whole_target=set(node_ids) == set(inventory),
+            node_ids=manifest.node_ids,
+            whole_target=set(manifest.node_ids) == set(inventory),
             inventory_collected=complete,
             # An empty complete inventory in an allowed scope owns no in-scope
             # test. Collection diagnostics already ran, so a collection failure
             # never becomes this receipt.
             owns_no_tests=owns_no_tests or (not inventory and scope_may_be_empty),
+        )
+
+    def _build_collection_launch(
+        self,
+        report_log: Path,
+        manifest_path: Path,
+        *,
+        complete: bool,
+        execution_mode: c.Infra.PytestExecutionMode,
+    ) -> tuple[str, ...]:
+        """Build collection argv with its independently owned child outputs.
+
+        Returns:
+            The exact argv for the collection subprocess.
+
+        """
+        output = self._pytest_child_reports(report_log.parent, "selection")
+        return self._pytest_child_argv(
+            self.build_selection_command(
+                report_log=output / report_log.name,
+                manifest_path=output / manifest_path.name,
+                complete=complete,
+                execution_mode=execution_mode,
+            ),
+            output,
         )
 
     @staticmethod
@@ -343,19 +524,32 @@ class FlextInfraPytestRunnerExecution(
             termination_grace_seconds=self.termination_grace_seconds,
         )
 
+    def _pytest_child_argv(
+        self,
+        command: tuple[str, ...],
+        child_reports: Path,
+    ) -> tuple[str, ...]:
+        if self.fixture is None:
+            return command
+        cache = child_reports / c.Infra.PYTEST_CACHE_DIRECTORY
+        return (*command, "-o", f"cache_dir={cache}")
+
     def _run_suite(
         self,
         command: tuple[str, ...],
         report_dir: Path,
         *,
         execution_mode: c.Infra.PytestExecutionMode,
-    ) -> p.Cli.ProcessOutcome:
+        selection_manifest: Path | None = None,
+    ) -> tuple[p.Cli.ProcessOutcome, bool]:
         """Execute one suite argv under the shared deadline and environment.
 
         Returns:
-            The resulting ``p.Cli.ProcessOutcome``.
+            The native outcome and the result of report publication.
 
         """
+        child_reports = self._pytest_child_reports(report_dir, "suite")
+        command = self._pytest_child_argv(command, child_reports)
         u.Cli.atomic_write_text_file(
             report_dir / "command.txt",
             f"{shlex.join(command)}\n",
@@ -383,22 +577,20 @@ class FlextInfraPytestRunnerExecution(
             report_dir / c.Infra.GATE_CAPTURE_START_FILENAME,
             capture.model_dump_json(round_trip=True) + "\n",
         ).unwrap()
-        outcome = self._record_process_outcome(
+        outcome, published = self._record_process_outcome(
             report_dir,
             "suite",
-            u.Cli.run_to_file(
+            self._run_pytest_process(
                 command,
                 report_dir / "pytest.log",
-                cwd=self.repository_root,
-                options=self._selection_process_options(
-                    execution_mode=execution_mode,
-                    live=True,
-                ),
+                execution_mode=execution_mode,
+                phase="suite",
+                selection_manifest=selection_manifest,
             ),
             report_log=report_dir / "events.jsonl",
             raw_log=report_dir / "pytest.log",
         )
-        if self.profile_enabled:
+        if published and self.profile_enabled:
             policy = self.pytest_policy()
             suite_profile = report_dir / policy.profile_suite_filename
             # The process owner has reaped the child before binding its native
@@ -413,17 +605,20 @@ class FlextInfraPytestRunnerExecution(
                 (report_dir / policy.profile_process_directory).glob("*.pstats")
             ):
                 self._bind_child_profile(report_dir, profile)
-        return outcome
+        return outcome, published
 
     def _record_process_outcome(
         self,
         report_dir: Path,
         phase: str,
-        run: p.Result[p.Cli.ProcessOutcome],
+        process: tuple[
+            p.Result[p.Cli.ProcessOutcome],
+            p.Cli.AtomicPhysicalTreeEntry | None,
+        ],
         *,
         report_log: Path,
         raw_log: Path,
-    ) -> p.Cli.ProcessOutcome:
+    ) -> tuple[p.Cli.ProcessOutcome, bool]:
         """Preserve the process owner's causal fields even when JUnit is absent.
 
         A failed process cleanup still carries the observed exit, timeout and
@@ -431,14 +626,17 @@ class FlextInfraPytestRunnerExecution(
         other, so a timed-out suite keeps its receipt.
 
         Returns:
-            The recorded process outcome.
+            The recorded process outcome and the result of report publication.
 
         Raises:
+            OSError: If a successful child left an inaccessible report.
             RuntimeError: If the process reported no outcome, if a zero return
                 code follows an interrupted lifecycle, or if a successful
                 process left a cleanup failure.
+            ValueError: If a successful child left an invalid report identity.
 
         """
+        run, output_identity = process
         if run.success:
             outcome = run.value
         else:
@@ -460,6 +658,19 @@ class FlextInfraPytestRunnerExecution(
             receipt,
             recorded.model_dump_json(indent=2) + "\n",
         ).unwrap()
+        if output_identity is not None:
+            try:
+                self._publish_fixture_reports(
+                    report_dir, output_identity, phase, report_log.name
+                )
+            except (OSError, RuntimeError, ValueError) as error:
+                sys.stderr.write(f"pytest {phase} report publication: {error}\n")
+                if outcome.raw_return_code in {
+                    c.Infra.PytestExitCode.OK,
+                    c.Infra.PytestExitCode.NO_TESTS_COLLECTED,
+                }:
+                    raise
+                return outcome, False
         if (
             outcome.timed_out
             or outcome.forwarded_signal is not None
@@ -487,7 +698,7 @@ class FlextInfraPytestRunnerExecution(
         if run.failure and u.Cli.process_succeeded(outcome):
             msg = f"pytest {phase} succeeded but its cleanup failed: {run.error}"
             raise RuntimeError(msg)
-        return outcome
+        return outcome, True
 
     @staticmethod
     def _interrupted_suite(outcome: p.Cli.ProcessOutcome) -> bool:
@@ -902,7 +1113,9 @@ class FlextInfraPytestRunnerExecution(
             raise ValueError(msg)
         return self.execute_full()
 
-    def _execute_complete_suite(self, *, report_dir: Path) -> p.Result[int]:
+    def _execute_complete_suite(
+        self, *, report_dir: Path, database: Path
+    ) -> p.Result[int]:
         """Run, record and account for one complete suite.
 
         Testmon selects nothing; it records every executed item in its native
@@ -913,11 +1126,21 @@ class FlextInfraPytestRunnerExecution(
 
         """
         mode = c.Infra.PytestExecutionMode.FULL
-        outcome = self._run_suite(
-            self.build_command(report_dir, execution_mode=mode),
+        pre_digest = (
+            None
+            if self.fixture is None
+            else FlextInfraTestmonDbInspector.digest_file(database)
+        )
+        outcome, published = self._run_suite(
+            self.build_command(
+                self._pytest_child_reports(report_dir, "suite"),
+                execution_mode=mode,
+            ),
             report_dir,
             execution_mode=mode,
         )
+        if not published:
+            return self._unfinished_result(outcome, report_dir)
         selection = self._selection_from_suite(report_dir, outcome)
         if isinstance(selection, p.Cli.ProcessOutcome):
             return r.ok(selection.raw_return_code)
@@ -925,6 +1148,9 @@ class FlextInfraPytestRunnerExecution(
             outcome, report_dir
         ):
             return self._unfinished_result(outcome, report_dir)
+        if self.fixture is not None:
+            state = self._inspect_cache(database=database, digest=pre_digest).unwrap()
+            self._record_cache_state(report_dir, "cache-after", state)
         return self._finalize(
             report_dir,
             raw_return_code=outcome.raw_return_code,
@@ -966,8 +1192,52 @@ class FlextInfraPytestRunnerExecution(
                 if self.target_file is not None
                 else 0,
             )
-        # Selection, execution, and integrity inspection share this checkout's
-        # native database, the file pytest-testmon itself writes.
+        if self.fixture is not None:
+            return self._execute_testmon_fixture(database, execution_mode)
+        return self._execute_testmon_checkout(database, execution_mode)
+
+    def _execute_testmon_fixture(
+        self, database: Path, execution_mode: c.Infra.PytestExecutionMode
+    ) -> p.Result[int]:
+        """Own the checkout lease through process settlement and SQLite inspection.
+
+        Returns:
+            The original Testmon phase status.
+
+        Raises:
+            ValueError: If the checkout does not have a private lease authority.
+
+        """
+        checkout = database.parent
+        authority = checkout.parent
+        config_receipts = self.config_receipts
+        status = authority.stat()
+        lease_path = authority / f"{checkout.name}.testmon.lock"
+        if (
+            status.st_uid != os.getuid()
+            or status.st_mode & 0o077
+            or lease_path.is_symlink()
+            or config_receipts is None
+            or config_receipts.is_symlink()
+        ):
+            msg = "pytest fixture requires a private checkout lease directory"
+            raise ValueError(msg)
+        deadline = self._deadline_monotonic(execution_mode=execution_mode)
+        remaining = None if deadline is None else max(0.0, deadline - time.monotonic())
+        with u.Cli.file_changes_lock(lease_path).acquire(timeout=remaining):
+            self._fixture_backing(database)
+            u.Cli.ensure_dir(config_receipts).unwrap()
+            return self._execute_testmon_checkout(database, execution_mode)
+
+    def _execute_testmon_checkout(
+        self, database: Path, execution_mode: c.Infra.PytestExecutionMode
+    ) -> p.Result[int]:
+        """Run every phase and its evidence against the elected Testmon database.
+
+        Returns:
+            The original Testmon phase status.
+
+        """
         report_dir = self._report_directory()
         self._write_run_context(
             report_dir,
@@ -981,7 +1251,10 @@ class FlextInfraPytestRunnerExecution(
             ),
         )
         if execution_mode == c.Infra.PytestExecutionMode.FULL:
-            return self._execute_complete_suite(report_dir=report_dir)
+            return self._execute_complete_suite(
+                report_dir=report_dir,
+                database=database,
+            )
         return self._execute_incremental(
             database=database,
             execution_mode=execution_mode,
@@ -1016,11 +1289,23 @@ class FlextInfraPytestRunnerExecution(
             selection_plan, report_dir, cache_restored=cache_restored
         )
         command = self.build_command(
-            report_dir,
+            self._pytest_child_reports(report_dir, "suite"),
             selection_plan,
             execution_mode=execution_mode,
         )
-        outcome = self._run_suite(command, report_dir, execution_mode=execution_mode)
+        outcome, published = self._run_suite(
+            command,
+            report_dir,
+            execution_mode=execution_mode,
+            selection_manifest=(
+                None
+                if selection_plan.owns_no_tests
+                and not selection_plan.manifest_path.is_file()
+                else selection_plan.manifest_path
+            ),
+        )
+        if not published:
+            return self._unfinished_result(outcome, report_dir)
         selection = selection_plan.node_ids
         # A declared file executes its complete collected inventory, so an empty
         # incremental suite selection never grants a cache hit to a file request.
@@ -1233,7 +1518,7 @@ class FlextInfraPytestRunnerExecution(
         if isinstance(selection, p.Cli.ProcessOutcome):
             return r.ok(selection.raw_return_code)
         command = self.build_coverage_command(report_dir)
-        outcome = self._run_suite(
+        outcome, _published = self._run_suite(
             command,
             report_dir,
             execution_mode=execution_mode,

@@ -25,6 +25,16 @@ class FlextInfraModelsCore:
     - ``ContractModel`` reserved for immutable settings/settings contracts.
     """
 
+    class PytestFixture(m.FrozenModel):
+        """Explicitly qualified inputs and physical working checkout for pytest."""
+
+        checkout_root: Path = m.Field(
+            description="Private checkout where Testmon uses its native path",
+        )
+        isolation: m.Cli.ProcessReadOnlyIsolation = m.Field(
+            description="CLI-qualified sources, runtime and bootstrap evidence",
+        )
+
     class ValidationReport(m.ArbitraryTypesModel):
         """Validation report model with violations and summary."""
 

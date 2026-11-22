@@ -20,7 +20,11 @@ if TYPE_CHECKING:
     from flext_cli import p
 
     from flext_infra import c, t
-    from flext_infra._protocols import FlextInfraProtocolsCheck, FlextInfraProtocolsRope
+    from flext_infra._protocols import (
+        FlextInfraProtocolsCheck,
+        FlextInfraProtocolsRope,
+        FlextInfraProtocolsValidate,
+    )
     from flext_infra._protocols._config import (
         FlextInfraProtocolsConfigBeads,
         FlextInfraProtocolsConfigRepository,
@@ -740,6 +744,11 @@ class FlextInfraProtocolsWorkspace:
         @property
         def runtime(self) -> FlextInfraProtocolsWorkspace.WorkspaceRuntimeContext:
             """Physical environment and native resolver ownership."""
+            ...
+
+        @property
+        def pytest_fixture(self) -> FlextInfraProtocolsValidate.PytestFixture | None:
+            """Qualified fixture bound by an explicit test request."""
             ...
 
     @runtime_checkable

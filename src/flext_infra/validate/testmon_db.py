@@ -115,7 +115,8 @@ class FlextInfraTestmonDbInspector(s[p.Infra.TestmonCacheState]):
         if path.stat().st_size == 0:
             msg = f"testmon db must not be empty: {path}"
             raise ValueError(msg)
-        with closing(sqlite3.connect(f"file:{path}?mode=rw", uri=True)) as connection:
+        database_uri = f"{path.as_uri()}?mode=rw"
+        with closing(sqlite3.connect(database_uri, uri=True)) as connection:
             self._validate_open_db(connection)
         post_digest = self.digest_file(path)
         changed = post_digest is not None and post_digest != self.pre_run_digest
