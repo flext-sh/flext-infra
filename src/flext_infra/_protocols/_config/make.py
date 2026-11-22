@@ -479,6 +479,24 @@ class FlextInfraProtocolsConfigMake:
             """Repository-relative pytest reports root."""
             ...
 
+        @property
+        def config_receipts_directory(self) -> t.NonEmptyStr:
+            """Structural member projected from the owning model.
+
+            Checkout-root directory of the typed config receipts Testmon
+            fingerprints as per-test dependencies.
+            """
+            ...
+
+        @property
+        def config_insensitive_executables(self) -> tuple[t.NonEmptyStr, ...]:
+            """Structural member projected from the owning model.
+
+            Programs whose child processes never read project config; any other
+            child makes its test depend on every config file.
+            """
+            ...
+
     @runtime_checkable
     class MakeHarnessSpecExecutorEnvironmentSpec(
         FlextInfraProtocolsConfigContract.ConfigContract, Protocol
