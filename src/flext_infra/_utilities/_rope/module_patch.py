@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
 from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
@@ -271,9 +270,10 @@ class FlextInfraUtilitiesRopeModulePatch:
             # reads are needed: a whole-module unused-import analysis concludes
             # every class scope, including MROs that span a whole facade.
             loaded = frozenset(
-                node.id
-                for node in ast.walk(ast.parse(candidate.source_code))
-                if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load)
+                candidate.source_code[fragment.start : fragment.end]
+                for fragment in candidate.get_source_binding_index().fragments
+                if fragment.context.access == "read"
+                and candidate.source_code[fragment.start : fragment.end].isidentifier()
             )
             for item in imports.imports:
                 before = item.import_info
