@@ -89,8 +89,8 @@ class TestsFlextInfraUtilitiesToolingFixture:
                 project_root,
             )
 
-        @staticmethod
-        def declare_parallel_project(project_root: Path) -> None:
+        @classmethod
+        def declare_parallel_project(cls, project_root: Path) -> None:
             """Select the fixture identity from the configured worker policy."""
             policy = config.Infra.tooling.tools.pytest
             parallel_project = next(
@@ -103,15 +103,7 @@ class TestsFlextInfraUtilitiesToolingFixture:
                     and ceiling.workers > 1
                 )
             )
-            pyproject = project_root / c.PYPROJECT_FILENAME
-            pyproject.write_text(
-                f'[project]\nname = "{parallel_project}"\nversion = "0.0.0"\n'
-                + pyproject.read_text(encoding=c.DEFAULT_ENCODING),
-                encoding=c.DEFAULT_ENCODING,
-            )
-            runner = TestsFlextInfraUtilitiesToolingFixture.PytestRunner.runner_for(
-                project_root,
-            )
+            runner = cls.declared_project_runner(project_root, parallel_project)
             tm.that(runner.parallel_worker_budget(policy) > 1, truth=True)
 
         @staticmethod

@@ -4290,8 +4290,10 @@ ignored by `.gitignore`. The runner binds Testmon to that path for selection and
 execution, even when pytest discovers a nested configuration root. The same
 path goes into the run receipt and SQLite integrity inspection. The runner
 discards an inherited `TESTMON_DATAFILE` value.
-The explicit single-file operation runs incremental selection followed by complete
-execution of that file, including its declared slow tests, on the same database.
+The explicit single-file operation runs that file once and records it in the
+same database. The file uses the full execution mode with per-item deadlines,
+including for its declared slow tests. It has no aggregate deadline even when
+the caller originally constructed the runner for incremental execution.
 No empty marker phase is invoked or converted to success. Zero execution is accepted
 only as an integrity-checked cache hit with complete inventory/deselection accounting.
 The SQLite owner checkpoints and checks the integrity of that database before

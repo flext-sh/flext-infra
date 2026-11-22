@@ -75,7 +75,8 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             The stop instant, or None when the run owns no deadline.
 
         """
-        if self.run_timeout_seconds is None:
+        deadline = self._deadline_monotonic(execution_mode=execution_mode)
+        if deadline is None:
             return None
         pytest = self.pytest_policy()
         if self.carries_slow_items(execution_mode):
@@ -86,7 +87,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             )
         else:
             reserve = self.termination_grace_seconds
-        return self.started_at_monotonic + self.run_timeout_seconds - reserve
+        return deadline - reserve
 
     def ci_excluded_markers(
         self,

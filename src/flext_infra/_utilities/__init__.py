@@ -51,6 +51,7 @@ if TYPE_CHECKING:
     )
     from flext_infra._utilities.git import FlextInfraUtilitiesGit
     from flext_infra._utilities.import_law import FlextInfraUtilitiesImportLaw
+    from flext_infra._utilities.imported_names import FlextInfraUtilitiesImportedNames
     from flext_infra._utilities.iteration import FlextInfraUtilitiesIteration
     from flext_infra._utilities.iteration_directory import (
         FlextInfraUtilitiesIterationDirectory,
@@ -206,6 +207,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesGenerationInventory",
     "FlextInfraUtilitiesGit",
     "FlextInfraUtilitiesImportLaw",
+    "FlextInfraUtilitiesImportedNames",
     "FlextInfraUtilitiesIteration",
     "FlextInfraUtilitiesIterationDirectory",
     "FlextInfraUtilitiesIterationMatching",
@@ -300,6 +302,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesGenerationInventory": ".generation_inventory",
         "FlextInfraUtilitiesGit": ".git",
         "FlextInfraUtilitiesImportLaw": ".import_law",
+        "FlextInfraUtilitiesImportedNames": ".imported_names",
         "FlextInfraUtilitiesIteration": ".iteration",
         "FlextInfraUtilitiesIterationDirectory": ".iteration_directory",
         "FlextInfraUtilitiesIterationMatching": ".iteration_matching",
@@ -385,6 +388,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesGenerationInventory",
         "FlextInfraUtilitiesGit",
         "FlextInfraUtilitiesImportLaw",
+        "FlextInfraUtilitiesImportedNames",
         "FlextInfraUtilitiesIteration",
         "FlextInfraUtilitiesIterationDirectory",
         "FlextInfraUtilitiesIterationMatching",

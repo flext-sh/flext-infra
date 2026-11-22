@@ -101,7 +101,7 @@ class FlextInfraPytestRunnerExecution(
             env=overrides,
             remove_env_keys=tuple(key for key in remove_keys if key not in overrides),
             live=live,
-            deadline=self._process_deadline(),
+            deadline=self._process_deadline(execution_mode=execution_mode),
         )
 
     def _collect_selection(
@@ -325,7 +325,9 @@ class FlextInfraPytestRunnerExecution(
                     return False
         return True
 
-    def _process_deadline(self) -> p.Cli.ProcessDeadline | None:
+    def _process_deadline(
+        self, *, execution_mode: c.Infra.PytestExecutionMode
+    ) -> p.Cli.ProcessDeadline | None:
         """Use the suite clock for selection, execution, and cleanup.
 
         Returns:
@@ -333,24 +335,13 @@ class FlextInfraPytestRunnerExecution(
             FULL owns none.
 
         """
-        expires = self._deadline_monotonic()
+        expires = self._deadline_monotonic(execution_mode=execution_mode)
         if expires is None:
             return None
         return m.Cli.ProcessDeadline(
             expires_at_monotonic=expires,
             termination_grace_seconds=self.termination_grace_seconds,
         )
-
-    def _deadline_monotonic(self) -> float | None:
-        """Return the suite clock's absolute expiry; FULL owns none.
-
-        Returns:
-            The monotonic expiry instant, or None for an unbounded run.
-
-        """
-        if self.run_timeout_seconds is None:
-            return None
-        return self.started_at_monotonic + self.run_timeout_seconds
 
     def _run_suite(
         self,
@@ -983,7 +974,9 @@ class FlextInfraPytestRunnerExecution(
             m.Infra.PytestRunContext(
                 execution_mode=execution_mode,
                 testmon_db=database,
-                deadline_monotonic=self._deadline_monotonic(),
+                deadline_monotonic=self._deadline_monotonic(
+                    execution_mode=execution_mode,
+                ),
                 report_directory=report_dir,
             ),
         )
@@ -1218,13 +1211,16 @@ class FlextInfraPytestRunnerExecution(
             The resulting ``p.Result[int]``.
 
         """
+        execution_mode = c.Infra.PytestExecutionMode.COVERAGE
         report_dir = self._report_directory()
         self._write_run_context(
             report_dir,
             m.Infra.PytestRunContext(
-                execution_mode=c.Infra.PytestExecutionMode.COVERAGE,
+                execution_mode=execution_mode,
                 testmon_db=None,
-                deadline_monotonic=self._deadline_monotonic(),
+                deadline_monotonic=self._deadline_monotonic(
+                    execution_mode=execution_mode,
+                ),
                 report_directory=report_dir,
             ),
         )
@@ -1232,7 +1228,7 @@ class FlextInfraPytestRunnerExecution(
         selection = self._collect_selection(
             report_dir,
             complete=True,
-            execution_mode=c.Infra.PytestExecutionMode.COVERAGE,
+            execution_mode=execution_mode,
         )
         if isinstance(selection, p.Cli.ProcessOutcome):
             return r.ok(selection.raw_return_code)
@@ -1240,7 +1236,7 @@ class FlextInfraPytestRunnerExecution(
         outcome = self._run_suite(
             command,
             report_dir,
-            execution_mode=c.Infra.PytestExecutionMode.COVERAGE,
+            execution_mode=execution_mode,
         )
         if self._completed_failure(outcome, report_dir):
             return self._finalize(
