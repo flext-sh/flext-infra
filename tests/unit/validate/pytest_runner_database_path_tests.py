@@ -80,8 +80,12 @@ class TestsFlextInfraPytestRunnerDatabase:
         runner = u.Tests.PytestRunner.runner_for(cached_runner_project)
         database = tm.not_none(runner.testmon_db)
         nested_root = cached_runner_project / runner.target
+        pytest_policy = config.Infra.tooling.tools.pytest
+        marker_lines = "".join(
+            f"    {marker}\n" for marker in pytest_policy.standard_markers
+        )
         (nested_root / "pytest.ini").write_text(
-            "[pytest]\n", encoding=c.DEFAULT_ENCODING
+            f"[pytest]\nmarkers =\n{marker_lines}", encoding=c.DEFAULT_ENCODING
         )
         variable = c.Infra.PYTEST_ENV_TESTMON_DATAFILE
         (nested_root / "conftest.py").write_text(
