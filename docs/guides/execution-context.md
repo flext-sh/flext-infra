@@ -1985,6 +1985,23 @@ receipt and report are non-generic read projections of that original payload; th
 not base classes for domain fields. Original execution, outcome, stage and completion
 remain observable when CLI reads the shared native-tool evidence.
 
+Fixture qualification requires an explicit workspace profile. A workspace can
+elect it in its [local codegen layer](local-config-overrides.md). A tool
+declaration alone does not elect qualification. An elected profile
+requires the locked native launcher and compiler SDK, the compiler resource from
+the CLI distribution's installed RECORD, the required kernel capabilities and
+successful real subprocess observations. Failure in any of these requirements
+fails setup. A workspace without a fixture profile issues no fixture evidence.
+The elected SDK download is authenticated by its declared digest and lock.
+Setup copies those exact bytes into its private staging directory and extracts
+the toolchain with bsdtar. The isolated build can read this sysroot and the exact
+libseccomp headers and archive. A changed SDK digest or lock invalidates the
+previous qualification and requires the profile to run setup again.
+When a profile is elected, setup installs the locked packages as wheels so
+the qualification reads the original resource entries rather than editable paths.
+Operating-system restrictions in the native toolchain elect eligible tools before
+installation. An eligible tool without a valid lock remains a setup failure.
+
 Upgrade installs the newly resolved lock through its existing frozen provisioning
 owner and verifies its runtime provenance before the next producer. Package election
 resolves the current physical import path independently of loaded-module caches;

@@ -432,6 +432,55 @@ class FlextInfraModelsWorkspace:
             m.Field(gt=1, description="Native wall budget including termination grace"),
         ]
 
+    class NativeSetupQualificationRequest(WorkspaceRequest):
+        """One pending receipt created by the original setup invocation."""
+
+        pending_report: Annotated[
+            Path, m.Field(description="Invocation-owned pending setup report")
+        ]
+
+    class NativeSetupInputs(m.ContractModel):
+        """One elected and captured native tool build closure."""
+
+        launcher: Annotated[Path, m.Field(description="Locked static launcher")]
+        compiler_archive: Annotated[
+            t.Port[p.Cli.AtomicFileReceipt],
+            m.Field(description="Original authenticated SDK archive"),
+        ]
+        compiler_member: Annotated[
+            Path,
+            m.Field(description="Compiler path inside the authenticated SDK archive"),
+        ]
+        compiler_arguments: Annotated[
+            tuple[str, ...],
+            m.Field(description="Original arguments selecting the driver"),
+        ]
+        archive: Annotated[Path, m.Field(description="Static libseccomp archive")]
+        headers: Annotated[
+            tuple[Path, Path],
+            m.Field(description="Exact public libseccomp headers"),
+        ]
+        sources: Annotated[
+            tuple[t.Port[p.Cli.AtomicFileReceipt], t.Port[p.Cli.AtomicFileReceipt]],
+            m.Field(description="Installed policy and probe source receipts"),
+        ]
+        declaration: Annotated[
+            tuple[t.Port[p.Cli.AtomicFileReceipt], ...],
+            m.Field(description="Original toolchain declaration"),
+        ]
+        installation: Annotated[
+            tuple[t.Port[p.Cli.AtomicFileReceipt], ...],
+            m.Field(description="Exact locked installation inputs"),
+        ]
+        abi_reference: Annotated[
+            t.Port[p.Cli.AtomicFileReceipt],
+            m.Field(description="Installed runtime interpreter receipt"),
+        ]
+        profiles: Annotated[
+            tuple[Literal["read-only", "fixture"], ...],
+            m.Field(description="Original elected process profiles"),
+        ]
+
     class WorkspaceTestsRequest(WorkspaceRequest):
         """Select repositories for native persistent incremental tests."""
 

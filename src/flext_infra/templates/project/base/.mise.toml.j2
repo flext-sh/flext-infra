@@ -50,14 +50,15 @@ python = "{{ python_version }}"
 "{{ mise_selector }}" = "{{ mise_version }}"
 # Native toolchain (single source: Infra.codegen.toolchain.tools in codegen.yaml).
 {%- macro tool_specifier(entry) -%}
-{%- if entry.form == "table" or entry.bin or entry.http or entry.depends or entry.install_env or entry.postinstall -%}
+{%- if entry.form == "table" or entry.bin or entry.http or entry.depends or entry.os or entry.install_env or entry.postinstall -%}
 { version = {{ tool_versions[entry.name] | tojson }}
 {%- if entry.version_prefix %}, version_prefix = {{ entry.version_prefix | tojson }}{%- endif -%}
 {%- if entry.bin %}, bin = {{ entry.bin | tojson }}{%- endif -%}
 {%- if entry.http -%}
-{%- for option, value in entry.http.model_dump(exclude_none=true).items() %}, {{ option }} = {{ value | tojson }}{%- endfor -%}
+{%- for option, value in entry.http.items() if value is not none %}, {{ option }} = {{ value | tojson }}{%- endfor -%}
 {%- endif -%}
 {%- if entry.depends %}, depends = {{ entry.depends | list | tojson }}{%- endif -%}
+{%- if entry.os %}, os = {{ entry.os | list | tojson }}{%- endif -%}
 {%- if entry.install_env %}, install_env = { {% for key, value in entry.install_env.items() %}{{ key | tojson }} = {{ value | tojson }}{% if not loop.last %}, {% endif %}{% endfor %} }{%- endif -%}
 {%- if entry.postinstall %}, postinstall = { run = {{ entry.postinstall.run | tojson }}{% if entry.postinstall.when %}, when = {{ entry.postinstall.when | tojson }}{% endif %} }{%- endif %} }
 {%- else -%}
@@ -68,3 +69,8 @@ python = "{{ python_version }}"
 {{ (entry.selector or entry.name) | tojson }} = {{ tool_specifier(entry) }}
 {%- endfor %}
 # End SECTION: tools
+{%- if tools | selectattr("os") | list %}
+
+[vars]
+flext_host_os = "{% raw %}{{ os() }}{% endraw %}"
+{%- endif %}

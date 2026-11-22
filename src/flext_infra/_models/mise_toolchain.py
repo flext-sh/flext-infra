@@ -362,6 +362,10 @@ class FlextInfraModelsMiseToolchain:
             tuple[t.NonEmptyStr, ...],
             m.Field(description="Declared tool keys installed before this tool"),
         ] = ()
+        os: Annotated[
+            tuple[Literal["linux", "macos", "windows"], ...],
+            m.Field(description="Mise operating systems eligible for this tool"),
+        ] = ()
         install_env: Annotated[
             Mapping[str, str],
             m.Field(
@@ -425,6 +429,77 @@ class FlextInfraModelsMiseToolchain:
         proven: Annotated[
             frozenset[str],
             m.Field(description="Selectors already proven before this entry."),
+        ]
+
+    class NativeIsolationProvider(FlextInfraModelsMiseToolchainBase.SchemaRecord):
+        """One locked Mise installation and a physical resource within it."""
+
+        tool: Annotated[t.NonEmptyStr, m.Field(description="Declared Mise tool key")]
+        relative_path: Annotated[
+            Path, m.Field(description="Resource path inside the installed tool")
+        ]
+        sha256: Annotated[
+            str,
+            m.Field(
+                pattern=r"^[0-9a-f]{64}$",
+                description="Publisher-authenticated resource SHA-256",
+            ),
+        ]
+
+        @m.model_validator(mode="after")
+        def _validate_relative_path(self) -> Self:
+            """Require a strict relative path in the selected installation.
+
+            Returns:
+                The declared provider after lexical admission.
+
+            Raises:
+                ValueError: If the resource could leave the installation.
+
+            """
+            if (
+                self.relative_path.is_absolute()
+                or not self.relative_path.parts
+                or ".." in self.relative_path.parts
+            ):
+                msg = "native isolation resources must stay inside the installation"
+                raise ValueError(msg)
+            return self
+
+    class NativeIsolationSetup(FlextInfraModelsMiseToolchainBase.SchemaRecord):
+        """Explicit native process profiles requested by this workspace setup."""
+
+        profiles: Annotated[
+            tuple[Literal["read-only", "fixture"], ...],
+            m.Field(min_length=1, description="Profiles to qualify exactly once"),
+        ]
+        launcher: Annotated[
+            FlextInfraModelsMiseToolchain.NativeIsolationProvider,
+            m.Field(description="Qualified static Bubblewrap candidate"),
+        ]
+        compiler: Annotated[
+            FlextInfraModelsMiseToolchain.NativeIsolationProvider,
+            m.Field(description="Authenticated C17 compiler and sysroot archive"),
+        ]
+        compiler_member: Annotated[
+            Path,
+            m.Field(description="Compiler path relative to the SDK archive"),
+        ]
+        compiler_arguments: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(description="Native arguments selecting the compiler driver"),
+        ] = ()
+        seccomp_header: Annotated[
+            FlextInfraModelsMiseToolchain.NativeIsolationProvider,
+            m.Field(description="Public header from the static libseccomp SDK"),
+        ]
+        seccomp_syscalls: Annotated[
+            FlextInfraModelsMiseToolchain.NativeIsolationProvider,
+            m.Field(description="Syscall declarations from the static libseccomp SDK"),
+        ]
+        seccomp_archive: Annotated[
+            FlextInfraModelsMiseToolchain.NativeIsolationProvider,
+            m.Field(description="Library archive from the static libseccomp SDK"),
         ]
 
     class ToolchainUvSpec(FlextInfraModelsMiseToolchainBase.SchemaRecord):
@@ -668,6 +743,10 @@ class FlextInfraModelsMiseToolchain:
             FlextInfraModelsMiseToolchain.BeadsToolSpec,
             m.Field(description="Beads ledger projection (.beads config)"),
         ]
+        native_isolation: Annotated[
+            FlextInfraModelsMiseToolchain.NativeIsolationSetup | None,
+            m.Field(description="Explicit native setup qualification request"),
+        ] = None
 
         @m.computed_field
         @property
@@ -754,6 +833,21 @@ class FlextInfraModelsMiseToolchain:
                 *(entry.selector or entry.name for entry in self.tools),
             )
 
+        @m.computed_field
+        @property
+        def mise_platform_tools(self) -> Mapping[str, tuple[str, ...]]:
+            """Map the scoped native tool keys to eligible operating systems.
+
+            Returns:
+                The filtered projection of the declared tool entries.
+
+            """
+            return {
+                entry.selector or entry.name: entry.os
+                for entry in self.tools
+                if entry.os
+            }
+
         @m.model_validator(mode="after")
         def _validate_version_selectors(self) -> Self:
             """Reject build-identity selectors mise/aube cannot resolve.
@@ -831,6 +925,7 @@ class FlextInfraModelsMiseToolchain:
                     + ", ".join(undeclared_dependencies)
                 )
                 raise ValueError(msg)
+            self._validate_native_platforms()
             invalid_probes = sorted(
                 entry.name
                 for entry in self.tools
@@ -866,6 +961,43 @@ class FlextInfraModelsMiseToolchain:
                 )
                 raise ValueError(msg)
             return self
+
+        def _validate_native_platforms(self) -> None:
+            platform_tools = self.mise_platform_tools
+            unavailable_dependencies = sorted(
+                f"{entry.name}:{dependency}"
+                for entry in self.tools
+                for dependency in entry.depends
+                if dependency in platform_tools
+                and (
+                    not entry.os
+                    or not set(entry.os).issubset(platform_tools[dependency])
+                )
+            )
+            if unavailable_dependencies:
+                msg = (
+                    "tool installation dependencies must support every target OS: "
+                    + ", ".join(unavailable_dependencies)
+                )
+                raise ValueError(msg)
+            isolation = self.native_isolation
+            if isolation is not None:
+                providers = (
+                    isolation.launcher,
+                    isolation.compiler,
+                    isolation.seccomp_header,
+                    isolation.seccomp_syscalls,
+                    isolation.seccomp_archive,
+                )
+                if any(
+                    provider.tool not in self.tool_keys.values()
+                    for provider in providers
+                ):
+                    msg = "native isolation providers must select declared Mise tools"
+                    raise ValueError(msg)
+                if len(isolation.profiles) != len(set(isolation.profiles)):
+                    msg = "native isolation profiles must be declared once"
+                    raise ValueError(msg)
 
     class BeadsEndpointSpec(FlextInfraModelsMiseToolchainBase.SchemaRecord):
         """Static network endpoint projected into Beads configuration."""
