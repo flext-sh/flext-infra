@@ -256,7 +256,13 @@ class FlextInfraNativeSetup:
         state: p.Cli.AtomicFileState,
     ) -> p.Cli.AtomicFileReceipt:
         receipt = cls._receipt(state.path)
-        if receipt.version_key != state.version_key or receipt.sha256 != state.sha256:
+        content = state.content
+        if (
+            content is None
+            or receipt.sha256 != u.Cli.sha256_bytes(content)
+            or (receipt.device, receipt.inode, receipt.mode)
+            != (state.device, state.inode, state.mode)
+        ):
             msg = f"native setup input changed after selection: {state.path}"
             raise ValueError(msg)
         return receipt
