@@ -68,7 +68,7 @@ class FlextInfraPytestRunnerBase(s[int]):
             gt=0,
             description=(
                 "Explicit suite timeout for a bounded operation. Otherwise the "
-                "elected tooling policy supplies the budget. FULL owns none."
+                "elected tooling policy supplies the budget. Unconfined FULL owns none."
             ),
         ),
     ] = None
@@ -235,14 +235,15 @@ class FlextInfraPytestRunnerBase(s[int]):
     ) -> float | None:
         """Derive the suite clock for the operation being executed.
 
-        A public runner can switch operations after construction. A bounded
-        operation keeps an explicitly supplied timeout, and FULL owns none.
+        A public runner can switch operations after construction. Isolated
+        fixtures use the bounded native lifecycle in every mode. Unconfined
+        FULL has no suite deadline.
 
         Returns:
             The absolute monotonic deadline, if the operation has one.
 
         """
-        if execution_mode == c.Infra.PytestExecutionMode.FULL:
+        if execution_mode == c.Infra.PytestExecutionMode.FULL and self.fixture is None:
             return None
         timeout = self.run_timeout_seconds
         if timeout is None:
@@ -384,6 +385,11 @@ class FlextInfraPytestRunnerBase(s[int]):
         ):
             msg = "pytest fixture requires native Testmon state at its checkout root"
             raise ValueError(msg)
+
+    @property
+    def _native_fixture_dispatch(self) -> bool:
+        """Whether the fixture owns whole-project native Testmon dispatch."""
+        return self.fixture is not None and self.target_file is None
 
     def _validate_target_file(self) -> Self:
         """Require the declared single-file target to be repository-contained.

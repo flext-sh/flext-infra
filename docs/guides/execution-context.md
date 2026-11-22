@@ -4333,13 +4333,16 @@ The configuration receipt recorder uses its declared directory beside the
 database, preserving configuration dependencies across invocations.
 The runner holds one checkout lease from preflight through native child
 termination, integrity inspection and the run receipt. The complete-suite
-operation takes the same lease.
+operation takes the same lease. Each isolated fixture uses the elected
+operation deadline to qualify the native policy compiler and child lifecycle.
 
 Each pytest child receives authenticated source and runtime inputs and a
 separate writable report directory. Its home, temporary files and Python
-bytecode output use that private directory. The execution child reads the selection
-manifest from the completed collection as a sealed input. The original source
-identity still binds the parent receipts. The requested fixture uses the
+bytecode output use that private directory. A qualified whole-project fixture
+selects and executes incrementally in one native Testmon invocation with its
+default environment. Native worker observations bind the complete inventory and
+selection to the suite receipt. The original source identity still binds
+the parent receipts. The requested fixture uses the
 bootstrap-qualified launcher and policy compiler from the original setup
 report. The receipt binds their physical identities. A guest that changes
 those identities obtains a fresh receipt from `make setup` before replaying

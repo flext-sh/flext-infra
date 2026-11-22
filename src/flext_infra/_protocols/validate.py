@@ -304,6 +304,11 @@ class FlextInfraProtocolsValidate:
             ...
 
         @property
+        def isolated_fixture(self) -> bool:
+            """A setup-qualified private checkout owns the child lifecycle."""
+            ...
+
+        @property
         def testmon_db(self) -> Path | None:
             """Structural member projected from the owning model.
 
@@ -316,8 +321,8 @@ class FlextInfraProtocolsValidate:
         def deadline_monotonic(self) -> float | None:
             """Structural member projected from the owning model.
 
-            Shared absolute deadline across all execution phases; absent for the
-            unbounded FULL operation.
+            Shared absolute deadline across all execution phases; absent for
+            unconfined FULL.
             """
             ...
 

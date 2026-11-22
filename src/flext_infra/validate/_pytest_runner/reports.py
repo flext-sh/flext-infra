@@ -556,14 +556,16 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
     ) -> tuple[tuple[str, p.Infra.PytestDiagnostics], ...]:
         """Read each subprocess receipt once in execution order.
 
-        Whole-project FULL collection belongs to the suite process. Declared
-        file and incremental requests retain their separate collection phases.
+        FULL and qualified fixture collection belong to the suite process.
+        Other incremental requests retain their separate collection phase.
 
         Returns:
             The resulting ``tuple[tuple[str, m.Infra.PytestDiagnostics], ...],``.
 
         """
-        if context.execution_mode == c.Infra.PytestExecutionMode.FULL:
+        if context.execution_mode == c.Infra.PytestExecutionMode.FULL or (
+            self._native_fixture_dispatch and context.execution_mode.is_incremental
+        ):
             return (("suite", suite),)
         phases: MutableSequence[tuple[str, p.Infra.PytestDiagnostics]] = []
         if context.testmon_db is not None:

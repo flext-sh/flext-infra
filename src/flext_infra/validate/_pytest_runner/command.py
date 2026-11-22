@@ -378,9 +378,9 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         Workers record dependencies without selecting those IDs a second time.
         Their ``--testmon-noselect`` freezes only the accepted selection, never
         elects the global inventory for regular incremental execution.
-        FULL publishes its inventory from this suite's own collection, without
-        an earlier selection process, and records every item in Testmon under
-        its own environment without selecting.
+        A qualified fixture publishes the inventory and native selection from
+        this suite's collection. FULL publishes its own inventory and records
+        every item without selecting.
 
         Returns:
             The resulting ``tuple[str, ...],``.
@@ -415,7 +415,9 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
                     f"{selection_plan.manifest_path}"
                 ),
             )
-        elif execution_mode == c.Infra.PytestExecutionMode.FULL:
+        elif execution_mode == c.Infra.PytestExecutionMode.FULL or (
+            self._native_fixture_dispatch and execution_mode.is_incremental
+        ):
             manifest_args = (
                 "-p",
                 FlextInfraPytestCollection.__module__,
@@ -449,8 +451,11 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
                             or execution_mode == c.Infra.PytestExecutionMode.FULL
                             else ("--testmon-forceselect",)
                         ),
-                        "--testmon-env",
-                        self.testmon_environment(execution_mode),
+                        *(
+                            ("--testmon-env", self.testmon_environment(execution_mode))
+                            if not self._native_fixture_dispatch
+                            else ()
+                        ),
                         *self._config_receipt_args(),
                     )
                     if execution_mode.records_testmon
