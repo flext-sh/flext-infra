@@ -16,6 +16,8 @@ from tests.unit.codemod.class_nesting_owner_support import (
     TestsFlextInfraClassNestingSupport,
 )
 
+pytestmark = c.Tests.MARK.slow
+
 if TYPE_CHECKING:
     from pathlib import Path
 

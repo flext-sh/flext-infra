@@ -15,6 +15,8 @@ from flext_infra import config
 from flext_infra.codemod import FlextInfraCodemodSemanticApply
 from tests import c, infra, m, p, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraClassNestingSuiteScope:
     """A nested class suite cannot see a sibling while the owner is building."""

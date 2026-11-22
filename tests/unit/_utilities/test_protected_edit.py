@@ -13,6 +13,8 @@ from pathlib import Path
 from flext_infra import infra, settings
 from tests import c, m, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 def _provision_edited_sample(
     tmp_path: Path,

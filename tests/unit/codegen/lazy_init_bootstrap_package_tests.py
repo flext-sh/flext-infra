@@ -11,6 +11,8 @@ from typing import TYPE_CHECKING
 
 from tests import c, m, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 if TYPE_CHECKING:
     from pathlib import Path
 

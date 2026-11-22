@@ -17,6 +17,8 @@ from pathlib import Path
 
 from tests import c, p, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsProtocolCrossModuleAlias:
     """Project a re-exported model alias on a physical source tree, twice."""

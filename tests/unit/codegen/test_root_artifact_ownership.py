@@ -12,6 +12,8 @@ from flext_infra import config, infra
 from tests import c, m, tm, u
 from tests.unit.codegen import conform_support
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraRootArtifactOwnership:
     """Prove codegen config is the sole root-artifact ownership catalog."""

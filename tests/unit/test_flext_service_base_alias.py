@@ -12,6 +12,8 @@ from pathlib import Path
 from flext_infra.codemod import FlextInfraModGateEngine
 from tests import c, m, s, t, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraServiceBaseAlias:
     """Tests for ``FlextInfraServiceBaseAlias``."""

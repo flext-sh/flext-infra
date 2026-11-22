@@ -11,6 +11,8 @@ from pathlib import Path
 
 from tests import c, m, p, t, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraConstantDeclarations:
     """Typing identities select class constants without capturing homonyms."""

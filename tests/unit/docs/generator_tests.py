@@ -18,6 +18,8 @@ from flext_infra.docs import (
 from flext_infra.gates import FlextInfraGatesMarkdownFormat
 from tests import c, m, p, r, t, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 if TYPE_CHECKING:
     from pathlib import Path
 

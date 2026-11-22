@@ -14,6 +14,8 @@ import pytest
 from flext_infra import FlextInfraCli, docs
 from tests import c, m, t, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraPresentationWorkflow:
     """Exercise real metadata preparation, docs rendering and guarded publication."""

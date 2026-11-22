@@ -21,6 +21,8 @@ from flext_infra.codemod.loop import (
 from flext_infra.refactor import FlextInfraAccessorMigrationOrchestrator
 from tests import c, m, p, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 _FIRST_RENAME = FlextInfraAccessorMigrationOrchestrator.automated_rules()[0]
 _SOURCE_NAME = _FIRST_RENAME.source_name
 _REPLACEMENT_NAME = _FIRST_RENAME.replacement_name

@@ -20,6 +20,8 @@ from flext_infra import config
 from flext_infra.maintenance import FlextInfraMaintenanceSonarcloud
 from tests import c, m, p, t, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 if TYPE_CHECKING:
     from pathlib import Path
 

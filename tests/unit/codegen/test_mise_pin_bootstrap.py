@@ -22,6 +22,8 @@ from packaging.version import Version
 from flext_infra import config
 from tests import c, m, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraMisePinBootstrap:
     """Setup stays frozen while upgrade can establish the first self pin."""

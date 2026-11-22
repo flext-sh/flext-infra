@@ -15,6 +15,8 @@ from pathlib import Path
 from flext_infra import codemod, infra, transformers, workspace
 from tests import c, m, p, r, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraSemanticPublicationTransactions:
     """Publish semantic candidates atomically and prove the real public consumers."""

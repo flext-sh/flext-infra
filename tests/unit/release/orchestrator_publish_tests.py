@@ -12,6 +12,8 @@ from pathlib import Path
 from flext_infra import config
 from tests import c, m, t, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraReleasePublish:
     """Behavior contract for the public release publish phase."""

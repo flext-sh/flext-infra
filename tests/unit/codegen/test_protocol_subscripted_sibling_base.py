@@ -16,7 +16,9 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import ClassVar
 
-from tests import tm, u
+from tests import c, tm, u
+
+pytestmark = c.Tests.MARK.slow
 
 
 class TestsProtocolSubscriptedSiblingBase:

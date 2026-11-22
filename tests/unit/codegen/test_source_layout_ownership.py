@@ -12,6 +12,8 @@ from flext_infra.codegen import FlextInfraStagedPackage
 from flext_infra.validate import FlextInfraValidateFreshImport
 from tests import c, m, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 if TYPE_CHECKING:
     from collections.abc import Mapping
 

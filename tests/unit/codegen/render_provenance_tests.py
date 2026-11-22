@@ -16,6 +16,8 @@ from flext_infra import config
 from flext_infra.codegen import FlextInfraCodegenConform
 from tests import c, m, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraRenderProvenance:
     """Rendered Make controls execute the installed, metadata-owned namespace."""

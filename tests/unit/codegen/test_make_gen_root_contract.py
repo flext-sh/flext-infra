@@ -13,6 +13,8 @@ from flext_infra import config, m
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, infra, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraMakeGenRootContract:
     """Native Testmon owns tests; generation stays inside the workspace."""

@@ -12,6 +12,8 @@ from pathlib import Path
 from flext_infra.workspace import FlextInfraRuntimeDependencyCollector
 from tests import c, m, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraRuntimeDependencyCollector:
     """Installed vendor metadata must not compete with its owning distribution."""
