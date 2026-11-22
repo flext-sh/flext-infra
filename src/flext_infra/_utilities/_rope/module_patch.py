@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
 from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
@@ -222,30 +221,6 @@ class FlextInfraUtilitiesRopeModulePatch:
             raise ValueError(msg)
         return selected[0]
 
-    @staticmethod
-    def _placeholder_guards(source: str, statement: str) -> bool:
-        """Report whether a module holds an ``if`` whose body is one placeholder.
-
-        Returns:
-            Whether any ``if`` statement's sole body statement is ``statement``
-            (``pass`` or the ``...`` expression).
-
-        """
-        for node in ast.walk(ast.parse(source)):
-            if not isinstance(node, ast.If) or len(node.body) != 1:
-                continue
-            body = node.body[0]
-            if statement == "pass" and isinstance(body, ast.Pass):
-                return True
-            if (
-                statement == "..."
-                and isinstance(body, ast.Expr)
-                and isinstance(body.value, ast.Constant)
-                and body.value.value is Ellipsis
-            ):
-                return True
-        return False
-
     @classmethod
     def strip_type_checking_scaffold(
         cls, module: p.Infra.RopeSourceModule
@@ -266,10 +241,6 @@ class FlextInfraUtilitiesRopeModulePatch:
             raise ValueError(msg)
         source = module.source_code
         for statement in ("pass", "..."):
-            # The pattern matches only a guard whose sole body statement is the
-            # placeholder; a module without one has nothing to restructure.
-            if not cls._placeholder_guards(source, statement):
-                continue
             with cls.candidate_module(module, source) as candidate:
                 changes = FlextInfraUtilitiesRopeRuntimeRefactors.restructure_changes(
                     project,
@@ -281,6 +252,15 @@ class FlextInfraUtilitiesRopeModulePatch:
                     ),
                 )
                 source = cls._changed_source(candidate, changes)
+        if not any(
+            layout.module_name == "typing"
+            or (
+                layout.module_name is None
+                and any(name == "typing" for name, _, _ in layout.aliases)
+            )
+            for layout in module.get_source_binding_index().import_layouts()
+        ):
+            return r[str].ok(source)
         with cls.candidate_module(module, source) as candidate:
             runtime = FlextInfraUtilitiesRopeRuntime
             imports = FlextInfraUtilitiesRopeRuntimeModules.module_imports_for_pymodule(
@@ -290,9 +270,10 @@ class FlextInfraUtilitiesRopeModulePatch:
             # reads are needed: a whole-module unused-import analysis concludes
             # every class scope, including MROs that span a whole facade.
             loaded = frozenset(
-                node.id
-                for node in ast.walk(ast.parse(candidate.source_code))
-                if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load)
+                candidate.source_code[fragment.start : fragment.end]
+                for fragment in candidate.get_source_binding_index().fragments
+                if fragment.context.access == "read"
+                and candidate.source_code[fragment.start : fragment.end].isidentifier()
             )
             for item in imports.imports:
                 before = item.import_info

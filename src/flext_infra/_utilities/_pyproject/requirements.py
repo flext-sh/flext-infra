@@ -641,7 +641,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
             return r[tuple[str, str]].fail(
                 f"candidate dependency must pin a full Git commit: {dependency_name}",
             )
-        if url and url != candidate_url:
+        if url != candidate_url:
             return r[tuple[str, str]].fail(
                 "candidate dependency Git URL differs from declared provenance: "
                 f"{dependency_name}",

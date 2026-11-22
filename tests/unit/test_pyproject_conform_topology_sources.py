@@ -614,9 +614,7 @@ class TestsFlextInfraPyprojectConformTopologySources(
             workspace=workspace,
             required_dev_dependencies=(),
             uv_resolution=self._toolchain_resolution(),
-            options=u.Infra.PyprojectConformOptions(
-                flext_line=u.Tests.integration(),
-            ),
+            options=u.Infra.PyprojectConformOptions(),
         )
         tm.ok(result.failure)
         tm.that(result.error or "", contains="no declared Git provenance")
