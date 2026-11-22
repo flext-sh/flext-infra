@@ -19,6 +19,8 @@ import pytest
 
 from tests import c, t, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 @dataclasses.dataclass(frozen=True)
 class StreamingProbe:

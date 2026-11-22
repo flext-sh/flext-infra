@@ -12,6 +12,8 @@ from pathlib import Path
 
 from tests import c, t, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraLazyInitOwnership:
     """Validate public owner boundaries, collisions and native identity."""

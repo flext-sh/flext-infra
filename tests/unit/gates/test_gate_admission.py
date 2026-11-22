@@ -23,6 +23,8 @@ from flext_infra import FlextInfraConfig
 from tests import c, m, p, tm, u
 from tests.fixtures import TestsFlextInfraGateAdmissionHolder
 
+pytestmark = c.Tests.MARK.slow
+
 _WAIT_SECONDS = 180.0
 
 

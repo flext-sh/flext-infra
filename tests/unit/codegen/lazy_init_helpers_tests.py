@@ -12,6 +12,8 @@ from pathlib import Path
 import flext_infra
 from tests import c, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraLazyInitHelpers:
     """Validate lazy-init through the public service surface only."""

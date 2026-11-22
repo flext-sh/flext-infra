@@ -11,6 +11,8 @@ from pathlib import Path
 from flext_infra import infra
 from tests import c, p, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraProtocolOrganization:
     """Exercise classification, movement and a fresh real consumer together."""

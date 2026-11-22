@@ -82,6 +82,7 @@ class FlextInfraTypesRope(FlextInfraTypesRopeNative):
     type RopeOccurrence = FlextInfraProtocolsRopeRuntime.RopeOccurrence
     type RopeOccurrenceFinder = FlextInfraProtocolsRopeRuntime.RopeOccurrenceFinder
     type RopeOccurrenceFilter = Callable[[RopeOccurrence], bool]
+    type RopeBindingIndex = FlextInfraProtocolsRopeRuntime.RopeSourceBindingIndex
 
     type RopeTransformFn = Callable[
         [RopeProject, RopeResource],

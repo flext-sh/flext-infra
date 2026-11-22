@@ -12,6 +12,8 @@ from pathlib import Path
 from flext_infra import config
 from tests import c, m, p, t, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraUvNativeResolution:
     """Resolve real local Git packages without external-service prerequisites."""

@@ -14,6 +14,8 @@ from pathlib import Path
 from flext_infra import config
 from tests import c, p, r, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraCodegenMakeUpgrade:
     """Prove only ``upg`` resolves locks and setup preserves native lock inputs."""

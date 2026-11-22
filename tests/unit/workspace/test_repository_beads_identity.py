@@ -12,6 +12,8 @@ from pathlib import Path
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, m, t, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraRepositoryBeadsIdentity:
     """Prove the typed Beads identity of a repository and its workspace members."""

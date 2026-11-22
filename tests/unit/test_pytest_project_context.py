@@ -13,6 +13,8 @@ from flext_tests import tm
 import tests
 from tests import c, conftest, t
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsPytestProjectContext:
     """Native pytest imports retain project-local package and fixture identities."""

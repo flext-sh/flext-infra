@@ -12,6 +12,8 @@ from pathlib import Path
 from flext_infra.refactor import FlextInfraRefactorCensus
 from tests import c, m, p, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraPayloadCensusSemantics:
     """Exercise the existing inventory and duplicate grouping public boundaries."""

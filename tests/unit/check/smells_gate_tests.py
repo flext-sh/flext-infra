@@ -12,6 +12,8 @@ from flext_infra.check import FlextInfraGateRegistry, FlextInfraWorkspaceChecker
 from flext_infra.gates import FlextInfraGatesSmells
 from tests import c, m, p, t, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraSmellsGate:
     """Exercise observable gate behavior with the real setup-provisioned tool."""

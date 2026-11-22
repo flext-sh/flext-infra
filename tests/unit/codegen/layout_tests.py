@@ -13,6 +13,8 @@ from flext_infra.gates import FlextInfraGatesLayout
 from tests import FlextInfraConfig, c, config, m, p, t, tm, u
 from tests.unit.codegen import TestsFlextInfraCodegenLayoutSupport
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraCodegenLayout:
     """Test suite for the declarative project-layout engine."""

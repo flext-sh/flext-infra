@@ -13,6 +13,8 @@ from flext_infra import config
 from flext_infra.codegen import FlextInfraCodegenConform
 from tests import c, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraRuntimeEnvironmentProjection:
     """Exercise projected paths with physical environments and real Git topology."""

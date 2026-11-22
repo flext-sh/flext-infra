@@ -12,6 +12,8 @@ from pathlib import Path
 from flext_infra import codemod, infra, services
 from tests import c, m, p, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraSemanticPublication:
     """Preserve successful effects and report each unsafe semantic target."""
