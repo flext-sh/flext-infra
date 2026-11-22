@@ -115,8 +115,16 @@ endif
 # Mise-managed executable, refused in a checkout whose .mise.toml is not trusted
 # yet, so a bare `make setup` resolves it only after trusting the checkout.
 # It runs in the host Mise scope, where the runtime-scoped Mise variables a
-# parent Make exported cannot hide the host's own declaration of the command.
+# parent Make exported cannot hide the host's own declaration of the command,
+# through the acquisition Mise, so a stale shared shim never selects the binary.
 override HOST_MISE_SCOPE := env -u MISE_CONFIG_DIR -u MISE_OVERRIDE_CONFIG_FILENAMES -u MISE_GLOBAL_CONFIG_FILE -u MISE_SYSTEM_CONFIG_DIR -u MISE_CEILING_PATHS -u MISE_AUTO_INSTALL
+# The acquisition Mise is the official installer's default executable, shared by
+# every checkout; the committed min_version makes Mise refuse an older one.
+ifeq ($(OS),Windows_NT)
+override BOOTSTRAP_MISE := $(HOME)/.local/bin/mise.exe
+else
+override BOOTSTRAP_MISE := $(HOME)/.local/bin/mise
+endif
 GITHUB_TOKEN := $(firstword $(GITHUB_TOKEN) $(GH_TOKEN) $(MISE_GITHUB_TOKEN))
 GITHUB_CREDENTIAL_SOURCE := $(if $(GITHUB_TOKEN),environment,anonymous)
 ifeq ($(GITHUB_TOKEN),)
@@ -125,7 +133,7 @@ ifneq ($(MAKECMDGOALS),setup)
 GITHUB_CREDENTIAL_EXECUTABLE := $(shell command -v gh)
 ifneq ($(GITHUB_CREDENTIAL_EXECUTABLE),)
 GITHUB_CREDENTIAL_SOURCE := command
-GITHUB_TOKEN := $(shell $(HOST_MISE_SCOPE) "$(GITHUB_CREDENTIAL_EXECUTABLE)" auth token)
+GITHUB_TOKEN := $(shell $(HOST_MISE_SCOPE) "$(BOOTSTRAP_MISE)" exec -- gh auth token)
 GITHUB_CREDENTIAL_STATUS := $(.SHELLSTATUS)
 endif
 endif
@@ -331,13 +339,6 @@ ifneq ($(.SHELLSTATUS),0)
 $(error Cannot resolve the physical workspace for $(MAKEFILE_ROOT))
 endif
 endif
-# The acquisition Mise is the official installer's default executable, shared by
-# every checkout; the committed min_version makes Mise refuse an older one.
-ifeq ($(OS),Windows_NT)
-override BOOTSTRAP_MISE := $(HOME)/.local/bin/mise.exe
-else
-override BOOTSTRAP_MISE := $(HOME)/.local/bin/mise
-endif
 # End SECTION: REPOSITORY_ROOT isolation
 # === SECTION: verb dispatch (managed) ===
 # Source: config:make.verbs and the canonical gate vocabulary. A verb exists
@@ -420,6 +421,10 @@ override export MISE_CEILING_PATHS := $(GIT_CEILING_DIRECTORIES)
 # override (mise.local.toml and siblings) never selects a tool outside the lock.
 override export MISE_OVERRIDE_CONFIG_FILENAMES := .mise.toml
 override export MISE_CONFIG_DIR := $(RUNTIME_ROOT)/.mise
+# Every Mise run here reshims the checkout's own farm: a reshim binds shims to
+# the first non-shim `mise` on PATH (this checkout's pinned release), which must
+# never rebind the shared host farm other checkouts resolve through.
+override export MISE_SHIMS_DIR := $(PROJECT_ROOT)/.bin/shims
 # The project manifest remains in native project scope. An optional global
 # configuration has its own explicit runtime-scoped path; when absent, Mise
 # reads no global file. Reusing .mise.toml here classifies every project tool
@@ -586,7 +591,6 @@ _bootstrap_setup_tools:
 				*) printf 'ERROR: installed Mise %s still does not report the locked %s after the locked reinstall\n' "$$mise_reader" "$$mise_pin" >&2; exit 2 ;; \
 			esac ;; \
 	esac; \
-	export MISE_SHIMS_DIR="$(PROJECT_ROOT)/.bin/shims"; \
 	export MISE_LOCKED=1; \
 	bootstrap_stage=tool-install; \
 	"$$mise_reader" -C "$(PROJECT_ROOT)" install --yes "python" "github:jdx/mise" "uv" "github:direnv/direnv" "taplo" "aqua:ast-grep/ast-grep" "gitleaks" "aqua:boyter/scc" "github:qltysh/qlty" "github:kucherenko/jscpd" "github:microsoft/waza" "aqua:j178/prek" "gh"; \
@@ -1374,7 +1378,6 @@ _upg_toolchain: _builtin_require_workspace _builtin_require_github_credential
 	fi; \
 	done; \
 	set +f; \
-	export MISE_SHIMS_DIR="$(PROJECT_ROOT)/.bin/shims"; \
 	export MISE_LOCKED=1; \
 	bootstrap_stage=tool-install; \
 	"$$mise_reader" -C "$(PROJECT_ROOT)" install --yes "python" "github:jdx/mise" "uv" "github:direnv/direnv" "taplo" "aqua:ast-grep/ast-grep" "gitleaks" "aqua:boyter/scc" "github:qltysh/qlty" "github:kucherenko/jscpd" "github:microsoft/waza" "aqua:j178/prek" "gh"; \
