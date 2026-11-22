@@ -395,7 +395,7 @@ wheels = [
 [[package]]
 name = "flext-cli"
 version = "0.12.1"
-source = { git = "https://github.com/flext-sh/flext-cli.git?rev=0.12.0-dev#bf9d635840a0b02ca4f7ad4762773afefdf3c445" }
+source = { git = "https://github.com/flext-sh/flext-cli.git?rev=0.12.0-dev#c1b6752c1439330ac07cecc1bd15998e3fa5703c" }
 dependencies = [
     { name = "click" },
     { name = "defusedxml" },
@@ -417,7 +417,7 @@ dependencies = [
 [[package]]
 name = "flext-core"
 version = "0.12.1"
-source = { git = "https://github.com/flext-sh/flext-core.git?rev=0.12.0-dev#b9865197a3b5bc7241c2356fa4527b1546d9fb02" }
+source = { git = "https://github.com/flext-sh/flext-core.git?rev=0.12.0-dev#647db3aabc138a119cdc87be511b4f49b8ea77eb" }
 dependencies = [
     { name = "annotated-types" },
     { name = "packaging" },

@@ -348,7 +348,7 @@ Infra:
       # platform lock section must carry one.
       # Base toolchain: only what this generator's own verbs run (python, the
       # self-managed mise, uv, direnv, taplo, ast-grep, gitleaks, scc, qlty,
-      # jscpd, waza, prek). A project that needs more
+      # jscpd, waza, prek, gh). A project that needs more
       # (kubectl, helm, kind, kubeconform, go, ...) declares them as additions
       # in its own config/codegen.yaml under Infra.codegen.toolchain.tools;
       # the config loader concatenates them onto this base. The library never
@@ -451,6 +451,13 @@ Infra:
           binary: prek
           arguments: [ --version ]
           pattern: "^prek {version}$"
+      # The declared GitHub credential command (make.github_credential_command).
+      - name: gh
+        version: latest
+        version_probe:
+          binary: gh
+          arguments: [ --version ]
+          pattern: "^gh version {version} "
       # Pins layered over the tools table by the override files.
       tool_version_pins: {}
       # False keeps Python resolution and installation on precompiled builds:
