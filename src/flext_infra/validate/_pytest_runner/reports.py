@@ -53,7 +53,7 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
             if self.profile_enabled:
                 policy = self.pytest_policy()
                 self._publish_fixture_profiles(
-                    source, report_dir, policy.profile_process_directory
+                    actual, report_dir, policy.profile_process_directory
                 )
                 names = (*names, policy.profile_suite_filename)
         else:
@@ -66,22 +66,50 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
 
     @classmethod
     def _publish_fixture_profiles(
-        cls, source: Path, destination: Path, dirname: str
+        cls, source: p.Cli.AtomicPhysicalTreeEntry, destination: Path, dirname: str
     ) -> None:
-        profiles = source / dirname
-        if profiles.is_symlink():
-            msg = f"isolated pytest profile directory is a symlink: {profiles}"
-            raise ValueError(msg)
-        if not profiles.exists():
+        relative = Path(dirname)
+        parent = cls._fixture_profile_directory(source, relative)
+        if parent is None:
             return
-        if not profiles.is_dir() or profiles.resolve(strict=True) != profiles:
-            msg = f"isolated pytest profile directory is not physical: {profiles}"
-            raise ValueError(msg)
-        target = destination / dirname
+        target = destination / relative
         u.Cli.ensure_dir(target).unwrap()
-        parent = u.Cli.atomic_inventory_physical_directory(profiles).unwrap().root
-        for profile in sorted(profiles.glob("*.pstats")):
+        for profile in sorted(parent.path.glob("*.pstats")):
             cls._publish_fixture_report(parent, target / profile.name)
+
+    @staticmethod
+    def _fixture_profile_directory(
+        root: p.Cli.AtomicPhysicalTreeEntry,
+        relative: Path,
+    ) -> p.Cli.AtomicPhysicalTreeEntry | None:
+        """Resolve the declared profile directory under the authenticated phase root.
+
+        Returns:
+            Its physical identity, or None when the child produced no profiles.
+
+        Raises:
+            ValueError: If the relative path or one parent identity is invalid.
+
+        """
+        if relative.is_absolute() or ".." in relative.parts:
+            msg = "isolated pytest profile directory must stay within its report phase"
+            raise ValueError(msg)
+        current = root
+        for part in relative.parts:
+            path = current.path / part
+            if not path.exists() and not path.is_symlink():
+                return None
+            child = u.Cli.atomic_inventory_physical_directory(path).unwrap().root
+            if (
+                child.parent_device != current.device
+                or child.parent_inode != current.inode
+                or child.parent_mount_id != current.mount_id
+                or child.mount_id != current.mount_id
+            ):
+                msg = f"isolated pytest profile directory changed parent: {path}"
+                raise ValueError(msg)
+            current = child
+        return current
 
     @staticmethod
     def _publish_fixture_report(

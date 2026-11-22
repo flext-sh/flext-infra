@@ -4337,7 +4337,9 @@ bytecode output use that private directory. The execution child reads the select
 manifest from the completed collection as a sealed input. The original source
 identity still binds the parent receipts. The requested fixture uses the
 bootstrap-qualified launcher and policy compiler from the original setup
-report. This API binding is independent of the parent Make and systemd
+report. The receipt binds their physical identities. A guest that changes
+those identities obtains a fresh receipt from `make setup` before replaying
+the fixture. The API binding is independent of the parent Make and systemd
 admission.
 
 Toolchain caches hold one immutable entry per lock state: the key is the OS,
