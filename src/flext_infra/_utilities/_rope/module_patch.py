@@ -286,10 +286,21 @@ class FlextInfraUtilitiesRopeModulePatch:
             imports = FlextInfraUtilitiesRopeRuntimeModules.module_imports_for_pymodule(
                 project, candidate
             )
-            original = tuple((item, item.import_info) for item in imports.imports)
-            imports.remove_unused_imports()
-            for item, before in original:
-                retained = frozenset(item.import_info.names_and_aliases)
+            # Only the typing guard's own bindings are retired, so only their
+            # reads are needed: a whole-module unused-import analysis concludes
+            # every class scope, including MROs that span a whole facade.
+            loaded = frozenset(
+                node.id
+                for node in ast.walk(ast.parse(candidate.source_code))
+                if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load)
+            )
+            for item in imports.imports:
+                before = item.import_info
+                retained = frozenset(
+                    pair
+                    for pair in before.names_and_aliases
+                    if (pair[1] or pair[0].partition(".")[0]) in loaded
+                )
                 if runtime.from_import_info(before) and before.module_name == "typing":
                     item.import_info = runtime.from_import(
                         before.module_name,
