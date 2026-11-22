@@ -490,8 +490,12 @@ Infra:
       # every later `mise` resolved through the mise-managed shims runs exactly
       # that release. The host bootstrap mise only needs to read the committed
       # lockfile format.
+      # 2026.11.11 enters before the 10-day dependency cooldown by operator
+      # decision 2026-11-22 (cooldown exception): the host registry already
+      # runs it and lockfile_version 4 written by it must be readable by every
+      # governed shell (ai-hub aihub-vkb1j.14).
       mise_selector: github:jdx/mise
-      mise_version: "2026.10.3"
+      mise_version: "2026.11.11"
       beads:
         ownership_command_prefix: [ direnv, exec, ., bd ]
         # Beads ledger projection (.beads/config.yaml, .beads/metadata.yaml).
