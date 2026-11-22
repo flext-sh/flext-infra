@@ -192,14 +192,16 @@ class FlextInfraLockIntegrityVerifier(s[bool]):
             The current lock document, or the first native failure.
 
         """
+        version = lock.get(c.Infra.MISE_LOCK_VERSION_KEY)
         if (
-            lock.get(c.Infra.MISE_LOCK_VERSION_KEY)
-            != c.Infra.MISE_LOCK_MIGRATION_SOURCE_VERSION
+            isinstance(version, int)
+            and version == c.Infra.MISE_LOCK_MIGRATION_SOURCE_VERSION
         ):
-            return r[t.JsonMapping].ok(lock)
-        return cls._run_mise_lock(runner, root, mise, "--upgrade").flat_map(
-            lambda _: cls._read_upgraded_mise_lock(root / c.Infra.MISE_LOCK_FILENAME),
-        )
+            lock_path = root / c.Infra.MISE_LOCK_FILENAME
+            return cls._run_mise_lock(runner, root, mise, "--upgrade").flat_map(
+                lambda _: cls._read_upgraded_mise_lock(lock_path),
+            )
+        return r[t.JsonMapping].ok(lock)
 
     @staticmethod
     def _read_upgraded_mise_lock(path: Path) -> p.Result[t.JsonMapping]:
