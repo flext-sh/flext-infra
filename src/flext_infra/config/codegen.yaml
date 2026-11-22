@@ -329,7 +329,7 @@ Infra:
       # override-dependencies bind only this project's own resolution, never
       # the metadata an installer of this distribution resolves.
       uv_override_dependencies:
-      - rope @ git+https://github.com/marlon-costa-dc/rope.git@09806ca918b69994ac3a880c92cde9689f480f46
+      - rope @ git+https://github.com/marlon-costa-dc/rope.git@ecdee0efcbfa1bbdbd070218de3c39716b0299aa
       # Moving selectors consumed by generated .mise.toml and CI. Only
       # `make upg` resolves them to the newest release and writes mise.lock;
       # setup installs exactly what the committed lock pins, and only these
@@ -684,6 +684,7 @@ Infra:
       generation_profile_path: .reports/codegen/gen.pstats
       modification_profile_path: .reports/refactor/mod.pstats
       check_profile_path: .reports/check/route.pstats
+      tests_profile_path: .reports/tests/route.pstats
       # Whole-composition prerequisites precede every other check gate.
       # A partial inventory or any diagnostic prevents subsequent phases.
       check_prerequisite_gates: [ lint, pyrefly ]
@@ -705,12 +706,12 @@ Infra:
         max_load5: 20
         memory_limit_gb: 5
         max_processes: 2
-        # Operator 2026-11-19: every verb admits at max_load5 20; no verb
-        # declares a higher load override.
-        # Operator 2026-11-21: setup only bootstraps and deploys the committed
-        # locks (upg alone resolves and writes them), so it must always run on
-        # its own; the load gate never refuses it, the run limits still apply.
-        ungated_verbs: [setup]
+        # No verb declares a higher load override. The load gate refuses only
+        # the full forms (check-full, tests-full, mod-full) and the remaining
+        # heavy verbs; setup and the light forms (commit-stage or primary
+        # check, incremental tests, mod with RULES or LAWS) always start and
+        # run under the idle-priority run limits (bead flext-8hkfn).
+        ungated_verbs: [setup, check, tests, mod]
         refusal_guidance:
         - Do not wait for the load to drop; run the lighter form now, it runs at idle priority.
         - Prefer make tests (incremental Testmon) over make tests-full; run tests-full only occasionally.
@@ -772,19 +773,6 @@ Infra:
       executor_environment:
         directory: .flext/executor
         dependency_group: dev
-      # Actions-cache policy for the shared testmon database: two-phase
-      # generations, a per-repository byte budget with an ascending quota
-      # ladder, and the refs allowed to publish (never pull requests).
-      testmon_cache_policy:
-        mode: stable
-        save_enabled: true
-        max_bootstrap_generations: 3
-        max_stable_generations: 3
-        per_repo_budget_bytes: 52428800
-        warning_threshold_percent: 80
-        maintenance_threshold_percent: 90
-        block_threshold_percent: 95
-        key_prefix: flext-testmon
       ruff_cache:
         external_storage_directory: flext/infra/ruff
       # Public verbs execute their declared operation without mode selectors.
@@ -983,19 +971,23 @@ Infra:
         arguments: [ LAWS, RULES ]
         description: Refactor declared source structure through the shared pipeline and publish the complete coherent change; LAWS (ENFORCE ids) or RULES (rule ids) diagnose or repair one law (ADR-028 Decision 18 item 2).
       - name: fix
-        description: Apply declared repairs to authored inputs through their canonical owners.
+        description: Apply declared repairs to authored inputs through their canonical owners; in a workspace root ALL=Y includes every governed member.
+        arguments: [ ALL ]
       - name: fmt
-        description: Format authored content through the configured formatters.
+        description: Format authored content through the configured formatters; in a workspace root ALL=Y includes every governed member.
+        arguments: [ ALL ]
       - name: check
         description: Validate declarations, projections, environment, documentation and configured gates without repairs or publication.
         arguments: [ CHECK_PHASE ]
       - name: tests
-        description: Run native incremental tests through the persistent Testmon selection.
+        description: Run native incremental tests through the persistent Testmon selection; in a workspace root ALL=Y includes every governed member.
+        arguments: [ ALL ]
       - name: tests-full
-        description: Run the complete selected inventory once and record it in Testmon.
+        description: Run the complete selected inventory once and record it in Testmon; in a workspace root ALL=Y includes every governed member.
+        arguments: [ ALL ]
       - name: tests-harness
-        description: Run only the harness gate tests, through the persistent Testmon selection, under the harness that provides their inputs; MARKER=<harness gate marker> narrows the run to one.
-        arguments: [ MARKER ]
+        description: Run only the harness gate tests, through the persistent Testmon selection, under the harness that provides their inputs; MARKER=<harness gate marker> narrows the run to one; in a workspace root ALL=Y includes every governed member.
+        arguments: [ ALL, MARKER ]
       - name: help
         description: Discover the declared public interface without effects.
       - name: build

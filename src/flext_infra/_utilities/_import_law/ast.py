@@ -131,18 +131,25 @@ class FlextInfraUtilitiesImportLawAst(FlextInfraUtilitiesImportLawPolicy):
         node: ast.AST,
         parents: Mapping[int, ast.AST],
     ) -> bool:
-        """Return whether the node sits under an ``if TYPE_CHECKING:`` block.
+        """Return whether the node sits in the body of an ``if TYPE_CHECKING:``.
+
+        The ``else`` branch of that guard runs at import time, so a node there
+        is a runtime read, not a typing-only one.
 
         Returns:
-            Whether the node sits under an ``if TYPE_CHECKING:`` block.
+            Whether the node sits in the body of an ``if TYPE_CHECKING:`` block.
 
         """
+        child = node
         current = parents.get(id(node))
         while current is not None:
-            if isinstance(current, ast.If) and cls._import_law_is_type_checking_test(
-                current.test,
+            if (
+                isinstance(current, ast.If)
+                and cls._import_law_is_type_checking_test(current.test)
+                and any(statement is child for statement in current.body)
             ):
                 return True
+            child = current
             current = parents.get(id(current))
         return False
 

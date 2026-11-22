@@ -275,57 +275,6 @@ class FlextInfraProtocolsConfigMake:
             ...
 
     @runtime_checkable
-    class TestmonCachePolicySpec(
-        FlextInfraProtocolsConfigContract.ConfigContract, Protocol
-    ):
-        """Structural data contract projected from the owning model."""
-
-        @property
-        def mode(self) -> Literal["bootstrap", "stable"]:
-            """Cache phase: bootstrap seeds, stable saves."""
-            ...
-
-        @property
-        def save_enabled(self) -> bool:
-            """Master switch for cache publishes."""
-            ...
-
-        @property
-        def max_bootstrap_generations(self) -> int:
-            """Retention cap for bootstrap generations."""
-            ...
-
-        @property
-        def max_stable_generations(self) -> int:
-            """Retention cap for stable generations."""
-            ...
-
-        @property
-        def per_repo_budget_bytes(self) -> int:
-            """Per-repository byte budget."""
-            ...
-
-        @property
-        def warning_threshold_percent(self) -> int:
-            """Quota-ladder warning stage."""
-            ...
-
-        @property
-        def maintenance_threshold_percent(self) -> int:
-            """Quota-ladder maintenance stage."""
-            ...
-
-        @property
-        def block_threshold_percent(self) -> int:
-            """Quota-ladder block stage."""
-            ...
-
-        @property
-        def key_prefix(self) -> t.NonEmptyStr:
-            """Actions cache key namespace."""
-            ...
-
-    @runtime_checkable
     class MakeRuffSpec(FlextInfraProtocolsConfigContract.ConfigContract, Protocol):
         """Structural data contract projected from the owning model."""
 
@@ -445,7 +394,7 @@ class FlextInfraProtocolsConfigMake:
         def testmon_cache(
             self,
         ) -> FlextInfraProtocolsConfigMake.MakeHarnessSpecTestmonCacheSpec:
-            """Adaptive testmon Actions cache policy."""
+            """Testmon's native database filename and runner paths."""
             ...
 
         @property
@@ -491,19 +440,17 @@ class FlextInfraProtocolsConfigMake:
             ...
 
         @property
-        def check_report_output_environment_variable(self) -> str:
-            """Invocation-owned checker report destination transport."""
+        def tests_profile_path(self) -> Path:
+            """Structural member projected from the owning model.
+
+            Repository-relative profile of the tests route; each pytest child
+            profiles into the pytest policy's directory.
+            """
             ...
 
         @property
-        def testmon_cache_policy(
-            self,
-        ) -> FlextInfraProtocolsConfigMake.TestmonCachePolicySpec:
-            """Structural member projected from the owning model.
-
-            Declarative save/budget/quota policy for the shared testmon cache (#1001
-            delta).
-            """
+        def check_report_output_environment_variable(self) -> str:
+            """Invocation-owned checker report destination transport."""
             ...
 
         @property
@@ -512,81 +459,10 @@ class FlextInfraProtocolsConfigMake:
             ...
 
     @runtime_checkable
-    class MakeHarnessSpecTestmonCachePolicySpec(
-        FlextInfraProtocolsConfigContract.ConfigContract, Protocol
-    ):
-        """Structural data contract projected from the owning model."""
-
-        @property
-        def mode(self) -> Literal["bootstrap", "stable"]:
-            """Cache phase: bootstrap seeds, stable saves."""
-            ...
-
-        @property
-        def save_enabled(self) -> bool:
-            """Master switch for cache publishes."""
-            ...
-
-        @property
-        def max_bootstrap_generations(self) -> int:
-            """Retention cap for bootstrap generations."""
-            ...
-
-        @property
-        def max_stable_generations(self) -> int:
-            """Retention cap for stable generations."""
-            ...
-
-        @property
-        def per_repo_budget_bytes(self) -> int:
-            """Per-repository byte budget."""
-            ...
-
-        @property
-        def warning_threshold_percent(self) -> int:
-            """Quota-ladder warning stage."""
-            ...
-
-        @property
-        def maintenance_threshold_percent(self) -> int:
-            """Quota-ladder maintenance stage."""
-            ...
-
-        @property
-        def block_threshold_percent(self) -> int:
-            """Quota-ladder block stage."""
-            ...
-
-        @property
-        def key_prefix(self) -> t.NonEmptyStr:
-            """Actions cache key namespace."""
-            ...
-
-    @runtime_checkable
     class MakeHarnessSpecTestmonCacheSpec(
         FlextInfraProtocolsConfigContract.ConfigContract, Protocol
     ):
         """Structural data contract projected from the owning model."""
-
-        @property
-        def data_home_environment_variable(self) -> str:
-            """XDG persistent cache-home variable."""
-            ...
-
-        @property
-        def user_home_environment_variable(self) -> str:
-            """User home variable for the XDG default."""
-            ...
-
-        @property
-        def home_cache_directory(self) -> Path:
-            """Standard cache directory below the user home."""
-            ...
-
-        @property
-        def external_storage_directory(self) -> Path:
-            """FLEXT-owned directory below the cache home."""
-            ...
 
         @property
         def database_filename(self) -> t.NonEmptyStr:

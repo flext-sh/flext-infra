@@ -312,28 +312,37 @@ class TestsFlextInfraCodegenRepositoryRootScope:
             tm.that(output, has=local_body)
             tm.that(output, lacks="--verb")
 
-    def test_repository_root_check_owns_its_route_deadline(
+    @c.Tests.MARK.parametrize(
+        ("verb", "profile_field"),
+        [
+            (c.Infra.VERB_CHECK, "check_profile_path"),
+            (c.Infra.VERB_TEST, "tests_profile_path"),
+        ],
+    )
+    def test_repository_root_route_owns_its_deadline_and_profile_destination(
         self,
         tmp_path: Path,
+        verb: str,
+        profile_field: str,
     ) -> None:
-        """The route owns its deadline; no outer timeout truncates a complete run."""
+        """The route owns its deadline and declares its profile destination."""
         repository_root = self._render_root_makefile(tmp_path)
         execution = tm.ok(
             u.Cli.run_raw(
-                [c.Infra.MAKE, "--dry-run", "_builtin-check"],
+                [c.Infra.MAKE, "--dry-run", f"_builtin-{verb}"],
                 cwd=repository_root,
                 options=m.Cli.ProcessOptions(remove_env_keys=("MAKEFLAGS",)),
             ),
         )
         tm.ok(u.Cli.process_succeeded(execution.outcome))
-        make = config.Infra.codegen.make
+        profile_path = getattr(config.Infra.codegen.make, profile_field)
         output = execution.stdout + execution.stderr
         tm.that(
             output,
             has=(
                 "FLEXT_INFRA_PROFILE_OUTPUT="
-                f'"$(PROJECT_ROOT)/{make.check_profile_path}" '
-                f"{c.Infra.CLI_GROUP_WORKSPACE} {c.Infra.VERB_CHECK} "
+                f'"$(PROJECT_ROOT)/{profile_path}" '
+                f"{c.Infra.CLI_GROUP_WORKSPACE} {verb} "
                 '--repository-root "$(PROJECT_ROOT)"'
             ),
         )

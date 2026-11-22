@@ -181,3 +181,25 @@ class TestsFlextInfraCodegenProjectVerbAdmission:
         tm.that(u.Cli.process_succeeded(process.outcome), eq=not refused)
         if refused:
             tm.that(process.stderr, has="Refused: 5-minute load average")
+
+    @staticmethod
+    def test_ungated_check_still_gates_its_full_form(tmp_path: Path) -> None:
+        """Ungating the light check leaves a bare local check gated as check-full."""
+        root, _ = u.Tests.render_make_environment(
+            tmp_path,
+            c.Infra.MakeProfile.STANDALONE,
+            shape=u.Tests.MakeEnvironmentShape(
+                local_admission={
+                    "host_load_gate": True,
+                    "max_load5": 0.001,
+                    "ungated_verbs": [c.Infra.VERB_CHECK],
+                },
+            ),
+        )
+        process = tm.ok(
+            u.Tests.run_isolated_make(
+                ["--no-print-directory", c.Infra.VERB_CHECK], cwd=root
+            )
+        )
+        tm.that(u.Cli.process_succeeded(process.outcome), eq=False)
+        tm.that(process.stderr, has="of 'check-full'")

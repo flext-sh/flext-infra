@@ -346,81 +346,6 @@ class FlextInfraModelsConfigMake(
                 raise ValueError(msg)
             return self
 
-    class TestmonCachePolicySpec(FlextInfraModelsConfigContract.ConfigContract):
-        """Declarative Actions-cache policy for the shared testmon database.
-
-        Implements the preserved #1001 delta (bead flext-j0u23): two-phase
-        generations with per-mode caps, a per-repository byte budget with a
-        three-stage quota ladder and a cache-key namespace. Event identity
-        determines publication eligibility; branch names are not policy.
-        The packaged codegen configuration owns all policy values. This
-        declaration validates them and never supplies a second policy when
-        required configuration is missing.
-        """
-
-        mode: Annotated[
-            Literal["bootstrap", "stable"],
-            m.Field(description="Cache phase: bootstrap seeds, stable saves"),
-        ]
-        save_enabled: Annotated[
-            bool,
-            m.Field(description="Master switch for cache publishes"),
-        ]
-        max_bootstrap_generations: Annotated[
-            int,
-            m.Field(gt=0, description="Retention cap for bootstrap generations"),
-        ]
-        max_stable_generations: Annotated[
-            int,
-            m.Field(gt=0, description="Retention cap for stable generations"),
-        ]
-        per_repo_budget_bytes: Annotated[
-            int,
-            m.Field(gt=0, description="Per-repository byte budget"),
-        ]
-        warning_threshold_percent: Annotated[
-            int,
-            m.Field(ge=0, le=100, description="Quota-ladder warning stage"),
-        ]
-        maintenance_threshold_percent: Annotated[
-            int,
-            m.Field(ge=0, le=100, description="Quota-ladder maintenance stage"),
-        ]
-        block_threshold_percent: Annotated[
-            int,
-            m.Field(ge=0, le=100, description="Quota-ladder block stage"),
-        ] = 95
-        key_prefix: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Actions cache key namespace"),
-        ]
-
-        @m.model_validator(mode="after")
-        def require_ascending_quota_ladder(self) -> Self:
-            """Keep the quota ladder strictly ascending within the percent scale.
-
-            Returns:
-                The resulting ``Self``.
-
-            Raises:
-                ValueError: If testmon cache quota ladder must ascend warning <
-                    maintenance < block <= 100.
-
-            """
-            full_scale = 100
-            if not (
-                self.warning_threshold_percent
-                < self.maintenance_threshold_percent
-                < self.block_threshold_percent
-                <= full_scale
-            ):
-                msg = (
-                    "testmon cache quota ladder must ascend "
-                    "warning < maintenance < block <= 100"
-                )
-                raise ValueError(msg)
-            return self
-
     class MakeRuffSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Ruff CLI contract for generated Make verbs and quality gates.
 
@@ -582,100 +507,9 @@ class FlextInfraModelsConfigMake(
     class MakeHarnessSpec(MakeExecutionSpec):
         """Test harness, cache, receipt and profile environment of the Make surface."""
 
-        class TestmonCachePolicySpec(FlextInfraModelsConfigContract.ConfigContract):
-            """Declarative Actions-cache policy for the shared testmon database.
-
-            Implements the preserved #1001 delta (bead flext-j0u23): two-phase
-            generations with per-mode caps, a per-repository byte budget with a
-            three-stage quota ladder and a cache-key namespace. Event identity
-            determines publication eligibility; branch names are not policy.
-            """
-
-            mode: Annotated[
-                Literal["bootstrap", "stable"],
-                m.Field(description="Cache phase: bootstrap seeds, stable saves"),
-            ] = "stable"
-            save_enabled: Annotated[
-                bool,
-                m.Field(description="Master switch for cache publishes"),
-            ] = False
-            max_bootstrap_generations: Annotated[
-                int,
-                m.Field(gt=0, description="Retention cap for bootstrap generations"),
-            ] = 3
-            max_stable_generations: Annotated[
-                int,
-                m.Field(gt=0, description="Retention cap for stable generations"),
-            ] = 3
-            per_repo_budget_bytes: Annotated[
-                int,
-                m.Field(gt=0, description="Per-repository byte budget"),
-            ] = 52_428_800
-            warning_threshold_percent: Annotated[
-                int,
-                m.Field(ge=0, le=100, description="Quota-ladder warning stage"),
-            ] = 80
-            maintenance_threshold_percent: Annotated[
-                int,
-                m.Field(ge=0, le=100, description="Quota-ladder maintenance stage"),
-            ] = 90
-            block_threshold_percent: Annotated[
-                int,
-                m.Field(ge=0, le=100, description="Quota-ladder block stage"),
-            ] = 95
-            key_prefix: Annotated[
-                t.NonEmptyStr,
-                m.Field(description="Actions cache key namespace"),
-            ] = "flext-testmon"
-
-            @m.model_validator(mode="after")
-            def require_ascending_quota_ladder(self) -> Self:
-                """Keep the quota ladder strictly ascending within the percent scale.
-
-                Returns:
-                    The resulting ``Self``.
-
-                Raises:
-                    ValueError: If testmon cache quota ladder must ascend warning <
-                        maintenance < block <= 100.
-
-                """
-                full_scale = 100
-                if not (
-                    self.warning_threshold_percent
-                    < self.maintenance_threshold_percent
-                    < self.block_threshold_percent
-                    <= full_scale
-                ):
-                    msg = (
-                        "testmon cache quota ladder must ascend"
-                        " warning < maintenance < block <= 100"
-                    )
-                    raise ValueError(msg)
-                return self
-
         class TestmonCacheSpec(FlextInfraModelsConfigContract.ConfigContract):
             """Testmon's native database filename and the runner paths."""
 
-            data_home_environment_variable: Annotated[
-                str,
-                m.Field(min_length=1, description="XDG persistent cache-home variable"),
-            ] = FlextInfraConstantsConfig.CacheHomeEnvironment.DATA_HOME.value
-            user_home_environment_variable: Annotated[
-                str,
-                m.Field(
-                    min_length=1,
-                    description="User home variable for the XDG default",
-                ),
-            ] = FlextInfraConstantsConfig.CacheHomeEnvironment.USER_HOME.value
-            home_cache_directory: Annotated[
-                Path,
-                m.Field(description="Standard cache directory below the user home"),
-            ] = Path(".cache")
-            external_storage_directory: Annotated[
-                Path,
-                m.Field(description="FLEXT-owned directory below the cache home"),
-            ] = Path("flext/infra/testmon")
             database_filename: Annotated[
                 t.NonEmptyStr,
                 m.Field(description="pytest-testmon's native database filename"),
@@ -757,7 +591,7 @@ class FlextInfraModelsConfigMake(
         testmon_cache: Annotated[
             TestmonCacheSpec,
             m.Field(
-                description="Adaptive testmon Actions cache policy",
+                description="Testmon's native database filename and runner paths",
                 default_factory=TestmonCacheSpec,
             ),
         ]
@@ -795,20 +629,20 @@ class FlextInfraModelsConfigMake(
                 )
             ),
         ]
+        tests_profile_path: Annotated[
+            Path,
+            m.Field(
+                description=(
+                    "Repository-relative profile of the tests route; each "
+                    "pytest child profiles into the pytest policy's directory"
+                )
+            ),
+        ]
         check_report_output_environment_variable: Annotated[
             str,
             m.Field(
                 pattern=r"^[A-Z][A-Z0-9_]*$",
                 description="Invocation-owned checker report destination transport",
-            ),
-        ]
-        testmon_cache_policy: Annotated[
-            FlextInfraModelsConfigMake.TestmonCachePolicySpec,
-            m.Field(
-                description=(
-                    "Declarative save/budget/quota policy for the shared"
-                    " testmon cache (#1001 delta)"
-                ),
             ),
         ]
         ruff_cache: Annotated[
@@ -1357,6 +1191,7 @@ class FlextInfraModelsConfigMake(
                 ("generation_profile_path", self.generation_profile_path),
                 ("modification_profile_path", self.modification_profile_path),
                 ("check_profile_path", self.check_profile_path),
+                ("tests_profile_path", self.tests_profile_path),
             ):
                 if path.is_absolute() or ".." in path.parts or not path.parts:
                     msg = f"make {name} must be nonempty and repository-relative"

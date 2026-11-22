@@ -30,8 +30,7 @@ class TestsFlextInfraPytestRunnerCleanupOutcome:
         """A suite whose cleanup leaves a member behind still records its outcome.
 
         The test leaves a same-group child that ignores the soft signals, and
-        the suite clock is nearly spent, so the deadline kills the suite. The
-        complete run holds no Testmon lease, so its clock is not re-armed.
+        the suite clock is nearly spent, so the deadline kills the suite.
         While this process is the child subreaper and does not wait, the
         orphan stays a zombie member: the process owner fails the run with
         the timeout in ``error_data``, and the runner records that outcome as
