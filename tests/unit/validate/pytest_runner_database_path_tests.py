@@ -71,6 +71,7 @@ class TestsFlextInfraPytestRunnerDatabase:
         tm.that(from_make.testmon_db, eq=expected)
 
     @staticmethod
+    @c.Tests.MARK.slow
     def test_testmon_uses_checkout_database_with_nested_pytest_root(
         cached_runner_project: Path,
         monkeypatch: t.Tests.MonkeyPatch,
