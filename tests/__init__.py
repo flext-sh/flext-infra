@@ -212,6 +212,7 @@ if TYPE_CHECKING:
     )
     from flext_infra.workspace import (
         FlextInfraBindingService,
+        FlextInfraNativeSetup,
         FlextInfraRopeWorkspace,
         FlextInfraRuntimeDependencyCollector,
         FlextInfraWorkspaceDetector,
@@ -349,6 +350,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraNamespaceEnforcer",
     "FlextInfraNamespaceRelocationCascade",
     "FlextInfraNamespaceValidator",
+    "FlextInfraNativeSetup",
     "FlextInfraProjectClassifier",
     "FlextInfraProjectSelectionServiceBase",
     "FlextInfraPromoted",
@@ -550,6 +552,7 @@ install_lazy_exports(
         "FlextInfraNamespaceEnforcer": "flext_infra.refactor",
         "FlextInfraNamespaceRelocationCascade": "flext_infra.refactor",
         "FlextInfraNamespaceValidator": "flext_infra.validate",
+        "FlextInfraNativeSetup": "flext_infra.workspace",
         "FlextInfraProjectClassifier": "flext_infra.refactor",
         "FlextInfraProjectSelectionServiceBase": "flext_infra",
         "FlextInfraPromoted": "flext_infra",

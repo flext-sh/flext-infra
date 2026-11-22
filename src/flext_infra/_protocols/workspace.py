@@ -335,6 +335,84 @@ class FlextInfraProtocolsWorkspace:
             ...
 
     @runtime_checkable
+    class NativeSetupQualificationRequest(WorkspaceRequest, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def pending_report(self) -> Path:
+            """Invocation-owned pending setup report."""
+            ...
+
+    @runtime_checkable
+    class NativeSetupInputs(FlextCliProtocols.BaseModel, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def launcher(self) -> p.Cli.AtomicFileReceipt:
+            """Locked static launcher receipt."""
+            ...
+
+        @property
+        def extractor(self) -> p.Cli.AtomicFileReceipt:
+            """Locked static SDK extractor receipt."""
+            ...
+
+        @property
+        def extractor_arguments(self) -> tuple[str, ...]:
+            """Original native SDK extraction arguments."""
+            ...
+
+        @property
+        def compiler_archive(self) -> p.Cli.AtomicFileReceipt:
+            """Original authenticated SDK archive."""
+            ...
+
+        @property
+        def compiler_member(self) -> Path:
+            """Compiler path inside the authenticated SDK archive."""
+            ...
+
+        @property
+        def compiler_arguments(self) -> tuple[str, ...]:
+            """Original arguments selecting the driver."""
+            ...
+
+        @property
+        def archive(self) -> Path:
+            """Static libseccomp archive."""
+            ...
+
+        @property
+        def headers(self) -> tuple[Path, Path]:
+            """Exact public libseccomp headers."""
+            ...
+
+        @property
+        def sources(self) -> tuple[p.Cli.AtomicFileReceipt, p.Cli.AtomicFileReceipt]:
+            """Installed policy and probe source receipts."""
+            ...
+
+        @property
+        def declaration(self) -> tuple[p.Cli.AtomicFileReceipt, ...]:
+            """Original toolchain declaration."""
+            ...
+
+        @property
+        def installation(self) -> tuple[p.Cli.AtomicFileReceipt, ...]:
+            """Exact locked installation inputs."""
+            ...
+
+        @property
+        def abi_reference(self) -> p.Cli.AtomicFileReceipt:
+            """Installed runtime interpreter receipt."""
+            ...
+
+        @property
+        def profiles(self) -> tuple[Literal["read-only", "fixture"], ...]:
+            """Original elected process profiles."""
+            ...
+
+    @runtime_checkable
     class WorkspaceTestsRequest(WorkspaceRequest, Protocol):
         """Structural data contract projected from the owning model."""
 
