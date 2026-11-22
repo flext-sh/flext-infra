@@ -194,6 +194,7 @@ class TestsFlextInfraPytestRunner:
         )
 
     @staticmethod
+    @c.Tests.MARK.slow
     @c.Tests.MARK.parametrize("ci_context", [False, True])
     def test_child_imports_respect_the_installed_ci_boundary(
         cached_runner_project: Path,
@@ -216,7 +217,7 @@ class TestsFlextInfraPytestRunner:
         runner = u.Tests.PytestRunner.runner_for(
             cached_runner_project, ci_context=ci_context
         )
-        (cached_runner_project / runner.target / "test_import_boundary.py").write_text(
+        (cached_runner_project / runner.target / "test_runtime.py").write_text(
             "import importlib.util\n"
             "import os\n"
             "import sys\n\n"
@@ -435,13 +436,10 @@ class TestsFlextInfraPytestRunner:
         u.Tests.PytestRunner.declare_parallel_project(cached_runner_project)
         policy = config.Infra.tooling.tools.pytest
         cache = config.Infra.codegen.make.testmon_cache
-        (cached_runner_project / cache.target_directory / "test_phases.py").write_text(
+        (cached_runner_project / cache.target_directory / "test_runtime.py").write_text(
             "import pytest\nfrom runner_sample import answer\n\n"
-            + "".join(
-                f"def test_budgeted_{index}() -> None:\n    assert answer()\n\n"
-                for index in range(1)
-            )
-            + f"@pytest.mark.{policy.slow_marker}\n"
+            "def test_budgeted() -> None:\n    assert answer()\n\n"
+            f"@pytest.mark.{policy.slow_marker}\n"
             "def test_slow_red() -> None:\n    assert answer() < 0\n",
             encoding="utf-8",
         )
