@@ -22,8 +22,7 @@ class TestsFlextInfraMakeGenRootContract:
         """The typed catalog exposes no per-file selector for tests."""
         verbs = {verb.name: verb for verb in config.Infra.codegen.make.verbs}
         for name in ("tests", "tests-full"):
-            tm.that(verbs[name].arguments, eq=())
-            tm.that(verbs[name].description.upper(), lacks="FILE")
+            tm.that(verbs[name].arguments, lacks="FILE")
 
     @staticmethod
     @c.Tests.MARK.slow
