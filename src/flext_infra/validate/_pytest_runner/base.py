@@ -48,6 +48,15 @@ class FlextInfraPytestRunnerBase(s[int]):
             ),
         ),
     ] = None
+    config_receipts: Annotated[
+        Path | None,
+        m.Field(
+            description=(
+                "Checkout-root directory of the typed config receipts Testmon "
+                "records beside each test's Python dependencies."
+            ),
+        ),
+    ] = None
     run_timeout_seconds: Annotated[
         int | None,
         m.Field(
@@ -171,6 +180,11 @@ class FlextInfraPytestRunnerBase(s[int]):
                 if execution_mode.records_testmon
                 else None
             ),
+            config_receipts=(
+                root / cache.config_receipts_directory
+                if execution_mode.records_testmon
+                else None
+            ),
             ci_context=u.Infra.env_value(make.ci.variable) == make.ci.value,
             profile_enabled=settings.Infra.profile,
             harness_marker=harness_marker,
@@ -278,6 +292,11 @@ class FlextInfraPytestRunnerBase(s[int]):
             reports=Path(cls._environment_value(c.Infra.PYTEST_ENV_REPORTS)),
             testmon_db=(
                 repository_root / make.testmon_cache.database_filename
+                if execution_mode.records_testmon
+                else None
+            ),
+            config_receipts=(
+                repository_root / make.testmon_cache.config_receipts_directory
                 if execution_mode.records_testmon
                 else None
             ),
