@@ -48,8 +48,10 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
         ):
             msg = f"isolated pytest report directory changed identity: {source}"
             raise ValueError(msg)
+        warnings = Path(event_name).with_suffix(c.Infra.PYTEST_WARNING_EVENTS_SUFFIX)
+        names = (event_name, warnings.name)
         if phase == "suite":
-            names = (event_name, "junit.xml", "testmon-inventory.json")
+            names = (*names, "junit.xml", "testmon-inventory.json")
             if self.profile_enabled:
                 policy = self.pytest_policy()
                 self._publish_fixture_profiles(
@@ -58,7 +60,7 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
                 names = (*names, policy.profile_suite_filename)
         else:
             stem = event_name.removesuffix(".events.jsonl")
-            names = (event_name, f"{stem}.json")
+            names = (*names, f"{stem}.json")
             if self.profile_enabled or self.collection_command_prefix:
                 names = (*names, f"{stem}.pstats")
         for name in names:
