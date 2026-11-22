@@ -176,6 +176,12 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         without running it. testmon's environment is its declared separation
         between run configurations, so each marker scope owns one.
 
+        Config edits never name an environment: each test records the config
+        files it opens and the typed config leaves it reads as Testmon file
+        dependencies (``_config_receipt_args``), so an edited YAML selects
+        only its consumers. Only the elected pytest policy, which shapes the
+        run itself rather than any test's behavior, keys the environment.
+
         Returns:
             The resulting ``str``.
 
@@ -183,53 +189,24 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         scope = hashlib.sha256(
             self._marker_expression(execution_mode).encode(),
         ).hexdigest()[:8]
-        toolchain, configuration = self.testmon_input_identity()
-        return f"toolchain-{toolchain[:12]}-{configuration}-{scope}"
-
-    def testmon_input_identity(self) -> tuple[str, str]:
-        """Read runtime and configuration identities independently of selection.
-
-        Returns:
-            The existing installed toolchain identity and declared-input digest.
-
-        """
-        return (
-            FlextInfraWorkspaceEnvironmentProvenance.installed_toolchain_identity(),
-            self._config_testmon_digest(),
+        policy = hashlib.sha256(
+            self.pytest_policy().model_dump_json().encode(),
+        ).hexdigest()[:8]
+        toolchain = (
+            FlextInfraWorkspaceEnvironmentProvenance.installed_toolchain_identity()
         )
+        return f"toolchain-{toolchain[:12]}-{policy}-{scope}"
 
-    def _config_testmon_digest(self) -> str:
-        """Fingerprint the project's and its package's ``config/*.yaml`` inputs.
-
-        testmon tracks Python sources only, while a FLEXT project's behavior
-        is declared in its config: the project-root layer and the packaged
-        defaults its config class loads from ``<package>/config``. An edited
-        YAML must select a fresh environment in the same external database
-        instead of a cache hit. Read on every command construction, never
-        memoized.
+    def _config_receipt_args(self) -> t.StrTuple:
+        """Activate per-test config dependency recording for a Testmon process.
 
         Returns:
-            The digest of every config source path and content.
-
-        Raises:
-            ValueError: If a required config source disappears mid-read.
+            The plugin option naming the receipts directory, or nothing.
 
         """
-        root = self.repository_root.resolve()
-        layout = u.Infra.layout(root)
-        digest = hashlib.sha256()
-        for state in (
-            state
-            for source in (root, *(() if layout is None else (layout.package_dir,)))
-            for state in u.Infra.snapshot_config_sources(source).unwrap()
-        ):
-            if state.content is None:
-                msg = f"required test configuration disappeared: {state.path}"
-                raise ValueError(msg)
-            digest.update(state.path.relative_to(root).as_posix().encode())
-            digest.update(b"\0")
-            digest.update(hashlib.sha256(state.content).digest())
-        return digest.hexdigest()[:8]
+        if self.config_receipts is None:
+            return ()
+        return (f"{c.Infra.PYTEST_CONFIG_RECEIPTS_OPTION}={self.config_receipts}",)
 
     def _marker_expression(self, execution_mode: c.Infra.PytestExecutionMode) -> str:
         """Return the native pytest marker expression of one execution scope.
@@ -351,6 +328,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
                 *(("--testmon-noselect",) if complete else ("--testmon-forceselect",)),
                 "--testmon-env",
                 self.testmon_environment(execution_mode),
+                *self._config_receipt_args(),
             )
         )
         pytest_arguments = (
@@ -472,6 +450,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
                         ),
                         "--testmon-env",
                         self.testmon_environment(execution_mode),
+                        *self._config_receipt_args(),
                     )
                     if execution_mode.records_testmon
                     else ()

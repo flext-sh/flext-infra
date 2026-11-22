@@ -282,83 +282,121 @@ class TestsFlextInfraPytestRunner:
             runner.build_command(report)[suite_command.index("--testmon-env") + 1],
             eq=names[-1],
         )
-        # Packaged config YAML keys the environment; other package files do not.
+        # Config YAML never keys the environment: each test records its own
+        # config dependencies in the same Testmon environment instead.
         package_root = cached_runner_project / c.Infra.DEFAULT_SRC_DIR / "runner_sample"
         (package_root / c.CONFIG_DIR_NAME).mkdir()
         packaged = package_root / c.CONFIG_DIR_NAME / "behavior.yaml"
         packaged.write_text("value: initial\n", encoding=c.DEFAULT_ENCODING)
-        with_config = u.Tests.PytestRunner.runner_for(
-            cached_runner_project
-        ).testmon_environment(c.Infra.PytestExecutionMode.INCREMENTAL)
-        tm.that(with_config, ne=name)
-        (package_root / "notes.txt").write_text("unrelated\n", encoding="utf-8")
         tm.that(
             u.Tests.PytestRunner.runner_for(cached_runner_project).testmon_environment(
                 c.Infra.PytestExecutionMode.INCREMENTAL
             ),
-            eq=with_config,
-        )
-        packaged.write_text("value: changed\n", encoding=c.DEFAULT_ENCODING)
-        tm.that(
-            u.Tests.PytestRunner.runner_for(cached_runner_project).testmon_environment(
-                c.Infra.PytestExecutionMode.INCREMENTAL
-            ),
-            ne=with_config,
+            eq=name,
         )
 
     @staticmethod
     @c.Tests.MARK.slow
-    def test_config_only_changes_invalidate_the_persistent_cache(
+    @c.Tests.MARK.parametrize(
+        ("edited", "content", "consumers"),
+        [
+            (
+                "src/runner_sample/config/sample.yaml",
+                "Sample:\n  alpha:\n    value: 1\n  beta:\n    value: 3\n",
+                ("test_beta", "test_child"),
+            ),
+            (
+                "src/runner_sample/config/sample.yaml",
+                "Sample:\n  alpha:\n    value: 5\n  beta:\n    value: 2\n",
+                ("test_alpha", "test_child", "test_module_level"),
+            ),
+            (
+                "src/runner_sample/config/sample.yaml",
+                (
+                    "# comment only\nSample:\n  alpha:\n    value: 1\n"
+                    "  beta:\n    value: 2\n"
+                ),
+                ("test_child",),
+            ),
+            ("config/raw.yaml", "value: changed\n", ("test_child", "test_raw")),
+        ],
+        ids=["typed-leaf", "module-level-read", "comment-only", "opened-file"],
+    )
+    def test_config_edit_selects_only_its_consumers(
         cached_runner_project: Path,
+        edited: str,
+        content: str,
+        consumers: tuple[str, ...],
     ) -> None:
-        """A governed YAML change executes again using the same Testmon database."""
-        config_root = cached_runner_project / c.CONFIG_DIR_NAME
-        config_root.mkdir()
-        source = config_root / "behavior.yaml"
-        source.write_text("value: initial\n", encoding="utf-8")
-        cache = config.Infra.codegen.make.testmon_cache
-        (cached_runner_project / cache.target_directory / "test_runtime.py").write_text(
+        """An edited YAML executes exactly the tests that consume it, once."""
+        root = cached_runner_project
+        package = root / c.Infra.DEFAULT_SRC_DIR / "runner_sample"
+        (package / c.CONFIG_DIR_NAME).mkdir()
+        (package / c.CONFIG_DIR_NAME / "sample.yaml").write_text(
+            "Sample:\n  alpha:\n    value: 1\n  beta:\n    value: 2\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        (root / c.CONFIG_DIR_NAME).mkdir()
+        (root / c.CONFIG_DIR_NAME / "raw.yaml").write_text(
+            "value: initial\n", encoding=c.DEFAULT_ENCODING
+        )
+        # A typed singleton loaded from the packaged YAML, as FLEXT packages
+        # publish ``config``; each leaf is one ``Sample.<section>.value``.
+        (package / "__init__.py").write_text(
             "from pathlib import Path\n"
-            "from flext_cli import u\n\n"
-            "def test_runtime():\n"
-            f"    payload = u.Cli.config_load(Path({str(source)!r})).unwrap()\n"
-            "    assert payload.data['value']\n",
-            encoding="utf-8",
+            "import yaml\n"
+            "from pydantic import BaseModel\n\n"
+            "class Leaf(BaseModel):\n    value: int\n\n"
+            "class Section(BaseModel):\n    alpha: Leaf\n    beta: Leaf\n\n"
+            "class Root(BaseModel):\n    Sample: Section\n\n"
+            "config = Root.model_validate(yaml.safe_load(\n"
+            "    (Path(__file__).parent / 'config' / 'sample.yaml').read_text()\n"
+            "))\n\n"
+            "def answer() -> int:\n    return 42\n",
+            encoding=c.DEFAULT_ENCODING,
         )
-        runner = u.Tests.PytestRunner.runner_for(cached_runner_project)
-        database = runner.testmon_db
-        tm.that(tm.ok(runner.execute()) == 0, truth=True)
-        reports = cached_runner_project / runner.reports
-        tm.that("executed=1" in u.Tests.PytestRunner.summary(reports), truth=True)
-        warm = u.Tests.PytestRunner.runner_for(cached_runner_project)
-        tm.that(tm.ok(warm.execute()) == 0, truth=True)
+        tests_root = root / config.Infra.codegen.make.testmon_cache.target_directory
+        (tests_root / "test_runtime.py").write_text(
+            "import subprocess\nimport sys\nfrom pathlib import Path\n"
+            "from runner_sample import answer, config\n\n"
+            "def test_alpha() -> None:\n"
+            "    assert config.Sample.alpha.value > 0\n\n"
+            "def test_beta() -> None:\n"
+            "    assert config.Sample.beta.value > 0\n\n"
+            "def test_raw() -> None:\n"
+            "    raw = Path(__file__).parents[1] / 'config' / 'raw.yaml'\n"
+            "    assert raw.read_text()\n\n"
+            "def test_child() -> None:\n"
+            "    subprocess.run([sys.executable, '-c', 'pass'], check=True)\n\n"
+            "def test_free() -> None:\n"
+            "    assert answer() == 42\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        (tests_root / "test_module_level.py").write_text(
+            "from runner_sample import config\n\n"
+            "LIMIT = config.Sample.alpha.value\n\n"
+            "def test_module_level() -> None:\n"
+            "    assert LIMIT > 0\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        runner = u.Tests.PytestRunner.runner_for(root)
+        reports = root / runner.reports
+        tm.that(tm.ok(runner.execute()), eq=0)
+        tm.that(u.Tests.PytestRunner.summary(reports), has=["executed=6"])
+        (root / edited).write_text(content, encoding=c.DEFAULT_ENCODING)
+        changed = u.Tests.PytestRunner.runner_for(root)
+        tm.that(changed.testmon_db, eq=runner.testmon_db)
+        tm.that(tm.ok(changed.execute()), eq=0)
+        latest = reports / (reports / "latest.txt").read_text().strip()
+        selection = m.Infra.PytestCollectionManifest.model_validate_json(
+            (latest / "testmon-selection.json").read_text(),
+        )
         tm.that(
-            "outcome=cache_hit" in u.Tests.PytestRunner.summary(reports), truth=True
+            tuple(sorted(node.rsplit("::", 1)[1] for node in selection.node_ids)),
+            eq=consumers,
         )
-        warm_latest = (reports / "latest.txt").read_text().strip()
-        warm_accounting = m.Infra.TestmonRunAccounting.model_validate_json(
-            (reports / warm_latest / "run-accounting.json").read_text(),
-        )
-        tm.that(warm_accounting.cache_restored, truth=True)
-        tm.that(warm_accounting.executed_count == 0, truth=True)
-        tm.that(
-            warm_accounting.deselected_count == warm_accounting.inventory_count,
-            truth=True,
-        )
-        source.write_text("value: changed\n", encoding="utf-8")
-        changed = u.Tests.PytestRunner.runner_for(cached_runner_project)
-        tm.that(changed.testmon_db == database, truth=True)
-        tm.that(tm.ok(changed.execute()) == 0, truth=True)
-        tm.that("executed=1" in u.Tests.PytestRunner.summary(reports), truth=True)
-        latest = (reports / "latest.txt").read_text().strip()
-        accounting = m.Infra.TestmonRunAccounting.model_validate_json(
-            (reports / latest / "run-accounting.json").read_text(),
-        )
-        tm.that(accounting.executed_count == accounting.reported_count, truth=True)
-        tm.that(
-            accounting.executed_count + accounting.deselected_count,
-            eq=accounting.inventory_count,
-        )
+        tm.that(tm.ok(u.Tests.PytestRunner.runner_for(root).execute()), eq=0)
+        tm.that(u.Tests.PytestRunner.summary(reports), has=["executed=0"])
 
     @staticmethod
     @c.Tests.MARK.slow

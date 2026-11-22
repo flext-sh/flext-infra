@@ -289,6 +289,31 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
     PYTEST_TESTMON_DISABLE_DEST: ClassVar[str] = "no-testmon"
     """pytest-testmon option destination that overrides every activation."""
     PYTEST_COLLECTION_MANIFEST_OPTION: ClassVar[str] = "--flext-collection-manifest"
+    PYTEST_CONFIG_RECEIPTS_OPTION: ClassVar[str] = "--flext-config-receipts"
+    """Directory of typed config receipts that Testmon records per test."""
+    PYTEST_CONFIG_RECEIPT_SUFFIX: ClassVar[str] = ".sha256"
+    """Suffix of one config leaf receipt (Testmon fingerprints it as one block)."""
+    PYTEST_CONFIG_RECEIPT_DEPTH: ClassVar[int] = 3
+    """Attribute depth of a typed config leaf (root.namespace.file.section)."""
+    PYTEST_CONFIG_WHOLE_READS: ClassVar[frozenset[str]] = frozenset({
+        "__dict__",
+        "__getstate__",
+        "__pydantic_serializer__",
+        "model_copy",
+        "model_dump",
+        "model_dump_json",
+    })
+    """Attributes through which a model node is read as a whole."""
+    PYTEST_CONFIG_SPAWN_EVENTS: ClassVar[frozenset[str]] = frozenset({
+        "os.fork",
+        "os.posix_spawn",
+        "os.spawn",
+        "os.system",
+        "subprocess.Popen",
+    })
+    """Audit events that start a child process able to read config itself."""
+    PYTEST_TESTMON_COLLECT_PLUGIN: ClassVar[str] = "TestmonCollect"
+    """Name under which pytest-testmon registers its recording plugin."""
     PYTEST_WORKER_COLLECTION_KEY: ClassVar[str] = "flext_collection_manifest"
     """Native xdist worker-output key carrying the observed manifest as JSON."""
     PYTEST_PROFILE_PROCESS_DIRECTORY_ENV: ClassVar[str] = (

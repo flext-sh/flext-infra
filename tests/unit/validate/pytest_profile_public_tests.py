@@ -412,7 +412,6 @@ class TestsFlextInfraPytestProfile:
             for name, function in measured.func_profiles.items()
             if name
             in {
-                "_config_testmon_digest",
                 "snapshot_config_sources",
                 "_validated_config_roots",
                 "__class_getitem__",
