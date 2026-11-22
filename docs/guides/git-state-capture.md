@@ -81,6 +81,9 @@ integration tip. Each keeps the rule its own operation needs:
 
 - `git_push_upstream` is a plain, never-forced push: a diverged remote branch
   rejects it.
+- `git_commit` uses native Git with the elected index and the worktree's
+  effective hooks. It returns the object ID reported by that invocation
+  after verifying the elected HEAD and parent (`flext-drts0.6`).
 - `git_create_branch` refuses a branch that already exists.
 - `git_delete_ref` is a compare-and-swap on the expected object ID.
 - `git_delete_remote_branch` requires the observed object ID and deletes on that
