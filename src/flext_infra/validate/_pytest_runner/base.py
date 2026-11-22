@@ -14,6 +14,7 @@ from typing import Annotated, Self
 
 from flext_infra import c, m, p, s, settings, t, u
 from flext_infra._utilities import FlextInfraUtilitiesProjectManagedArtifacts
+from flext_infra.validate._pytest_runner.fixture import FlextInfraPytestFixtureElection
 
 
 class FlextInfraPytestRunnerBase(s[int]):
@@ -173,6 +174,13 @@ class FlextInfraPytestRunnerBase(s[int]):
         cache = make.testmon_cache
         tooling = cls._elect_tooling(root)
         fixture = context.pytest_fixture
+        declaration = tooling.tools.pytest.fixture
+        if (
+            fixture is None
+            and declaration is not None
+            and execution_mode.records_testmon
+        ):
+            fixture = FlextInfraPytestFixtureElection.elect(context, declaration)
         checkout = fixture.checkout_root if fixture is not None else root
         return cls(
             repository_root=root,
