@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 import re
+import shutil
 import sys
 from collections.abc import Mapping
 from pathlib import Path
@@ -109,6 +110,9 @@ class TestsFlextInfraCodegenMakeEnvironment:
         The consumer's toolchain declares no gh (a generation before gh joined
         it), so in that scope the host's gh shim has no version; only the host's
         own Mise configuration selects the real gh, which reads the credential.
+        The shared shim on PATH is stale, bound to a release that cannot run gh
+        (as another checkout's reshim leaves it), so only the acquisition Mise
+        resolving the declared command reaches the real gh.
         """
         mise_toml = project_root / c.Infra.MISE_TOML_FILENAME
         document = u.Tests.toml_doc(mise_toml.read_text(encoding="utf-8"))
@@ -135,7 +139,7 @@ class TestsFlextInfraCodegenMakeEnvironment:
             f"github.com:\n    oauth_token: {credential}\n    user: fixture\n",
             encoding="utf-8",
         )
-        (shims / "gh").symlink_to(mise)
+        (shims / "gh").symlink_to(tm.not_none(shutil.which("false")))
         runtime = project_root / ".mise"
         return {
             config.Infra.codegen.make.ci.variable: "",
