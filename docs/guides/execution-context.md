@@ -222,9 +222,9 @@ written. After resolution,
 floor (`floors = [...]`) or pin (`pins = [...]`) from the project's own
 `uv.lock`, so an owned bound is always inside the window, and the locks record
 it without upgrading. Last,
-`flext-infra deps repair-mise-platforms --repository-root <root>` writes only
-the Mise locks of tools missing a declared platform, without generation,
-installation or another resolver.
+`flext-infra deps repair-mise-platforms --repository-root <root>` delegates
+version-3 lock migration to native `mise lock --upgrade`, keeping the locked
+tool versions, before repairing any remaining missing platforms.
 Installed `workspace verify-lock` delegates freshness and closure checks to native
 `uv lock --check`, not an Infra marker evaluator or graph walker. These commands remove
 inherited project/interpreter selectors through `make.native_environment_unset` and
@@ -365,9 +365,11 @@ toolchain nor a corrupt lock stops it:
    then the setup installation of exactly that lock.
 6. Last, the isolated upgrade executor (`make.executor_environment`, a declared
    ignored artifact of the `.gitignore` projection) runs
-   `deps repair-mise-platforms`, which locks the tools missing a platform that
-   `toolchain.mise_lockfile_platforms` declares: Mise reports no preview for that
-   gap. Native uv syncs the executor from the project's frozen lock, only the
+   `deps repair-mise-platforms`. An explicit version-3 lock runs one native
+   format upgrade over the declared platform set. Only tools still missing a
+   platform from `toolchain.mise_lockfile_platforms` are relocked. The earlier
+   version-resolution step can still emit a format warning on the migration run.
+   Native uv syncs the executor from the project's frozen lock, only the
    dependency group that pins flext-infra, without the project and without
    editable installs, and runs it with `python -I`, so the step never imports
    the project's source. Bytecode follows uv's native default: Python compiles
