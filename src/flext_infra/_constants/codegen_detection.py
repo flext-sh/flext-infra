@@ -37,4 +37,3 @@ class FlextInfraConstantsCodegenDetection:
 
 
 __all__: list[str] = ["FlextInfraConstantsCodegenDetection"]
-

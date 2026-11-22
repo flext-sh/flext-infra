@@ -281,6 +281,15 @@ class FlextInfraUtilitiesRopeModulePatch:
                     ),
                 )
                 source = cls._changed_source(candidate, changes)
+        if not any(
+            layout.module_name == "typing"
+            or (
+                layout.module_name is None
+                and any(name == "typing" for name, _, _ in layout.aliases)
+            )
+            for layout in module.get_source_binding_index().import_layouts()
+        ):
+            return r[str].ok(source)
         with cls.candidate_module(module, source) as candidate:
             runtime = FlextInfraUtilitiesRopeRuntime
             imports = FlextInfraUtilitiesRopeRuntimeModules.module_imports_for_pymodule(
