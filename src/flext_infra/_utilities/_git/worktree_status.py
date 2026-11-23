@@ -136,6 +136,45 @@ class FlextInfraUtilitiesGitWorktreeStatus(FlextInfraUtilitiesGitRepo):
         )
 
     @classmethod
+    def git_range_changed_paths(
+        cls,
+        request: p.Infra.GitRepoRequest,
+        base: str,
+        commitish: str,
+    ) -> p.Result[tuple[str, ...]]:
+        """Return the paths one commit range adds over its merge base.
+
+        The comparison is ``base...commitish``, so a checkout measured against
+        its integration tip reports only the paths its own commits add: a
+        branch superseded by ancestry yields no path.
+
+        Returns:
+            The resulting ``p.Result[tuple[str, ...]]``.
+
+        """
+        repo_path = request.repo_root.expanduser().resolve()
+        try:
+            repo = cls._repo(repo_path)
+            changed = tuple(
+                name
+                for name in repo.git.diff(
+                    "--name-only",
+                    "-z",
+                    f"{base}...{commitish}",
+                    "--",
+                ).split("\0")
+                if name
+            )
+        except GitCommandError as exc:
+            return r[tuple[str, ...]].fail(str(exc), exception=exc)
+        except (OSError, ValueError) as exc:
+            return r[tuple[str, ...]].fail(
+                f"git range changed paths failed: {exc}",
+                exception=exc,
+            )
+        return r[tuple[str, ...]].ok(changed)
+
+    @classmethod
     def _git_head_oid(cls, repo_root: Path) -> p.Result[str]:
         """Private Path-based HEAD oid resolver for facet-internal callers.
 
