@@ -137,6 +137,7 @@ class TestsFlextInfraPytestTimeoutConfig:
         payload.update({
             "slow-timeout-seconds": 120,
             "run-timeout-seconds": 900,
+            "harness-run-timeout-seconds": 900,
             "termination-grace-seconds": 5,
         })
 
@@ -144,6 +145,7 @@ class TestsFlextInfraPytestTimeoutConfig:
 
         tm.that(admitted.slow_timeout_seconds, eq=120)
         tm.that(admitted.run_timeout_seconds, eq=900)
+        tm.that(admitted.harness_run_timeout_seconds, eq=900)
         tm.ok(admitted.slow_timeout_seconds < admitted.run_timeout_seconds)
 
     @staticmethod
