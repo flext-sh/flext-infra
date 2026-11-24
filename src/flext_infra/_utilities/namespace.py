@@ -340,6 +340,20 @@ class FlextInfraUtilitiesCodegenNamespace:
             return root.removeprefix(c.Infra.PKG_PREFIX_UNDERSCORE)
         return root
 
+    @staticmethod
+    def facade_namespace(class_stem: str) -> str:
+        """Name the one nested namespace class of a package's facades.
+
+        ADR-028 Decision 10: a family facade composes its own components
+        inside one nested class named by the package (``TapLdap`` for the
+        ``FlextTapLdap`` stem).
+
+        Returns:
+            The class stem without its ``Flext`` prefix, else the stem itself.
+
+        """
+        return class_stem.removeprefix("Flext") or class_stem
+
     @classmethod
     def _runtime_aliases(
         cls,
