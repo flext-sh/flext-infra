@@ -1,0 +1,16 @@
+{
+  "errors": [
+    {
+      "line": 3,
+      "column": 31,
+      "stop_line": 3,
+      "stop_column": 58,
+      "path": "src/flext_grpc/config_models.py",
+      "code": -2,
+      "name": "bad-assignment",
+      "description": "`list[Unknown]` is not assignable to `tuple[str, ...]`",
+      "concise_description": "`list[Unknown]` is not assignable to `tuple[str, ...]`",
+      "severity": "error"
+    }
+  ]
+}

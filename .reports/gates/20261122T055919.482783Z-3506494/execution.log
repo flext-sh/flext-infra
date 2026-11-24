@@ -1,0 +1,35 @@
+INFO: check: registry initialization start
+INFO: check: registry initialization complete
+INFO: check: selection start phase=complete
+INFO: check: selection complete projects=1 gates=6
+INFO: check: preparation start identity=True
+INFO: check: preparation complete projects=1
+INFO: check: prerequisite planning start projects=1
+INFO: check: prerequisite planning complete gates=1
+INFO: check: prerequisite wave start gate=lint jobs=1
+INFO: gate_executed project=flext-qfvdj gate=lint passed=True elapsed=0.233
+2026-11-22T05:59:21.569272Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=240.26 failed=0 skipped=0 total_stages=1
+INFO: check: prerequisite wave complete gate=lint
+    [OK] lint           0 errors  (0.23s)
+[1/1] flext-qfvdj check ...
+INFO: gate_executed project=flext-qfvdj gate=markdown-format passed=True elapsed=1.238
+2026-11-22T05:59:23.667779Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=1238.59 failed=0 skipped=0 total_stages=1
+INFO: gate_executed project=flext-qfvdj gate=markdown passed=True elapsed=1.24
+2026-11-22T05:59:23.668462Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=1239.74 failed=0 skipped=0 total_stages=1
+INFO: gate_executed project=flext-qfvdj gate=format passed=True elapsed=2.984
+2026-11-22T05:59:25.412494Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=2984.07 failed=0 skipped=0 total_stages=1
+INFO: gate_executed project=flext-qfvdj gate=markdown-code passed=True elapsed=3.187
+2026-11-22T05:59:25.617229Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=3187.41 failed=0 skipped=0 total_stages=1
+INFO: gate_executed project=flext-qfvdj gate=conflict-markers passed=True elapsed=3.228
+2026-11-22T05:59:26.987472Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=4557.23 failed=0 skipped=0 total_stages=1
+    [OK] format         0 errors  (2.98s)
+    [OK] markdown       0 errors  (1.24s)
+    [OK] markdown-format     0 errors  (1.24s)
+    [OK] markdown-code     0 errors  (3.19s)
+    [OK] conflict-markers     0 errors  (3.23s)
+  [OK] check    flext-qfvdj              4.63s
+
+-- check summary --
+Total: 1  Success: 1  Failed: 0  Skipped: 0  (4.90s)
+INFO: Reports: /home/marlonsc/flext/flext-infra/worktrees/flext-qfvdj/.reports/gates/20261122T055919.482783Z-3506494/check/c66fc349-e8db-42eb-a1dc-b72e1be16590/check-report.md
+INFO:          /home/marlonsc/flext/flext-infra/worktrees/flext-qfvdj/.reports/gates/20261122T055919.482783Z-3506494/check/c66fc349-e8db-42eb-a1dc-b72e1be16590/check-report.sarif

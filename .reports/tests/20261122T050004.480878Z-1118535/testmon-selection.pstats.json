@@ -1,0 +1,7 @@
+{
+  "execution_mode": "global-incremental",
+  "testmon_db": "/home/marlonsc/flext/flext-infra/worktrees/flext-qfvdj/.testmondata",
+  "deadline_monotonic": 270121.587806466,
+  "report_directory": "/home/marlonsc/flext/flext-infra/worktrees/flext-qfvdj/.reports/tests/20261122T050004.480878Z-1118535",
+  "profile_sha256": "a233aeb9d44a4a3176c217311ea85e14a5a1bd536f83e47507701e55ba03d78b"
+}

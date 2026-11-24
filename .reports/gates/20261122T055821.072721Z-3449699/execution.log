@@ -1,0 +1,23 @@
+INFO: check: registry initialization start
+INFO: check: registry initialization complete
+INFO: check: selection start phase=primary
+INFO: check: selection complete projects=1 gates=2
+INFO: check: preparation start identity=True
+INFO: check: preparation complete projects=1
+INFO: check: prerequisite planning start projects=1
+INFO: check: prerequisite planning complete gates=2
+INFO: check: prerequisite wave start gate=lint jobs=1
+INFO: gate_executed project=flext-qfvdj gate=lint passed=True elapsed=0.22
+2026-11-22T05:58:23.430128Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=226.36 failed=0 skipped=0 total_stages=1
+INFO: check: prerequisite wave complete gate=lint
+    [OK] lint           0 errors  (0.22s)
+INFO: check: prerequisite wave start gate=pyrefly jobs=1
+INFO: gate_executed project=flext-qfvdj gate=pyrefly passed=True elapsed=13.472
+2026-11-22T05:58:36.919279Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=13472.03 failed=0 skipped=0 total_stages=1
+INFO: check: prerequisite wave complete gate=pyrefly
+    [OK] pyrefly        0 errors  (13.47s)
+
+-- check summary --
+Total: 1  Success: 1  Failed: 0  Skipped: 0  (13.74s)
+INFO: Reports: /home/marlonsc/flext/flext-infra/worktrees/flext-qfvdj/.reports/gates/20261122T055821.072721Z-3449699/check/a50349a0-3923-4cd2-9b72-56bbaba0345d/check-report.md
+INFO:          /home/marlonsc/flext/flext-infra/worktrees/flext-qfvdj/.reports/gates/20261122T055821.072721Z-3449699/check/a50349a0-3923-4cd2-9b72-56bbaba0345d/check-report.sarif

@@ -630,15 +630,20 @@ class FlextInfraUtilitiesFacadeComponents:
             Source, or absence when this package has no family declarations.
 
         """
-        if project is None or sources is not None:
+        if project is None:
             with FlextInfraUtilitiesWorkspaceSnapshot.facade_source_project(
-                Path(project.root.real_path) if project is not None else pkg_dir.parent,
-                planned_sources=sources,
-                source_project=project,
+                pkg_dir.parent, planned_sources=sources
             ) as (captured, _contents):
                 return cls.render_utility_facade(
                     pkg_dir, family=family, project=captured
                 )
+        if sources is not None:
+            # The given project already elects its folders; bind only the
+            # planned bytes it does not read yet instead of re-capturing it.
+            with FlextInfraUtilitiesWorkspaceSnapshot.workspace_planned_source_view(
+                project, sources
+            ) as bound:
+                return cls.render_utility_facade(pkg_dir, family=family, project=bound)
         selected = c.Infra.FacadeFamily(family)
         directory = (
             pkg_dir

@@ -1,0 +1,28 @@
+INFO: check: registry initialization start
+INFO: check: registry initialization complete
+INFO: check: selection start phase=primary
+INFO: check: selection complete projects=1 gates=2
+INFO: check: preparation start identity=True
+INFO: check: preparation complete projects=1
+INFO: check: prerequisite planning start projects=1
+INFO: check: prerequisite planning complete gates=2
+INFO: check: prerequisite wave start gate=lint jobs=1
+INFO: gate_executed project=flext-qfvdj gate=lint passed=False elapsed=0.246
+2026-11-22T06:18:15.514178Z [error    ] stage_failed                   [flext_cli.api.FlextCli] error='lint failed for flext-qfvdj with 5 findings' stage_id=lint
+2026-11-22T06:18:15.517434Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=254.47 failed=1 skipped=0 total_stages=1
+INFO: check: prerequisite wave complete gate=lint
+    [FAIL] lint           5 errors  (0.25s)
+INFO: lint: findings; Native output receipt: /home/marlonsc/flext/flext-infra/worktrees/flext-qfvdj/.reports/gates/20261122T061813.155442Z-4072193/check/6662767a-f5ea-4deb-bc15-bc4235aee6c5/flext-qfvdj/lint.raw.log
+INFO: check: prerequisite wave start gate=pyrefly jobs=1
+INFO: gate_executed project=flext-qfvdj gate=pyrefly passed=True elapsed=13.126
+2026-11-22T06:18:28.664088Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=13125.91 failed=0 skipped=0 total_stages=1
+INFO: check: prerequisite wave complete gate=pyrefly
+    [OK] pyrefly        0 errors  (13.13s)
+
+-- check summary --
+Total: 1  Success: 0  Failed: 1  Skipped: 0  (13.43s)
+INFO: Reports: /home/marlonsc/flext/flext-infra/worktrees/flext-qfvdj/.reports/gates/20261122T061813.155442Z-4072193/check/6662767a-f5ea-4deb-bc15-bc4235aee6c5/check-report.md
+INFO:          /home/marlonsc/flext/flext-infra/worktrees/flext-qfvdj/.reports/gates/20261122T061813.155442Z-4072193/check/6662767a-f5ea-4deb-bc15-bc4235aee6c5/check-report.sarif
+INFO: Findings by project (see reports for detail):
+INFO: flext-qfvdj                         5  (lint=5)
+❌ quality checks failed for: flext-qfvdj (5 findings; see the check summary and reports)

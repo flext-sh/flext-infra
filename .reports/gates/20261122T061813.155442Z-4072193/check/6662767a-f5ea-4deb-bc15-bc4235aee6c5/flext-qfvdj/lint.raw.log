@@ -1,0 +1,124 @@
+[
+  {
+    "cell": null,
+    "code": "DOC501",
+    "end_location": {
+      "column": 16,
+      "row": 84
+    },
+    "filename": "/home/marlonsc/flext/flext-infra/worktrees/flext-qfvdj/src/flext_infra/_utilities/_rope/native_project.py",
+    "fix": null,
+    "location": {
+      "column": 13,
+      "row": 79
+    },
+    "message": "Raised exception `TypeError` missing from docstring",
+    "name": "docstring-missing-exception",
+    "noqa_row": 84,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/docstring-missing-exception"
+  },
+  {
+    "cell": null,
+    "code": "E501",
+    "end_location": {
+      "column": 90,
+      "row": 94
+    },
+    "filename": "/home/marlonsc/flext/flext-infra/worktrees/flext-qfvdj/src/flext_infra/_utilities/_rope/native_project.py",
+    "fix": null,
+    "location": {
+      "column": 89,
+      "row": 94
+    },
+    "message": "Line too long (89 > 88)",
+    "name": "line-too-long",
+    "noqa_row": 94,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/line-too-long"
+  },
+  {
+    "cell": null,
+    "code": "E501",
+    "end_location": {
+      "column": 93,
+      "row": 113
+    },
+    "filename": "/home/marlonsc/flext/flext-infra/worktrees/flext-qfvdj/src/flext_infra/_utilities/_rope/native_project.py",
+    "fix": null,
+    "location": {
+      "column": 89,
+      "row": 113
+    },
+    "message": "Line too long (92 > 88)",
+    "name": "line-too-long",
+    "noqa_row": 113,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/line-too-long"
+  },
+  {
+    "cell": null,
+    "code": "PTH208",
+    "end_location": {
+      "column": 36,
+      "row": 206
+    },
+    "filename": "/home/marlonsc/flext/flext-infra/worktrees/flext-qfvdj/src/flext_infra/_utilities/_rope/native_project.py",
+    "fix": {
+      "applicability": "displayonly",
+      "edits": [
+        {
+          "content": "from pathlib import Path",
+          "end_location": {
+            "column": 25,
+            "row": 17
+          },
+          "location": {
+            "column": 1,
+            "row": 17
+          }
+        },
+        {
+          "content": "Path(folder).iterdir()",
+          "end_location": {
+            "column": 44,
+            "row": 206
+          },
+          "location": {
+            "column": 26,
+            "row": 206
+          }
+        }
+      ],
+      "message": "Replace with `Path(...).iterdir()`"
+    },
+    "location": {
+      "column": 26,
+      "row": 206
+    },
+    "message": "Use `pathlib.Path.iterdir()` instead.",
+    "name": "os-listdir",
+    "noqa_row": 206,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/os-listdir"
+  },
+  {
+    "cell": null,
+    "code": "PLR0911",
+    "end_location": {
+      "column": 30,
+      "row": 619
+    },
+    "filename": "/home/marlonsc/flext/flext-infra/worktrees/flext-qfvdj/src/flext_infra/_utilities/facade_components.py",
+    "fix": null,
+    "location": {
+      "column": 9,
+      "row": 619
+    },
+    "message": "Too many return statements (7 > 6)",
+    "name": "too-many-return-statements",
+    "noqa_row": 619,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/too-many-return-statements"
+  }
+]

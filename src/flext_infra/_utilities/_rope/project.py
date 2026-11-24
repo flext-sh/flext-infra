@@ -23,7 +23,7 @@ from flext_cli import u
 from rope.base.exceptions import ResourceNotFoundError
 from rope.base.project import NoProject, Project
 from rope.base.resourceobserver import ChangeIndicator
-from rope.base.resources import File, Folder
+from rope.base.resources import File, Folder, Resource
 
 from flext_infra import c, config, m, p
 from flext_infra._utilities._rope import (
@@ -51,6 +51,21 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
             FlextInfraUtilitiesRopeRuntime.annotation_alias_context(),
         ):
             yield self
+
+    @override
+    def dependency_universe(
+        self, resource: Resource
+    ) -> FlextInfraRopeNativeProject | None:
+        """Keep installed modules local while analysis views shadow them.
+
+        Returns:
+            The shared dependency project, or None when this project owns it.
+
+        """
+        files = self.fscommands
+        if isinstance(files, self.OverlayFiles) and files.analysis:
+            return None
+        return super().dependency_universe(resource)
 
     class OverlayFiles:
         """Read-only filesystem view: planned bytes overlay authenticated captures.

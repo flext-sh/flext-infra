@@ -1,0 +1,11 @@
+outcome=interrupted
+phase=suite
+suite=incomplete
+executed=unknown
+reported=unknown
+inventory_complete=unknown
+diagnostics=incomplete
+exit=-9
+timed_out=True
+forwarded_signal=None
+raw_log=/home/marlonsc/flext/flext-infra/worktrees/flext-qfvdj/.reports/tests/20261122T050004.480878Z-1118535/pytest.log

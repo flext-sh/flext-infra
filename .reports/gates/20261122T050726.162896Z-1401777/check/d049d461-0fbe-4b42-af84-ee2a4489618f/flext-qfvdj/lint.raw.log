@@ -1,0 +1,37 @@
+[
+  {
+    "cell": null,
+    "code": "SIM300",
+    "end_location": {
+      "column": 53,
+      "row": 261
+    },
+    "filename": "/home/marlonsc/flext/flext-infra/worktrees/flext-qfvdj/src/flext_infra/_utilities/_git/repo.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "resolved == Git.GIT_PYTHON_GIT_EXECUTABLE",
+          "end_location": {
+            "column": 53,
+            "row": 261
+          },
+          "location": {
+            "column": 12,
+            "row": 261
+          }
+        }
+      ],
+      "message": "Rewrite as `resolved == Git.GIT_PYTHON_GIT_EXECUTABLE`"
+    },
+    "location": {
+      "column": 12,
+      "row": 261
+    },
+    "message": "Yoda condition detected",
+    "name": "yoda-conditions",
+    "noqa_row": 261,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/yoda-conditions"
+  }
+]

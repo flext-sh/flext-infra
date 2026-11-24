@@ -1,0 +1,153 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "flext-infra-check",
+          "informationUri": "https://github.com/flext-sh/flext-infra",
+          "rules": [
+            {
+              "id": "yoda-conditions",
+              "shortDescription": {
+                "text": "Ruff Linter (lint) issue"
+              },
+              "helpUri": "https://docs.astral.sh/ruff/"
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "yoda-conditions",
+          "level": "error",
+          "message": {
+            "text": "Yoda condition detected"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/home/marlonsc/flext/flext-infra/worktrees/flext-qfvdj/src/flext_infra/_utilities/_git/repo.py",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 261,
+                  "startColumn": 12
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "properties": {
+    "phase": "primary",
+    "requested_gates": [
+      "lint",
+      "pyrefly"
+    ],
+    "pending_gates": [],
+    "targets": [
+      {
+        "name": "flext-qfvdj",
+        "path": "/home/marlonsc/flext/flext-infra/worktrees/flext-qfvdj",
+        "applicable_gates": [
+          "lint",
+          "pyrefly"
+        ],
+        "source_identity": {
+          "repo_root": "/home/marlonsc/flext/flext-infra/worktrees/flext-qfvdj",
+          "primary_root": "/home/marlonsc/flext/flext-infra",
+          "head_oid": "b725909aea958edca78e16948853e7517890043c",
+          "porcelain": " M src/flext_infra/_utilities/_git/repo.py\n M tests/unit/codemod/test_api_alias_cutover.py",
+          "dirty": true,
+          "git_dir": "/home/marlonsc/flext/.git/modules/flext-infra/worktrees/flext-qfvdj",
+          "common_dir": "/home/marlonsc/flext/.git/modules/flext-infra",
+          "branch": "fix/flext-qfvdj-tip-reds",
+          "origin_remote": "https://github.com/flext-sh/flext-infra.git",
+          "upstream_remote": null,
+          "superproject_root": "/home/marlonsc/flext",
+          "requested_path": "/home/marlonsc/flext/flext-infra/worktrees/flext-qfvdj",
+          "is_worktree": true,
+          "is_submodule": true,
+          "is_attached_submodule": false,
+          "has_submodules": false,
+          "is_inside_work_tree": true
+        }
+      }
+    ],
+    "results": [
+      {
+        "project": "flext-qfvdj",
+        "gates": {
+          "lint": {
+            "result": {
+              "project": "flext-qfvdj",
+              "gate": "lint",
+              "passed": false,
+              "errors": [
+                "/home/marlonsc/flext/flext-infra/worktrees/flext-qfvdj/src/flext_infra/_utilities/_git/repo.py:261:12 [yoda-conditions] Yoda condition detected"
+              ],
+              "duration": 0.869
+            },
+            "issues": [
+              {
+                "file": "/home/marlonsc/flext/flext-infra/worktrees/flext-qfvdj/src/flext_infra/_utilities/_git/repo.py",
+                "line": 261,
+                "column": 12,
+                "code": "yoda-conditions",
+                "message": "Yoda condition detected",
+                "severity": "error",
+                "locations": [],
+                "related_locations": []
+              }
+            ],
+            "raw_receipt": "/home/marlonsc/flext/flext-infra/worktrees/flext-qfvdj/.reports/gates/20261122T050458.871729Z-1336696/check/93f3a6f9-58bd-4cf1-90a8-83728f9f4944/flext-qfvdj/lint.raw.log",
+            "outcome": "findings",
+            "process": {
+              "raw_return_code": 1,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          },
+          "pyrefly": {
+            "result": {
+              "project": "flext-qfvdj",
+              "gate": "pyrefly",
+              "passed": true,
+              "errors": [],
+              "duration": 11.09
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext/flext-infra/worktrees/flext-qfvdj/.reports/gates/20261122T050458.871729Z-1336696/check/93f3a6f9-58bd-4cf1-90a8-83728f9f4944/flext-qfvdj/pyrefly.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          }
+        }
+      }
+    ],
+    "selected_files": [],
+    "global_targets": [
+      {
+        "name": "flext-qfvdj",
+        "path": "/home/marlonsc/flext/flext-infra/worktrees/flext-qfvdj",
+        "applicable_gates": [
+          "lint",
+          "pyrefly"
+        ],
+        "source_identity": null
+      }
+    ]
+  }
+}

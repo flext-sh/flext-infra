@@ -18,6 +18,8 @@ import builtins
 import re
 from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
+from typing import ClassVar
+from weakref import WeakKeyDictionary
 
 from rope.base import exceptions as rope_exceptions
 
@@ -48,6 +50,10 @@ from flext_infra._utilities._semantic_cutover import (
 
 class FlextInfraUtilitiesFacadeMembers:
     """Derive facade member kinds and their single owner letter."""
+
+    _model_contracts: ClassVar[
+        WeakKeyDictionary[p.Infra.RopeProject, tuple[int, frozenset[str]]]
+    ] = WeakKeyDictionary()
 
     @classmethod
     def facade_member_kind(
@@ -599,12 +605,30 @@ class FlextInfraUtilitiesFacadeMembers:
             ValueError: The canonical model protocol declares no public members.
 
         """
-        model = resolver_factory()(
-            f"{c.Infra.PKG_CORE_UNDERSCORE}.p.ModelType"
-        ).get_object()
-        required = frozenset(
-            name for name in model.get_attributes() if not name.startswith("_")
+        epoch = (
+            FlextInfraUtilitiesRopeRuntimeModules.project_core(
+                source_project
+            ).module_cache.data_epoch
         )
+        contract = FlextInfraUtilitiesFacadeMembers._model_contracts.get(
+            source_project
+        )
+        if contract is None or contract[0] != epoch:
+            model = resolver_factory()(
+                f"{c.Infra.PKG_CORE_UNDERSCORE}.p.ModelType"
+            ).get_object()
+            contract = (
+                epoch,
+                frozenset(
+                    name
+                    for name in model.get_attributes()
+                    if not name.startswith("_")
+                ),
+            )
+            FlextInfraUtilitiesFacadeMembers._model_contracts[source_project] = (
+                contract
+            )
+        required = contract[1]
         if not required:
             message = "native model-type contract has no declared members"
             raise ValueError(message)

@@ -1,0 +1,190 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "flext-infra-check",
+          "informationUri": "https://github.com/flext-sh/flext-infra",
+          "rules": []
+        }
+      },
+      "results": []
+    }
+  ],
+  "properties": {
+    "phase": "complete",
+    "requested_gates": [
+      "lint",
+      "format",
+      "markdown",
+      "markdown-format",
+      "markdown-code",
+      "conflict-markers"
+    ],
+    "pending_gates": [],
+    "targets": [
+      {
+        "name": "flext-qfvdj",
+        "path": "/home/marlonsc/flext/flext-infra/worktrees/flext-qfvdj",
+        "applicable_gates": [
+          "lint",
+          "format",
+          "markdown",
+          "markdown-format",
+          "markdown-code",
+          "conflict-markers"
+        ],
+        "source_identity": {
+          "repo_root": "/home/marlonsc/flext/flext-infra/worktrees/flext-qfvdj",
+          "primary_root": "/home/marlonsc/flext/flext-infra",
+          "head_oid": "85b9ffb36cbf66d3e3b5b24d6e5c6b5a8a029cdd",
+          "porcelain": "M  src/flext_infra/_utilities/__init__.py\nA  src/flext_infra/_utilities/imported_names.py\nM  src/flext_infra/_utilities/qualified_names.py\nM  src/flext_infra/utilities.py\nM  tests/unit/codemod/test_api_alias_cutover.py",
+          "dirty": true,
+          "git_dir": "/home/marlonsc/flext/.git/modules/flext-infra/worktrees/flext-qfvdj",
+          "common_dir": "/home/marlonsc/flext/.git/modules/flext-infra",
+          "branch": "fix/flext-qfvdj-tip-reds",
+          "origin_remote": "https://github.com/flext-sh/flext-infra.git",
+          "upstream_remote": null,
+          "superproject_root": "/home/marlonsc/flext",
+          "requested_path": "/home/marlonsc/flext/flext-infra/worktrees/flext-qfvdj",
+          "is_worktree": true,
+          "is_submodule": true,
+          "is_attached_submodule": false,
+          "has_submodules": false,
+          "is_inside_work_tree": true
+        }
+      }
+    ],
+    "results": [
+      {
+        "project": "flext-qfvdj",
+        "gates": {
+          "lint": {
+            "result": {
+              "project": "flext-qfvdj",
+              "gate": "lint",
+              "passed": true,
+              "errors": [],
+              "duration": 0.233
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext/flext-infra/worktrees/flext-qfvdj/.reports/gates/20261122T055919.482783Z-3506494/check/c66fc349-e8db-42eb-a1dc-b72e1be16590/flext-qfvdj/lint.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          },
+          "format": {
+            "result": {
+              "project": "flext-qfvdj",
+              "gate": "format",
+              "passed": true,
+              "errors": [],
+              "duration": 2.984
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext/flext-infra/worktrees/flext-qfvdj/.reports/gates/20261122T055919.482783Z-3506494/check/c66fc349-e8db-42eb-a1dc-b72e1be16590/flext-qfvdj/format.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          },
+          "markdown": {
+            "result": {
+              "project": "flext-qfvdj",
+              "gate": "markdown",
+              "passed": true,
+              "errors": [],
+              "duration": 1.24
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext/flext-infra/worktrees/flext-qfvdj/.reports/gates/20261122T055919.482783Z-3506494/check/c66fc349-e8db-42eb-a1dc-b72e1be16590/flext-qfvdj/markdown.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          },
+          "markdown-format": {
+            "result": {
+              "project": "flext-qfvdj",
+              "gate": "markdown-format",
+              "passed": true,
+              "errors": [],
+              "duration": 1.238
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext/flext-infra/worktrees/flext-qfvdj/.reports/gates/20261122T055919.482783Z-3506494/check/c66fc349-e8db-42eb-a1dc-b72e1be16590/flext-qfvdj/markdown-format.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          },
+          "markdown-code": {
+            "result": {
+              "project": "flext-qfvdj",
+              "gate": "markdown-code",
+              "passed": true,
+              "errors": [],
+              "duration": 3.187
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext/flext-infra/worktrees/flext-qfvdj/.reports/gates/20261122T055919.482783Z-3506494/check/c66fc349-e8db-42eb-a1dc-b72e1be16590/flext-qfvdj/markdown-code.raw.log",
+            "outcome": "clean",
+            "process": null,
+            "components": {},
+            "requested_components": []
+          },
+          "conflict-markers": {
+            "result": {
+              "project": "flext-qfvdj",
+              "gate": "conflict-markers",
+              "passed": true,
+              "errors": [],
+              "duration": 3.228
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext/flext-infra/worktrees/flext-qfvdj/.reports/gates/20261122T055919.482783Z-3506494/check/c66fc349-e8db-42eb-a1dc-b72e1be16590/flext-qfvdj/conflict-markers.raw.log",
+            "outcome": "clean",
+            "process": null,
+            "components": {},
+            "requested_components": []
+          }
+        }
+      }
+    ],
+    "selected_files": [],
+    "global_targets": [
+      {
+        "name": "flext-qfvdj",
+        "path": "/home/marlonsc/flext/flext-infra/worktrees/flext-qfvdj",
+        "applicable_gates": [
+          "lint",
+          "format",
+          "markdown",
+          "markdown-format",
+          "markdown-code",
+          "conflict-markers"
+        ],
+        "source_identity": null
+      }
+    ]
+  }
+}
