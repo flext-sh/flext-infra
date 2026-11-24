@@ -119,13 +119,19 @@ $(error Current Make executable has no physical path: $(MAKE_COMMAND))
 endif
 .DEFAULT_GOAL := help
 
+# Detect CI environment internally. The runner provides GITHUB_ACTIONS=true;
+# no caller needs to pass CI=Y.
+ifeq ($(GITHUB_ACTIONS),true)
+override CI := Y
+endif
+
 # Contract display never provisions or requires native workspace tools.
 VERB_CONTRACT := $(filter {{ ((contract_env_values | list) + (contract_env_values | map("lower") | list) + (contract_env_values | map("capitalize") | list)) | unique(case_sensitive=true) | join(" ") }},$(OPTIONS) $(HELP))
 
 # Capture the selected approval mode before any project-owned include.
 ifeq ($(strip $({{ make.ci.variable }})),{{ make.ci.value }})
 override APPROVAL_CONTEXT := {{ make.ci.value }}
-ifneq ($(filter $(if $(VERB_CONTRACT),,upg lock) _upg% _lock% dep propagate,$(MAKECMDGOALS)),)
+ifneq ($(filter $(if $(VERB_CONTRACT),,upg) _upg%,$(MAKECMDGOALS)),)
 $(error Resolution and member propagation are forbidden in CI)
 endif
 endif
@@ -166,6 +172,8 @@ WORKSPACE_SUBPROJECTS :={% for subproject in workspace_subprojects %} {{ subproj
 # The Makefile validates no caller input. Every verb
 # always applies; a mistyped variable fails where the verb consumes it, and an
 # unconsumed variable is ignored.
+# Default to the fast primary phase so `make check` is the single gate.
+CHECK_PHASE ?= primary
 export CHECK_PHASE MARKER
 PYTEST_REPORTS_DIR := {{ make.testmon_cache.reports_directory }}
 override PYTEST_RUN_TIMEOUT_SECONDS := {{ pytest.run_timeout_seconds }}
@@ -312,7 +320,7 @@ ifneq ($(origin RUNTIME_ROOT),command line)
 override RUNTIME_ROOT := $(REPOSITORY_ROOT)
 endif
 {% if not runtime_supplies_infra %}
-override MEMBER_PROVISIONING_VERB := $(firstword $(filter setup upg lock,$(MAKECMDGOALS)))
+override MEMBER_PROVISIONING_VERB := $(firstword $(filter setup upg,$(MAKECMDGOALS)))
 ifeq ($(VERB_CONTRACT),)
 ifeq ($(PROJECT_ROOT),$(RUNTIME_ROOT))
 ifneq ($(MEMBER_PROVISIONING_VERB),)
@@ -721,7 +729,7 @@ endef
    process; a hooked or interpreter-bound one runs through RUN_PUBLIC. -#}
 {% macro verb_rules(group, verbs) -%}
 {% set ns = namespace(plain=[], dispatch=[], active=[], interp=[]) -%}
-{% for verb in verbs if verb.name not in ("setup", "upg", "lock") -%}
+{% for verb in verbs if verb.name not in ("setup", "upg") -%}
 {% if not verb.requires_activation %}{% set ns.plain = ns.plain + [verb.name] -%}
 {% elif verb.name in ("help", "clean") %}{% set ns.dispatch = ns.dispatch + [verb.name] -%}
 {% else %}{% set ns.active = ns.active + [verb.name] -%}
@@ -819,15 +827,6 @@ endif
 
 # Attached members delegate the same operation to their physical workspace owner
 # before resolving anything.
-ifeq ($(PROJECT_ROOT),$(RUNTIME_ROOT))
-{% if runtime_supplies_infra %}
-lock: _builtin_require_workspace _builtin_require_github_credential
-	+@$(SELF_MAKE) _lock_lifecycle
-{% endif %}
-else
-lock: _builtin_require_workspace
-	+@"$(SELF_MAKE_EXECUTABLE)" --no-print-directory -C "$(RUNTIME_ROOT)" -f "$(RUNTIME_ROOT)/Makefile" lock
-endif
 {{ verb_rules("SCRIPT_VERBS", script_verbs) }}
 else
 $(PUBLIC_VERBS):
@@ -1010,14 +1009,6 @@ _upg_lifecycle:
 
 # Lock resolves a changed dependency declaration (a newly declared requirement)
 # into the UV locks and keeps every pin they already hold; only upg moves a pin.
-# It runs from the environment setup installed, provisions no tool, and ends with
-# the same frozen installation, so the new requirement is installed.
-.PHONY: _lock_lifecycle
-_lock_lifecycle:
-	+@set -eu; \
-	{{ uv_lock_resolution(false) }} \
-	$(INSTALL_RUNTIME_RECIPE)
-
 # Gate, fix and build verbs act on this repository only, with one body per verb
 # in every profile: a workspace root evaluates itself exactly as CI does.
 _builtin_build_artifacts:
@@ -1034,6 +1025,7 @@ _builtin_build_artifacts:
 # make.pre_commit_check_gates, CI={{ make.ci.local_value }} runs
 # make.check_gates_local, and an absent CI token runs every active gate.
 _builtin_check_all: _builtin_require_environment
+{{ "\t" }}@$(if $(filter Y,$(CI)),,$(if $(filter primary,$(CHECK_PHASE)),,$(SELF_MAKE) _builtin_gen_all && $(SELF_MAKE) _builtin_fix_all && $(SELF_MAKE) _builtin_fmt_all && ))
 {{ local_check_body() }}
 
 _builtin_tests_all: _builtin_require_environment

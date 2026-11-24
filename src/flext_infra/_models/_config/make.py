@@ -1091,10 +1091,14 @@ class FlextInfraModelsConfigMake(
             hook = tuple(
                 step.verb for step in self.workflow if "pre_commit" in step.contexts
             )
-            # A commit first provisions the checkout's own environment, so the
-            # check runs the locked toolchain even in a fresh lane worktree.
-            if hook != (c.Infra.VERB_SETUP, c.Infra.VERB_CHECK):
-                msg = "the pre-commit hook requires setup followed by check"
+            # A commit runs the fast check (and optionally the fast tests) on
+            # the locked toolchain; provisioning is a lane/CI concern, never a
+            # per-commit step.
+            if set(hook) not in (
+                {c.Infra.VERB_CHECK},
+                {c.Infra.VERB_CHECK, c.Infra.VERB_TEST},
+            ):
+                msg = "the pre-commit hook requires check followed by tests"
                 raise ValueError(msg)
 
         def _validate_workflow_requirements(self) -> None:
