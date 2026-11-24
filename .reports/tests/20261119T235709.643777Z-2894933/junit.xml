@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="28" time="177.373" timestamp="2026-11-19T20:58:10.922812-03:00" hostname="tungs"><testcase classname="tests.unit.codemod.test_api_alias_cutover.TestsFlextInfraApiAliasCutover" name="test_service_retirement_preserves_kernel_context_and_shadowing[from sample_pkg import s-s-FlextSampleService]" time="2.027"><failure message="Failed: Timeout (&gt;2.0s) from pytest-timeout.">tests/unit/codemod/test_api_alias_cutover.py:88: in test_service_retirement_preserves_kernel_context_and_shadowing
+    u.Infra.plan_semantic_cutover(
+src/flext_infra/_utilities/_semantic_cutover/base.py:78: in plan_semantic_cutover
+    attempt = r.safe(
+../flext-core/src/flext_core/_result/composition.py:201: in wrapper
+    return cls._create_success(func(*args, **kwargs))
+                               ^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/base.py:142: in _plan_semantic_cutover_phase
+    return cls._plan_selected_phase_dispatch(
+src/flext_infra/_utilities/_semantic_cutover/base.py:340: in _plan_selected_phase_dispatch
+    return factory()
+           ^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/base.py:313: in &lt;lambda&gt;
+    c.Infra.SemanticCutoverPhase.COMPAT_ALIAS: lambda: cls._plan_alias_cutover(
+src/flext_infra/_utilities/_semantic_cutover/base.py:363: in _plan_alias_cutover
+    api = cls._plan_api_aliases(workspace, working, selected, import_normalizer)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/aliases.py:407: in _plan_api_aliases
+    service_aliases, service_graph = cls._service_aliases(workspace, sources)
+                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/aliases.py:137: in _service_aliases
+    FlextInfraUtilitiesRopeCore
+src/flext_infra/_utilities/_rope/pymodule.py:156: in resolve_pymodule
+    else rope_project.get_relative_module(resource.name, resource.parent, 1),
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/native_project.py:134: in get_relative_module
+    return native.get_relative_module(name, origin, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/rope/base/project.py:214: in get_relative_module
+    module = self.find_relative_module(name, folder, level)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/native_project.py:201: in find_relative_module
+    found = native.find_relative_module(modname, origin, level)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/rope/base/project.py:246: in find_relative_module
+    return _find_module_in_folders([folder], modname)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/rope/base/project.py:586: in _find_module_in_folders
+    package.has_child("__init__.py")
+../.venv/lib/python3.13/site-packages/rope/base/resources.py:207: in has_child
+    self.get_child(name)
+../.venv/lib/python3.13/site-packages/rope/base/resources.py:203: in get_child
+    return self.project.get_resource(self._get_child_path(name))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/rope/base/project.py:463: in get_resource
+    return super().get_resource(universal_name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/rope/base/project.py:58: in get_resource
+    path = self._get_resource_path(resource_name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/rope/base/project.py:459: in _get_resource_path
+    return self.fscommands.realpath(real_name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/project.py:465: in realpath
+    return str(self._resolved(path))
+               ^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/project.py:467: in _resolved
+    def _resolved(self, path: str) -&gt; Path:
+E   Failed: Timeout (&gt;2.0s) from pytest-timeout.</failure></testcase><testcase classname="tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection" name="test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-canonical]" time="8.853" /><testcase classname="tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection" name="test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-foreign]" time="2.298" /><testcase classname="tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection" name="test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-renamed]" time="5.605" /><testcase classname="tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection" name="test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-duplicate]" time="2.539" /><testcase classname="tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection" name="test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-annotation]" time="2.353" /><testcase classname="tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection" name="test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-canonical]" time="6.993" /><testcase classname="tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection" name="test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-foreign]" time="2.010" /><testcase classname="tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection" name="test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-renamed]" time="3.238" /><testcase classname="tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection" name="test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-duplicate]" time="2.147" /><testcase classname="tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection" name="test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-annotation]" time="2.402" /><testcase classname="tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection" name="test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-canonical]" time="7.512" /><testcase classname="tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection" name="test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-foreign]" time="1.524" /><testcase classname="tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection" name="test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-renamed]" time="2.469" /><testcase classname="tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection" name="test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-duplicate]" time="3.752" /><testcase classname="tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection" name="test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-annotation]" time="1.688" /><testcase classname="tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection" name="test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-canonical]" time="4.824" /><testcase classname="tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection" name="test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-foreign]" time="3.685" /><testcase classname="tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection" name="test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-renamed]" time="2.863" /><testcase classname="tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection" name="test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-duplicate]" time="1.567" /><testcase classname="tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection" name="test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-annotation]" time="1.854" /><testcase classname="tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection" name="test_initializer_retires_exports_moved_into_class_owners" time="2.694" /><testcase classname="tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection" name="test_explicit_owner_classes_preserve_publication_identity[publication0-False-c]" time="11.718" /><testcase classname="tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection" name="test_explicit_owner_classes_preserve_publication_identity[publication0-False-t]" time="14.036" /><testcase classname="tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection" name="test_explicit_owner_classes_preserve_publication_identity[publication0-False-p]" time="14.329" /><testcase classname="tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection" name="test_explicit_owner_classes_preserve_publication_identity[publication0-False-m]" time="10.104" /><testcase classname="tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection" name="test_explicit_owner_classes_preserve_publication_identity[publication0-False-u]" time="8.187" /><testcase classname="tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection" name="test_explicit_owner_classes_preserve_publication_identity[publication0-True-c]" time="12.271" /><testcase time="0.005" /></testsuite></testsuites>
