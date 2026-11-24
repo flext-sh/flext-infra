@@ -1,0 +1,84 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "flext-infra-check",
+          "informationUri": "https://github.com/flext-sh/flext-infra",
+          "rules": []
+        }
+      },
+      "results": []
+    }
+  ],
+  "properties": {
+    "phase": "complete",
+    "requested_gates": [
+      "pydantic-census"
+    ],
+    "pending_gates": [],
+    "targets": [
+      {
+        "name": "flext-vjj1s.17",
+        "path": "/home/marlonsc/flext/worktrees/flext-vjj1s.17",
+        "applicable_gates": [
+          "pydantic-census"
+        ],
+        "source_identity": {
+          "repo_root": "/home/marlonsc/flext/worktrees/flext-vjj1s.17",
+          "primary_root": "/home/marlonsc/flext/flext-infra",
+          "head_oid": "50a67aa18e0f8ad1b05fd54089f66bf49a08d69e",
+          "porcelain": " M pyproject.toml\n M src/flext_infra/_protocols/_config/make.py\n M src/flext_infra/_protocols/codegen_render.py\n M src/flext_infra/_protocols/deps_tool_config_type_checkers.py\n M src/flext_infra/_protocols/gate_admission.py\n M src/flext_infra/_protocols/workspace.py\n M src/flext_infra/_utilities/_protocol_models/__init__.py\n M src/flext_infra/_utilities/_rope/pydantic.py",
+          "dirty": true,
+          "git_dir": "/home/marlonsc/flext/.git/modules/flext-infra/worktrees/flext-vjj1s.17",
+          "common_dir": "/home/marlonsc/flext/.git/modules/flext-infra",
+          "branch": "wip/flext-vjj1s.17",
+          "origin_remote": "https://github.com/flext-sh/flext-infra.git",
+          "upstream_remote": null,
+          "superproject_root": "/home/marlonsc/flext",
+          "requested_path": "/home/marlonsc/flext/worktrees/flext-vjj1s.17",
+          "is_worktree": true,
+          "is_submodule": true,
+          "is_attached_submodule": false,
+          "has_submodules": false,
+          "is_inside_work_tree": true
+        }
+      }
+    ],
+    "results": [
+      {
+        "project": "flext-vjj1s.17",
+        "gates": {
+          "pydantic-census": {
+            "result": {
+              "project": "flext-vjj1s.17",
+              "gate": "pydantic-census",
+              "passed": true,
+              "errors": [],
+              "duration": 143.183
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext/worktrees/flext-vjj1s.17/.reports/check/5d324868-6788-4c01-a8f2-7602404f1317/flext-vjj1s.17/pydantic-census.raw.log",
+            "outcome": "clean",
+            "process": null,
+            "components": {},
+            "requested_components": []
+          }
+        }
+      }
+    ],
+    "selected_files": [],
+    "global_targets": [
+      {
+        "name": "flext-vjj1s.17",
+        "path": "/home/marlonsc/flext/worktrees/flext-vjj1s.17",
+        "applicable_gates": [
+          "pydantic-census"
+        ],
+        "source_identity": null
+      }
+    ]
+  }
+}

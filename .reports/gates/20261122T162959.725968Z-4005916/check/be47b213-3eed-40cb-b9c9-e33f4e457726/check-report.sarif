@@ -1,0 +1,110 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "flext-infra-check",
+          "informationUri": "https://github.com/flext-sh/flext-infra",
+          "rules": []
+        }
+      },
+      "results": []
+    }
+  ],
+  "properties": {
+    "phase": "primary",
+    "requested_gates": [
+      "lint",
+      "pyrefly"
+    ],
+    "pending_gates": [],
+    "targets": [
+      {
+        "name": "flext-vjj1s.17",
+        "path": "/home/marlonsc/flext/worktrees/flext-vjj1s.17",
+        "applicable_gates": [
+          "lint",
+          "pyrefly"
+        ],
+        "source_identity": {
+          "repo_root": "/home/marlonsc/flext/worktrees/flext-vjj1s.17",
+          "primary_root": "/home/marlonsc/flext/flext-infra",
+          "head_oid": "c42d17aa608d4881ebf70b025d82959cb7e38539",
+          "porcelain": "",
+          "dirty": false,
+          "git_dir": "/home/marlonsc/flext/.git/modules/flext-infra/worktrees/flext-vjj1s.17",
+          "common_dir": "/home/marlonsc/flext/.git/modules/flext-infra",
+          "branch": "wip/flext-vjj1s.17",
+          "origin_remote": "https://github.com/flext-sh/flext-infra.git",
+          "upstream_remote": null,
+          "superproject_root": "/home/marlonsc/flext",
+          "requested_path": "/home/marlonsc/flext/worktrees/flext-vjj1s.17",
+          "is_worktree": true,
+          "is_submodule": true,
+          "is_attached_submodule": false,
+          "has_submodules": false,
+          "is_inside_work_tree": true
+        }
+      }
+    ],
+    "results": [
+      {
+        "project": "flext-vjj1s.17",
+        "gates": {
+          "lint": {
+            "result": {
+              "project": "flext-vjj1s.17",
+              "gate": "lint",
+              "passed": true,
+              "errors": [],
+              "duration": 0.277
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext/worktrees/flext-vjj1s.17/.reports/gates/20261122T162959.725968Z-4005916/check/be47b213-3eed-40cb-b9c9-e33f4e457726/flext-vjj1s.17/lint.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          },
+          "pyrefly": {
+            "result": {
+              "project": "flext-vjj1s.17",
+              "gate": "pyrefly",
+              "passed": true,
+              "errors": [],
+              "duration": 4.733
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext/worktrees/flext-vjj1s.17/.reports/gates/20261122T162959.725968Z-4005916/check/be47b213-3eed-40cb-b9c9-e33f4e457726/flext-vjj1s.17/pyrefly.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          }
+        }
+      }
+    ],
+    "selected_files": [],
+    "global_targets": [
+      {
+        "name": "flext-vjj1s.17",
+        "path": "/home/marlonsc/flext/worktrees/flext-vjj1s.17",
+        "applicable_gates": [
+          "lint",
+          "pyrefly"
+        ],
+        "source_identity": null
+      }
+    ]
+  }
+}
