@@ -1,0 +1,84 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "flext-infra-check",
+          "informationUri": "https://github.com/flext-sh/flext-infra",
+          "rules": []
+        }
+      },
+      "results": []
+    }
+  ],
+  "properties": {
+    "phase": "complete",
+    "requested_gates": [
+      "lint",
+      "format"
+    ],
+    "pending_gates": [],
+    "targets": [
+      {
+        "name": "flext-ac5kc",
+        "path": "/home/marlonsc/flext/flext-infra/worktrees/flext-ac5kc",
+        "applicable_gates": [
+          "lint",
+          "format"
+        ],
+        "source_identity": null
+      }
+    ],
+    "results": [
+      {
+        "project": "flext-ac5kc",
+        "gates": {
+          "lint": {
+            "result": {
+              "project": "flext-ac5kc",
+              "gate": "lint",
+              "passed": true,
+              "errors": [],
+              "duration": 0.096
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext/flext-infra/worktrees/flext-ac5kc/.reports/check/719d4c74-1ee6-459d-8689-3aec5b1323be/flext-ac5kc/lint.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          },
+          "format": {
+            "result": {
+              "project": "flext-ac5kc",
+              "gate": "format",
+              "passed": true,
+              "errors": [],
+              "duration": 0.086
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext/flext-infra/worktrees/flext-ac5kc/.reports/check/719d4c74-1ee6-459d-8689-3aec5b1323be/flext-ac5kc/format.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          }
+        }
+      }
+    ],
+    "selected_files": [
+      "/home/marlonsc/flext/flext-infra/worktrees/flext-ac5kc/tests/unit/workspace/test_runtime_root.py"
+    ],
+    "global_targets": null
+  }
+}
