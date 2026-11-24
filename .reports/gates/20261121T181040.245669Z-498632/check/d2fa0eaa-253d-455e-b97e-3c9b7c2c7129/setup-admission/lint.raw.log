@@ -1,0 +1,21 @@
+[
+  {
+    "cell": null,
+    "code": "E501",
+    "end_location": {
+      "column": 90,
+      "row": 789
+    },
+    "filename": "/home/marlonsc/flext/flext-infra/worktrees/setup-admission/src/flext_infra/_models/_config/artifact.py",
+    "fix": null,
+    "location": {
+      "column": 89,
+      "row": 789
+    },
+    "message": "Line too long (89 > 88)",
+    "name": "line-too-long",
+    "noqa_row": 789,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/line-too-long"
+  }
+]

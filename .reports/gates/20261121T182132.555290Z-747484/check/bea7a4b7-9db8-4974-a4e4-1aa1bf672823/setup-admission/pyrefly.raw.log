@@ -1,0 +1,16 @@
+{
+  "errors": [
+    {
+      "line": 174,
+      "column": 38,
+      "stop_line": 174,
+      "stop_column": 45,
+      "path": "tests/unit/codegen/project_verb_admission_tests.py",
+      "code": -2,
+      "name": "bad-assignment",
+      "description": "`list[str]` is not assignable to dict value type `bool | dict[str, JsonValue] | float | int | list[JsonValue] | str | None`",
+      "concise_description": "`list[str]` is not assignable to dict value type `bool | dict[str, JsonValue] | float | int | list[JsonValue] | str | None`",
+      "severity": "error"
+    }
+  ]
+}

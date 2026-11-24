@@ -1,0 +1,28 @@
+INFO: check: registry initialization start
+INFO: check: registry initialization complete
+INFO: check: selection start phase=primary
+INFO: check: selection complete projects=1 gates=2
+INFO: check: preparation start identity=True
+INFO: check: preparation complete projects=1
+INFO: check: prerequisite planning start projects=1
+INFO: check: prerequisite planning complete gates=2
+INFO: check: prerequisite wave start gate=lint jobs=1
+INFO: gate_executed project=setup-admission gate=lint passed=True elapsed=0.301
+2026-11-21T18:21:35.329301Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=310.77 failed=0 skipped=0 total_stages=1
+INFO: check: prerequisite wave complete gate=lint
+    [OK] lint           0 errors  (0.30s)
+INFO: check: prerequisite wave start gate=pyrefly jobs=1
+INFO: gate_executed project=setup-admission gate=pyrefly passed=False elapsed=13.78
+2026-11-21T18:21:49.123457Z [error    ] stage_failed                   [flext_cli.api.FlextCli] error='pyrefly failed for setup-admission with 1 findings' stage_id=pyrefly
+2026-11-21T18:21:49.123987Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=13782.1 failed=1 skipped=0 total_stages=1
+INFO: check: prerequisite wave complete gate=pyrefly
+    [FAIL] pyrefly        1 errors  (13.78s)
+INFO: pyrefly: findings; Native output receipt: /home/marlonsc/flext/flext-infra/worktrees/setup-admission/.reports/gates/20261121T182132.555290Z-747484/check/bea7a4b7-9db8-4974-a4e4-1aa1bf672823/setup-admission/pyrefly.raw.log
+
+-- check summary --
+Total: 1  Success: 0  Failed: 1  Skipped: 0  (14.13s)
+INFO: Reports: /home/marlonsc/flext/flext-infra/worktrees/setup-admission/.reports/gates/20261121T182132.555290Z-747484/check/bea7a4b7-9db8-4974-a4e4-1aa1bf672823/check-report.md
+INFO:          /home/marlonsc/flext/flext-infra/worktrees/setup-admission/.reports/gates/20261121T182132.555290Z-747484/check/bea7a4b7-9db8-4974-a4e4-1aa1bf672823/check-report.sarif
+INFO: Findings by project (see reports for detail):
+INFO: setup-admission                     1  (pyrefly=1)
+❌ quality checks failed for: setup-admission (1 findings; see the check summary and reports)

@@ -1,0 +1,25 @@
+INFO: check: registry initialization start
+INFO: check: registry initialization complete
+INFO: check: selection start phase=complete
+INFO: check: selection complete projects=1 gates=6
+INFO: check: preparation start identity=True
+INFO: check: preparation complete projects=1
+INFO: check: prerequisite planning start projects=1
+INFO: check: prerequisite planning complete gates=1
+INFO: check: prerequisite wave start gate=lint jobs=1
+INFO: gate_executed project=setup-admission gate=lint passed=False elapsed=1.218
+2026-11-21T18:10:43.925566Z [error    ] stage_failed                   [flext_cli.api.FlextCli] error='lint failed for setup-admission with 1 findings' stage_id=lint
+2026-11-21T18:10:43.930498Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=1227.93 failed=1 skipped=0 total_stages=1
+INFO: check: prerequisite wave complete gate=lint
+    [FAIL] lint           1 errors  (1.22s)
+INFO: lint: findings; Native output receipt: /home/marlonsc/flext/flext-infra/worktrees/setup-admission/.reports/gates/20261121T181040.245669Z-498632/check/d2fa0eaa-253d-455e-b97e-3c9b7c2c7129/setup-admission/lint.raw.log
+
+-- check summary --
+Total: 1  Success: 0  Failed: 1  Skipped: 0  (1.26s)
+INFO: Execution INCOMPLETE: 1/1 projects reached; see the requested gate inventory in the reports
+INFO: NOT EXECUTED: format, markdown, markdown-format, markdown-code, conflict-markers
+INFO: Reports: /home/marlonsc/flext/flext-infra/worktrees/setup-admission/.reports/gates/20261121T181040.245669Z-498632/check/d2fa0eaa-253d-455e-b97e-3c9b7c2c7129/check-report.md
+INFO:          /home/marlonsc/flext/flext-infra/worktrees/setup-admission/.reports/gates/20261121T181040.245669Z-498632/check/d2fa0eaa-253d-455e-b97e-3c9b7c2c7129/check-report.sarif
+INFO: Findings by project (see reports for detail):
+INFO: setup-admission                     1  (lint=1)
+❌ quality check target accounting is incomplete

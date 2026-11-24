@@ -1,0 +1,110 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "flext-infra-check",
+          "informationUri": "https://github.com/flext-sh/flext-infra",
+          "rules": []
+        }
+      },
+      "results": []
+    }
+  ],
+  "properties": {
+    "phase": "primary",
+    "requested_gates": [
+      "lint",
+      "pyrefly"
+    ],
+    "pending_gates": [],
+    "targets": [
+      {
+        "name": "setup-admission",
+        "path": "/home/marlonsc/flext/flext-infra/worktrees/setup-admission",
+        "applicable_gates": [
+          "lint",
+          "pyrefly"
+        ],
+        "source_identity": {
+          "repo_root": "/home/marlonsc/flext/flext-infra/worktrees/setup-admission",
+          "primary_root": "/home/marlonsc/flext/flext-infra",
+          "head_oid": "4ff2dd0b86250ebb4acbb7a483f373405167d845",
+          "porcelain": "M  .envrc\nM  .gitignore\nM  Makefile\nMM src/flext_infra/_models/_config/artifact.py\nM  src/flext_infra/_models/_config/make.py\nM  src/flext_infra/_protocols/_config/make.py\nM  src/flext_infra/_utilities/project_managed_artifacts.py\nM  src/flext_infra/config/codegen.yaml\nM  src/flext_infra/templates/project/base/Makefile.j2\nMM tests/unit/codegen/project_verb_admission_tests.py",
+          "dirty": true,
+          "git_dir": "/home/marlonsc/flext/.git/modules/flext-infra/worktrees/setup-admission",
+          "common_dir": "/home/marlonsc/flext/.git/modules/flext-infra",
+          "branch": "fix/setup-bootstrap-admission",
+          "origin_remote": "https://github.com/flext-sh/flext-infra.git",
+          "upstream_remote": null,
+          "superproject_root": "/home/marlonsc/flext",
+          "requested_path": "/home/marlonsc/flext/flext-infra/worktrees/setup-admission",
+          "is_worktree": true,
+          "is_submodule": true,
+          "is_attached_submodule": false,
+          "has_submodules": false,
+          "is_inside_work_tree": true
+        }
+      }
+    ],
+    "results": [
+      {
+        "project": "setup-admission",
+        "gates": {
+          "lint": {
+            "result": {
+              "project": "setup-admission",
+              "gate": "lint",
+              "passed": true,
+              "errors": [],
+              "duration": 0.244
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext/flext-infra/worktrees/setup-admission/.reports/gates/20261121T182439.789585Z-828482/check/163ee8a0-7a18-4ed1-98eb-815b7a4999e8/setup-admission/lint.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          },
+          "pyrefly": {
+            "result": {
+              "project": "setup-admission",
+              "gate": "pyrefly",
+              "passed": true,
+              "errors": [],
+              "duration": 14.557
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext/flext-infra/worktrees/setup-admission/.reports/gates/20261121T182439.789585Z-828482/check/163ee8a0-7a18-4ed1-98eb-815b7a4999e8/setup-admission/pyrefly.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          }
+        }
+      }
+    ],
+    "selected_files": [],
+    "global_targets": [
+      {
+        "name": "setup-admission",
+        "path": "/home/marlonsc/flext/flext-infra/worktrees/setup-admission",
+        "applicable_gates": [
+          "lint",
+          "pyrefly"
+        ],
+        "source_identity": null
+      }
+    ]
+  }
+}

@@ -1,0 +1,99 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "flext-infra-check",
+          "informationUri": "https://github.com/flext-sh/flext-infra",
+          "rules": []
+        }
+      },
+      "results": []
+    }
+  ],
+  "properties": {
+    "phase": "complete",
+    "requested_gates": [
+      "format",
+      "markdown-format",
+      "markdown-code"
+    ],
+    "pending_gates": [],
+    "targets": [
+      {
+        "name": "setup-admission",
+        "path": "/home/marlonsc/flext/flext-infra/worktrees/setup-admission",
+        "applicable_gates": [
+          "format",
+          "markdown-format",
+          "markdown-code"
+        ],
+        "source_identity": null
+      }
+    ],
+    "results": [
+      {
+        "project": "setup-admission",
+        "gates": {
+          "format": {
+            "result": {
+              "project": "setup-admission",
+              "gate": "format",
+              "passed": true,
+              "errors": [],
+              "duration": 6.174
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext/flext-infra/worktrees/setup-admission/.reports/check/d5625645-8eb5-444b-a10a-e211c2dee06d/setup-admission/format.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          },
+          "markdown-format": {
+            "result": {
+              "project": "setup-admission",
+              "gate": "markdown-format",
+              "passed": true,
+              "errors": [],
+              "duration": 3.578
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext/flext-infra/worktrees/setup-admission/.reports/check/d5625645-8eb5-444b-a10a-e211c2dee06d/setup-admission/markdown-format.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          },
+          "markdown-code": {
+            "result": {
+              "project": "setup-admission",
+              "gate": "markdown-code",
+              "passed": true,
+              "errors": [],
+              "duration": 3.946
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext/flext-infra/worktrees/setup-admission/.reports/check/d5625645-8eb5-444b-a10a-e211c2dee06d/setup-admission/markdown-code.raw.log",
+            "outcome": "clean",
+            "process": null,
+            "components": {},
+            "requested_components": []
+          }
+        }
+      }
+    ],
+    "selected_files": [],
+    "global_targets": null
+  }
+}

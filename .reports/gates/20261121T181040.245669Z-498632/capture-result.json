@@ -1,0 +1,1 @@
+{"process":{"raw_return_code":1,"timed_out":false,"forwarded_signal":null},"receipt":null,"issues":[{"file":"/home/marlonsc/flext/flext-infra/worktrees/setup-admission","line":0,"column":0,"code":"error","message":"check report target accounting is incomplete","severity":"error","locations":[],"related_locations":[]}]}

@@ -1,0 +1,8 @@
+{
+  "execution_mode": "global-incremental",
+  "testmon_db": "/home/marlonsc/.cache/flext/infra/testmon/flext-infra/setup-admission/.testmondata",
+  "testmon_lease_acquired": true,
+  "deadline_monotonic": 232080.820335829,
+  "report_directory": "/home/marlonsc/flext/flext-infra/worktrees/setup-admission/.reports/tests/20261121T182601.020894Z-945701",
+  "profile_sha256": null
+}

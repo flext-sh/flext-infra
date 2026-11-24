@@ -1,0 +1,35 @@
+INFO: check: registry initialization start
+INFO: check: registry initialization complete
+INFO: check: selection start phase=complete
+INFO: check: selection complete projects=1 gates=6
+INFO: check: preparation start identity=True
+INFO: check: preparation complete projects=1
+INFO: check: prerequisite planning start projects=1
+INFO: check: prerequisite planning complete gates=1
+INFO: check: prerequisite wave start gate=lint jobs=1
+INFO: gate_executed project=setup-admission gate=lint passed=True elapsed=0.249
+2026-11-21T18:40:18.525871Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=255.16 failed=0 skipped=0 total_stages=1
+INFO: check: prerequisite wave complete gate=lint
+    [OK] lint           0 errors  (0.25s)
+[1/1] setup-admission check ...
+INFO: gate_executed project=setup-admission gate=markdown passed=True elapsed=1.151
+2026-11-21T18:40:20.522688Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=1151.12 failed=0 skipped=0 total_stages=1
+INFO: gate_executed project=setup-admission gate=markdown-format passed=True elapsed=1.164
+2026-11-21T18:40:20.536946Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=1164.53 failed=0 skipped=0 total_stages=1
+INFO: gate_executed project=setup-admission gate=format passed=True elapsed=2.446
+2026-11-21T18:40:21.818116Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=2446.86 failed=0 skipped=0 total_stages=1
+INFO: gate_executed project=setup-admission gate=markdown-code passed=True elapsed=3.855
+2026-11-21T18:40:23.228217Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=3855.2 failed=0 skipped=0 total_stages=1
+INFO: gate_executed project=setup-admission gate=conflict-markers passed=True elapsed=4.226
+2026-11-21T18:40:24.668787Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=5295.07 failed=0 skipped=0 total_stages=1
+    [OK] format         0 errors  (2.45s)
+    [OK] markdown       0 errors  (1.15s)
+    [OK] markdown-format     0 errors  (1.16s)
+    [OK] markdown-code     0 errors  (3.85s)
+    [OK] conflict-markers     0 errors  (4.23s)
+  [OK] check    setup-admission          5.36s
+
+-- check summary --
+Total: 1  Success: 1  Failed: 0  Skipped: 0  (5.64s)
+INFO: Reports: /home/marlonsc/flext/flext-infra/worktrees/setup-admission/.reports/gates/20261121T184016.027186Z-1381307/check/c51b87bf-bd6a-412b-a0f1-32f22917e11a/check-report.md
+INFO:          /home/marlonsc/flext/flext-infra/worktrees/setup-admission/.reports/gates/20261121T184016.027186Z-1381307/check/c51b87bf-bd6a-412b-a0f1-32f22917e11a/check-report.sarif
