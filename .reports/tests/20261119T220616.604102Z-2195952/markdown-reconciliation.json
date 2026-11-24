@@ -1,0 +1,53 @@
+{
+  "eligible": [],
+  "selected": [],
+  "deselected": [],
+  "diagnostics": {
+    "failed_count": 1,
+    "error_count": 0,
+    "warning_count": 0,
+    "skipped_count": 0,
+    "connectivity_skip_cases": [],
+    "collection_failed_count": 0,
+    "collection_skipped_count": 0,
+    "collection_failed_cases": [],
+    "collection_skip_cases": [],
+    "reported_node_ids": [
+      "tests/unit/codegen/test_codegen_make_member_runtime.py::TestsFlextInfraCodegenMakeMemberRuntime::test_checkout_without_superproject_owns_its_runtime[False]"
+    ],
+    "phase_outcomes": [
+      {
+        "node_id": "tests/unit/codegen/test_codegen_make_member_runtime.py::TestsFlextInfraCodegenMakeMemberRuntime::test_checkout_without_superproject_owns_its_runtime[False]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_make_member_runtime.py::TestsFlextInfraCodegenMakeMemberRuntime::test_checkout_without_superproject_owns_its_runtime[False]",
+        "phase": "call",
+        "outcome": "failed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_make_member_runtime.py::TestsFlextInfraCodegenMakeMemberRuntime::test_checkout_without_superproject_owns_its_runtime[False]",
+        "phase": "teardown",
+        "outcome": "passed"
+      }
+    ],
+    "markdown_attempts": [],
+    "markdown_items": [],
+    "failed_cases": [
+      "tests.unit.codegen.test_codegen_make_member_runtime.TestsFlextInfraCodegenMakeMemberRuntime::test_checkout_without_superproject_owns_its_runtime[False]"
+    ],
+    "error_traces": [
+      "=== FAILURE: tests.unit.codegen.test_codegen_make_member_runtime.TestsFlextInfraCodegenMakeMemberRuntime::test_checkout_without_superproject_owns_its_runtime[False] ===\nAssertionError: Makefile:40: *** Refused: 5-minute load average 44.09 exceeds the admission limit 20.0 of 'help'; run its lighter form now, or declare make.admission.overrides.<verb>.max_load5 in config/codegen.yaml (flext-infra for canonical verbs, the project for its own extra_verbs).  Stop.\ntests/unit/codegen/test_codegen_make_member_runtime.py:258: in test_checkout_without_superproject_owns_its_runtime\n    values = self._runtime_values(project_root, probe)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\ntests/unit/codegen/test_codegen_make_member_runtime.py:102: in _runtime_values\n    tm.that(u.Cli.process_succeeded(process.outcome), eq=True, msg=process.stderr)\n.venv/lib/python3.13/site-packages/flext_tests/_utilities/_matchers/that.py:706: in that\n    raise AssertionError(\nE   AssertionError: Makefile:40: *** Refused: 5-minute load average 44.09 exceeds the admission limit 20.0 of 'help'; run its lighter form now, or declare make.admission.overrides.<verb>.max_load5 in config/codegen.yaml (flext-infra for canonical verbs, the project for its own extra_verbs).  Stop."
+    ],
+    "warning_lines": [],
+    "skip_cases": [],
+    "slow_entries": [
+      "13.144000s | tests.unit.codegen.test_codegen_make_member_runtime.TestsFlextInfraCodegenMakeMemberRuntime::test_checkout_without_superproject_owns_its_runtime[False]"
+    ]
+  },
+  "cache_hit": false,
+  "violations": [
+    "selected node IDs differ from executed node IDs"
+  ]
+}

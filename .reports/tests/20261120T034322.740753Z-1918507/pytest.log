@@ -1,0 +1,51 @@
+================================================= test session starts ==================================================
+platform linux -- Python 3.13.17, pytest-9.2.0, pluggy-1.7.0 -- /home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-ce0q5-docs/.venv/bin/python
+cachedir: .pytest_cache
+hypothesis profile 'default'
+benchmark: 5.3.1 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+Using --randomly-seed=3991943921
+rootdir: /home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-ce0q5-docs
+configfile: pyproject.toml
+plugins: flext-tests-0.12.0, hypothesis-6.170.15, anyio-4.16.0, asyncio-1.4.1.post1, benchmark-5.3.1, cov-7.1.0, markdown-docs-0.9.2, randomly-5.1.0, reportlog-1.0.0, timeout-2.4.0, xdist-3.8.0, platformdirs-4.14.5, flext-infra-0.12.1
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
+timeout: 2.0s
+timeout method: signal
+timeout func_only: True
+created: 4/4 workers
+4 workers [10 items]
+
+scheduling tests via LoadScopeScheduling
+
+tests/unit/codegen/test_codegen_make_member_runtime.py::TestsFlextInfraCodegenMakeMemberRuntime::test_checkout_without_superproject_owns_its_runtime[False] 
+[gw0] [ 10%] PASSED tests/unit/codegen/test_codegen_make_member_runtime.py::TestsFlextInfraCodegenMakeMemberRuntime::test_checkout_without_superproject_owns_its_runtime[False] 
+tests/unit/codegen/test_codegen_make_member_runtime.py::TestsFlextInfraCodegenMakeMemberRuntime::test_submodule_member_resolves_the_workspace_runtime 
+[gw0] [ 20%] FAILED tests/unit/codegen/test_codegen_make_member_runtime.py::TestsFlextInfraCodegenMakeMemberRuntime::test_submodule_member_resolves_the_workspace_runtime 
+
+======================================================= FAILURES =======================================================
+_____________ TestsFlextInfraCodegenMakeMemberRuntime.test_submodule_member_resolves_the_workspace_runtime _____________
+[gw0] linux -- Python 3.13.17 /home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-ce0q5-docs/.venv/bin/python
+tests/unit/codegen/test_codegen_make_member_runtime.py:293: in test_submodule_member_resolves_the_workspace_runtime
+    values = self._runtime_values(member, probe)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/unit/codegen/test_codegen_make_member_runtime.py:102: in _runtime_values
+    tm.that(u.Cli.process_succeeded(process.outcome), eq=True, msg=process.stderr)
+.venv/lib/python3.13/site-packages/flext_tests/_utilities/_matchers/that.py:706: in that
+    raise AssertionError(
+E   AssertionError: mise ERROR error parsing config file: ~/tmp/pytest-of-marlonsc/pytest-14747/popen-gw0/test_submodule_member_resolves0/workspace/fixture-project/.mise.toml
+E   mise ERROR Config files in ~/tmp/pytest-of-marlonsc/pytest-14747/popen-gw0/test_submodule_member_resolves0/workspace/fixture-project/.mise.toml are not trusted.
+E   Trust them with `mise trust`. See https://mise.jdx.dev/cli/trust.html for more information.
+E   mise ERROR Version: 2026.10.3 linux-x64 (2026-10-05)
+E   mise ERROR Run with --verbose or MISE_VERBOSE=1 for more information
+- generated xml file: /home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-ce0q5-docs/.reports/tests/20261120T034322.740753Z-1918507/junit.xml -
+- generated report log file: /home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-ce0q5-docs/.reports/tests/20261120T034322.740753Z-1918507/events.jsonl -
+--------------------------------------------------- flext slow tests ---------------------------------------------------
+no test near the ordinary or slow limit
+================================================= slowest 25 durations =================================================
+8.07s setup    tests/unit/codegen/test_codegen_make_member_runtime.py::TestsFlextInfraCodegenMakeMemberRuntime::test_checkout_without_superproject_owns_its_runtime[False]
+
+(5 durations < 2s hidden.)
+=============================================== short test summary info ================================================
+FAILED tests/unit/codegen/test_codegen_make_member_runtime.py::TestsFlextInfraCodegenMakeMemberRuntime::test_submodule_member_resolves_the_workspace_runtime
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! xdist.dsession.Interrupted: stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+============================================= 1 failed, 1 passed in 13.70s =============================================

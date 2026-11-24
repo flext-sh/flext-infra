@@ -1,0 +1,14 @@
+cwd=/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-ce0q5-docs report=/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-ce0q5-docs/.reports/check/d7a8e002-04d0-4d08-b7bc-f54d94844332/flext-ce0q5-docs/flext-ce0q5-docs-deps-b28a5f0a4fff49529d5f8dbfeccd4b2f/deptry.json
+return-code=1
+stdout:
+
+stderr:
+Scanning 773 files...
+
+/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-ce0q5-docs/pyproject.toml: DEP002 'properdocs' defined as a dependency but not used in the codebase
+Found 1 dependency issue.
+
+For more information, see the documentation: https://deptry.com/
+
+retained-by-declared-usage=1
+report-sha256=481a350a725923986849ab12ec3ecf34c007a0f5a6bb15ae984a19a43fe1f07e

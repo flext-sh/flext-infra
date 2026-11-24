@@ -1,0 +1,110 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "flext-infra-check",
+          "informationUri": "https://github.com/flext-sh/flext-infra",
+          "rules": []
+        }
+      },
+      "results": []
+    }
+  ],
+  "properties": {
+    "phase": "primary",
+    "requested_gates": [
+      "lint",
+      "pyrefly"
+    ],
+    "pending_gates": [],
+    "targets": [
+      {
+        "name": "flext-ce0q5-docs",
+        "path": "/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-ce0q5-docs",
+        "applicable_gates": [
+          "lint",
+          "pyrefly"
+        ],
+        "source_identity": {
+          "repo_root": "/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-ce0q5-docs",
+          "primary_root": "/home/marlonsc/flext/flext-infra",
+          "head_oid": "4d3618b20ecc7db0be02e7db43211e8705af81db",
+          "porcelain": " M .envrc\n M docs/CHANGELOG.md\n M docs/guides/using-flext-cli.md\n M docs/releases/latest.md\n M docs/releases/v0.12.2.md\n M src/flext_infra/_protocols/_config/workspace.py",
+          "dirty": true,
+          "git_dir": "/home/marlonsc/flext/.git/modules/flext-infra/worktrees/flext-ce0q5-docs",
+          "common_dir": "/home/marlonsc/flext/.git/modules/flext-infra",
+          "branch": "docs/flext-ce0q5-discovery-ceiling",
+          "origin_remote": "https://github.com/flext-sh/flext-infra.git",
+          "upstream_remote": null,
+          "superproject_root": "/home/marlonsc/flext",
+          "requested_path": "/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-ce0q5-docs",
+          "is_worktree": true,
+          "is_submodule": true,
+          "is_attached_submodule": false,
+          "has_submodules": false,
+          "is_inside_work_tree": true
+        }
+      }
+    ],
+    "results": [
+      {
+        "project": "flext-ce0q5-docs",
+        "gates": {
+          "lint": {
+            "result": {
+              "project": "flext-ce0q5-docs",
+              "gate": "lint",
+              "passed": true,
+              "errors": [],
+              "duration": 1.727
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-ce0q5-docs/.reports/gates/20261120T035523.442821Z-2211931/check/a28a0f4b-821e-4fac-8309-d863e1cdea5d/flext-ce0q5-docs/lint.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          },
+          "pyrefly": {
+            "result": {
+              "project": "flext-ce0q5-docs",
+              "gate": "pyrefly",
+              "passed": true,
+              "errors": [],
+              "duration": 25.148
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-ce0q5-docs/.reports/gates/20261120T035523.442821Z-2211931/check/a28a0f4b-821e-4fac-8309-d863e1cdea5d/flext-ce0q5-docs/pyrefly.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          }
+        }
+      }
+    ],
+    "selected_files": [],
+    "global_targets": [
+      {
+        "name": "flext-ce0q5-docs",
+        "path": "/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-ce0q5-docs",
+        "applicable_gates": [
+          "lint",
+          "pyrefly"
+        ],
+        "source_identity": null
+      }
+    ]
+  }
+}

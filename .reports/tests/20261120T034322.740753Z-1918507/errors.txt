@@ -1,0 +1,18 @@
+=== FAILURE: tests.unit.codegen.test_codegen_make_member_runtime.TestsFlextInfraCodegenMakeMemberRuntime::test_submodule_member_resolves_the_workspace_runtime ===
+AssertionError: mise ERROR error parsing config file: ~/tmp/pytest-of-marlonsc/pytest-14747/popen-gw0/test_submodule_member_resolves0/workspace/fixture-project/.mise.toml
+mise ERROR Config files in ~/tmp/pytest-of-marlonsc/pytest-14747/popen-gw0/test_submodule_member_resolves0/workspace/fixture-project/.mise.toml are not trusted.
+Trust them with `mise trust`. See https://mise.jdx.dev/cli/trust.html for more information.
+mise ERROR Version: 2026.10.3 linux-x64 (2026-10-05)
+[+1 more line; full report in element text]
+tests/unit/codegen/test_codegen_make_member_runtime.py:293: in test_submodule_member_resolves_the_workspace_runtime
+    values = self._runtime_values(member, probe)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/unit/codegen/test_codegen_make_member_runtime.py:102: in _runtime_values
+    tm.that(u.Cli.process_succeeded(process.outcome), eq=True, msg=process.stderr)
+.venv/lib/python3.13/site-packages/flext_tests/_utilities/_matchers/that.py:706: in that
+    raise AssertionError(
+E   AssertionError: mise ERROR error parsing config file: ~/tmp/pytest-of-marlonsc/pytest-14747/popen-gw0/test_submodule_member_resolves0/workspace/fixture-project/.mise.toml
+E   mise ERROR Config files in ~/tmp/pytest-of-marlonsc/pytest-14747/popen-gw0/test_submodule_member_resolves0/workspace/fixture-project/.mise.toml are not trusted.
+E   Trust them with `mise trust`. See https://mise.jdx.dev/cli/trust.html for more information.
+E   mise ERROR Version: 2026.10.3 linux-x64 (2026-10-05)
+E   mise ERROR Run with --verbose or MISE_VERBOSE=1 for more information

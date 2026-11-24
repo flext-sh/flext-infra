@@ -1,0 +1,8 @@
+{
+  "execution_mode": "full",
+  "testmon_db": null,
+  "testmon_lease_acquired": null,
+  "deadline_monotonic": 92719.98845171,
+  "report_directory": "/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-ce0q5-docs/.reports/tests/20261120T034322.740753Z-1918507",
+  "profile_sha256": null
+}

@@ -1,0 +1,99 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "flext-infra-check",
+          "informationUri": "https://github.com/flext-sh/flext-infra",
+          "rules": []
+        }
+      },
+      "results": []
+    }
+  ],
+  "properties": {
+    "phase": "complete",
+    "requested_gates": [
+      "format",
+      "markdown-format",
+      "markdown-code"
+    ],
+    "pending_gates": [],
+    "targets": [
+      {
+        "name": "flext-ce0q5-docs",
+        "path": "/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-ce0q5-docs",
+        "applicable_gates": [
+          "format",
+          "markdown-format",
+          "markdown-code"
+        ],
+        "source_identity": null
+      }
+    ],
+    "results": [
+      {
+        "project": "flext-ce0q5-docs",
+        "gates": {
+          "format": {
+            "result": {
+              "project": "flext-ce0q5-docs",
+              "gate": "format",
+              "passed": true,
+              "errors": [],
+              "duration": 0.733
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-ce0q5-docs/.reports/check/12aeecb5-089c-4977-95ed-d88d6baa248c/flext-ce0q5-docs/format.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          },
+          "markdown-format": {
+            "result": {
+              "project": "flext-ce0q5-docs",
+              "gate": "markdown-format",
+              "passed": true,
+              "errors": [],
+              "duration": 0.687
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-ce0q5-docs/.reports/check/12aeecb5-089c-4977-95ed-d88d6baa248c/flext-ce0q5-docs/markdown-format.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          },
+          "markdown-code": {
+            "result": {
+              "project": "flext-ce0q5-docs",
+              "gate": "markdown-code",
+              "passed": true,
+              "errors": [],
+              "duration": 2.412
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-ce0q5-docs/.reports/check/12aeecb5-089c-4977-95ed-d88d6baa248c/flext-ce0q5-docs/markdown-code.raw.log",
+            "outcome": "clean",
+            "process": null,
+            "components": {},
+            "requested_components": []
+          }
+        }
+      }
+    ],
+    "selected_files": [],
+    "global_targets": null
+  }
+}
