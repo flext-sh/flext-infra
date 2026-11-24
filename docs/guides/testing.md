@@ -91,33 +91,25 @@ make tests
 ```
 
 `make tests` discovers the complete applicable inventory and executes native
-incremental Testmon selection once on the checkout's native `.testmondata`.
+incremental Testmon selection once, retaining the project's persistent database.
 It does not add a full rerun. The generated Make boundary fixes the population
 to the typed project/workspace declarations; caller variables cannot replace it
 with a file or narrower directory. The runner accounts for collection, selection,
 execution and declared exclusions through its existing typed receipts. Never
 clear or replace the database, or invoke the underlying runner directly.
 
-The Testmon environment combines installed toolchain provenance, the elected pytest
-policy and the marker scope. Config edits never open a new environment. Testmon
-tracks Python coverage, so the runner also records each test's config dependencies
-as Testmon file dependencies, and an edited `config/*.yaml` selects only the tests
-that consume it:
-
-- a project or packaged `config/*.yaml` file opened while a test runs;
-- each typed leaf (`root.namespace.file.section`) of the package's `config`
-  singleton the test reads, through a one-line digest receipt under
-  `testmon_cache.config_receipts_directory` (git-ignored). A YAML edit that leaves
-  every typed value unchanged, such as a comment, selects nothing;
-- every config file, when the test starts a child process outside
-  `testmon_cache.config_insensitive_executables`: the child reads config that
-  Testmon cannot observe.
-
-A read made by module-level code (an import, a class body, a parametrize argument)
-belongs to the tests that cover that module, as the module's own top-level code
-does. Any other read outside a test belongs to every test. The cost is the scope of
-the consumers: a leaf that collection or a shared module reads at import still
-selects every test of that module.
+The supported Testmon environment combines installed toolchain provenance with current
+`config/*.yaml` content. Declare additional template and resource directories in the
+workspace manifest's `test_inputs.templates` and `test_inputs.resources`. Declare
+behavior-affecting environment variable names in `test_inputs.environment`; only their
+digests enter the environment identifier, never their values. Missing and empty values
+remain distinct. Directory creation, removal, and content changes invalidate the
+selection conservatively while preserving the same external database. Each downstream
+workspace owns its own declarations; the infrastructure template catalog does not stand
+in for downstream inputs. Declared directories use the existing authenticated physical
+inventory contract: symbolic links and multiply linked files fail explicitly. This is
+not an unrestricted filesystem dependency scanner; declare physical source inputs and
+repair the inventory owner if a legitimate native consumer requires another shape.
 
 For an explicitly requested complete execution, use:
 
@@ -127,8 +119,8 @@ make tests-full
 
 `make tests-full` executes the complete applicable population once, without
 Testmon or a preliminary incremental run. It does not load the Testmon plugin,
-pass its options or database environment, or inspect or modify its database.
-The existing database remains untouched
+pass its options or database environment, acquire its lease, inspect or modify
+its database, or publish a cache receipt. The existing database remains untouched
 for later `make tests` runs. This is the latest operator clarification of
 2026-10-28, recorded in
 ADR-029.
@@ -166,9 +158,9 @@ runner that violates this contract is repaired at its owner and rerun through Ma
 
 Each phase retains its mode, raw process outcome, collection manifest, and
 diagnostics. The latest receipt names the current attempt even when collection fails.
-Incremental and full phases retain their database and cache accounting. Full
-phases select nothing, record every item in the native database and reconcile execution
-against their complete applicable inventory.
+Incremental phases retain their database and cache accounting. Full phases record
+no Testmon database, lease or cache publication and reconcile execution against
+their complete applicable inventory.
 Warning totals include selection, inventory, and suite occurrences, with blocking and
 explicitly suspended warnings reported separately. The existing non-strict MRO
 enforcement suspension remains visible in those receipts. Unexpected skips block
