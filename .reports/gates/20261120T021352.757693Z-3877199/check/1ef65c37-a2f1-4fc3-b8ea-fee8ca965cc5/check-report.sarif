@@ -1,0 +1,153 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "flext-infra-check",
+          "informationUri": "https://github.com/flext-sh/flext-infra",
+          "rules": [
+            {
+              "id": "missing-module-attribute",
+              "shortDescription": {
+                "text": "Pyrefly (pyrefly) issue"
+              },
+              "helpUri": "https://github.com/facebook/pyrefly"
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "missing-module-attribute",
+          "level": "error",
+          "message": {
+            "text": "Could not import `FlextInfraUtilitiesFacadeNamespace` from `flext_infra._utilities`"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/flext_infra/_utilities/facade_components.py",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 32,
+                  "startColumn": 5
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "properties": {
+    "phase": "primary",
+    "requested_gates": [
+      "lint",
+      "pyrefly"
+    ],
+    "pending_gates": [],
+    "targets": [
+      {
+        "name": "flext-0in0k.32",
+        "path": "/home/marlonsc/flext/worktrees/flext-0in0k.32",
+        "applicable_gates": [
+          "lint",
+          "pyrefly"
+        ],
+        "source_identity": {
+          "repo_root": "/home/marlonsc/flext/worktrees/flext-0in0k.32",
+          "primary_root": "/home/marlonsc/flext/flext-infra",
+          "head_oid": "2c9f4cefe4e4382a5ac3553406449140d5dc72cf",
+          "porcelain": " M src/flext_infra/_utilities/facade_components.py\n M src/flext_infra/_utilities/namespace.py\n M src/flext_infra/codegen/_conform/context_render.py\n M tests/unit/codegen/test_facade_component_source.py\n?? .code-review-graph/write.lock\n?? src/flext_infra/_utilities/facade_namespace.py",
+          "dirty": true,
+          "git_dir": "/home/marlonsc/flext/.git/modules/flext-infra/worktrees/flext-0in0k.32",
+          "common_dir": "/home/marlonsc/flext/.git/modules/flext-infra",
+          "branch": "fix/flext-0in0k.32",
+          "origin_remote": "https://github.com/flext-sh/flext-infra.git",
+          "upstream_remote": null,
+          "superproject_root": "/home/marlonsc/flext",
+          "requested_path": "/home/marlonsc/flext/worktrees/flext-0in0k.32",
+          "is_worktree": true,
+          "is_submodule": true,
+          "is_attached_submodule": false,
+          "has_submodules": false,
+          "is_inside_work_tree": true
+        }
+      }
+    ],
+    "results": [
+      {
+        "project": "flext-0in0k.32",
+        "gates": {
+          "lint": {
+            "result": {
+              "project": "flext-0in0k.32",
+              "gate": "lint",
+              "passed": true,
+              "errors": [],
+              "duration": 2.337
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext/worktrees/flext-0in0k.32/.reports/gates/20261120T021352.757693Z-3877199/check/1ef65c37-a2f1-4fc3-b8ea-fee8ca965cc5/flext-0in0k.32/lint.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          },
+          "pyrefly": {
+            "result": {
+              "project": "flext-0in0k.32",
+              "gate": "pyrefly",
+              "passed": false,
+              "errors": [
+                "src/flext_infra/_utilities/facade_components.py:32:5 [missing-module-attribute] Could not import `FlextInfraUtilitiesFacadeNamespace` from `flext_infra._utilities`"
+              ],
+              "duration": 17.422
+            },
+            "issues": [
+              {
+                "file": "src/flext_infra/_utilities/facade_components.py",
+                "line": 32,
+                "column": 5,
+                "code": "missing-module-attribute",
+                "message": "Could not import `FlextInfraUtilitiesFacadeNamespace` from `flext_infra._utilities`",
+                "severity": "error",
+                "locations": [],
+                "related_locations": []
+              }
+            ],
+            "raw_receipt": "/home/marlonsc/flext/worktrees/flext-0in0k.32/.reports/gates/20261120T021352.757693Z-3877199/check/1ef65c37-a2f1-4fc3-b8ea-fee8ca965cc5/flext-0in0k.32/pyrefly.raw.log",
+            "outcome": "findings",
+            "process": {
+              "raw_return_code": 1,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          }
+        }
+      }
+    ],
+    "selected_files": [],
+    "global_targets": [
+      {
+        "name": "flext-0in0k.32",
+        "path": "/home/marlonsc/flext/worktrees/flext-0in0k.32",
+        "applicable_gates": [
+          "lint",
+          "pyrefly"
+        ],
+        "source_identity": null
+      }
+    ]
+  }
+}

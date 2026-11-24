@@ -1,0 +1,84 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "flext-infra-check",
+          "informationUri": "https://github.com/flext-sh/flext-infra",
+          "rules": []
+        }
+      },
+      "results": []
+    }
+  ],
+  "properties": {
+    "phase": "complete",
+    "requested_gates": [
+      "lint",
+      "format"
+    ],
+    "pending_gates": [],
+    "targets": [
+      {
+        "name": "flext-0in0k.32",
+        "path": "/home/marlonsc/flext/worktrees/flext-0in0k.32",
+        "applicable_gates": [
+          "lint",
+          "format"
+        ],
+        "source_identity": null
+      }
+    ],
+    "results": [
+      {
+        "project": "flext-0in0k.32",
+        "gates": {
+          "lint": {
+            "result": {
+              "project": "flext-0in0k.32",
+              "gate": "lint",
+              "passed": true,
+              "errors": [],
+              "duration": 0.12
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext/worktrees/flext-0in0k.32/.reports/check/7ac2676d-f2c6-401e-a813-a3c208fdaefa/flext-0in0k.32/lint.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          },
+          "format": {
+            "result": {
+              "project": "flext-0in0k.32",
+              "gate": "format",
+              "passed": true,
+              "errors": [],
+              "duration": 0.063
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext/worktrees/flext-0in0k.32/.reports/check/7ac2676d-f2c6-401e-a813-a3c208fdaefa/flext-0in0k.32/format.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          }
+        }
+      }
+    ],
+    "selected_files": [
+      "/home/marlonsc/flext/worktrees/flext-0in0k.32/tests/unit/codegen/test_facade_component_source.py"
+    ],
+    "global_targets": null
+  }
+}

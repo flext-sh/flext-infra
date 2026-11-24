@@ -1,0 +1,16 @@
+{
+  "errors": [
+    {
+      "line": 32,
+      "column": 5,
+      "stop_line": 32,
+      "stop_column": 39,
+      "path": "src/flext_infra/_utilities/facade_components.py",
+      "code": -2,
+      "name": "missing-module-attribute",
+      "description": "Could not import `FlextInfraUtilitiesFacadeNamespace` from `flext_infra._utilities`",
+      "concise_description": "Could not import `FlextInfraUtilitiesFacadeNamespace` from `flext_infra._utilities`",
+      "severity": "error"
+    }
+  ]
+}

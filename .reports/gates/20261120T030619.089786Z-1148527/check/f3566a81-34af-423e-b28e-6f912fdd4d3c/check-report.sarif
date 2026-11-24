@@ -1,0 +1,110 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "flext-infra-check",
+          "informationUri": "https://github.com/flext-sh/flext-infra",
+          "rules": []
+        }
+      },
+      "results": []
+    }
+  ],
+  "properties": {
+    "phase": "primary",
+    "requested_gates": [
+      "lint",
+      "pyrefly"
+    ],
+    "pending_gates": [],
+    "targets": [
+      {
+        "name": "flext-0in0k.32",
+        "path": "/home/marlonsc/flext/worktrees/flext-0in0k.32",
+        "applicable_gates": [
+          "lint",
+          "pyrefly"
+        ],
+        "source_identity": {
+          "repo_root": "/home/marlonsc/flext/worktrees/flext-0in0k.32",
+          "primary_root": "/home/marlonsc/flext/flext-infra",
+          "head_oid": "2c9f4cefe4e4382a5ac3553406449140d5dc72cf",
+          "porcelain": " M src/flext_infra/_utilities/__init__.py\n M src/flext_infra/_utilities/facade_components.py\n M src/flext_infra/_utilities/namespace.py\n M src/flext_infra/codegen/_conform/context_render.py\n M src/flext_infra/utilities.py\n M tests/unit/codegen/test_facade_component_source.py\n?? .code-review-graph/write.lock\n?? src/flext_infra/_utilities/facade_namespace.py",
+          "dirty": true,
+          "git_dir": "/home/marlonsc/flext/.git/modules/flext-infra/worktrees/flext-0in0k.32",
+          "common_dir": "/home/marlonsc/flext/.git/modules/flext-infra",
+          "branch": "fix/flext-0in0k.32",
+          "origin_remote": "https://github.com/flext-sh/flext-infra.git",
+          "upstream_remote": null,
+          "superproject_root": "/home/marlonsc/flext",
+          "requested_path": "/home/marlonsc/flext/worktrees/flext-0in0k.32",
+          "is_worktree": true,
+          "is_submodule": true,
+          "is_attached_submodule": false,
+          "has_submodules": false,
+          "is_inside_work_tree": true
+        }
+      }
+    ],
+    "results": [
+      {
+        "project": "flext-0in0k.32",
+        "gates": {
+          "lint": {
+            "result": {
+              "project": "flext-0in0k.32",
+              "gate": "lint",
+              "passed": true,
+              "errors": [],
+              "duration": 0.238
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext/worktrees/flext-0in0k.32/.reports/gates/20261120T030619.089786Z-1148527/check/f3566a81-34af-423e-b28e-6f912fdd4d3c/flext-0in0k.32/lint.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          },
+          "pyrefly": {
+            "result": {
+              "project": "flext-0in0k.32",
+              "gate": "pyrefly",
+              "passed": true,
+              "errors": [],
+              "duration": 13.811
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext/worktrees/flext-0in0k.32/.reports/gates/20261120T030619.089786Z-1148527/check/f3566a81-34af-423e-b28e-6f912fdd4d3c/flext-0in0k.32/pyrefly.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          }
+        }
+      }
+    ],
+    "selected_files": [],
+    "global_targets": [
+      {
+        "name": "flext-0in0k.32",
+        "path": "/home/marlonsc/flext/worktrees/flext-0in0k.32",
+        "applicable_gates": [
+          "lint",
+          "pyrefly"
+        ],
+        "source_identity": null
+      }
+    ]
+  }
+}

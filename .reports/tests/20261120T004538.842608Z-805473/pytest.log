@@ -1,0 +1,787 @@
+================================================= test session starts ==================================================
+platform linux -- Python 3.13.17, pytest-9.2.0, pluggy-1.7.0 -- /home/marlonsc/flext/worktrees/flext-0in0k.32/.venv/bin/python
+cachedir: .pytest_cache
+hypothesis profile 'default'
+benchmark: 5.3.1 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+Using --randomly-seed=1621602799
+testmon: selection deactivated, environment: toolchain-0079e4d0aa39-7c745462-5834a665
+rootdir: /home/marlonsc/flext/worktrees/flext-0in0k.32
+configfile: pyproject.toml
+plugins: flext-tests-0.12.0, flext-infra-0.12.1, hypothesis-6.170.15, anyio-4.16.0, asyncio-1.4.1.post1, benchmark-5.3.1, cov-7.1.0, markdown-docs-0.9.2, randomly-5.1.0, reportlog-1.0.0, testmon-2.3.0, timeout-2.4.0, xdist-3.8.0, platformdirs-4.14.5
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
+timeout: 2.0s
+timeout method: signal
+timeout func_only: True
+created: 2/2 workers
+2 workers [6705 items]
+
+scheduling tests via LoadScopeScheduling
+
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-canonical] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select[T = PrivateBinding.ServiceManagers]():\n        pass\n-Consumer.select.__type_params__[0].__default__-scope17-mode0] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select[T = PrivateBinding.ServiceManagers]():\n        pass\n-Consumer.select.__type_params__[0].__default__-scope17-mode0] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select[T = PrivateBinding.ServiceManagers]():\n        pass\n-Consumer.select.__type_params__[0].__default__-scope17-mode1] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select[T = PrivateBinding.ServiceManagers]():\n        pass\n-Consumer.select.__type_params__[0].__default__-scope17-mode1] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select[T = PrivateBinding.ServiceManagers]():\n        pass\n-Consumer.select.__type_params__[0].__default__-scope17-mode2] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select[T = PrivateBinding.ServiceManagers]():\n        pass\n-Consumer.select.__type_params__[0].__default__-scope17-mode2] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select[T = PrivateBinding.ServiceManagers]():\n        pass\n-Consumer.select.__type_params__[0].__default__-scope17-mode3] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select[T = PrivateBinding.ServiceManagers]():\n        pass\n-Consumer.select.__type_params__[0].__default__-scope17-mode3] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    class Nested[T: PrivateBinding.ServiceManagers]:\n        pass\n-Consumer.Nested.__type_params__[0].__bound__-scope18-mode0] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    class Nested[T: PrivateBinding.ServiceManagers]:\n        pass\n-Consumer.Nested.__type_params__[0].__bound__-scope18-mode0] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    class Nested[T: PrivateBinding.ServiceManagers]:\n        pass\n-Consumer.Nested.__type_params__[0].__bound__-scope18-mode1] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    class Nested[T: PrivateBinding.ServiceManagers]:\n        pass\n-Consumer.Nested.__type_params__[0].__bound__-scope18-mode1] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    class Nested[T: PrivateBinding.ServiceManagers]:\n        pass\n-Consumer.Nested.__type_params__[0].__bound__-scope18-mode2] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    class Nested[T: PrivateBinding.ServiceManagers]:\n        pass\n-Consumer.Nested.__type_params__[0].__bound__-scope18-mode2] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    class Nested[T: PrivateBinding.ServiceManagers]:\n        pass\n-Consumer.Nested.__type_params__[0].__bound__-scope18-mode3] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    class Nested[T: PrivateBinding.ServiceManagers]:\n        pass\n-Consumer.Nested.__type_params__[0].__bound__-scope18-mode3] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select[T](self, value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope19-mode0] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select[T](self, value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope19-mode0] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select[T](self, value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope19-mode1] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select[T](self, value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope19-mode1] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select[T](self, value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope19-mode2] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select[T](self, value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope19-mode2] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select[T](self, value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope19-mode3] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select[T](self, value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope19-mode3] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    type Alias = PrivateBinding.ServiceManagers\n-Consumer.Alias.__value__-scope20-mode0] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    type Alias = PrivateBinding.ServiceManagers\n-Consumer.Alias.__value__-scope20-mode0] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    type Alias = PrivateBinding.ServiceManagers\n-Consumer.Alias.__value__-scope20-mode1] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    type Alias = PrivateBinding.ServiceManagers\n-Consumer.Alias.__value__-scope20-mode1] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    type Alias = PrivateBinding.ServiceManagers\n-Consumer.Alias.__value__-scope20-mode2] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    type Alias = PrivateBinding.ServiceManagers\n-Consumer.Alias.__value__-scope20-mode2] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    type Alias = PrivateBinding.ServiceManagers\n-Consumer.Alias.__value__-scope20-mode3] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    type Alias = PrivateBinding.ServiceManagers\n-Consumer.Alias.__value__-scope20-mode3] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    @decorate(PrivateBinding.ServiceManagers)\n    class Nested:\n        pass\n-Consumer.Nested.selected-scope21-mode0] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    @decorate(PrivateBinding.ServiceManagers)\n    class Nested:\n        pass\n-Consumer.Nested.selected-scope21-mode0] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    @decorate(PrivateBinding.ServiceManagers)\n    class Nested:\n        pass\n-Consumer.Nested.selected-scope21-mode1] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    @decorate(PrivateBinding.ServiceManagers)\n    class Nested:\n        pass\n-Consumer.Nested.selected-scope21-mode1] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    @decorate(PrivateBinding.ServiceManagers)\n    class Nested:\n        pass\n-Consumer.Nested.selected-scope21-mode2] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    @decorate(PrivateBinding.ServiceManagers)\n    class Nested:\n        pass\n-Consumer.Nested.selected-scope21-mode2] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    @decorate(PrivateBinding.ServiceManagers)\n    class Nested:\n        pass\n-Consumer.Nested.selected-scope21-mode3] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    @decorate(PrivateBinding.ServiceManagers)\n    class Nested:\n        pass\n-Consumer.Nested.selected-scope21-mode3] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    @staticmethod\n    def select(value=PrivateBinding.ServiceManagers):\n        return value\n-Consumer.select()-scope22-mode0] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    @staticmethod\n    def select(value=PrivateBinding.ServiceManagers):\n        return value\n-Consumer.select()-scope22-mode0] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    @staticmethod\n    def select(value=PrivateBinding.ServiceManagers):\n        return value\n-Consumer.select()-scope22-mode1] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    @staticmethod\n    def select(value=PrivateBinding.ServiceManagers):\n        return value\n-Consumer.select()-scope22-mode1] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    @staticmethod\n    def select(value=PrivateBinding.ServiceManagers):\n        return value\n-Consumer.select()-scope22-mode2] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    @staticmethod\n    def select(value=PrivateBinding.ServiceManagers):\n        return value\n-Consumer.select()-scope22-mode2] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    @staticmethod\n    def select(value=PrivateBinding.ServiceManagers):\n        return value\n-Consumer.select()-scope22-mode3] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    @staticmethod\n    def select(value=PrivateBinding.ServiceManagers):\n        return value\n-Consumer.select()-scope22-mode3] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_accepts_alias_owned_by_removed_private_import 
+[gw1] [  0%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_accepts_alias_owned_by_removed_private_import 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_preserves_type_checking_boundary_for_public_facade 
+[gw1] [  0%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_preserves_type_checking_boundary_for_public_facade 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_preserves_multiple_type_only_facades_from_one_package 
+[gw1] [  0%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_preserves_multiple_type_only_facades_from_one_package 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_discovers_operational_facade_from_live_source 
+[gw1] [  0%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_discovers_operational_facade_from_live_source 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_replaces_public_long_alias_during_private_cutover 
+[gw1] [  0%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_replaces_public_long_alias_during_private_cutover 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_preserves_valid_relative_private_import 
+[gw1] [  0%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_preserves_valid_relative_private_import 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    value: PrivateBinding.ServiceManagers\n-Consumer.__annotations__['value']-scope12-mode0] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    value: PrivateBinding.ServiceManagers\n-Consumer.__annotations__['value']-scope12-mode0] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    class Nested(Base, selection=PrivateBinding.ServiceManagers):\n        pass\n-Consumer.Nested.selected-scope3-mode0] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    class Nested(Base, selection=PrivateBinding.ServiceManagers):\n        pass\n-Consumer.Nested.selected-scope3-mode0] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self) -> PrivateBinding.ServiceManagers:\n        pass\n-Consumer.select.__annotations__['return']-scope11-mode0] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self) -> PrivateBinding.ServiceManagers:\n        pass\n-Consumer.select.__annotations__['return']-scope11-mode0] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, *value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope9-mode0] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, *value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope9-mode0] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, **value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope10-mode0] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, **value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope10-mode0] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    class Nested(Base, selection=PrivateBinding.ServiceManagers):\n        pass\n-Consumer.Nested.selected-scope3-mode1] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    class Nested(Base, selection=PrivateBinding.ServiceManagers):\n        pass\n-Consumer.Nested.selected-scope3-mode1] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select[T: PrivateBinding.ServiceManagers]():\n        pass\n-Consumer.select.__type_params__[0].__bound__-scope15-mode1] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select[T: PrivateBinding.ServiceManagers]():\n        pass\n-Consumer.select.__type_params__[0].__bound__-scope15-mode1] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    @decorate(PrivateBinding.ServiceManagers)\n    def select(self):\n        pass\n-Consumer.select.selected-scope14-mode1] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    @decorate(PrivateBinding.ServiceManagers)\n    def select(self):\n        pass\n-Consumer.select.selected-scope14-mode1] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select[T: (PrivateBinding.ServiceManagers, int)]():\n        pass\n-Consumer.select.__type_params__[0].__constraints__[0]-scope16-mode0] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select[T: (PrivateBinding.ServiceManagers, int)]():\n        pass\n-Consumer.select.__type_params__[0].__constraints__[0]-scope16-mode0] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select[T: PrivateBinding.ServiceManagers]():\n        pass\n-Consumer.select.__type_params__[0].__bound__-scope15-mode0] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select[T: PrivateBinding.ServiceManagers]():\n        pass\n-Consumer.select.__type_params__[0].__bound__-scope15-mode0] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    select = staticmethod(lambda *, value=PrivateBinding.ServiceManagers: value)\n-Consumer.select()-scope1-mode1] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    select = staticmethod(lambda *, value=PrivateBinding.ServiceManagers: value)\n-Consumer.select()-scope1-mode1] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_rejects_shadowed_public_facade_alias[consumer4] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_rejects_shadowed_public_facade_alias[consumer4] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    async def select(self) -> PrivateBinding.ServiceManagers:\n        pass\n-Consumer.select.__annotations__['return']-scope13-mode0] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    async def select(self) -> PrivateBinding.ServiceManagers:\n        pass\n-Consumer.select.__annotations__['return']-scope13-mode0] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_rejects_shadowed_public_facade_alias[def select(u: str) -> str:\n    return FlextSampleUtilitiesManagers.ServiceManagers or u\n] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_rejects_shadowed_public_facade_alias[def select(u: str) -> str:\n    return FlextSampleUtilitiesManagers.ServiceManagers or u\n] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, *, value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope8-mode0] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, *, value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope8-mode0] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_rejects_shadowed_public_facade_alias[consumer2] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_rejects_shadowed_public_facade_alias[consumer2] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope7-mode0] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope7-mode0] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select[T: (PrivateBinding.ServiceManagers, int)]():\n        pass\n-Consumer.select.__type_params__[0].__constraints__[0]-scope16-mode1] 
+[gw0] [  0%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-canonical] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select[T: (PrivateBinding.ServiceManagers, int)]():\n        pass\n-Consumer.select.__type_params__[0].__constraints__[0]-scope16-mode1] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-foreign] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_rejects_shadowed_public_facade_alias[consumer5] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_rejects_shadowed_public_facade_alias[consumer5] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    @decorate(PrivateBinding.ServiceManagers)\n    def select(self):\n        pass\n-Consumer.select.selected-scope14-mode0] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    @decorate(PrivateBinding.ServiceManagers)\n    def select(self):\n        pass\n-Consumer.select.selected-scope14-mode0] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_rejects_shadowed_public_facade_alias[consumer1] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_rejects_shadowed_public_facade_alias[consumer1] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_rejects_shadowed_public_facade_alias[u = 'module'\nmanager = FlextSampleUtilitiesManagers.ServiceManagers\n] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_rejects_shadowed_public_facade_alias[u = 'module'\nmanager = FlextSampleUtilitiesManagers.ServiceManagers\n] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_rejects_shadowed_public_facade_alias[consumer8] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_rejects_shadowed_public_facade_alias[consumer8] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_rejects_shadowed_public_facade_alias[consumer6] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_rejects_shadowed_public_facade_alias[consumer6] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    class Nested(metaclass=PrivateBinding.ServiceManagers):\n        pass\n-type(Consumer.Nested)-scope2-mode1] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    class Nested(metaclass=PrivateBinding.ServiceManagers):\n        pass\n-type(Consumer.Nested)-scope2-mode1] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, value: PrivateBinding.ServiceManagers, /):\n        pass\n-Consumer.select.__annotations__['value']-scope6-mode0] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, value: PrivateBinding.ServiceManagers, /):\n        pass\n-Consumer.select.__annotations__['value']-scope6-mode0] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_rejects_shadowed_public_facade_alias[class Consumer:\n    u = 'attribute'\n    manager = FlextSampleUtilitiesManagers.ServiceManagers\n] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_rejects_shadowed_public_facade_alias[class Consumer:\n    u = 'attribute'\n    manager = FlextSampleUtilitiesManagers.ServiceManagers\n] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    class Nested(metaclass=PrivateBinding.ServiceManagers):\n        pass\n-type(Consumer.Nested)-scope2-mode0] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    class Nested(metaclass=PrivateBinding.ServiceManagers):\n        pass\n-type(Consumer.Nested)-scope2-mode0] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    select = staticmethod(lambda *, value=PrivateBinding.ServiceManagers: value)\n-Consumer.select()-scope1-mode0] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    select = staticmethod(lambda *, value=PrivateBinding.ServiceManagers: value)\n-Consumer.select()-scope1-mode0] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    select = staticmethod(lambda value=PrivateBinding.ServiceManagers: value)\n-Consumer.select()-scope0-mode1] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    select = staticmethod(lambda value=PrivateBinding.ServiceManagers: value)\n-Consumer.select()-scope0-mode1] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_rejects_ambiguous_class_reexports 
+[gw1] [  0%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_rejects_ambiguous_class_reexports 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    select = staticmethod(lambda value=PrivateBinding.ServiceManagers: value)\n-Consumer.select()-scope0-mode0] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    select = staticmethod(lambda value=PrivateBinding.ServiceManagers: value)\n-Consumer.select()-scope0-mode0] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_prefers_nested_facade_over_its_root_ancestor 
+[gw1] [  0%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_prefers_nested_facade_over_its_root_ancestor 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_preserves_class_attributes_named_like_public_facade[    u = 'attribute'\n] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_preserves_class_attributes_named_like_public_facade[    u = 'attribute'\n] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self) -> PrivateBinding.ServiceManagers:\n        pass\n-Consumer.select.__annotations__['return']-scope11-mode3] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self) -> PrivateBinding.ServiceManagers:\n        pass\n-Consumer.select.__annotations__['return']-scope11-mode3] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_preserves_class_attributes_named_like_public_facade[    @property\n    def u(self):\n        return 'attribute'\n] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_preserves_class_attributes_named_like_public_facade[    @property\n    def u(self):\n        return 'attribute'\n] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope7-mode3] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope7-mode3] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, *value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope9-mode2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, *value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope9-mode2] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_rewrites_class_reexports_without_changing_identity[Base = Owner-True] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_rewrites_class_reexports_without_changing_identity[Base = Owner-True] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select[T: PrivateBinding.ServiceManagers]():\n        pass\n-Consumer.select.__type_params__[0].__bound__-scope15-mode2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select[T: PrivateBinding.ServiceManagers]():\n        pass\n-Consumer.select.__type_params__[0].__bound__-scope15-mode2] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    value: PrivateBinding.ServiceManagers\n-Consumer.__annotations__['value']-scope12-mode2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    value: PrivateBinding.ServiceManagers\n-Consumer.__annotations__['value']-scope12-mode2] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, **value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope10-mode2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, **value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope10-mode2] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_preserves_class_attributes_named_like_public_facade[    class u:\n        pass\n] 
+[gw0] [  1%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-foreign] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-renamed] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_preserves_class_attributes_named_like_public_facade[    class u:\n        pass\n] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    async def select(self) -> PrivateBinding.ServiceManagers:\n        pass\n-Consumer.select.__annotations__['return']-scope13-mode1] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    async def select(self) -> PrivateBinding.ServiceManagers:\n        pass\n-Consumer.select.__annotations__['return']-scope13-mode1] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, **value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope10-mode3] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, **value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope10-mode3] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_rewrites_only_the_imported_alias_binding 
+[gw1] [  1%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_rewrites_only_the_imported_alias_binding 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    select = staticmethod(lambda *, value=PrivateBinding.ServiceManagers: value)\n-Consumer.select()-scope1-mode2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    select = staticmethod(lambda *, value=PrivateBinding.ServiceManagers: value)\n-Consumer.select()-scope1-mode2] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    @decorate(PrivateBinding.ServiceManagers)\n    def select(self):\n        pass\n-Consumer.select.selected-scope14-mode3] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    @decorate(PrivateBinding.ServiceManagers)\n    def select(self):\n        pass\n-Consumer.select.selected-scope14-mode3] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    class Nested(metaclass=PrivateBinding.ServiceManagers):\n        pass\n-type(Consumer.Nested)-scope2-mode2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    class Nested(metaclass=PrivateBinding.ServiceManagers):\n        pass\n-type(Consumer.Nested)-scope2-mode2] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_rewrites_class_reexports_without_changing_identity[Base: type[Owner] = Owner-False] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_rewrites_class_reexports_without_changing_identity[Base: type[Owner] = Owner-False] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, **value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope10-mode1] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, **value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope10-mode1] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, value: PrivateBinding.ServiceManagers, /):\n        pass\n-Consumer.select.__annotations__['value']-scope6-mode2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, value: PrivateBinding.ServiceManagers, /):\n        pass\n-Consumer.select.__annotations__['value']-scope6-mode2] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self) -> PrivateBinding.ServiceManagers:\n        pass\n-Consumer.select.__annotations__['return']-scope11-mode1] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self) -> PrivateBinding.ServiceManagers:\n        pass\n-Consumer.select.__annotations__['return']-scope11-mode1] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select[T: (PrivateBinding.ServiceManagers, int)]():\n        pass\n-Consumer.select.__type_params__[0].__constraints__[0]-scope16-mode2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select[T: (PrivateBinding.ServiceManagers, int)]():\n        pass\n-Consumer.select.__type_params__[0].__constraints__[0]-scope16-mode2] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    value: PrivateBinding.ServiceManagers\n-Consumer.__annotations__['value']-scope12-mode3] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    value: PrivateBinding.ServiceManagers\n-Consumer.__annotations__['value']-scope12-mode3] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self) -> PrivateBinding.ServiceManagers:\n        pass\n-Consumer.select.__annotations__['return']-scope11-mode2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self) -> PrivateBinding.ServiceManagers:\n        pass\n-Consumer.select.__annotations__['return']-scope11-mode2] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, *value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope9-mode1] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, *value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope9-mode1] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    @decorate(PrivateBinding.ServiceManagers)\n    def select(self):\n        pass\n-Consumer.select.selected-scope14-mode2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    @decorate(PrivateBinding.ServiceManagers)\n    def select(self):\n        pass\n-Consumer.select.selected-scope14-mode2] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, value: PrivateBinding.ServiceManagers, /):\n        pass\n-Consumer.select.__annotations__['value']-scope6-mode3] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, value: PrivateBinding.ServiceManagers, /):\n        pass\n-Consumer.select.__annotations__['value']-scope6-mode3] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    class Nested(Base, selection=PrivateBinding.ServiceManagers):\n        pass\n-Consumer.Nested.selected-scope3-mode2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    class Nested(Base, selection=PrivateBinding.ServiceManagers):\n        pass\n-Consumer.Nested.selected-scope3-mode2] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    class Nested:\n        selected = PrivateBinding.ServiceManagers\n-Consumer.Nested.selected-scope5-mode0] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    class Nested:\n        selected = PrivateBinding.ServiceManagers\n-Consumer.Nested.selected-scope5-mode0] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    select = staticmethod(lambda *, value=PrivateBinding.ServiceManagers: value)\n-Consumer.select()-scope1-mode3] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    select = staticmethod(lambda *, value=PrivateBinding.ServiceManagers: value)\n-Consumer.select()-scope1-mode3] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    class Nested:\n        selected = PrivateBinding.ServiceManagers\n-Consumer.Nested.selected-scope5-mode1] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    class Nested:\n        selected = PrivateBinding.ServiceManagers\n-Consumer.Nested.selected-scope5-mode1] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select[T: PrivateBinding.ServiceManagers]():\n        pass\n-Consumer.select.__type_params__[0].__bound__-scope15-mode3] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select[T: PrivateBinding.ServiceManagers]():\n        pass\n-Consumer.select.__type_params__[0].__bound__-scope15-mode3] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, *, value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope8-mode3] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, *, value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope8-mode3] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    async def select(self) -> PrivateBinding.ServiceManagers:\n        pass\n-Consumer.select.__annotations__['return']-scope13-mode2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    async def select(self) -> PrivateBinding.ServiceManagers:\n        pass\n-Consumer.select.__annotations__['return']-scope13-mode2] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_rewires_unique_public_facade_binding 
+[gw1] [  1%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_rewires_unique_public_facade_binding 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    value: PrivateBinding.ServiceManagers\n-Consumer.__annotations__['value']-scope12-mode1] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    value: PrivateBinding.ServiceManagers\n-Consumer.__annotations__['value']-scope12-mode1] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, *, value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope8-mode2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, *, value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope8-mode2] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, *, value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope8-mode1] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, *, value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope8-mode1] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_rewrites_class_reexports_without_changing_identity[Base: type[Owner] = Owner-True] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_rewrites_class_reexports_without_changing_identity[Base: type[Owner] = Owner-True] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    class Nested(metaclass=PrivateBinding.ServiceManagers):\n        pass\n-type(Consumer.Nested)-scope2-mode3] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    class Nested(metaclass=PrivateBinding.ServiceManagers):\n        pass\n-type(Consumer.Nested)-scope2-mode3] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope7-mode2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope7-mode2] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    async def select(self) -> PrivateBinding.ServiceManagers:\n        pass\n-Consumer.select.__annotations__['return']-scope13-mode3] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    async def select(self) -> PrivateBinding.ServiceManagers:\n        pass\n-Consumer.select.__annotations__['return']-scope13-mode3] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    class Nested(Base, selection=PrivateBinding.ServiceManagers):\n        pass\n-Consumer.Nested.selected-scope3-mode3] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    class Nested(Base, selection=PrivateBinding.ServiceManagers):\n        pass\n-Consumer.Nested.selected-scope3-mode3] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select[T: (PrivateBinding.ServiceManagers, int)]():\n        pass\n-Consumer.select.__type_params__[0].__constraints__[0]-scope16-mode3] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select[T: (PrivateBinding.ServiceManagers, int)]():\n        pass\n-Consumer.select.__type_params__[0].__constraints__[0]-scope16-mode3] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, *value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope9-mode3] 
+[gw0] [  1%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-renamed] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-duplicate] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, *value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope9-mode3] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope7-mode1] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope7-mode1] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    class Nested:\n        selected = PrivateBinding.ServiceManagers\n-Consumer.Nested.selected-scope5-mode2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    class Nested:\n        selected = PrivateBinding.ServiceManagers\n-Consumer.Nested.selected-scope5-mode2] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    class Nested:\n        selected = PrivateBinding.ServiceManagers\n-Consumer.Nested.selected-scope5-mode3] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    class Nested:\n        selected = PrivateBinding.ServiceManagers\n-Consumer.Nested.selected-scope5-mode3] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    select = staticmethod(lambda: PrivateBinding.ServiceManagers)\n-Consumer.select()-scope4-mode0] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    select = staticmethod(lambda: PrivateBinding.ServiceManagers)\n-Consumer.select()-scope4-mode0] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    select = staticmethod(lambda: PrivateBinding.ServiceManagers)\n-Consumer.select()-scope4-mode2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    select = staticmethod(lambda: PrivateBinding.ServiceManagers)\n-Consumer.select()-scope4-mode2] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    select = staticmethod(lambda: PrivateBinding.ServiceManagers)\n-Consumer.select()-scope4-mode1] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    select = staticmethod(lambda: PrivateBinding.ServiceManagers)\n-Consumer.select()-scope4-mode1] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    select = staticmethod(lambda value=PrivateBinding.ServiceManagers: value)\n-Consumer.select()-scope0-mode2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    select = staticmethod(lambda value=PrivateBinding.ServiceManagers: value)\n-Consumer.select()-scope0-mode2] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, value: PrivateBinding.ServiceManagers, /):\n        pass\n-Consumer.select.__annotations__['value']-scope6-mode1] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, value: PrivateBinding.ServiceManagers, /):\n        pass\n-Consumer.select.__annotations__['value']-scope6-mode1] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    select = staticmethod(lambda: PrivateBinding.ServiceManagers)\n-Consumer.select()-scope4-mode3] 
+[gw0] [  1%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-duplicate] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-annotation] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    select = staticmethod(lambda: PrivateBinding.ServiceManagers)\n-Consumer.select()-scope4-mode3] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    select = staticmethod(lambda value=PrivateBinding.ServiceManagers: value)\n-Consumer.select()-scope0-mode3] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    select = staticmethod(lambda value=PrivateBinding.ServiceManagers: value)\n-Consumer.select()-scope0-mode3] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_rewrites_class_reexports_without_changing_identity[Base = Owner-False] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_rewrites_class_reexports_without_changing_identity[Base = Owner-False] 
+tests/unit/codemod/test_api_alias_cutover.py::TestsFlextInfraApiAliasCutover::test_service_retirement_preserves_kernel_context_and_shadowing[from sample_pkg import s-s-FlextSampleService] 
+[gw0] [  1%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-annotation] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-canonical] 
+[gw1] [  1%] FAILED tests/unit/codemod/test_api_alias_cutover.py::TestsFlextInfraApiAliasCutover::test_service_retirement_preserves_kernel_context_and_shadowing[from sample_pkg import s-s-FlextSampleService] 
+[gw0] [  1%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-canonical] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-foreign] 
+[gw0] [  1%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-foreign] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-renamed] 
+[gw0] [  1%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-renamed] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-duplicate] 
+[gw0] [  1%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-duplicate] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-annotation] 
+[gw0] [  1%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-annotation] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-canonical] 
+[gw0] [  1%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-canonical] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-foreign] 
+[gw0] [  1%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-foreign] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-renamed] 
+[gw0] [  1%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-renamed] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-duplicate] 
+[gw0] [  1%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-duplicate] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-annotation] 
+[gw0] [  1%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-annotation] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-canonical] 
+[gw0] [  2%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-canonical] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-foreign] 
+[gw0] [  2%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-foreign] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-renamed] 
+[gw0] [  2%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-renamed] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-duplicate] 
+[gw0] [  2%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-duplicate] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-annotation] 
+[gw0] [  2%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-annotation] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_initializer_retires_exports_moved_into_class_owners 
+[gw0] [  2%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_initializer_retires_exports_moved_into_class_owners 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-c] 
+[gw0] [  2%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-c] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-t] 
+[gw0] [  2%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-t] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-p] 
+[gw0] [  2%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-p] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-m] 
+[gw0] [  2%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-m] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-u] 
+[gw0] [  2%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-u] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-True-c] 
+[gw0] [  2%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-True-c] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-True-t] 
+[gw0] [  2%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-True-t] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-True-p] 
+[gw0] [  2%] FAILED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-True-p] 
+
+======================================================= FAILURES =======================================================
+_ TestsFlextInfraApiAliasCutover.test_service_retirement_preserves_kernel_context_and_shadowing[from sample_pkg import s-s-FlextSampleService] _
+[gw1] linux -- Python 3.13.17 /home/marlonsc/flext/worktrees/flext-0in0k.32/.venv/bin/python
+tests/unit/codemod/test_api_alias_cutover.py:88: in test_service_retirement_preserves_kernel_context_and_shadowing
+    u.Infra.plan_semantic_cutover(
+src/flext_infra/_utilities/_semantic_cutover/base.py:78: in plan_semantic_cutover
+    attempt = r.safe(
+.venv/lib/python3.13/site-packages/flext_core/_result/composition.py:201: in wrapper
+    return cls._create_success(func(*args, **kwargs))
+                               ^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/base.py:142: in _plan_semantic_cutover_phase
+    return cls._plan_selected_phase_dispatch(
+src/flext_infra/_utilities/_semantic_cutover/base.py:340: in _plan_selected_phase_dispatch
+    return factory()
+           ^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/base.py:313: in <lambda>
+    c.Infra.SemanticCutoverPhase.COMPAT_ALIAS: lambda: cls._plan_alias_cutover(
+src/flext_infra/_utilities/_semantic_cutover/base.py:363: in _plan_alias_cutover
+    api = cls._plan_api_aliases(workspace, working, selected, import_normalizer)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/aliases.py:407: in _plan_api_aliases
+    service_aliases, service_graph = cls._service_aliases(workspace, sources)
+                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/aliases.py:150: in _service_aliases
+    if value is not None and cls._inherits_service_kernel(value, kernel):
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/aliases.py:271: in _inherits_service_kernel
+    pending = list(FlextInfraUtilitiesDeclarationPayload.direct_bases(value))
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/declaration_payload.py:218: in direct_bases
+    tuple(value.get_superclasses())
+          ^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:324: in get_superclasses
+    for base in self.get_bases()
+                ^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:309: in get_bases
+    bases = self._get_bases()
+            ^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:482: in _get_bases
+    evaluated = rope.base.evaluate.eval_node(scope, base_node)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/evaluate.py:216: in eval_node
+    return eval_node2(scope, node)[1]
+           ^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/evaluate.py:249: in eval_node2
+    evaluator.visit(node)
+.venv/lib/python3.13/site-packages/rope/base/ast.py:79: in visit
+    return visitor(node)
+           ^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/evaluate.py:898: in _Subscript
+    owner = value.get_metaclass() if is_class else value.get_type()
+            ^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:398: in get_metaclass
+    for base in self.get_bases():
+                ^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:309: in get_bases
+    bases = self._get_bases()
+            ^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:592: in _get_bases
+    elif not any(
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:594: in <genexpr>
+    and generic in _inheritance_order(base)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:26: in _inheritance_order
+    mro = pyclass.get_consistent_mro()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:343: in get_consistent_mro
+    return self._linearize(strict=False)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:358: in _linearize
+    mro = pyobjects.linearize(self, bases, strict=strict)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjects.py:315: in linearize
+    sequences = [base.get_consistent_mro() for base in bases]
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:343: in get_consistent_mro
+    return self._linearize(strict=False)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:358: in _linearize
+    mro = pyobjects.linearize(self, bases, strict=strict)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjects.py:315: in linearize
+    sequences = [base.get_consistent_mro() for base in bases]
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:343: in get_consistent_mro
+    return self._linearize(strict=False)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:358: in _linearize
+    mro = pyobjects.linearize(self, bases, strict=strict)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjects.py:315: in linearize
+    sequences = [base.get_consistent_mro() for base in bases]
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:343: in get_consistent_mro
+    return self._linearize(strict=False)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:358: in _linearize
+    mro = pyobjects.linearize(self, bases, strict=strict)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjects.py:315: in linearize
+    sequences = [base.get_consistent_mro() for base in bases]
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:343: in get_consistent_mro
+    return self._linearize(strict=False)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:358: in _linearize
+    mro = pyobjects.linearize(self, bases, strict=strict)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjects.py:315: in linearize
+    sequences = [base.get_consistent_mro() for base in bases]
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:343: in get_consistent_mro
+    return self._linearize(strict=False)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:349: in _linearize
+    bases = self.get_bases()
+            ^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:309: in get_bases
+    bases = self._get_bases()
+            ^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:482: in _get_bases
+    evaluated = rope.base.evaluate.eval_node(scope, base_node)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/evaluate.py:216: in eval_node
+    return eval_node2(scope, node)[1]
+           ^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/evaluate.py:249: in eval_node2
+    evaluator.visit(node)
+.venv/lib/python3.13/site-packages/rope/base/ast.py:79: in visit
+    return visitor(node)
+           ^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/evaluate.py:536: in _Attribute
+    self.result = pyname.get_object()[node.attr]
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjects.py:33: in __getitem__
+    return self.get_attribute(key)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjects.py:466: in get_attribute
+    if name in self._get_concluded_attributes():
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/utils/__init__.py:56: in newfunc
+    return func(self, *args, **kwds)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjects.py:453: in _get_concluded_attributes
+    self.concluded_attributes.set(self._create_concluded_attributes())
+                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:741: in _create_concluded_attributes
+    result.update(init_object.get_attributes())
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:677: in get_attributes
+    return super().get_attributes()
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjects.py:458: in get_attributes
+    result = dict(self._get_concluded_attributes())
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/utils/__init__.py:56: in newfunc
+    return func(self, *args, **kwds)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjects.py:453: in _get_concluded_attributes
+    self.concluded_attributes.set(self._create_concluded_attributes())
+                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/utils/__init__.py:56: in newfunc
+    return func(self, *args, **kwds)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:648: in _create_concluded_attributes
+    result.update(star_import.get_names())
+                  ^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:1293: in get_names
+    for name in imported:
+                ^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjects.py:70: in __iter__
+    return iter(self.get_attributes())
+                ^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:677: in get_attributes
+    return super().get_attributes()
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjects.py:458: in get_attributes
+    result = dict(self._get_concluded_attributes())
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/utils/__init__.py:56: in newfunc
+    return func(self, *args, **kwds)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjects.py:452: in _get_concluded_attributes
+    self._get_structural_attributes()
+.venv/lib/python3.13/site-packages/rope/base/utils/__init__.py:56: in newfunc
+    return func(self, *args, **kwds)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjects.py:431: in _get_structural_attributes
+    self.structural_attributes = self._create_structural_attributes()
+                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjects.py:513: in _create_structural_attributes
+    new_visitor.visit(child)
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:1210: in visit
+    return super().visit(node)
+           ^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/ast.py:79: in visit
+    return visitor(node)
+           ^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:1203: in _If
+    return self.generic_visit(node)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+../../../.local/share/mise/installs/python/3.13.17/lib/python3.13/ast.py:430: in generic_visit
+    self.visit(item)
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:1210: in visit
+    return super().visit(node)
+           ^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/ast.py:79: in visit
+    return visitor(node)
+           ^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:1009: in _Assign
+    _AssignVisitor(self).visit(node)
+.venv/lib/python3.13/site-packages/rope/base/ast.py:79: in visit
+    return visitor(node)
+           ^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:870: in _Assign
+    self.visit(child_node)
+.venv/lib/python3.13/site-packages/rope/base/ast.py:79: in visit
+    return visitor(node)
+           ^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:886: in _Name
+    self._assigned(node.id, assignment)
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:880: in _assigned
+    self.scope_visitor._assigned(name, assignment)
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:1066: in _assigned
+    self.get_module()._get_source_binding_index().context_for_node(node)
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/utils/__init__.py:36: in _wrapper
+    setattr(self, name, func(self, *args, **kwds))
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:661: in _get_source_binding_index
+    return SourceBindingIndex(
+.venv/lib/python3.13/site-packages/rope/base/sourcebindings.py:1101: in __init__
+    self._visit(tree, self.global_reference, self.global_reference, "module", 0)
+.venv/lib/python3.13/site-packages/rope/base/sourcebindings.py:2244: in _visit
+    return self._visit_node(node, environment, owner, role, depth, annotation)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/sourcebindings.py:2378: in _visit_node
+    visit(item, environment, owner, role, child_depth, annotation)
+.venv/lib/python3.13/site-packages/rope/base/sourcebindings.py:2244: in _visit
+    return self._visit_node(node, environment, owner, role, depth, annotation)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/sourcebindings.py:2270: in _visit_node
+    self._function(node, environment, owner, depth)
+.venv/lib/python3.13/site-packages/rope/base/sourcebindings.py:2397: in _function
+    self._visit(expression, entry, parent_owner, "decorator", depth + 1)
+.venv/lib/python3.13/site-packages/rope/base/sourcebindings.py:2244: in _visit
+    return self._visit_node(node, environment, owner, role, depth, annotation)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/sourcebindings.py:2378: in _visit_node
+    visit(item, environment, owner, role, child_depth, annotation)
+.venv/lib/python3.13/site-packages/rope/base/sourcebindings.py:2244: in _visit
+    return self._visit_node(node, environment, owner, role, depth, annotation)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/sourcebindings.py:2251: in _visit_node
+    self._record(node, environment, owner, role, depth, annotation)
+.venv/lib/python3.13/site-packages/rope/base/sourcebindings.py:1188: in _record
+    def _record(self, node, environment, owner, role, depth, annotation=None):
+E   Failed: Timeout (>2.0s) from pytest-timeout.
+------------------------------------------------- Captured stdout call -------------------------------------------------
+INFO: rope: opening workspace at /home/marlonsc/tmp/pytest-of-marlonsc/pytest-14679/popen-gw1/test_service_retirement_preser0/flext-test-project
+INFO: rope: workspace ready in 0.06s
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Stack of <unknown> (140068626888384) ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  File "/home/marlonsc/flext/worktrees/flext-0in0k.32/.venv/lib/python3.13/site-packages/execnet/gateway_base.py", line 411, in _perform_spawn
+    reply.run()
+  File "/home/marlonsc/flext/worktrees/flext-0in0k.32/.venv/lib/python3.13/site-packages/execnet/gateway_base.py", line 341, in run
+    self._result = func(*args, **kwargs)
+  File "/home/marlonsc/flext/worktrees/flext-0in0k.32/.venv/lib/python3.13/site-packages/execnet/gateway_base.py", line 1160, in _thread_receiver
+    msg = Message.from_io(io)
+  File "/home/marlonsc/flext/worktrees/flext-0in0k.32/.venv/lib/python3.13/site-packages/execnet/gateway_base.py", line 567, in from_io
+    header = io.read(9)  # type 1, channel 4, payload 4
+  File "/home/marlonsc/flext/worktrees/flext-0in0k.32/.venv/lib/python3.13/site-packages/execnet/gateway_base.py", line 534, in read
+    data = self._read(numbytes - len(buf))
+_ TestsFlextInfraUtilityFacadeProjection.test_explicit_owner_classes_preserve_publication_identity[publication0-True-p] _
+[gw0] linux -- Python 3.13.17 /home/marlonsc/flext/worktrees/flext-0in0k.32/.venv/bin/python
+tests/unit/codegen/_utility_facade_projection/owner_publication.py:223: in test_explicit_owner_classes_preserve_publication_identity
+    u.Tests.conform_plan_result(
+tests/_utilities/conform.py:143: in conform_plan_result
+    ).plan(request)
+      ^^^^^^^^^^^^^
+src/flext_infra/codegen/_conform/plan.py:48: in plan
+    return self._plan_request(request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/codegen/_conform/plan.py:65: in _plan_request
+    return self._plan_repositories(request, inputs.value)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/codegen/_conform/plan.py:126: in _plan_repositories
+    return self._plan_selected_repositories(
+src/flext_infra/codegen/_conform/plan.py:148: in _plan_selected_repositories
+    gathered = self._gathered_repository_plans(
+src/flext_infra/codegen/_conform/plan.py:991: in _gathered_repository_plans
+    outcomes = self._repository_plan_outcomes(tasks, surface, inputs, snapshots)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/codegen/_conform/plan.py:678: in _repository_plan_outcomes
+    return self._governed_plan_outcomes(
+src/flext_infra/codegen/_conform/plan.py:739: in _governed_plan_outcomes
+    planned = self._managed_plan_outcomes(
+src/flext_infra/codegen/_conform/plan.py:865: in _managed_plan_outcomes
+    outcome = type(self).plan_repository_task(
+src/flext_infra/codegen/_conform/plan.py:1169: in plan_repository_task
+    outcome = cls._plan_repository_task(task, snapshot)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/codegen/_conform/plan.py:1240: in _plan_repository_task
+    return planner._governed_repository_outcome(
+src/flext_infra/codegen/_conform/plan.py:1307: in _governed_repository_outcome
+    planned = self._governed_repository_plans(
+src/flext_infra/codegen/_conform/plan.py:1542: in _governed_repository_plans
+    repository_plan = planner(
+src/flext_infra/codegen/_conform/scaffold_plan.py:40: in _plan_existing_repository
+    existing = super()._plan_existing_repository(
+src/flext_infra/codegen/_conform/existing_plan.py:131: in _plan_existing_repository
+    return self._plan_existing_managed(
+src/flext_infra/codegen/_conform/existing_plan.py:279: in _plan_existing_managed
+    return self._render_existing_managed(
+src/flext_infra/codegen/_conform/existing_plan.py:685: in _render_existing_managed
+    managed = self._plan_existing_templates(
+src/flext_infra/codegen/_conform/existing_plan.py:1455: in _plan_existing_templates
+    return self._planned_existing_templates(
+src/flext_infra/codegen/_conform/existing_plan.py:1515: in _planned_existing_templates
+    rendered = self._rendered_managed_plan(
+src/flext_infra/codegen/_conform/existing_plan.py:1711: in _rendered_managed_plan
+    else self.compose_project_artifact(
+src/flext_infra/codegen/_conform/artifact_render.py:256: in compose_project_artifact
+    return composer(repository_root, rendered, render_inputs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/codegen/_conform/artifact_render.py:342: in _composed_pyproject_overlay
+    formatted = u.Infra.format_toml_source(
+src/flext_infra/_utilities/_pyproject/toml_phases.py:63: in format_toml_source
+    return cls._format_toml_source_cached(
+src/flext_infra/_utilities/_pyproject/toml_phases.py:83: in _format_toml_source_cached
+    taplo_result = FlextInfraUtilitiesPyprojectTomlPhases._taplo_binary(taplo[2])
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_pyproject/toml_phases.py:135: in _taplo_binary
+    return FlextInfraUtilitiesMiseBinary.managed_mise_binary(
+src/flext_infra/_utilities/mise_binary.py:66: in managed_mise_binary
+    ).flat_map(
+.venv/lib/python3.13/site-packages/flext_core/_result/transforms.py:97: in flat_map
+    return self.from_result(func(self._payload))
+                            ^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/mise_binary.py:67: in <lambda>
+    lambda _pinned: FlextInfraUtilitiesMiseBinary._managed_mise_path(
+src/flext_infra/_utilities/mise_binary.py:281: in _managed_mise_path
+    located = u.Cli.run_raw(
+.venv/lib/python3.13/site-packages/flext_cli/_utilities/runtime.py:201: in run_raw
+    return cls._execute_streamed_process(
+.venv/lib/python3.13/site-packages/flext_cli/_utilities/_runtime/process_execution.py:66: in _execute_streamed_process
+    cls._execute_lifecycle(request, state, timing)
+.venv/lib/python3.13/site-packages/flext_cli/_utilities/_runtime/process_execution.py:173: in _execute_lifecycle
+    state.timed_out, state.final_deadline = cls._monitor_process(
+.venv/lib/python3.13/site-packages/flext_cli/_utilities/_runtime/process_monitor.py:49: in _monitor_process
+    cls._wait_next_boundary(state, phase, now)
+.venv/lib/python3.13/site-packages/flext_cli/_utilities/_runtime/process_monitor.py:113: in _wait_next_boundary
+    state.wake.wait(
+../../../.local/share/mise/installs/python/3.13.17/lib/python3.13/threading.py:660: in wait
+    signaled = self._cond.wait(timeout)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+../../../.local/share/mise/installs/python/3.13.17/lib/python3.13/threading.py:363: in wait
+    gotit = waiter.acquire(True, timeout)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: Timeout (>20.0s) from pytest-timeout.
+------------------------------------------------- Captured stdout call -------------------------------------------------
+INFO: stage=plan repositories=1
+INFO: stage=repository state=start repository=flext-test-project root=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-14679/popen-gw0/test_explicit_owner_classes_pr7/flext-test-project source_root=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-14679/popen-gw0/test_explicit_owner_classes_pr7/flext-test-project surface=lazy-init role=standalone
+INFO: stage=lazy-init state=start root=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-14679/popen-gw0/test_explicit_owner_classes_pr7/flext-test-project
+INFO: stage=lazy-init state=end root=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-14679/popen-gw0/test_explicit_owner_classes_pr7/flext-test-project elapsed=0.315s files=1 effects=1
+INFO: stage=repository state=end repository=flext-test-project surface=lazy-init elapsed=0.317s files=1
+INFO: stage=repository state=start repository=flext-test-project root=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-14679/popen-gw0/test_explicit_owner_classes_pr7/flext-test-project source_root=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-14679/popen-gw0/test_explicit_owner_classes_pr7/flext-test-project surface=all role=standalone
+INFO:   stage=pyproject repository=flext-test-project
+INFO: stage=facades state=start root=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-14679/popen-gw0/test_explicit_owner_classes_pr7/flext-test-project
+INFO: stage=facades state=end root=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-14679/popen-gw0/test_explicit_owner_classes_pr7/flext-test-project elapsed=7.757s files=1
+INFO: stage=lazy-init state=start root=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-14679/popen-gw0/test_explicit_owner_classes_pr7/flext-test-project
+INFO: stage=lazy-init state=end root=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-14679/popen-gw0/test_explicit_owner_classes_pr7/flext-test-project elapsed=0.076s files=1 effects=1
+INFO:   stage=templates repository=flext-test-project
++++++++++++++++++++++++++++++++++++++++++++++++++++++++ Timeout ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Stack of flext-cli-process-stderr (140393219880640) ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.17/lib/python3.13/threading.py", line 1015, in _bootstrap
+    self._bootstrap_inner()
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.17/lib/python3.13/threading.py", line 1044, in _bootstrap_inner
+    self.run()
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.17/lib/python3.13/threading.py", line 995, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/marlonsc/flext/worktrees/flext-0in0k.32/.venv/lib/python3.13/site-packages/flext_cli/_utilities/_runtime/process_stream.py", line 72, in _pump_process_output
+    chunk = cls._read_process_chunk(source, state.failures)
+  File "/home/marlonsc/flext/worktrees/flext-0in0k.32/.venv/lib/python3.13/site-packages/flext_cli/_utilities/_runtime/process_stream.py", line 99, in _read_process_chunk
+    chunk = source.read(cls._STREAM_CHUNK_BYTES)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Stack of <unknown> (140393472530112) ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.17/lib/python3.13/threading.py", line 1015, in _bootstrap
+    self._bootstrap_inner()
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.17/lib/python3.13/threading.py", line 1048, in _bootstrap_inner
+    self._delete()
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.17/lib/python3.13/threading.py", line 999, in run
+    del self._target, self._args, self._kwargs
+  File "/home/marlonsc/flext/worktrees/flext-0in0k.32/.venv/lib/python3.13/site-packages/flext_cli/_utilities/_runtime/process_stream.py", line 90, in _pump_process_output
+    state.wake.set()
+  File "/home/marlonsc/flext/worktrees/flext-0in0k.32/.venv/lib/python3.13/site-packages/flext_cli/_utilities/_runtime/process_stream.py", line 106, in _read_process_chunk
+    return chunk or None
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Stack of <unknown> (140393431623360) ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.17/lib/python3.13/threading.py", line 1015, in _bootstrap
+    self._bootstrap_inner()
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.17/lib/python3.13/threading.py", line 1048, in _bootstrap_inner
+    self._delete()
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.17/lib/python3.13/threading.py", line 999, in run
+    del self._target, self._args, self._kwargs
+  File "/home/marlonsc/flext/worktrees/flext-0in0k.32/.venv/lib/python3.13/site-packages/flext_cli/_utilities/_runtime/process_wait.py", line 26, in _wait_for_root_process
+    state.wake.set()
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.17/lib/python3.13/subprocess.py", line 1281, in wait
+    return self._wait(timeout=timeout)
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.17/lib/python3.13/subprocess.py", line 2092, in _wait
+    return self.returncode
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.17/lib/python3.13/subprocess.py", line 2051, in _try_wait
+    return (pid, sts)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Stack of flext-async-log-writer (140393455744704) ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.17/lib/python3.13/threading.py", line 1015, in _bootstrap
+    self._bootstrap_inner()
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.17/lib/python3.13/threading.py", line 1044, in _bootstrap_inner
+    self.run()
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.17/lib/python3.13/threading.py", line 995, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/marlonsc/flext/worktrees/flext-0in0k.32/.venv/lib/python3.13/site-packages/flext_core/_utilities/_logging/async_writer.py", line 138, in _worker
+    job = self.queue.get(
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.17/lib/python3.13/queue.py", line 209, in get
+    raise Empty
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.17/lib/python3.13/threading.py", line 371, in wait
+    self._waiters.remove(waiter)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Stack of <unknown> (140393777723072) ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  File "/home/marlonsc/flext/worktrees/flext-0in0k.32/.venv/lib/python3.13/site-packages/execnet/gateway_base.py", line 411, in _perform_spawn
+    reply.run()
+  File "/home/marlonsc/flext/worktrees/flext-0in0k.32/.venv/lib/python3.13/site-packages/execnet/gateway_base.py", line 341, in run
+    self._result = func(*args, **kwargs)
+  File "/home/marlonsc/flext/worktrees/flext-0in0k.32/.venv/lib/python3.13/site-packages/execnet/gateway_base.py", line 1160, in _thread_receiver
+    msg = Message.from_io(io)
+  File "/home/marlonsc/flext/worktrees/flext-0in0k.32/.venv/lib/python3.13/site-packages/execnet/gateway_base.py", line 567, in from_io
+    header = io.read(9)  # type 1, channel 4, payload 4
+  File "/home/marlonsc/flext/worktrees/flext-0in0k.32/.venv/lib/python3.13/site-packages/execnet/gateway_base.py", line 534, in read
+    data = self._read(numbytes - len(buf))
++++++++++++++++++++++++++++++++++++++++++++++++++++++++ Timeout ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+- generated xml file: /home/marlonsc/flext/worktrees/flext-0in0k.32/.reports/tests/20261120T004538.842608Z-805473/junit.xml -
+- generated report log file: /home/marlonsc/flext/worktrees/flext-0in0k.32/.reports/tests/20261120T004538.842608Z-805473/events.jsonl -
+--------------------------------------------------- flext slow tests ---------------------------------------------------
+no test near the ordinary or slow limit
+================================================= slowest 25 durations =================================================
+20.21s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-True-p]
+11.18s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-u]
+11.12s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-t]
+10.80s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-c]
+10.35s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-True-c]
+9.15s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-canonical]
+8.99s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-True-t]
+8.51s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-canonical]
+8.20s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-renamed]
+6.25s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-p]
+6.11s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-canonical]
+5.96s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-m]
+4.98s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-canonical]
+4.66s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-annotation]
+3.57s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-foreign]
+3.52s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-annotation]
+2.60s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-foreign]
+2.37s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-duplicate]
+2.35s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-duplicate]
+2.34s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-renamed]
+2.34s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_initializer_retires_exports_moved_into_class_owners
+2.31s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-renamed]
+2.00s call     tests/unit/codemod/test_api_alias_cutover.py::TestsFlextInfraApiAliasCutover::test_service_retirement_preserves_kernel_context_and_shadowing[from sample_pkg import s-s-FlextSampleService]
+
+(2 durations < 2s hidden.)
+=============================================== short test summary info ================================================
+FAILED tests/unit/codemod/test_api_alias_cutover.py::TestsFlextInfraApiAliasCutover::test_service_retirement_preserves_kernel_context_and_shadowing[from sample_pkg import s-s-FlextSampleService]
+FAILED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-True-p]
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 2 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! xdist.dsession.Interrupted: stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+====================================== 2 failed, 146 passed in 204.72s (0:03:24) =======================================
