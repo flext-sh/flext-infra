@@ -1,0 +1,8 @@
+{
+  "execution_mode": "global-incremental",
+  "testmon_db": "/home/marlonsc/.cache/flext/infra/testmon/flext-infra/flext-infra-nested-protocol-names/.testmondata",
+  "testmon_lease_acquired": true,
+  "deadline_monotonic": 226375.466375263,
+  "report_directory": "/home/marlonsc/worktrees/flext-infra/nested-protocol-names/.reports/tests/20261121T165056.392088Z-3469577",
+  "profile_sha256": null
+}

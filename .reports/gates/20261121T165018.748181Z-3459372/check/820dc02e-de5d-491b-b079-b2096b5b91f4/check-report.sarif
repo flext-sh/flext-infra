@@ -1,0 +1,110 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "flext-infra-check",
+          "informationUri": "https://github.com/flext-sh/flext-infra",
+          "rules": []
+        }
+      },
+      "results": []
+    }
+  ],
+  "properties": {
+    "phase": "primary",
+    "requested_gates": [
+      "lint",
+      "pyrefly"
+    ],
+    "pending_gates": [],
+    "targets": [
+      {
+        "name": "nested-protocol-names",
+        "path": "/home/marlonsc/worktrees/flext-infra/nested-protocol-names",
+        "applicable_gates": [
+          "lint",
+          "pyrefly"
+        ],
+        "source_identity": {
+          "repo_root": "/home/marlonsc/worktrees/flext-infra/nested-protocol-names",
+          "primary_root": "/home/marlonsc/flext/flext-infra",
+          "head_oid": "e035f9ae65ed6d98fb32c78ba5f16e94567d2d5f",
+          "porcelain": " M .envrc\n M .gitignore\n M Makefile\n M docs/CHANGELOG.md\n M docs/guides/using-flext-cli.md\n M docs/releases/latest.md\n M docs/releases/v0.12.2.md\n M docs/releases/v0.12.3.md\n M mise.lock\n M pyproject.toml\n M src/flext_infra/_models/codegen_render.py\n M src/flext_infra/_protocols/_config/make.py\n M src/flext_infra/_protocols/codegen_render.py\n M src/flext_infra/_protocols/gate_admission.py\n M src/flext_infra/_protocols/workspace.py\n M src/flext_infra/_utilities/_protocol_models/__init__.py\n M src/flext_infra/_utilities/protocol_models.py\n M src/flext_infra/templates/project/base/tool_bootstrap_recipe.j2\n M src/flext_infra/templates/project/model_protocol.py.j2\n M tests/unit/codegen/test_model_protocol_callable_contracts.py\n M uv.lock",
+          "dirty": true,
+          "git_dir": "/home/marlonsc/flext/.git/modules/flext-infra/worktrees/flext-infra-nested-protocol-names",
+          "common_dir": "/home/marlonsc/flext/.git/modules/flext-infra",
+          "branch": "fix/nested-protocol-reference-names",
+          "origin_remote": "https://github.com/flext-sh/flext-infra.git",
+          "upstream_remote": null,
+          "superproject_root": "/home/marlonsc/flext",
+          "requested_path": "/home/marlonsc/worktrees/flext-infra/nested-protocol-names",
+          "is_worktree": true,
+          "is_submodule": true,
+          "is_attached_submodule": false,
+          "has_submodules": false,
+          "is_inside_work_tree": true
+        }
+      }
+    ],
+    "results": [
+      {
+        "project": "nested-protocol-names",
+        "gates": {
+          "lint": {
+            "result": {
+              "project": "nested-protocol-names",
+              "gate": "lint",
+              "passed": true,
+              "errors": [],
+              "duration": 1.81
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/worktrees/flext-infra/nested-protocol-names/.reports/gates/20261121T165018.748181Z-3459372/check/820dc02e-de5d-491b-b079-b2096b5b91f4/nested-protocol-names/lint.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          },
+          "pyrefly": {
+            "result": {
+              "project": "nested-protocol-names",
+              "gate": "pyrefly",
+              "passed": true,
+              "errors": [],
+              "duration": 23.077
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/worktrees/flext-infra/nested-protocol-names/.reports/gates/20261121T165018.748181Z-3459372/check/820dc02e-de5d-491b-b079-b2096b5b91f4/nested-protocol-names/pyrefly.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          }
+        }
+      }
+    ],
+    "selected_files": [],
+    "global_targets": [
+      {
+        "name": "nested-protocol-names",
+        "path": "/home/marlonsc/worktrees/flext-infra/nested-protocol-names",
+        "applicable_gates": [
+          "lint",
+          "pyrefly"
+        ],
+        "source_identity": null
+      }
+    ]
+  }
+}

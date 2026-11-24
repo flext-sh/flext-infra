@@ -1,0 +1,99 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "flext-infra-check",
+          "informationUri": "https://github.com/flext-sh/flext-infra",
+          "rules": []
+        }
+      },
+      "results": []
+    }
+  ],
+  "properties": {
+    "phase": "complete",
+    "requested_gates": [
+      "lint",
+      "markdown",
+      "deps"
+    ],
+    "pending_gates": [],
+    "targets": [
+      {
+        "name": "nested-protocol-names",
+        "path": "/home/marlonsc/worktrees/flext-infra/nested-protocol-names",
+        "applicable_gates": [
+          "lint",
+          "markdown",
+          "deps"
+        ],
+        "source_identity": null
+      }
+    ],
+    "results": [
+      {
+        "project": "nested-protocol-names",
+        "gates": {
+          "lint": {
+            "result": {
+              "project": "nested-protocol-names",
+              "gate": "lint",
+              "passed": true,
+              "errors": [],
+              "duration": 2.61
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/worktrees/flext-infra/nested-protocol-names/.reports/check/9f191cbb-0c57-4f22-8e9c-e66087c32c69/nested-protocol-names/lint.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          },
+          "markdown": {
+            "result": {
+              "project": "nested-protocol-names",
+              "gate": "markdown",
+              "passed": true,
+              "errors": [],
+              "duration": 2.251
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/worktrees/flext-infra/nested-protocol-names/.reports/check/9f191cbb-0c57-4f22-8e9c-e66087c32c69/nested-protocol-names/markdown.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          },
+          "deps": {
+            "result": {
+              "project": "nested-protocol-names",
+              "gate": "deps",
+              "passed": true,
+              "errors": [],
+              "duration": 7.104
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/worktrees/flext-infra/nested-protocol-names/.reports/check/9f191cbb-0c57-4f22-8e9c-e66087c32c69/nested-protocol-names/deps.raw.log",
+            "outcome": "clean",
+            "process": null,
+            "components": {},
+            "requested_components": []
+          }
+        }
+      }
+    ],
+    "selected_files": [],
+    "global_targets": null
+  }
+}

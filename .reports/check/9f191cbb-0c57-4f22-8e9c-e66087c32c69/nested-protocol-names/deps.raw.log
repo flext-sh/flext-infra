@@ -1,0 +1,14 @@
+cwd=/home/marlonsc/worktrees/flext-infra/nested-protocol-names report=/home/marlonsc/worktrees/flext-infra/nested-protocol-names/.reports/check/9f191cbb-0c57-4f22-8e9c-e66087c32c69/nested-protocol-names/nested-protocol-names-deps-1d8b98278a19477d8094921bf287ed37/deptry.json
+return-code=1
+stdout:
+
+stderr:
+Scanning 778 files...
+
+/home/marlonsc/worktrees/flext-infra/nested-protocol-names/pyproject.toml: DEP002 'properdocs' defined as a dependency but not used in the codebase
+Found 1 dependency issue.
+
+For more information, see the documentation: https://deptry.com/
+
+retained-by-declared-usage=1
+report-sha256=648786fe1e0a3d70c1390e825e64000a31dd9269a1c2458e9724e6aac83d42e8

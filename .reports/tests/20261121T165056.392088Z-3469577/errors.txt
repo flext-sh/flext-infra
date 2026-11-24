@@ -1,0 +1,277 @@
+=== FAILURE: tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-m] ===
+Failed: Timeout (>20.0s) from pytest-timeout.
+tests/unit/codegen/_utility_facade_projection/owner_publication.py:256: in test_explicit_owner_classes_preserve_publication_identity
+    u.Infra.render_utility_facade(
+src/flext_infra/_utilities/facade_components.py:639: in render_utility_facade
+    return cls.render_utility_facade(
+src/flext_infra/_utilities/facade_components.py:659: in render_utility_facade
+    return cls.facade_component_source(
+src/flext_infra/_utilities/facade_components.py:705: in facade_component_source
+    planned = cls._facade_component_plan(
+src/flext_infra/_utilities/facade_components.py:1128: in _facade_component_plan
+    providers = cls._facade_admitted_providers(
+src/flext_infra/_utilities/facade_components.py:2047: in _facade_admitted_providers
+    kind = FlextInfraUtilitiesFacadeMembers.class_kind(
+src/flext_infra/_utilities/facade_members.py:484: in class_kind
+    kind = FlextInfraUtilitiesFacadeMembers._class_kind_uncached(
+src/flext_infra/_utilities/facade_members.py:523: in _class_kind_uncached
+    return FlextInfraUtilitiesFacadeMembers._class_kind_classified(
+src/flext_infra/_utilities/facade_members.py:563: in _class_kind_classified
+    if FlextInfraUtilitiesFacadeMembers._model_class(
+src/flext_infra/_utilities/facade_members.py:602: in _model_class
+    model = resolver_factory()(
+src/flext_infra/_utilities/_rope/source_bases_runtime.py:143: in __call__
+    return self.source_member_binding(qualified)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/source_bases_runtime.py:198: in source_member_binding
+    for ancestor in self._linearize(identity):
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/source_bases_runtime.py:2212: in _linearize
+    parents = tuple(
+src/flext_infra/_utilities/_rope/source_bases_runtime.py:2215: in <genexpr>
+    if not any(
+src/flext_infra/_utilities/_rope/source_bases_runtime.py:2216: in <genexpr>
+    parent in self._linearize(previous)[1:]
+              ^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/source_bases_runtime.py:2205: in _linearize
+    parents = self._bases(identity)
+              ^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/source_bases_runtime.py:2136: in _bases
+    tuple(self._resolve(base) for base in declared)
+src/flext_infra/_utilities/_rope/source_bases_runtime.py:2136: in <genexpr>
+    tuple(self._resolve(base) for base in declared)
+          ^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/source_bases_runtime.py:1799: in _resolve
+    target, attributes = self._unresolved_target(
+src/flext_infra/_utilities/_rope/source_bases_runtime.py:1872: in _unresolved_target
+    resolved = self._external_reference(
+src/flext_infra/_utilities/_rope/source_bases_runtime.py:1746: in _external_reference
+    return self._provider_reference(
+src/flext_infra/_utilities/_rope/source_bases_runtime.py:1148: in _provider_reference
+    if self._function_object_identity(binding.get_object()) is not None:
+                                      ^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/utils/__init__.py:56: in newfunc
+    return func(self, *args, **kwds)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pynames.py:189: in get_object
+    return self._get_imported_pyname().get_object()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pynames.py:180: in _get_imported_pyname
+    result = self.imported_module.get_object()[self.imported_name]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pynames.py:162: in get_object
+    if self._get_pymodule() is None:
+       ^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pynames.py:149: in _get_pymodule
+    pymodule = pycore.project.get_module(
+src/flext_infra/_utilities/_rope/native_project.py:117: in get_module
+    return native.get_module(name, self._native_folder(folder))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/project.py:84: in get_module
+    return self.pycore.resource_to_pyobject(module)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pycore.py:141: in resource_to_pyobject
+    return self.module_cache.get_pymodule(resource, force_errors)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pycore.py:263: in get_pymodule
+    result = pyobjectsdef.PyModule(
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:610: in __init__
+    source, node = self._init_source(pycore, source, resource)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:630: in _init_source
+    source_bytes = resource.read_bytes()
+                   ^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/resources.py:147: in read_bytes
+    return self.project.fscommands.read(self.real_path)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/project.py:586: in read
+    content = self.source_state(resolved).content
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/project.py:609: in source_state
+    state = u.Cli.atomic_read_binary_file_state(
+.venv/lib/python3.13/site-packages/flext_cli/_utilities/_files/binary_reads.py:185: in atomic_read_binary_file_state
+    return FlextCliUtilitiesFilesPart03.atomic_read_binary_file_capture(
+.venv/lib/python3.13/site-packages/flext_cli/_utilities/_files/binary_reads.py:215: in atomic_read_binary_file_capture
+    FlextCliUtilitiesAtomicFileState.read_authenticated_state(
+.venv/lib/python3.13/site-packages/flext_cli/_utilities/atomic_file_state.py:44: in read_authenticated_state
+    with FlextCliUtilitiesAtomicFileState.authenticated_entry(
+../../../.local/share/mise/installs/python/3.13.18/lib/python3.13/contextlib.py:141: in __enter__
+    return next(self.gen)
+           ^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/flext_cli/_utilities/atomic_file_state.py:88: in authenticated_entry
+    with FlextCliUtilitiesAtomicFileDescriptor.parent_descriptor(
+../../../.local/share/mise/installs/python/3.13.18/lib/python3.13/contextlib.py:141: in __enter__
+    return next(self.gen)
+           ^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/flext_cli/_utilities/atomic_file_descriptor.py:66: in parent_descriptor
+    validated.parent,
+    ^^^^^^^^^^^^^^^^
+../../../.local/share/mise/installs/python/3.13.18/lib/python3.13/pathlib/_local.py:329: in parent
+    @property
+E   Failed: Timeout (>20.0s) from pytest-timeout.
+
+=== FAILURE: tests.unit.codemod.test_api_alias_cutover.TestsFlextInfraApiAliasCutover::test_service_retirement_preserves_kernel_context_and_shadowing[from sample_pkg import s-s-FlextSampleService] ===
+Failed: Timeout (>2.0s) from pytest-timeout.
+tests/unit/codemod/test_api_alias_cutover.py:88: in test_service_retirement_preserves_kernel_context_and_shadowing
+    u.Infra.plan_semantic_cutover(
+src/flext_infra/_utilities/_semantic_cutover/base.py:78: in plan_semantic_cutover
+    attempt = r.safe(
+.venv/lib/python3.13/site-packages/flext_core/_result/composition.py:201: in wrapper
+    return cls._create_success(func(*args, **kwargs))
+                               ^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/base.py:142: in _plan_semantic_cutover_phase
+    return cls._plan_selected_phase_dispatch(
+src/flext_infra/_utilities/_semantic_cutover/base.py:340: in _plan_selected_phase_dispatch
+    return factory()
+           ^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/base.py:313: in <lambda>
+    c.Infra.SemanticCutoverPhase.COMPAT_ALIAS: lambda: cls._plan_alias_cutover(
+src/flext_infra/_utilities/_semantic_cutover/base.py:363: in _plan_alias_cutover
+    api = cls._plan_api_aliases(workspace, working, selected, import_normalizer)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/aliases.py:407: in _plan_api_aliases
+    service_aliases, service_graph = cls._service_aliases(workspace, sources)
+                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/aliases.py:150: in _service_aliases
+    if value is not None and cls._inherits_service_kernel(value, kernel):
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/aliases.py:271: in _inherits_service_kernel
+    pending = list(FlextInfraUtilitiesDeclarationPayload.direct_bases(value))
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/declaration_payload.py:218: in direct_bases
+    tuple(value.get_superclasses())
+          ^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:324: in get_superclasses
+    for base in self.get_bases()
+                ^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:309: in get_bases
+    bases = self._get_bases()
+            ^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:482: in _get_bases
+    evaluated = rope.base.evaluate.eval_node(scope, base_node)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/evaluate.py:216: in eval_node
+    return eval_node2(scope, node)[1]
+           ^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/evaluate.py:249: in eval_node2
+    evaluator.visit(node)
+.venv/lib/python3.13/site-packages/rope/base/ast.py:79: in visit
+    return visitor(node)
+           ^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/evaluate.py:943: in _Subscript
+    if "__getitem__" in owner:
+       ^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjects.py:37: in __contains__
+    return key in self.get_attributes()
+                  ^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjects.py:458: in get_attributes
+    result = dict(self._get_concluded_attributes())
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/utils/__init__.py:56: in newfunc
+    return func(self, *args, **kwds)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjects.py:452: in _get_concluded_attributes
+    self._get_structural_attributes()
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:431: in _get_structural_attributes
+    and defined.get_kind() != "staticmethod"
+        ^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:239: in get_kind
+    pyname = rope.base.evaluate.eval_node(scope, decorator)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/evaluate.py:216: in eval_node
+    return eval_node2(scope, node)[1]
+           ^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/evaluate.py:249: in eval_node2
+    evaluator.visit(node)
+.venv/lib/python3.13/site-packages/rope/base/ast.py:79: in visit
+    return visitor(node)
+           ^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/evaluate.py:566: in _Call
+    pyobject = func_pyname.get_object()
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/utils/__init__.py:56: in newfunc
+    return func(self, *args, **kwds)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pynames.py:189: in get_object
+    return self._get_imported_pyname().get_object()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pynames.py:180: in _get_imported_pyname
+    result = self.imported_module.get_object()[self.imported_name]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjects.py:33: in __getitem__
+    return self.get_attribute(key)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:681: in get_attribute
+    self._get_source_binding_index().prepare_header_bindings()
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/utils/__init__.py:36: in _wrapper
+    setattr(self, name, func(self, *args, **kwds))
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:661: in _get_source_binding_index
+    return SourceBindingIndex(
+.venv/lib/python3.13/site-packages/rope/base/sourcebindings.py:1101: in __init__
+    self._visit(tree, self.global_reference, self.global_reference, "module", 0)
+.venv/lib/python3.13/site-packages/rope/base/sourcebindings.py:2244: in _visit
+    return self._visit_node(node, environment, owner, role, depth, annotation)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/sourcebindings.py:2378: in _visit_node
+    visit(item, environment, owner, role, child_depth, annotation)
+.venv/lib/python3.13/site-packages/rope/base/sourcebindings.py:2244: in _visit
+    return self._visit_node(node, environment, owner, role, depth, annotation)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/sourcebindings.py:2259: in _visit_node
+    self._visit(
+.venv/lib/python3.13/site-packages/rope/base/sourcebindings.py:2244: in _visit
+    return self._visit_node(node, environment, owner, role, depth, annotation)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/sourcebindings.py:2321: in _visit_node
+    self._visit(statement, body_env, class_owner, "class-body", depth + 1)
+.venv/lib/python3.13/site-packages/rope/base/sourcebindings.py:2244: in _visit
+    return self._visit_node(node, environment, owner, role, depth, annotation)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/sourcebindings.py:2270: in _visit_node
+    self._function(node, environment, owner, depth)
+.venv/lib/python3.13/site-packages/rope/base/sourcebindings.py:2446: in _function
+    self._visit(statement, body_env, owner, "function-body", depth + 1)
+.venv/lib/python3.13/site-packages/rope/base/sourcebindings.py:2244: in _visit
+    return self._visit_node(node, environment, owner, role, depth, annotation)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/sourcebindings.py:2378: in _visit_node
+    visit(item, environment, owner, role, child_depth, annotation)
+.venv/lib/python3.13/site-packages/rope/base/sourcebindings.py:2244: in _visit
+    return self._visit_node(node, environment, owner, role, depth, annotation)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/sourcebindings.py:2259: in _visit_node
+    self._visit(
+.venv/lib/python3.13/site-packages/rope/base/sourcebindings.py:2244: in _visit
+    return self._visit_node(node, environment, owner, role, depth, annotation)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/sourcebindings.py:2259: in _visit_node
+    self._visit(
+.venv/lib/python3.13/site-packages/rope/base/sourcebindings.py:2244: in _visit
+    return self._visit_node(node, environment, owner, role, depth, annotation)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/sourcebindings.py:2253: in _visit_node
+    self._visit(node.test, environment, owner, role, depth + 1, annotation)
+.venv/lib/python3.13/site-packages/rope/base/sourcebindings.py:2244: in _visit
+    return self._visit_node(node, environment, owner, role, depth, annotation)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/sourcebindings.py:2378: in _visit_node
+    visit(item, environment, owner, role, child_depth, annotation)
+.venv/lib/python3.13/site-packages/rope/base/sourcebindings.py:2244: in _visit
+    return self._visit_node(node, environment, owner, role, depth, annotation)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/sourcebindings.py:2380: in _visit_node
+    visit(value, environment, owner, role, child_depth, annotation)
+.venv/lib/python3.13/site-packages/rope/base/sourcebindings.py:2244: in _visit
+    return self._visit_node(node, environment, owner, role, depth, annotation)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/sourcebindings.py:2378: in _visit_node
+    visit(item, environment, owner, role, child_depth, annotation)
+.venv/lib/python3.13/site-packages/rope/base/sourcebindings.py:2244: in _visit
+    return self._visit_node(node, environment, owner, role, depth, annotation)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/sourcebindings.py:2370: in _visit_node
+    spec = _CHILD_SPECS.get(cls)
+           ^^^^^^^^^^^^^^^^^^^^^
+E   Failed: Timeout (>2.0s) from pytest-timeout.

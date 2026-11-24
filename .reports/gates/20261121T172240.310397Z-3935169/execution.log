@@ -1,0 +1,35 @@
+INFO: check: registry initialization start
+INFO: check: registry initialization complete
+INFO: check: selection start phase=complete
+INFO: check: selection complete projects=1 gates=6
+INFO: check: preparation start identity=True
+INFO: check: preparation complete projects=1
+INFO: check: prerequisite planning start projects=1
+INFO: check: prerequisite planning complete gates=1
+INFO: check: prerequisite wave start gate=lint jobs=1
+INFO: gate_executed project=nested-protocol-names gate=lint passed=True elapsed=1.319
+2026-11-21T17:22:47.090570Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=1350.78 failed=0 skipped=0 total_stages=1
+INFO: check: prerequisite wave complete gate=lint
+    [OK] lint           0 errors  (1.32s)
+[1/1] nested-protocol-names check ...
+INFO: gate_executed project=nested-protocol-names gate=markdown-format passed=True elapsed=2.085
+INFO: gate_executed project=nested-protocol-names gate=markdown passed=True elapsed=2.088
+2026-11-21T17:22:50.954867Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=2086.25 failed=0 skipped=0 total_stages=1
+2026-11-21T17:22:50.956351Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=2088.31 failed=0 skipped=0 total_stages=1
+INFO: gate_executed project=nested-protocol-names gate=format passed=True elapsed=4.674
+2026-11-21T17:22:53.542432Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=4674.91 failed=0 skipped=0 total_stages=1
+INFO: gate_executed project=nested-protocol-names gate=markdown-code passed=True elapsed=6.716
+2026-11-21T17:22:55.585791Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=6716.57 failed=0 skipped=0 total_stages=1
+INFO: gate_executed project=nested-protocol-names gate=conflict-markers passed=True elapsed=7.546
+2026-11-21T17:22:58.542465Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=9672.47 failed=0 skipped=0 total_stages=1
+    [OK] format         0 errors  (4.67s)
+    [OK] markdown       0 errors  (2.09s)
+    [OK] markdown-format     0 errors  (2.08s)
+    [OK] markdown-code     0 errors  (6.72s)
+    [OK] conflict-markers     0 errors  (7.55s)
+  [OK] check    nested-protocol-names    9.75s
+
+-- check summary --
+Total: 1  Success: 1  Failed: 0  Skipped: 0  (11.17s)
+INFO: Reports: /home/marlonsc/worktrees/flext-infra/nested-protocol-names/.reports/gates/20261121T172240.310397Z-3935169/check/06dacb57-0247-4288-ad71-d5d5448dd21f/check-report.md
+INFO:          /home/marlonsc/worktrees/flext-infra/nested-protocol-names/.reports/gates/20261121T172240.310397Z-3935169/check/06dacb57-0247-4288-ad71-d5d5448dd21f/check-report.sarif
