@@ -1,0 +1,1 @@
+{"id":"exports--flext_infra.maintenance","language":"Python","rule":{"regex":"^(?:FlextInfraMaintenanceClean|FlextInfraMaintenancePythonVersion|FlextInfraMaintenanceSonarcloud|FlextInfraMaintenanceSonarcloudClient|FlextInfraMaintenanceSonarcloudIssues)$"}}

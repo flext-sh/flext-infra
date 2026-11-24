@@ -1,0 +1,190 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "flext-infra-check",
+          "informationUri": "https://github.com/flext-sh/flext-infra",
+          "rules": []
+        }
+      },
+      "results": []
+    }
+  ],
+  "properties": {
+    "phase": "complete",
+    "requested_gates": [
+      "lint",
+      "format",
+      "markdown",
+      "markdown-format",
+      "markdown-code",
+      "conflict-markers"
+    ],
+    "pending_gates": [],
+    "targets": [
+      {
+        "name": "lazy-init-surfaces",
+        "path": "/home/marlonsc/flext/flext-infra/worktrees/lazy-init-surfaces",
+        "applicable_gates": [
+          "lint",
+          "format",
+          "markdown",
+          "markdown-format",
+          "markdown-code",
+          "conflict-markers"
+        ],
+        "source_identity": {
+          "repo_root": "/home/marlonsc/flext/flext-infra/worktrees/lazy-init-surfaces",
+          "primary_root": "/home/marlonsc/flext/flext-infra",
+          "head_oid": "4231f7d773b57ce2d386b1174e51995b13ee95e8",
+          "porcelain": "M  Makefile\nM  src/flext_infra/_utilities/lazy_init_plan.py\nM  src/flext_infra/_utilities/workspace_snapshot.py\nM  tests/unit/codegen/lazy_init_test_namespace_tests.py",
+          "dirty": true,
+          "git_dir": "/home/marlonsc/flext/.git/modules/flext-infra/worktrees/lazy-init-surfaces",
+          "common_dir": "/home/marlonsc/flext/.git/modules/flext-infra",
+          "branch": "fix/lazy-init-declared-surfaces-20261121",
+          "origin_remote": "https://github.com/flext-sh/flext-infra.git",
+          "upstream_remote": null,
+          "superproject_root": "/home/marlonsc/flext",
+          "requested_path": "/home/marlonsc/flext/flext-infra/worktrees/lazy-init-surfaces",
+          "is_worktree": true,
+          "is_submodule": true,
+          "is_attached_submodule": false,
+          "has_submodules": false,
+          "is_inside_work_tree": true
+        }
+      }
+    ],
+    "results": [
+      {
+        "project": "lazy-init-surfaces",
+        "gates": {
+          "lint": {
+            "result": {
+              "project": "lazy-init-surfaces",
+              "gate": "lint",
+              "passed": true,
+              "errors": [],
+              "duration": 0.472
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext/flext-infra/worktrees/lazy-init-surfaces/.reports/gates/20261122T012415.650117Z-1653209/check/0c66d240-cba8-4f1d-a6ff-ddf964d6313c/lazy-init-surfaces/lint.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          },
+          "format": {
+            "result": {
+              "project": "lazy-init-surfaces",
+              "gate": "format",
+              "passed": true,
+              "errors": [],
+              "duration": 2.536
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext/flext-infra/worktrees/lazy-init-surfaces/.reports/gates/20261122T012415.650117Z-1653209/check/0c66d240-cba8-4f1d-a6ff-ddf964d6313c/lazy-init-surfaces/format.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          },
+          "markdown": {
+            "result": {
+              "project": "lazy-init-surfaces",
+              "gate": "markdown",
+              "passed": true,
+              "errors": [],
+              "duration": 1.344
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext/flext-infra/worktrees/lazy-init-surfaces/.reports/gates/20261122T012415.650117Z-1653209/check/0c66d240-cba8-4f1d-a6ff-ddf964d6313c/lazy-init-surfaces/markdown.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          },
+          "markdown-format": {
+            "result": {
+              "project": "lazy-init-surfaces",
+              "gate": "markdown-format",
+              "passed": true,
+              "errors": [],
+              "duration": 1.348
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext/flext-infra/worktrees/lazy-init-surfaces/.reports/gates/20261122T012415.650117Z-1653209/check/0c66d240-cba8-4f1d-a6ff-ddf964d6313c/lazy-init-surfaces/markdown-format.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          },
+          "markdown-code": {
+            "result": {
+              "project": "lazy-init-surfaces",
+              "gate": "markdown-code",
+              "passed": true,
+              "errors": [],
+              "duration": 4.512
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext/flext-infra/worktrees/lazy-init-surfaces/.reports/gates/20261122T012415.650117Z-1653209/check/0c66d240-cba8-4f1d-a6ff-ddf964d6313c/lazy-init-surfaces/markdown-code.raw.log",
+            "outcome": "clean",
+            "process": null,
+            "components": {},
+            "requested_components": []
+          },
+          "conflict-markers": {
+            "result": {
+              "project": "lazy-init-surfaces",
+              "gate": "conflict-markers",
+              "passed": true,
+              "errors": [],
+              "duration": 4.747
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext/flext-infra/worktrees/lazy-init-surfaces/.reports/gates/20261122T012415.650117Z-1653209/check/0c66d240-cba8-4f1d-a6ff-ddf964d6313c/lazy-init-surfaces/conflict-markers.raw.log",
+            "outcome": "clean",
+            "process": null,
+            "components": {},
+            "requested_components": []
+          }
+        }
+      }
+    ],
+    "selected_files": [],
+    "global_targets": [
+      {
+        "name": "lazy-init-surfaces",
+        "path": "/home/marlonsc/flext/flext-infra/worktrees/lazy-init-surfaces",
+        "applicable_gates": [
+          "lint",
+          "format",
+          "markdown",
+          "markdown-format",
+          "markdown-code",
+          "conflict-markers"
+        ],
+        "source_identity": null
+      }
+    ]
+  }
+}

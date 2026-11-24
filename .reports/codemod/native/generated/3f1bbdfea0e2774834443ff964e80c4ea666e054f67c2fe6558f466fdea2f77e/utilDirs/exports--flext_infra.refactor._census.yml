@@ -1,0 +1,1 @@
+{"id":"exports--flext_infra.refactor._census","language":"Python","rule":{"regex":"^(?:FlextInfraRefactorCensusCollect|FlextInfraRefactorCensusCollectHelpers|FlextInfraRefactorCensusFilters|FlextInfraRefactorCensusObjects|FlextInfraRefactorCensusProject|FlextInfraRefactorCensusRemoval|FlextInfraRefactorCensusRender)$"}}

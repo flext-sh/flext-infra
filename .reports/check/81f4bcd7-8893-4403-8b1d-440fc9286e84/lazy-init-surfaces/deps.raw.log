@@ -1,0 +1,14 @@
+cwd=/home/marlonsc/flext/flext-infra/worktrees/lazy-init-surfaces report=/home/marlonsc/flext/flext-infra/worktrees/lazy-init-surfaces/.reports/check/81f4bcd7-8893-4403-8b1d-440fc9286e84/lazy-init-surfaces/lazy-init-surfaces-deps-98093de2aa6449f584ab4783190f2a35/deptry.json
+return-code=1
+stdout:
+
+stderr:
+Scanning 778 files...
+
+/home/marlonsc/flext/flext-infra/worktrees/lazy-init-surfaces/pyproject.toml: DEP002 'properdocs' defined as a dependency but not used in the codebase
+Found 1 dependency issue.
+
+For more information, see the documentation: https://deptry.com/
+
+retained-by-declared-usage=1
+report-sha256=b6fb096f1d029ca71bc970714ecbba6a361db9b5a0e8d9ffca3c35090a6f1922

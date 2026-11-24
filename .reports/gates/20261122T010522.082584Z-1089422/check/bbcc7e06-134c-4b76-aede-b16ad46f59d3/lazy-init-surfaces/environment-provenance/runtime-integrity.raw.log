@@ -1,0 +1,4 @@
+INFO: environment python=/home/marlonsc/flext/flext-infra/worktrees/lazy-init-surfaces/.venv/bin/python prefix=/home/marlonsc/flext/flext-infra/worktrees/lazy-init-surfaces/.venv metadata_paths=(PosixPath('/home/marlonsc/flext/flext-infra/worktrees/lazy-init-surfaces/.venv/lib/python3.13/site-packages'),)
+INFO: environment distribution=flext-infra installed_version=0.12.3 installed_location=/home/marlonsc/flext/flext-infra/worktrees/lazy-init-surfaces/.venv/lib/python3.13/site-packages record_files=14 expected_source=/home/marlonsc/flext/flext-infra/worktrees/lazy-init-surfaces
+INFO: environment distribution=flext-infra import_source=/home/marlonsc/flext/flext-infra/worktrees/lazy-init-surfaces/src/flext_infra
+✅ workspace editable provenance verified

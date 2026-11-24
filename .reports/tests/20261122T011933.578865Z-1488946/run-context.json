@@ -1,0 +1,8 @@
+{
+  "execution_mode": "global-incremental",
+  "testmon_db": "/home/marlonsc/.cache/flext/infra/testmon/flext-infra/lazy-init-surfaces/.testmondata",
+  "testmon_lease_acquired": true,
+  "deadline_monotonic": 256893.022675439,
+  "report_directory": "/home/marlonsc/flext/flext-infra/worktrees/lazy-init-surfaces/.reports/tests/20261122T011933.578865Z-1488946",
+  "profile_sha256": null
+}

@@ -1,0 +1,217 @@
+INFO: check: registry initialization start
+INFO: check: registry initialization complete
+INFO: check: selection start phase=complete
+INFO: check: selection complete projects=1 gates=20
+INFO: check: preparation start identity=True
+INFO: check: preparation complete projects=1
+INFO: check: prerequisite planning start projects=1
+INFO: check: prerequisite planning complete gates=2
+INFO: check: prerequisite wave start gate=lint jobs=1
+INFO: gate_executed project=lazy-init-surfaces gate=lint passed=True elapsed=0.987
+2026-11-22T01:05:25.401601Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=993.41 failed=0 skipped=0 total_stages=1
+INFO: check: prerequisite wave complete gate=lint
+    [OK] lint           0 errors  (0.99s)
+INFO: check: prerequisite wave start gate=pyrefly jobs=1
+INFO: gate_executed project=lazy-init-surfaces gate=pyrefly passed=True elapsed=14.69
+2026-11-22T01:05:40.153895Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=14690.29 failed=0 skipped=0 total_stages=1
+INFO: check: prerequisite wave complete gate=pyrefly
+    [OK] pyrefly        0 errors  (14.69s)
+[1/1] lazy-init-surfaces check ...
+INFO: rope: opening workspace at /home/marlonsc/flext/flext-infra/worktrees/lazy-init-surfaces
+INFO: gate_executed project=lazy-init-surfaces gate=markdown passed=True elapsed=3.147
+2026-11-22T01:05:44.818461Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=3147.19 failed=0 skipped=0 total_stages=1
+INFO: gate_executed project=lazy-init-surfaces gate=markdown-format passed=True elapsed=3.234
+2026-11-22T01:05:44.906548Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=3234.69 failed=0 skipped=0 total_stages=1
+INFO: rope: workspace ready in 4.83s
+INFO: fresh-import: running 4 probes with 3 workers
+INFO: fresh-import: probe 0 start flext_infra: console_scripts/flext-docs=flext_infra.cli:FlextInfraCli.docs_main
+INFO: fresh-import: probe 1 start flext_infra: console_scripts/flext-infra=flext_infra.cli:FlextInfraCli.infra_main
+INFO: fresh-import: probe 2 start flext_infra: pytest11/flext_infra._pytest_collection=flext_infra._pytest.collection:FlextInfraPytestCollection
+INFO: fresh-import: probe 2 end success=True
+INFO: fresh-import: probe 3 start flext_infra
+INFO: fresh-import: probe 1 end success=True
+INFO: fresh-import: probe 0 end success=True
+INFO: gate_executed project=lazy-init-surfaces gate=format passed=True elapsed=9.747
+2026-11-22T01:05:51.414800Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=9746.99 failed=0 skipped=0 total_stages=1
+INFO: gate_executed project=lazy-init-surfaces gate=loc-cap passed=False elapsed=9.753
+2026-11-22T01:05:51.427857Z [error    ] stage_failed                   [flext_cli.api.FlextCli] error='loc-cap failed for lazy-init-surfaces with 40 findings' stage_id=loc-cap
+2026-11-22T01:05:51.428619Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=9755.08 failed=1 skipped=0 total_stages=1
+INFO: gate_executed project=lazy-init-surfaces gate=runtime-integrity passed=True elapsed=9.86
+2026-11-22T01:05:51.528595Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=9861.7 failed=0 skipped=0 total_stages=1
+INFO: gate_executed project=lazy-init-surfaces gate=index-declarations passed=True elapsed=0.128
+2026-11-22T01:05:51.543997Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=128.14 failed=0 skipped=0 total_stages=1
+INFO: gate_executed project=lazy-init-surfaces gate=direnv passed=True elapsed=1.189
+2026-11-22T01:05:52.738273Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=1192.32 failed=0 skipped=0 total_stages=1
+INFO: gate_executed project=lazy-init-surfaces gate=layout passed=True elapsed=1.22
+2026-11-22T01:05:52.750310Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=1220.32 failed=0 skipped=0 total_stages=1
+INFO: gate_executed project=lazy-init-surfaces gate=markdown-code passed=True elapsed=12.679
+2026-11-22T01:05:54.352300Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=12679.69 failed=0 skipped=0 total_stages=1
+INFO: gate_executed project=lazy-init-surfaces gate=enforcement-catalog passed=True elapsed=13.94
+2026-11-22T01:05:55.614856Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=13940.73 failed=0 skipped=0 total_stages=1
+INFO: fresh-import: probe 3 end success=True
+INFO: gate_executed project=lazy-init-surfaces gate=fresh-import passed=True elapsed=15.518
+2026-11-22T01:06:00.337821Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=15518.18 failed=0 skipped=0 total_stages=1
+INFO: mod: producer start name=codemod_file_scopes project=lazy-init-surfaces
+INFO: environment python=/home/marlonsc/flext/flext-infra/worktrees/lazy-init-surfaces/.venv/bin/python prefix=/home/marlonsc/flext/flext-infra/worktrees/lazy-init-surfaces/.venv metadata_paths=(PosixPath('/home/marlonsc/flext/flext-infra/worktrees/lazy-init-surfaces/.venv/lib/python3.13/site-packages'),)
+INFO: gate_executed project=lazy-init-surfaces gate=security passed=True elapsed=39.015
+2026-11-22T01:06:20.686165Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=39015.92 failed=0 skipped=0 total_stages=1
+INFO: gate_executed project=lazy-init-surfaces gate=deps passed=True elapsed=42.452
+2026-11-22T01:06:27.614407Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=42706.43 failed=0 skipped=0 total_stages=1
+INFO: mod: import graph start
+INFO: mod: import graph modules=0 file=src/flext_infra/__init__.py
+INFO: mod: import graph finish modules=1498
+INFO: gate_executed project=lazy-init-surfaces gate=conflict-markers passed=True elapsed=69.751
+2026-11-22T01:06:54.365378Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=72691.6 failed=0 skipped=0 total_stages=1
+INFO: mod: producer stop name=codemod_file_scopes completed=True duration=52.20s
+INFO: mod: producer start name=codemod_layout_scopes project=lazy-init-surfaces
+INFO: mod: producer stop name=codemod_layout_scopes completed=True duration=22.72s
+INFO: mod: producer start name=codemod_declaration_scopes project=lazy-init-surfaces
+INFO: mod: producer stop name=codemod_declaration_scopes completed=True duration=9.42s
+INFO: mod: producer start name=codemod_implementation_scopes project=lazy-init-surfaces
+INFO: mod: producer stop name=codemod_implementation_scopes completed=True duration=0.87s
+INFO: mod: producer start name=codemod_import_header_rules project=lazy-init-surfaces
+INFO: mod: runtime distributions start requirements=17
+INFO: mod: runtime distributions finish distributions=160
+INFO: mod: runtime dependency closure start
+INFO: mod: runtime dependency closure finish distributions=60
+INFO: mod: runtime import package metadata finish packages=174
+INFO: mod: runtime imports package=1/174 module=httpx2 selected=0
+INFO: mod: runtime imports finish modules=65
+INFO: gate_executed project=lazy-init-surfaces gate=pydantic-census passed=True elapsed=120.258
+2026-11-22T01:07:41.936012Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=120261.08 failed=0 skipped=0 total_stages=1
+INFO: mod: producer stop name=codemod_import_header_rules completed=True duration=16.50s
+INFO: mod: producer start name=codemod_module_member_rules project=lazy-init-surfaces
+INFO: mod: producer stop name=codemod_module_member_rules completed=True duration=0.40s
+INFO: mod: producer start name=codemod_type_set_rules project=lazy-init-surfaces
+INFO: mod: producer stop name=codemod_type_set_rules completed=True duration=0.01s
+INFO: mod: producer start name=codemod_compat_rules project=lazy-init-surfaces
+INFO: mod: producer stop name=codemod_compat_rules completed=True duration=0.05s
+INFO: mod: producer start name=codemod_layer_zero_rules project=lazy-init-surfaces
+INFO: mod: producer stop name=codemod_layer_zero_rules completed=True duration=1.06s
+INFO: mod: producer start name=codemod_external_import_rules project=lazy-init-surfaces
+INFO: mod: producer stop name=codemod_external_import_rules completed=True duration=0.58s
+INFO: mod: producer start name=codemod_library_type_rules project=lazy-init-surfaces
+INFO: mod: producer stop name=codemod_library_type_rules completed=True duration=0.60s
+INFO: mod: producer start name=codemod_ambient_environ_rules project=lazy-init-surfaces
+INFO: mod: producer stop name=codemod_ambient_environ_rules completed=True duration=1.20s
+INFO: mod: producer start name=codemod_facade_member_rules project=lazy-init-surfaces
+INFO: mod: producer stop name=codemod_facade_member_rules completed=True duration=9.13s
+INFO: mod: producer start name=codemod_facade_component_rules project=lazy-init-surfaces
+INFO: mod: producer stop name=codemod_facade_component_rules completed=True duration=7.59s
+INFO: mod: producer start name=codemod_library_member_name_rules project=lazy-init-surfaces
+INFO: mod: producer stop name=codemod_library_member_name_rules completed=True duration=0.05s
+INFO: mod: producer start name=codemod_composition_root_collision_rules project=lazy-init-surfaces
+INFO: mod: producer stop name=codemod_composition_root_collision_rules completed=True duration=1.18s
+INFO: mod: producer start name=codemod_facade_member_ownership_rules project=lazy-init-surfaces
+INFO: mod: producer stop name=codemod_facade_member_ownership_rules completed=True duration=0.43s
+INFO: mod: producer start name=codemod_partitioned_rules project=lazy-init-surfaces
+INFO: mod: producer stop name=codemod_partitioned_rules completed=True duration=0.31s
+INFO: mod: producer start name=codemod_reverse_import_rules project=lazy-init-surfaces
+INFO: mod: producer stop name=codemod_reverse_import_rules completed=True duration=9.81s
+INFO: mod: producer start name=codemod_own_package_utilities project=lazy-init-surfaces
+INFO: mod: producer stop name=codemod_own_package_utilities completed=True duration=0.02s
+INFO: mod: producer start name=codemod_stdlib_module_utilities project=lazy-init-surfaces
+INFO: mod: producer stop name=codemod_stdlib_module_utilities completed=True duration=0.00s
+INFO: mod: producer start name=codemod_runtime_package_utilities project=lazy-init-surfaces
+INFO: mod: producer stop name=codemod_runtime_package_utilities completed=True duration=0.03s
+INFO: mod: producer start name=codemod_generated_module_utilities project=lazy-init-surfaces
+INFO: mod: producer stop name=codemod_generated_module_utilities completed=True duration=0.00s
+INFO: mod: producer start name=codemod_package_export_utilities project=lazy-init-surfaces
+INFO: mod: producer stop name=codemod_package_export_utilities completed=True duration=0.42s
+INFO: mod: producer start name=codemod_facade_family_package_utilities project=lazy-init-surfaces
+INFO: mod: producer stop name=codemod_facade_family_package_utilities completed=True duration=0.00s
+INFO: mod: producer start name=codemod_facade_package_utilities project=lazy-init-surfaces
+INFO: mod: producer stop name=codemod_facade_package_utilities completed=True duration=0.00s
+INFO: mod: producer start name=codemod_alias_utilities project=lazy-init-surfaces
+INFO: mod: producer stop name=codemod_alias_utilities completed=True duration=0.02s
+INFO: mod: producer start name=codemod_imported_export_utilities project=lazy-init-surfaces
+INFO: mod: producer stop name=codemod_imported_export_utilities completed=True duration=0.42s
+INFO: mod: producer start name=codemod_compose_module_utilities project=lazy-init-surfaces
+INFO: mod: producer stop name=codemod_compose_module_utilities completed=True duration=0.04s
+INFO: mod: producer start name=codemod_requested_utilities project=lazy-init-surfaces
+INFO: mod: producer stop name=codemod_requested_utilities completed=True duration=9.21s
+mod: ast-grep project=lazy-init-surfaces provider=flext-infra,generated rules=698
+mod: ast-grep cache hit=0 miss=1444
+mod: start ast-grep scan args=71
+mod: finish ast-grep exit=1 duration=3.77s stdout_file=/home/marlonsc/tmp/mod-native-9sttp9rx/0-scanned
+mod: start ast-grep scan args=71
+mod: finish ast-grep exit=1 duration=9.03s stdout_file=/home/marlonsc/tmp/mod-native-9sttp9rx/64-scanned
+mod: start ast-grep scan args=71
+mod: finish ast-grep exit=1 duration=4.69s stdout_file=/home/marlonsc/tmp/mod-native-9sttp9rx/128-scanned
+mod: start ast-grep scan args=71
+mod: finish ast-grep exit=1 duration=8.66s stdout_file=/home/marlonsc/tmp/mod-native-9sttp9rx/192-scanned
+mod: start ast-grep scan args=71
+mod: finish ast-grep exit=1 duration=5.82s stdout_file=/home/marlonsc/tmp/mod-native-9sttp9rx/256-scanned
+mod: start ast-grep scan args=71
+mod: finish ast-grep exit=1 duration=27.19s stdout_file=/home/marlonsc/tmp/mod-native-9sttp9rx/320-scanned
+mod: start ast-grep scan args=71
+mod: finish ast-grep exit=1 duration=18.52s stdout_file=/home/marlonsc/tmp/mod-native-9sttp9rx/384-scanned
+mod: start ast-grep scan args=71
+mod: finish ast-grep exit=1 duration=71.30s stdout_file=/home/marlonsc/tmp/mod-native-9sttp9rx/448-scanned
+mod: start ast-grep scan args=71
+mod: finish ast-grep exit=1 duration=21.89s stdout_file=/home/marlonsc/tmp/mod-native-9sttp9rx/512-scanned
+mod: start ast-grep scan args=71
+mod: finish ast-grep exit=1 duration=4.39s stdout_file=/home/marlonsc/tmp/mod-native-9sttp9rx/576-scanned
+mod: start ast-grep scan args=71
+mod: finish ast-grep exit=1 duration=17.32s stdout_file=/home/marlonsc/tmp/mod-native-9sttp9rx/640-scanned
+mod: start ast-grep scan args=71
+mod: finish ast-grep exit=1 duration=7.13s stdout_file=/home/marlonsc/tmp/mod-native-9sttp9rx/704-scanned
+mod: start ast-grep scan args=71
+mod: finish ast-grep exit=1 duration=33.66s stdout_file=/home/marlonsc/tmp/mod-native-9sttp9rx/768-scanned
+mod: start ast-grep scan args=71
+mod: finish ast-grep exit=1 duration=10.57s stdout_file=/home/marlonsc/tmp/mod-native-9sttp9rx/832-scanned
+mod: start ast-grep scan args=71
+mod: finish ast-grep exit=1 duration=14.91s stdout_file=/home/marlonsc/tmp/mod-native-9sttp9rx/896-scanned
+mod: start ast-grep scan args=71
+mod: finish ast-grep exit=1 duration=12.04s stdout_file=/home/marlonsc/tmp/mod-native-9sttp9rx/960-scanned
+mod: start ast-grep scan args=71
+mod: finish ast-grep exit=1 duration=11.75s stdout_file=/home/marlonsc/tmp/mod-native-9sttp9rx/1024-scanned
+mod: start ast-grep scan args=71
+mod: finish ast-grep exit=1 duration=11.44s stdout_file=/home/marlonsc/tmp/mod-native-9sttp9rx/1088-scanned
+mod: start ast-grep scan args=71
+mod: finish ast-grep exit=1 duration=6.16s stdout_file=/home/marlonsc/tmp/mod-native-9sttp9rx/1152-scanned
+mod: start ast-grep scan args=71
+mod: finish ast-grep exit=1 duration=5.66s stdout_file=/home/marlonsc/tmp/mod-native-9sttp9rx/1216-scanned
+mod: start ast-grep scan args=71
+mod: finish ast-grep exit=1 duration=10.00s stdout_file=/home/marlonsc/tmp/mod-native-9sttp9rx/1280-scanned
+mod: start ast-grep scan args=71
+mod: finish ast-grep exit=1 duration=12.50s stdout_file=/home/marlonsc/tmp/mod-native-9sttp9rx/1344-scanned
+mod: start ast-grep scan args=43
+mod: finish ast-grep exit=1 duration=4.33s stdout_file=/home/marlonsc/tmp/mod-native-9sttp9rx/1408-scanned
+mod: native findings=10465
+INFO: mod: import graph start
+INFO: mod: import graph modules=0 file=src/flext_infra/__init__.py
+INFO: mod: import graph modules=1473 file=tests/unit/workspace/test_native_model_provenance.py
+INFO: mod: import graph finish modules=1498
+INFO: gate_executed project=lazy-init-surfaces gate=codemod passed=False elapsed=647.384
+2026-11-22T01:16:45.204863Z [error    ] stage_failed                   [flext_cli.api.FlextCli] error='codemod failed for lazy-init-surfaces with 10465 findings' stage_id=codemod
+2026-11-22T01:16:45.224513Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=653794.29 failed=1 skipped=0 total_stages=1
+    [OK] runtime-integrity     0 errors  (9.86s)
+    [OK] format         0 errors  (9.75s)
+    [OK] security       0 errors  (39.02s)
+    [OK] markdown       0 errors  (3.15s)
+    [OK] markdown-format     0 errors  (3.23s)
+    [OK] markdown-code     0 errors  (12.68s)
+    [OK] conflict-markers     0 errors  (69.75s)
+    [FAIL] loc-cap       40 errors  (9.75s)
+INFO: loc-cap: findings; Native output receipt: /home/marlonsc/flext/flext-infra/worktrees/lazy-init-surfaces/.reports/gates/20261122T010522.082584Z-1089422/check/bbcc7e06-134c-4b76-aede-b16ad46f59d3/lazy-init-surfaces/loc-cap.raw.log
+    [OK] enforcement-catalog     0 errors  (13.94s)
+    [OK] pydantic-census     0 errors  (120.26s)
+    [OK] fresh-import     0 errors  (15.52s)
+    [OK] deps           0 errors  (42.45s)
+    [OK] index-declarations     0 errors  (0.13s)
+    [FAIL] codemod    10465 errors  (647.38s)
+INFO: codemod: findings; Native output receipt: /home/marlonsc/flext/flext-infra/worktrees/lazy-init-surfaces/.reports/gates/20261122T010522.082584Z-1089422/check/bbcc7e06-134c-4b76-aede-b16ad46f59d3/lazy-init-surfaces/codemod.raw.log
+    [OK] layout         0 errors  (1.22s)
+    [OK] direnv         0 errors  (1.19s)
+  [FAIL] check    lazy-init-surfaces       665.27s
+
+-- check summary --
+Total: 1  Success: 0  Failed: 1  Skipped: 0  (681.07s)
+INFO: Execution INCOMPLETE: 1/1 projects reached; see the requested gate inventory in the reports
+INFO: NOT EXECUTED: duplication, smells
+INFO: Reports: /home/marlonsc/flext/flext-infra/worktrees/lazy-init-surfaces/.reports/gates/20261122T010522.082584Z-1089422/check/bbcc7e06-134c-4b76-aede-b16ad46f59d3/check-report.md
+INFO:          /home/marlonsc/flext/flext-infra/worktrees/lazy-init-surfaces/.reports/gates/20261122T010522.082584Z-1089422/check/bbcc7e06-134c-4b76-aede-b16ad46f59d3/check-report.sarif
+INFO: Findings by project (see reports for detail):
+INFO: lazy-init-surfaces              10505  (loc-cap=40, codemod=10465)
+❌ quality check target accounting is incomplete

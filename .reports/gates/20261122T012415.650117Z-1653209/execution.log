@@ -1,0 +1,35 @@
+INFO: check: registry initialization start
+INFO: check: registry initialization complete
+INFO: check: selection start phase=complete
+INFO: check: selection complete projects=1 gates=6
+INFO: check: preparation start identity=True
+INFO: check: preparation complete projects=1
+INFO: check: prerequisite planning start projects=1
+INFO: check: prerequisite planning complete gates=1
+INFO: check: prerequisite wave start gate=lint jobs=1
+INFO: gate_executed project=lazy-init-surfaces gate=lint passed=True elapsed=0.472
+2026-11-22T01:24:18.521087Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=494.23 failed=0 skipped=0 total_stages=1
+INFO: check: prerequisite wave complete gate=lint
+    [OK] lint           0 errors  (0.47s)
+[1/1] lazy-init-surfaces check ...
+INFO: gate_executed project=lazy-init-surfaces gate=markdown passed=True elapsed=1.344
+2026-11-22T01:24:21.321982Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=1345.1 failed=0 skipped=0 total_stages=1
+INFO: gate_executed project=lazy-init-surfaces gate=markdown-format passed=True elapsed=1.348
+2026-11-22T01:24:21.326584Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=1347.96 failed=0 skipped=0 total_stages=1
+INFO: gate_executed project=lazy-init-surfaces gate=format passed=True elapsed=2.536
+2026-11-22T01:24:22.514079Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=2542.19 failed=0 skipped=0 total_stages=1
+INFO: gate_executed project=lazy-init-surfaces gate=markdown-code passed=True elapsed=4.512
+2026-11-22T01:24:24.491248Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=4511.87 failed=0 skipped=0 total_stages=1
+INFO: gate_executed project=lazy-init-surfaces gate=conflict-markers passed=True elapsed=4.747
+2026-11-22T01:24:26.118849Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=6138.96 failed=0 skipped=0 total_stages=1
+    [OK] format         0 errors  (2.54s)
+    [OK] markdown       0 errors  (1.34s)
+    [OK] markdown-format     0 errors  (1.35s)
+    [OK] markdown-code     0 errors  (4.51s)
+    [OK] conflict-markers     0 errors  (4.75s)
+  [OK] check    lazy-init-surfaces       6.25s
+
+-- check summary --
+Total: 1  Success: 1  Failed: 0  Skipped: 0  (6.83s)
+INFO: Reports: /home/marlonsc/flext/flext-infra/worktrees/lazy-init-surfaces/.reports/gates/20261122T012415.650117Z-1653209/check/0c66d240-cba8-4f1d-a6ff-ddf964d6313c/check-report.md
+INFO:          /home/marlonsc/flext/flext-infra/worktrees/lazy-init-surfaces/.reports/gates/20261122T012415.650117Z-1653209/check/0c66d240-cba8-4f1d-a6ff-ddf964d6313c/check-report.sarif

@@ -1,0 +1,1 @@
+{"id":"own-package","language":"Python","rule":{"regex":"^(?:examples|flext_infra|scripts|tests)(?:[.\\s]|$)"}}

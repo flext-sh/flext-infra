@@ -1,0 +1,1 @@
+{"id":"exports--flext_infra.codegen._fixer","language":"Python","rule":{"regex":"^(?:FlextInfraCodegenFixerPasses|FlextInfraCodegenFixerResults|FlextInfraCodegenFixerWorkspace)$"}}

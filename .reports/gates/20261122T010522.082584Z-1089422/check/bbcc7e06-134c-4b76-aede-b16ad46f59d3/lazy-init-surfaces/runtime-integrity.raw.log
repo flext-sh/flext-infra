@@ -1,0 +1,5 @@
+pip-check: /home/marlonsc/flext/flext-infra/worktrees/lazy-init-surfaces/.reports/gates/20261122T010522.082584Z-1089422/check/bbcc7e06-134c-4b76-aede-b16ad46f59d3/lazy-init-surfaces/pip-check/runtime-integrity.raw.log
+lock-integrity: /home/marlonsc/flext/flext-infra/worktrees/lazy-init-surfaces/.reports/gates/20261122T010522.082584Z-1089422/check/bbcc7e06-134c-4b76-aede-b16ad46f59d3/lazy-init-surfaces/lock-integrity/runtime-integrity.raw.log
+lock-freshness: /home/marlonsc/flext/flext-infra/worktrees/lazy-init-surfaces/.reports/gates/20261122T010522.082584Z-1089422/check/bbcc7e06-134c-4b76-aede-b16ad46f59d3/lazy-init-surfaces/lock-freshness/runtime-integrity.raw.log
+environment-provenance: /home/marlonsc/flext/flext-infra/worktrees/lazy-init-surfaces/.reports/gates/20261122T010522.082584Z-1089422/check/bbcc7e06-134c-4b76-aede-b16ad46f59d3/lazy-init-surfaces/environment-provenance/runtime-integrity.raw.log
+mise-proof: /home/marlonsc/flext/flext-infra/worktrees/lazy-init-surfaces/.reports/gates/20261122T010522.082584Z-1089422/check/bbcc7e06-134c-4b76-aede-b16ad46f59d3/lazy-init-surfaces/mise-proof/runtime-integrity.raw.log

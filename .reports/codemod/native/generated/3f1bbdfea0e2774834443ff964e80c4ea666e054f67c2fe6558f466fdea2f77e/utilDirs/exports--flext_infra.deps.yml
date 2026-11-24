@@ -1,0 +1,1 @@
+{"id":"exports--flext_infra.deps","language":"Python","rule":{"regex":"^(?:FlextInfraConfigFixer|FlextInfraCooldownAdmission|FlextInfraDependencyDetectionService|FlextInfraDependencyDetectorRuntime|FlextInfraDepsPyrefly|FlextInfraExtraPathsManager|FlextInfraLockIntegrityVerifier|FlextInfraPyprojectModernizer|FlextInfraRuntimeDevDependencyDetector)$"}}
