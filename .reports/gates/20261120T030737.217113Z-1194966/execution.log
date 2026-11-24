@@ -1,0 +1,23 @@
+INFO: check: registry initialization start
+INFO: check: registry initialization complete
+INFO: check: selection start phase=primary
+INFO: check: selection complete projects=1 gates=2
+INFO: check: preparation start identity=True
+INFO: check: preparation complete projects=1
+INFO: check: prerequisite planning start projects=1
+INFO: check: prerequisite planning complete gates=2
+INFO: check: prerequisite wave start gate=lint jobs=1
+INFO: gate_executed project=flext-runner-git gate=lint passed=True elapsed=1.372
+2026-11-20T03:07:41.534620Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=1381.9 failed=0 skipped=0 total_stages=1
+INFO: check: prerequisite wave complete gate=lint
+    [OK] lint           0 errors  (1.37s)
+INFO: check: prerequisite wave start gate=pyrefly jobs=1
+INFO: gate_executed project=flext-runner-git gate=pyrefly passed=True elapsed=17.607
+2026-11-20T03:07:59.171800Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=17607.23 failed=0 skipped=0 total_stages=1
+INFO: check: prerequisite wave complete gate=pyrefly
+    [OK] pyrefly        0 errors  (17.61s)
+
+-- check summary --
+Total: 1  Success: 1  Failed: 0  Skipped: 0  (19.06s)
+INFO: Reports: /home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-runner-git/.reports/gates/20261120T030737.217113Z-1194966/check/fb3ee490-77c5-45d3-a6bd-744b00350226/check-report.md
+INFO:          /home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-runner-git/.reports/gates/20261120T030737.217113Z-1194966/check/fb3ee490-77c5-45d3-a6bd-744b00350226/check-report.sarif

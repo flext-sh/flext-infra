@@ -1,0 +1,60 @@
+================================================= test session starts ==================================================
+platform linux -- Python 3.13.17, pytest-9.2.0, pluggy-1.7.0 -- /home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-runner-git/.venv/bin/python
+cachedir: .pytest_cache
+hypothesis profile 'default'
+benchmark: 5.3.1 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+Using --randomly-seed=541713289
+rootdir: /home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-runner-git
+configfile: pyproject.toml
+plugins: flext-tests-0.12.0, hypothesis-6.170.15, anyio-4.16.0, platformdirs-4.14.5, asyncio-1.4.1.post1, benchmark-5.3.1, cov-7.1.0, markdown-docs-0.9.2, randomly-5.1.0, reportlog-1.0.0, timeout-2.4.0, xdist-3.8.0, flext-infra-0.12.1
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
+timeout: 2.0s
+timeout method: signal
+timeout func_only: True
+created: 4/4 workers
+4 workers [32 items]
+
+scheduling tests via LoadScopeScheduling
+
+tests/unit/validate/pytest_runner_public_tests.py::TestsFlextInfraPytestRunnerDatabase::test_project_database_ignores_a_redirected_home[global-incremental] 
+tests/unit/validate/pytest_runner_public_tests.py::TestsFlextInfraPytestRunner::test_setup_failure_is_accounted_without_a_call_phase 
+[gw3] [  3%] FAILED tests/unit/validate/pytest_runner_public_tests.py::TestsFlextInfraPytestRunnerDatabase::test_project_database_ignores_a_redirected_home[global-incremental] 
+[gw0] [  6%] PASSED tests/unit/validate/pytest_runner_public_tests.py::TestsFlextInfraPytestRunner::test_setup_failure_is_accounted_without_a_call_phase 
+tests/unit/validate/pytest_runner_public_tests.py::TestsFlextInfraPytestRunner::test_original_suite_receipt_binds_public_process_and_accounting[True] 
+[gw0] [  9%] FAILED tests/unit/validate/pytest_runner_public_tests.py::TestsFlextInfraPytestRunner::test_original_suite_receipt_binds_public_process_and_accounting[True] 
+
+======================================================= FAILURES =======================================================
+_______ TestsFlextInfraPytestRunnerDatabase.test_project_database_ignores_a_redirected_home[global-incremental] ________
+[gw3] linux -- Python 3.13.17 /home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-runner-git/.venv/bin/python
+tests/unit/validate/pytest_runner_public_tests.py:1138: in test_project_database_ignores_a_redirected_home
+    runner = validate.FlextInfraPytestRunner.from_project_context(
+src/flext_infra/validate/_pytest_runner/base.py:192: in from_project_context
+    return cls(
+E   pydantic_core._pydantic_core.ValidationError: 1 validation error for FlextInfraPytestRunner
+E     Value error, test target must be an existing directory or file: tests [type=value_error, input_value={'repository_root': Posix... 'harness_marker': None}, input_type=dict]
+E       For further information visit https://errors.pydantic.dev/2.14/v/value_error
+__________ TestsFlextInfraPytestRunner.test_original_suite_receipt_binds_public_process_and_accounting[True] ___________
+[gw0] linux -- Python 3.13.17 /home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-runner-git/.venv/bin/python
+tests/unit/validate/pytest_runner_public_tests.py:38: in test_original_suite_receipt_binds_public_process_and_accounting
+    u.Tests.git_bootstrap(
+tests/_utilities/git.py:198: in git_bootstrap
+    tm.ok(
+.venv/lib/python3.13/site-packages/flext_tests/_utilities/_matchers/result.py:270: in ok
+    original = FlextTestsUtilitiesResult.assert_success(
+.venv/lib/python3.13/site-packages/flext_tests/_utilities/result.py:62: in assert_success
+    raise AssertionError(
+E   AssertionError: Expected success but got failure: failed (3): git remote add origin https://github.example/flext/suite.git: timed_out=False, forwarded_signal=None: erro: o remoto origin já existe.
+- generated xml file: /home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-runner-git/.reports/tests/20261120T030130.827197Z-991978/junit.xml -
+- generated report log file: /home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-runner-git/.reports/tests/20261120T030130.827197Z-991978/events.jsonl -
+--------------------------------------------------- flext slow tests ---------------------------------------------------
+no test near the ordinary or slow limit
+================================================= slowest 25 durations =================================================
+4.35s call     tests/unit/validate/pytest_runner_public_tests.py::TestsFlextInfraPytestRunner::test_setup_failure_is_accounted_without_a_call_phase
+
+(8 durations < 2s hidden.)
+=============================================== short test summary info ================================================
+FAILED tests/unit/validate/pytest_runner_public_tests.py::TestsFlextInfraPytestRunnerDatabase::test_project_database_ignores_a_redirected_home[global-incremental]
+FAILED tests/unit/validate/pytest_runner_public_tests.py::TestsFlextInfraPytestRunner::test_original_suite_receipt_binds_public_process_and_accounting[True]
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 2 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! xdist.dsession.Interrupted: stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+============================================= 2 failed, 1 passed in 8.69s ==============================================

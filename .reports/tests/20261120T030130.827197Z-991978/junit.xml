@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="2" skipped="0" tests="3" time="8.680" timestamp="2026-11-20T00:01:34.848729-03:00" hostname="tungs"><testcase classname="tests.unit.validate.pytest_runner_public_tests.TestsFlextInfraPytestRunnerDatabase" name="test_project_database_ignores_a_redirected_home[global-incremental]" time="0.972"><failure message="pydantic_core._pydantic_core.ValidationError: 1 validation error for FlextInfraPytestRunner&#10;  Value error, test target must be an existing directory or file: tests [type=value_error, input_value={'repository_root': Posix... 'harness_marker': None}, input_type=dict]&#10;    For further information visit https://errors.pydantic.dev/2.14/v/value_error">tests/unit/validate/pytest_runner_public_tests.py:1138: in test_project_database_ignores_a_redirected_home
+    runner = validate.FlextInfraPytestRunner.from_project_context(
+src/flext_infra/validate/_pytest_runner/base.py:192: in from_project_context
+    return cls(
+E   pydantic_core._pydantic_core.ValidationError: 1 validation error for FlextInfraPytestRunner
+E     Value error, test target must be an existing directory or file: tests [type=value_error, input_value={'repository_root': Posix... 'harness_marker': None}, input_type=dict]
+E       For further information visit https://errors.pydantic.dev/2.14/v/value_error</failure></testcase><testcase classname="tests.unit.validate.pytest_runner_public_tests.TestsFlextInfraPytestRunner" name="test_setup_failure_is_accounted_without_a_call_phase" time="4.691" /><testcase classname="tests.unit.validate.pytest_runner_public_tests.TestsFlextInfraPytestRunner" name="test_original_suite_receipt_binds_public_process_and_accounting[True]" time="0.100"><failure message="AssertionError: Expected success but got failure: failed (3): git remote add origin https://github.example/flext/suite.git: timed_out=False, forwarded_signal=None: erro: o remoto origin já existe.">tests/unit/validate/pytest_runner_public_tests.py:38: in test_original_suite_receipt_binds_public_process_and_accounting
+    u.Tests.git_bootstrap(
+tests/_utilities/git.py:198: in git_bootstrap
+    tm.ok(
+.venv/lib/python3.13/site-packages/flext_tests/_utilities/_matchers/result.py:270: in ok
+    original = FlextTestsUtilitiesResult.assert_success(
+.venv/lib/python3.13/site-packages/flext_tests/_utilities/result.py:62: in assert_success
+    raise AssertionError(
+E   AssertionError: Expected success but got failure: failed (3): git remote add origin https://github.example/flext/suite.git: timed_out=False, forwarded_signal=None: erro: o remoto origin já existe.</failure></testcase></testsuite></testsuites>

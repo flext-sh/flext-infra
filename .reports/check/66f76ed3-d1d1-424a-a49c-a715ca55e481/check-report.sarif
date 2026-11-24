@@ -1,0 +1,99 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "flext-infra-check",
+          "informationUri": "https://github.com/flext-sh/flext-infra",
+          "rules": []
+        }
+      },
+      "results": []
+    }
+  ],
+  "properties": {
+    "phase": "complete",
+    "requested_gates": [
+      "lint",
+      "markdown",
+      "deps"
+    ],
+    "pending_gates": [],
+    "targets": [
+      {
+        "name": "flext-runner-git",
+        "path": "/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-runner-git",
+        "applicable_gates": [
+          "lint",
+          "markdown",
+          "deps"
+        ],
+        "source_identity": null
+      }
+    ],
+    "results": [
+      {
+        "project": "flext-runner-git",
+        "gates": {
+          "lint": {
+            "result": {
+              "project": "flext-runner-git",
+              "gate": "lint",
+              "passed": true,
+              "errors": [],
+              "duration": 8.767
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-runner-git/.reports/check/66f76ed3-d1d1-424a-a49c-a715ca55e481/flext-runner-git/lint.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          },
+          "markdown": {
+            "result": {
+              "project": "flext-runner-git",
+              "gate": "markdown",
+              "passed": true,
+              "errors": [],
+              "duration": 0.884
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-runner-git/.reports/check/66f76ed3-d1d1-424a-a49c-a715ca55e481/flext-runner-git/markdown.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          },
+          "deps": {
+            "result": {
+              "project": "flext-runner-git",
+              "gate": "deps",
+              "passed": true,
+              "errors": [],
+              "duration": 8.99
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-runner-git/.reports/check/66f76ed3-d1d1-424a-a49c-a715ca55e481/flext-runner-git/deps.raw.log",
+            "outcome": "clean",
+            "process": null,
+            "components": {},
+            "requested_components": []
+          }
+        }
+      }
+    ],
+    "selected_files": [],
+    "global_targets": null
+  }
+}

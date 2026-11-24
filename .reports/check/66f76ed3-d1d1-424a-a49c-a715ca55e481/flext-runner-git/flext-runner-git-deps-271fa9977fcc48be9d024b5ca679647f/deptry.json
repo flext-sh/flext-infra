@@ -1,0 +1,14 @@
+[
+    {
+        "error": {
+            "code": "DEP002",
+            "message": "'properdocs' defined as a dependency but not used in the codebase"
+        },
+        "module": "properdocs",
+        "location": {
+            "file": "/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-runner-git/pyproject.toml",
+            "line": null,
+            "column": null
+        }
+    }
+]

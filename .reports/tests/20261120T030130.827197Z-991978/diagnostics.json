@@ -1,0 +1,80 @@
+{
+  "failed_count": 2,
+  "error_count": 0,
+  "warning_count": 0,
+  "skipped_count": 0,
+  "connectivity_skip_cases": [],
+  "collection_failed_count": 0,
+  "collection_skipped_count": 0,
+  "collection_failed_cases": [],
+  "collection_skip_cases": [],
+  "reported_node_ids": [
+    "tests/unit/validate/pytest_runner_public_tests.py::TestsFlextInfraPytestRunner::test_original_suite_receipt_binds_public_process_and_accounting[True]",
+    "tests/unit/validate/pytest_runner_public_tests.py::TestsFlextInfraPytestRunner::test_setup_failure_is_accounted_without_a_call_phase",
+    "tests/unit/validate/pytest_runner_public_tests.py::TestsFlextInfraPytestRunnerDatabase::test_project_database_ignores_a_redirected_home[global-incremental]"
+  ],
+  "phase_outcomes": [
+    {
+      "node_id": "tests/unit/validate/pytest_runner_public_tests.py::TestsFlextInfraPytestRunner::test_original_suite_receipt_binds_public_process_and_accounting[True]",
+      "phase": "setup",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/validate/pytest_runner_public_tests.py::TestsFlextInfraPytestRunner::test_original_suite_receipt_binds_public_process_and_accounting[True]",
+      "phase": "call",
+      "outcome": "failed"
+    },
+    {
+      "node_id": "tests/unit/validate/pytest_runner_public_tests.py::TestsFlextInfraPytestRunner::test_original_suite_receipt_binds_public_process_and_accounting[True]",
+      "phase": "teardown",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/validate/pytest_runner_public_tests.py::TestsFlextInfraPytestRunner::test_setup_failure_is_accounted_without_a_call_phase",
+      "phase": "setup",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/validate/pytest_runner_public_tests.py::TestsFlextInfraPytestRunner::test_setup_failure_is_accounted_without_a_call_phase",
+      "phase": "call",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/validate/pytest_runner_public_tests.py::TestsFlextInfraPytestRunner::test_setup_failure_is_accounted_without_a_call_phase",
+      "phase": "teardown",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/validate/pytest_runner_public_tests.py::TestsFlextInfraPytestRunnerDatabase::test_project_database_ignores_a_redirected_home[global-incremental]",
+      "phase": "setup",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/validate/pytest_runner_public_tests.py::TestsFlextInfraPytestRunnerDatabase::test_project_database_ignores_a_redirected_home[global-incremental]",
+      "phase": "call",
+      "outcome": "failed"
+    },
+    {
+      "node_id": "tests/unit/validate/pytest_runner_public_tests.py::TestsFlextInfraPytestRunnerDatabase::test_project_database_ignores_a_redirected_home[global-incremental]",
+      "phase": "teardown",
+      "outcome": "passed"
+    }
+  ],
+  "markdown_attempts": [],
+  "markdown_items": [],
+  "failed_cases": [
+    "tests.unit.validate.pytest_runner_public_tests.TestsFlextInfraPytestRunnerDatabase::test_project_database_ignores_a_redirected_home[global-incremental]",
+    "tests.unit.validate.pytest_runner_public_tests.TestsFlextInfraPytestRunner::test_original_suite_receipt_binds_public_process_and_accounting[True]"
+  ],
+  "error_traces": [
+    "=== FAILURE: tests.unit.validate.pytest_runner_public_tests.TestsFlextInfraPytestRunnerDatabase::test_project_database_ignores_a_redirected_home[global-incremental] ===\npydantic_core._pydantic_core.ValidationError: 1 validation error for FlextInfraPytestRunner\n  Value error, test target must be an existing directory or file: tests [type=value_error, input_value={'repository_root': Posix... 'harness_marker': None}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.14/v/value_error\ntests/unit/validate/pytest_runner_public_tests.py:1138: in test_project_database_ignores_a_redirected_home\n    runner = validate.FlextInfraPytestRunner.from_project_context(\nsrc/flext_infra/validate/_pytest_runner/base.py:192: in from_project_context\n    return cls(\nE   pydantic_core._pydantic_core.ValidationError: 1 validation error for FlextInfraPytestRunner\nE     Value error, test target must be an existing directory or file: tests [type=value_error, input_value={'repository_root': Posix... 'harness_marker': None}, input_type=dict]\nE       For further information visit https://errors.pydantic.dev/2.14/v/value_error",
+    "=== FAILURE: tests.unit.validate.pytest_runner_public_tests.TestsFlextInfraPytestRunner::test_original_suite_receipt_binds_public_process_and_accounting[True] ===\nAssertionError: Expected success but got failure: failed (3): git remote add origin https://github.example/flext/suite.git: timed_out=False, forwarded_signal=None: erro: o remoto origin já existe.\ntests/unit/validate/pytest_runner_public_tests.py:38: in test_original_suite_receipt_binds_public_process_and_accounting\n    u.Tests.git_bootstrap(\ntests/_utilities/git.py:198: in git_bootstrap\n    tm.ok(\n.venv/lib/python3.13/site-packages/flext_tests/_utilities/_matchers/result.py:270: in ok\n    original = FlextTestsUtilitiesResult.assert_success(\n.venv/lib/python3.13/site-packages/flext_tests/_utilities/result.py:62: in assert_success\n    raise AssertionError(\nE   AssertionError: Expected success but got failure: failed (3): git remote add origin https://github.example/flext/suite.git: timed_out=False, forwarded_signal=None: erro: o remoto origin já existe."
+  ],
+  "warning_lines": [],
+  "skip_cases": [],
+  "slow_entries": [
+    "4.691000s | tests.unit.validate.pytest_runner_public_tests.TestsFlextInfraPytestRunner::test_setup_failure_is_accounted_without_a_call_phase",
+    "0.972000s | tests.unit.validate.pytest_runner_public_tests.TestsFlextInfraPytestRunnerDatabase::test_project_database_ignores_a_redirected_home[global-incremental]",
+    "0.100000s | tests.unit.validate.pytest_runner_public_tests.TestsFlextInfraPytestRunner::test_original_suite_receipt_binds_public_process_and_accounting[True]"
+  ]
+}

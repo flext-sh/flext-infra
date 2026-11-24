@@ -1,0 +1,29 @@
+{
+  "summary": {
+    "scope": "flext-infra",
+    "changed_files": 4,
+    "apply": true
+  },
+  "changes": [
+    [
+      "docs/CHANGELOG.md",
+      "0",
+      "1"
+    ],
+    [
+      "docs/guides/using-flext-cli.md",
+      "0",
+      "0"
+    ],
+    [
+      "docs/releases/latest.md",
+      "0",
+      "1"
+    ],
+    [
+      "docs/releases/v0.12.2.md",
+      "0",
+      "1"
+    ]
+  ]
+}
