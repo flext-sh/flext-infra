@@ -28,12 +28,12 @@ from collections.abc import (
     Sequence,
 )
 
-from {{ upstream }} import m as parent_m
+from {{ upstream }} import m
 
 {{ model_imports }}
 
 
-class {{ class_stem }}Models(parent_m):
+class {{ class_stem }}Models(m):
     """{{ class_stem }} models extending the CLI model facade."""
 
 {{ models_namespace_declaration }}
