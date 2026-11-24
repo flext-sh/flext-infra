@@ -159,7 +159,6 @@ class TestsFlextInfraDepsModernizerTooling:
             f"{sysconfig.get_path('purelib')}/vendor-stubs",
         ]
         document = tool_config_document
-        payload = TestsFlextInfraDepsModernizerTooling._yaml_settings_payload(document)
         derived: t.JsonDict = {
             table: list(keys) for table, keys in document.derived_settings.items()
         }
@@ -172,8 +171,10 @@ class TestsFlextInfraDepsModernizerTooling:
             )
             for table, entries in document.settings.items()
         }
-        payload["derived-settings"] = derived
-        payload["settings"] = settings
+        payload: t.JsonDict = {
+            "derived-settings": derived,
+            "settings": settings,
+        }
         root = u.Tests.git_repository(tmp_path, "source-policy")
         declaration = root / c.CONFIG_DIR_NAME / "tooling.yaml"
         declaration.parent.mkdir(parents=True, exist_ok=True)
