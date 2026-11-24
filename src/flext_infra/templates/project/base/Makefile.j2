@@ -748,8 +748,19 @@ ifeq ($(VERB_CONTRACT),)
 # `setup` keeps its own recipe (it must not require the environment it is about
 # to build), but it still runs the pre-/post-setup lifecycle hooks so a project
 # declaring them in the custom handler surface is actually honoured.
+{% if not runtime_supplies_infra %}
+# A workspace member's own dev group never declares {{ infra_cli }} (the
+# workspace supplies it), so a checkout of this member that is its own runtime
+# has no supplier: setup, upg and lock refuse there before any effect.
+REFUSE_MEMBER_RUNTIME = printf 'ERROR[%s]: %s is a workspace member; its own runtime has no {{ infra_cli }} supplier: %s\nRun make %s from a workspace-shaped lane that attaches {{ dist }} as a member.\n' '$@' '{{ dist }}' "$(PROJECT_ROOT)" '$@' >&2; exit 2
+{% endif %}
 ifeq ($(PROJECT_ROOT),$(RUNTIME_ROOT))
+{% if runtime_supplies_infra %}
 setup: _builtin_require_github_credential _bootstrap_setup_tools
+{% else %}
+setup:
+	@$(REFUSE_MEMBER_RUNTIME)
+{% endif %}
 else
 setup: _builtin_require_workspace
 	+@"$(SELF_MAKE_EXECUTABLE)" --no-print-directory -C "$(RUNTIME_ROOT)" -f "$(RUNTIME_ROOT)/Makefile" setup
@@ -761,8 +772,13 @@ endif
 # the isolated executor (_upg_lifecycle). Attached members delegate the same
 # operation to their physical workspace owner before resolving anything.
 ifeq ($(PROJECT_ROOT),$(RUNTIME_ROOT))
+{% if runtime_supplies_infra %}
 upg: _builtin_require_workspace _builtin_require_github_credential _upg_toolchain
 	+@$(SELF_MAKE) _upg_lifecycle
+{% else %}
+upg:
+	@$(REFUSE_MEMBER_RUNTIME)
+{% endif %}
 else
 upg: _builtin_require_workspace
 	+@"$(SELF_MAKE_EXECUTABLE)" --no-print-directory -C "$(RUNTIME_ROOT)" -f "$(RUNTIME_ROOT)/Makefile" upg
@@ -771,8 +787,13 @@ endif
 # Attached members delegate the same operation to their physical workspace owner
 # before resolving anything.
 ifeq ($(PROJECT_ROOT),$(RUNTIME_ROOT))
+{% if runtime_supplies_infra %}
 lock: _builtin_require_workspace _builtin_require_github_credential
 	+@$(SELF_MAKE) _lock_lifecycle
+{% else %}
+lock:
+	@$(REFUSE_MEMBER_RUNTIME)
+{% endif %}
 else
 lock: _builtin_require_workspace
 	+@"$(SELF_MAKE_EXECUTABLE)" --no-print-directory -C "$(RUNTIME_ROOT)" -f "$(RUNTIME_ROOT)/Makefile" lock
