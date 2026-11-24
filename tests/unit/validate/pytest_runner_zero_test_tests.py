@@ -98,6 +98,7 @@ class TestsFlextInfraPytestRunnerZeroTest:
             encoding="utf-8",
         )
         (package_root / "__init__.py").write_text("VALUE = 41\n", encoding="utf-8")
+        u.Tests.initialize_git_repo(project_root)
         return project_root
 
     @staticmethod

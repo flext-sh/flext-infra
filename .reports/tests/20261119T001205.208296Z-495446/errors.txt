@@ -1,0 +1,64 @@
+=== FAILURE: tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-m] ===
+ValueError: public facade source is absent: /home/marlonsc/tmp/pytest-of-marlonsc/pytest-14076/popen-gw1/test_explicit_owner_classes_pr3/flext-test-project/src/flext_test_project/protocols.py
+tests/unit/codegen/_utility_facade_projection/owner_publication.py:223: in test_explicit_owner_classes_preserve_publication_identity
+    u.Tests.conform_plan_result(
+tests/utilities_conform.py:142: in conform_plan_result
+    ).plan(request)
+      ^^^^^^^^^^^^^
+src/flext_infra/codegen/_conform/plan.py:49: in plan
+    return self._plan_request(request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/codegen/_conform/plan.py:66: in _plan_request
+    return self._plan_repositories(request, inputs.value)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/codegen/_conform/plan.py:127: in _plan_repositories
+    return self._plan_selected_repositories(
+src/flext_infra/codegen/_conform/plan.py:149: in _plan_selected_repositories
+    gathered = self._gathered_repository_plans(
+src/flext_infra/codegen/_conform/plan.py:998: in _gathered_repository_plans
+    outcomes = self._repository_plan_outcomes(tasks, surface, inputs, snapshots)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/codegen/_conform/plan.py:685: in _repository_plan_outcomes
+    return self._governed_plan_outcomes(
+src/flext_infra/codegen/_conform/plan.py:746: in _governed_plan_outcomes
+    planned = self._managed_plan_outcomes(
+src/flext_infra/codegen/_conform/plan.py:872: in _managed_plan_outcomes
+    outcome = type(self).plan_repository_task(
+src/flext_infra/codegen/_conform/plan.py:1176: in plan_repository_task
+    outcome = cls._plan_repository_task(task, snapshot)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/codegen/_conform/plan.py:1247: in _plan_repository_task
+    return planner._governed_repository_outcome(
+src/flext_infra/codegen/_conform/plan.py:1314: in _governed_repository_outcome
+    planned = self._governed_repository_plans(
+src/flext_infra/codegen/_conform/plan.py:1551: in _governed_repository_plans
+    repository_plan = planner(
+src/flext_infra/codegen/_conform/scaffold_plan.py:42: in _plan_existing_repository
+    existing = super()._plan_existing_repository(
+src/flext_infra/codegen/_conform/existing_plan.py:131: in _plan_existing_repository
+    return self._plan_existing_managed(
+src/flext_infra/codegen/_conform/existing_plan.py:252: in _plan_existing_managed
+    sources = self._existing_managed_sources(target, codegen, contract)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/codegen/_conform/existing_plan.py:375: in _existing_managed_sources
+    return self._projected_custom_sources(
+src/flext_infra/codegen/_conform/existing_plan.py:414: in _projected_custom_sources
+    self._model_protocol_sources(root, cohort)
+src/flext_infra/codegen/_conform/existing_plan.py:478: in _model_protocol_sources
+    for package_name in u.Infra.protocol_model_package_names(root, binding[0]):
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/protocol_models.py:257: in protocol_model_package_names
+    primary = projection.source_layout()
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/protocol_models.py:3380: in source_layout
+    primary = self._primarysource_layout()
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/protocol_models.py:3526: in _primarysource_layout
+    self._source_facade_class_stem(package_dir),
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/protocol_models.py:3563: in _source_facade_class_stem
+    alias: self._source_facade_class_name(package_dir / module, alias)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/protocol_models.py:3592: in _source_facade_class_name
+    raise ValueError(msg)
+E   ValueError: public facade source is absent: /home/marlonsc/tmp/pytest-of-marlonsc/pytest-14076/popen-gw1/test_explicit_owner_classes_pr3/flext-test-project/src/flext_test_project/protocols.py

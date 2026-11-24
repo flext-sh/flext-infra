@@ -1,0 +1,9 @@
+=== FAILURE: tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-u] ===
+AssertionError: Expected success but got failure: Utility provider has an unresolved namespace storage role: /home/marlonsc/tmp/pytest-of-marlonsc/pytest-14108/popen-gw1/test_explicit_owner_classes_pr4/flext-test-project/src/flext_test_project/_utilities/base.py:OwnerBase
+tests/unit/codegen/_utility_facade_projection/owner_publication.py:225: in test_explicit_owner_classes_preserve_publication_identity
+    rendered = tm.ok(
+../flext-tests/src/flext_tests/_utilities/_matchers/result.py:270: in ok
+    original = FlextTestsUtilitiesResult.assert_success(
+../flext-tests/src/flext_tests/_utilities/result.py:62: in assert_success
+    raise AssertionError(
+E   AssertionError: Expected success but got failure: Utility provider has an unresolved namespace storage role: /home/marlonsc/tmp/pytest-of-marlonsc/pytest-14108/popen-gw1/test_explicit_owner_classes_pr4/flext-test-project/src/flext_test_project/_utilities/base.py:OwnerBase

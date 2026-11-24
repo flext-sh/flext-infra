@@ -1,0 +1,3 @@
+tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_metadata_destination_cannot_capture_a_generic_parameter[None]
+
+tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_initializer_retires_exports_moved_into_class_owners

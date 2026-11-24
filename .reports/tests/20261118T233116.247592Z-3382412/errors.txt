@@ -1,0 +1,33 @@
+=== FAILURE: tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_metadata_destination_cannot_capture_a_generic_parameter[None] ===
+Failed: DID NOT RAISE ValueError
+tests/unit/codemod/test_rope_contract_bindings.py:695: in test_metadata_destination_cannot_capture_a_generic_parameter
+    with u.Tests.raises(ValueError, match="shadow"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE ValueError
+
+=== FAILURE: tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_initializer_retires_exports_moved_into_class_owners ===
+Failed: Timeout (>2.0s) from pytest-timeout.
+tests/unit/codegen/_utility_facade_projection/owner_publication.py:124: in test_initializer_retires_exports_moved_into_class_owners
+    native_consumer(
+tests/fixtures/infra.py:72: in consume
+    u.Tests.run_lazy_init_probe(
+tests/utilities_codegen.py:381: in run_lazy_init_probe
+    u.Cli.run(
+../flext-cli/src/flext_cli/_utilities/_runtime/commands.py:79: in run
+    return cls.run_raw(
+../flext-cli/src/flext_cli/_utilities/runtime.py:201: in run_raw
+    return cls._execute_streamed_process(
+../flext-cli/src/flext_cli/_utilities/_runtime/process_execution.py:66: in _execute_streamed_process
+    cls._execute_lifecycle(request, state, timing)
+../flext-cli/src/flext_cli/_utilities/_runtime/process_execution.py:173: in _execute_lifecycle
+    state.timed_out, state.final_deadline = cls._monitor_process(
+../flext-cli/src/flext_cli/_utilities/_runtime/process_monitor.py:49: in _monitor_process
+    cls._wait_next_boundary(state, phase, now)
+../flext-cli/src/flext_cli/_utilities/_runtime/process_monitor.py:113: in _wait_next_boundary
+    state.wake.wait(
+../../.local/share/mise/installs/python/3.13.17/lib/python3.13/threading.py:660: in wait
+    signaled = self._cond.wait(timeout)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/mise/installs/python/3.13.17/lib/python3.13/threading.py:359: in wait
+    waiter.acquire()
+E   Failed: Timeout (>2.0s) from pytest-timeout.
