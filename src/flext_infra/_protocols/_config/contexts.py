@@ -215,6 +215,17 @@ class FlextInfraProtocolsConfigContexts:
             ...
 
         @property
+        def runtime_supplies_infra(self) -> bool:
+            """Structural member projected from the owning model.
+
+            The project's own runtime carries the infrastructure distribution (it is
+            that distribution or its composed dev group declares it), so a checkout
+            that is its own runtime can provision setup, upg and lock; a workspace
+            member's group never declares it and provisions through a workspace.
+            """
+            ...
+
+        @property
         def python_version(self) -> t.NonEmptyStr:
             """Python minor line the environment syncs against."""
             ...
