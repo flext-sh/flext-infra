@@ -1,0 +1,30 @@
+INFO: check: registry initialization start
+INFO: check: registry initialization complete
+INFO: check: selection start phase=complete
+INFO: check: selection complete projects=1 gates=20
+INFO: check: preparation start identity=True
+INFO: check: preparation complete projects=1
+INFO: check: prerequisite planning start projects=1
+INFO: check: prerequisite planning complete gates=2
+INFO: check: prerequisite wave start gate=lint jobs=1
+INFO: gate_executed project=flext-9qlie gate=lint passed=True elapsed=2.101
+2026-11-21T11:04:25.659076Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=2111.99 failed=0 skipped=0 total_stages=1
+INFO: check: prerequisite wave complete gate=lint
+    [OK] lint           0 errors  (2.10s)
+INFO: check: prerequisite wave start gate=pyrefly jobs=1
+INFO: gate_executed project=flext-9qlie gate=pyrefly passed=False elapsed=20.697
+2026-11-21T11:04:46.374818Z [error    ] stage_failed                   [flext_cli.api.FlextCli] error='pyrefly failed for flext-9qlie with 236 findings' stage_id=pyrefly
+2026-11-21T11:04:46.375723Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=20700.78 failed=1 skipped=0 total_stages=1
+INFO: check: prerequisite wave complete gate=pyrefly
+    [FAIL] pyrefly      236 errors  (20.70s)
+INFO: pyrefly: findings; Native output receipt: /home/marlonsc/worktrees/flext-infra/flext-9qlie/.reports/gates/20261121T110420.214894Z-3006066/check/3e436cfe-035c-48e8-9fd6-a328d645b4ef/flext-9qlie/pyrefly.raw.log
+
+-- check summary --
+Total: 1  Success: 0  Failed: 1  Skipped: 0  (22.88s)
+INFO: Execution INCOMPLETE: 1/1 projects reached; see the requested gate inventory in the reports
+INFO: NOT EXECUTED: runtime-integrity, format, security, markdown, markdown-format, markdown-code, duplication, conflict-markers, loc-cap, enforcement-catalog, pydantic-census, fresh-import, deps, index-declarations, smells, codemod, layout, direnv
+INFO: Reports: /home/marlonsc/worktrees/flext-infra/flext-9qlie/.reports/gates/20261121T110420.214894Z-3006066/check/3e436cfe-035c-48e8-9fd6-a328d645b4ef/check-report.md
+INFO:          /home/marlonsc/worktrees/flext-infra/flext-9qlie/.reports/gates/20261121T110420.214894Z-3006066/check/3e436cfe-035c-48e8-9fd6-a328d645b4ef/check-report.sarif
+INFO: Findings by project (see reports for detail):
+INFO: flext-9qlie                       236  (pyrefly=236)
+❌ quality check target accounting is incomplete

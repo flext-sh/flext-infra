@@ -1,0 +1,14 @@
+cwd=/home/marlonsc/worktrees/flext-infra/flext-9qlie report=/home/marlonsc/worktrees/flext-infra/flext-9qlie/.reports/check/6116334c-d7d4-4e7c-ad50-482ef5ba3292/flext-9qlie/flext-9qlie-deps-4fc43bed3f334dc283ef4db4c7b79673/deptry.json
+return-code=1
+stdout:
+
+stderr:
+Scanning 778 files...
+
+/home/marlonsc/worktrees/flext-infra/flext-9qlie/pyproject.toml: DEP002 'properdocs' defined as a dependency but not used in the codebase
+Found 1 dependency issue.
+
+For more information, see the documentation: https://deptry.com/
+
+retained-by-declared-usage=1
+report-sha256=0a8b4cf2bb2d181aee40f53f3724af5fd92db8ff021ef7efcc6811288283acf7

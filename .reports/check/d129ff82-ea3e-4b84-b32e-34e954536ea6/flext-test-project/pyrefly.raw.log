@@ -1,0 +1,16 @@
+{
+  "errors": [
+    {
+      "line": 7,
+      "column": 13,
+      "stop_line": 7,
+      "stop_column": 33,
+      "path": "src/flext_test_project/consumer.py",
+      "code": -2,
+      "name": "not-a-type",
+      "description": "Expected a type form, got instance of `GenericAlias`",
+      "concise_description": "Expected a type form, got instance of `GenericAlias`",
+      "severity": "error"
+    }
+  ]
+}

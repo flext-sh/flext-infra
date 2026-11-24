@@ -1,0 +1,219 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="2" skipped="0" tests="23" time="137.204" timestamp="2026-11-21T09:42:15.733430-03:00" hostname="tungs"><testcase classname="tests.unit.codemod.test_api_alias_cutover.TestsFlextInfraApiAliasCutover" name="test_service_retirement_preserves_kernel_context_and_shadowing[from sample_pkg import s-s-FlextSampleService]" time="2.048"><failure message="Failed: Timeout (&gt;2.0s) from pytest-timeout.">tests/unit/codemod/test_api_alias_cutover.py:88: in test_service_retirement_preserves_kernel_context_and_shadowing
+    u.Infra.plan_semantic_cutover(
+src/flext_infra/_utilities/_semantic_cutover/base.py:78: in plan_semantic_cutover
+    attempt = r.safe(
+.venv/lib/python3.13/site-packages/flext_core/_result/composition.py:201: in wrapper
+    return cls._create_success(func(*args, **kwargs))
+                               ^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/base.py:142: in _plan_semantic_cutover_phase
+    return cls._plan_selected_phase_dispatch(
+src/flext_infra/_utilities/_semantic_cutover/base.py:340: in _plan_selected_phase_dispatch
+    return factory()
+           ^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/base.py:313: in &lt;lambda&gt;
+    c.Infra.SemanticCutoverPhase.COMPAT_ALIAS: lambda: cls._plan_alias_cutover(
+src/flext_infra/_utilities/_semantic_cutover/base.py:363: in _plan_alias_cutover
+    api = cls._plan_api_aliases(workspace, working, selected, import_normalizer)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/aliases.py:407: in _plan_api_aliases
+    service_aliases, service_graph = cls._service_aliases(workspace, sources)
+                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/aliases.py:150: in _service_aliases
+    if value is not None and cls._inherits_service_kernel(value, kernel):
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/aliases.py:271: in _inherits_service_kernel
+    pending = list(FlextInfraUtilitiesDeclarationPayload.direct_bases(value))
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/declaration_payload.py:218: in direct_bases
+    tuple(value.get_superclasses())
+          ^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:324: in get_superclasses
+    for base in self.get_bases()
+                ^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:309: in get_bases
+    bases = self._get_bases()
+            ^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:482: in _get_bases
+    evaluated = rope.base.evaluate.eval_node(scope, base_node)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/evaluate.py:216: in eval_node
+    return eval_node2(scope, node)[1]
+           ^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/evaluate.py:249: in eval_node2
+    evaluator.visit(node)
+.venv/lib/python3.13/site-packages/rope/base/ast.py:79: in visit
+    return visitor(node)
+           ^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/evaluate.py:898: in _Subscript
+    owner = value.get_metaclass() if is_class else value.get_type()
+            ^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:398: in get_metaclass
+    for base in self.get_bases():
+                ^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:309: in get_bases
+    bases = self._get_bases()
+            ^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:589: in _get_bases
+    generic = self.pycore.project.get_module("typing")["Generic"].get_object()
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/native_project.py:117: in get_module
+    return native.get_module(name, self._native_folder(folder))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/project.py:84: in get_module
+    return self.pycore.resource_to_pyobject(module)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pycore.py:141: in resource_to_pyobject
+    return self.module_cache.get_pymodule(resource, force_errors)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pycore.py:263: in get_pymodule
+    result = pyobjectsdef.PyModule(
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:610: in __init__
+    source, node = self._init_source(pycore, source, resource)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:637: in _init_source
+    ast_node = ast.parse(source_bytes, filename=filename)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/ast.py:46: in parse
+    return ast.parse(source, filename=filename, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../.local/share/mise/installs/python/3.13.18/lib/python3.13/ast.py:50: in parse
+    return compile(source, filename, mode, flags,
+E   Failed: Timeout (&gt;2.0s) from pytest-timeout.</failure></testcase><testcase classname="tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection" name="test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-canonical]" time="6.711" /><testcase classname="tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection" name="test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-foreign]" time="1.585" /><testcase classname="tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection" name="test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-renamed]" time="2.437" /><testcase classname="tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection" name="test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-duplicate]" time="1.244" /><testcase classname="tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection" name="test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-annotation]" time="2.465" /><testcase classname="tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection" name="test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-canonical]" time="6.898" /><testcase classname="tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection" name="test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-foreign]" time="1.851" /><testcase classname="tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection" name="test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-renamed]" time="1.725" /><testcase classname="tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection" name="test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-duplicate]" time="3.710" /><testcase classname="tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection" name="test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-annotation]" time="1.886" /><testcase classname="tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection" name="test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-canonical]" time="6.659" /><testcase classname="tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection" name="test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-foreign]" time="1.673" /><testcase classname="tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection" name="test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-renamed]" time="1.987" /><testcase classname="tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection" name="test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-duplicate]" time="4.044" /><testcase classname="tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection" name="test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-annotation]" time="1.571" /><testcase classname="tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection" name="test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-canonical]" time="8.910" /><testcase classname="tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection" name="test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-foreign]" time="6.655" /><testcase classname="tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection" name="test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-renamed]" time="4.633" /><testcase classname="tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection" name="test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-duplicate]" time="1.782" /><testcase classname="tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection" name="test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-annotation]" time="1.959" /><testcase classname="tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection" name="test_initializer_retires_exports_moved_into_class_owners" time="3.664" /><testcase classname="tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection" name="test_explicit_owner_classes_preserve_publication_identity[publication0-False-c]" time="20.110"><failure message="Failed: Timeout (&gt;20.0s) from pytest-timeout.">tests/unit/codegen/_utility_facade_projection/owner_publication.py:234: in test_explicit_owner_classes_preserve_publication_identity
+    u.Tests.conform_plan_result(
+tests/_utilities/conform.py:143: in conform_plan_result
+    ).plan(request)
+      ^^^^^^^^^^^^^
+src/flext_infra/codegen/_conform/plan.py:48: in plan
+    return self._plan_request(request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/codegen/_conform/plan.py:65: in _plan_request
+    return self._plan_repositories(request, inputs.value)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/codegen/_conform/plan.py:126: in _plan_repositories
+    return self._plan_selected_repositories(
+src/flext_infra/codegen/_conform/plan.py:148: in _plan_selected_repositories
+    gathered = self._gathered_repository_plans(
+src/flext_infra/codegen/_conform/plan.py:991: in _gathered_repository_plans
+    outcomes = self._repository_plan_outcomes(tasks, surface, inputs, snapshots)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/codegen/_conform/plan.py:678: in _repository_plan_outcomes
+    return self._governed_plan_outcomes(
+src/flext_infra/codegen/_conform/plan.py:739: in _governed_plan_outcomes
+    planned = self._managed_plan_outcomes(
+src/flext_infra/codegen/_conform/plan.py:865: in _managed_plan_outcomes
+    outcome = type(self).plan_repository_task(
+src/flext_infra/codegen/_conform/plan.py:1169: in plan_repository_task
+    outcome = cls._plan_repository_task(task, snapshot)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/codegen/_conform/plan.py:1240: in _plan_repository_task
+    return planner._governed_repository_outcome(
+src/flext_infra/codegen/_conform/plan.py:1307: in _governed_repository_outcome
+    planned = self._governed_repository_plans(
+src/flext_infra/codegen/_conform/plan.py:1542: in _governed_repository_plans
+    repository_plan = planner(
+src/flext_infra/codegen/_conform/scaffold_plan.py:40: in _plan_existing_repository
+    existing = super()._plan_existing_repository(
+src/flext_infra/codegen/_conform/existing_plan.py:132: in _plan_existing_repository
+    return self._plan_existing_managed(
+src/flext_infra/codegen/_conform/existing_plan.py:280: in _plan_existing_managed
+    return self._render_existing_managed(
+src/flext_infra/codegen/_conform/existing_plan.py:686: in _render_existing_managed
+    managed = self._plan_existing_templates(
+src/flext_infra/codegen/_conform/existing_plan.py:1459: in _plan_existing_templates
+    return self._planned_existing_templates(
+src/flext_infra/codegen/_conform/existing_plan.py:1519: in _planned_existing_templates
+    rendered = self._rendered_managed_plan(
+src/flext_infra/codegen/_conform/existing_plan.py:1705: in _rendered_managed_plan
+    else self._rendered_artifact_source(render_inputs, route)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/codegen/_conform/artifact_render.py:557: in _rendered_artifact_source
+    rendered = self._render_artifact_authenticated(
+src/flext_infra/codegen/_conform/artifact_render.py:96: in _render_artifact_authenticated
+    return u.Cli.template_render_authenticated(source, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/flext_cli/_utilities/template.py:262: in template_render_authenticated
+    rendered = u.try_(
+.venv/lib/python3.13/site-packages/flext_core/_utilities/reliability.py:69: in try_
+    return r[TResult].ok(operation())
+                         ^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/flext_cli/_utilities/template.py:265: in &lt;lambda&gt;
+    environment.get_template(source.name),
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/jinja2/environment.py:1016: in get_template
+    return self._load_template(name, globals)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/jinja2/environment.py:975: in _load_template
+    template = self.loader.load(self, name, self.make_globals(globals))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/jinja2/loaders.py:138: in load
+    code = environment.compile(source, name, filename)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/jinja2/environment.py:763: in compile
+    source = self._parse(source, name, filename)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/jinja2/environment.py:622: in _parse
+    return Parser(self, source, name, filename).parse()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/jinja2/parser.py:1047: in parse
+    result = nodes.Template(self.subparse(), lineno=1)
+                            ^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/jinja2/parser.py:1030: in subparse
+    rv = self.parse_statement()
+         ^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/jinja2/parser.py:177: in parse_statement
+    return f()  # type: ignore
+           ^^^
+.venv/lib/python3.13/site-packages/jinja2/parser.py:230: in parse_set
+    expr = self.parse_tuple()
+           ^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/jinja2/parser.py:731: in parse_tuple
+    args.append(parse())
+                ^^^^^^^
+.venv/lib/python3.13/site-packages/jinja2/parser.py:721: in parse
+    return self.parse_expression(with_condexpr=with_condexpr)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/jinja2/parser.py:518: in parse_expression
+    return self.parse_condexpr()
+           ^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/jinja2/parser.py:523: in parse_condexpr
+    expr1 = self.parse_or()
+            ^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/jinja2/parser.py:538: in parse_or
+    left = self.parse_and()
+           ^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/jinja2/parser.py:547: in parse_and
+    left = self.parse_not()
+           ^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/jinja2/parser.py:558: in parse_not
+    return self.parse_compare()
+           ^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/jinja2/parser.py:562: in parse_compare
+    expr = self.parse_math1()
+           ^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/jinja2/parser.py:585: in parse_math1
+    left = self.parse_concat()
+           ^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/jinja2/parser.py:596: in parse_concat
+    args = [self.parse_math2()]
+            ^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/jinja2/parser.py:606: in parse_math2
+    left = self.parse_pow()
+           ^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/jinja2/parser.py:617: in parse_pow
+    left = self.parse_unary()
+           ^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/jinja2/parser.py:637: in parse_unary
+    node = self.parse_primary()
+           ^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/jinja2/parser.py:674: in parse_primary
+    next(self.stream)
+.venv/lib/python3.13/site-packages/jinja2/lexer.py:391: in __next__
+    self.current = next(self._iter)
+                   ^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/jinja2/lexer.py:624: in wrap
+    for lineno, token, value_str in stream:
+                                    ^^^^^^
+.venv/lib/python3.13/site-packages/jinja2/lexer.py:706: in tokeniter
+    m = regex.match(source, pos)
+        ^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: Timeout (&gt;20.0s) from pytest-timeout.</failure></testcase></testsuite></testsuites>

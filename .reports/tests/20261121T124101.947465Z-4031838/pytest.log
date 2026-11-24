@@ -1,0 +1,371 @@
+============================= test session starts ==============================
+platform linux -- Python 3.13.18, pytest-9.2.0, pluggy-1.7.0 -- /home/marlonsc/worktrees/flext-infra/flext-9qlie/.venv/bin/python
+cachedir: .pytest_cache
+hypothesis profile 'default'
+benchmark: 5.3.1 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+Using --randomly-seed=1979307740
+testmon: selection deactivated, environment: toolchain-2463ae43ead3-7c745462-5834a665
+rootdir: /home/marlonsc/worktrees/flext-infra/flext-9qlie
+configfile: pyproject.toml
+plugins: flext-tests-0.12.0, hypothesis-6.170.15, anyio-4.16.0, platformdirs-4.14.5, asyncio-1.4.1.post1, benchmark-5.3.1, cov-7.1.0, markdown-docs-0.9.2, randomly-5.1.0, reportlog-1.0.0, testmon-2.3.0, timeout-2.4.0, xdist-3.8.0, flext-infra-0.12.3
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
+timeout: 2.0s
+timeout method: signal
+timeout func_only: True
+created: 2/2 workers
+2 workers [6624 items]
+
+scheduling tests via LoadScopeScheduling
+
+tests/unit/codemod/test_api_alias_cutover.py::TestsFlextInfraApiAliasCutover::test_service_retirement_preserves_kernel_context_and_shadowing[from sample_pkg import s-s-FlextSampleService] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-canonical] 
+[gw0] [  0%] FAILED tests/unit/codemod/test_api_alias_cutover.py::TestsFlextInfraApiAliasCutover::test_service_retirement_preserves_kernel_context_and_shadowing[from sample_pkg import s-s-FlextSampleService] 
+[gw1] [  0%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-canonical] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-foreign] 
+[gw1] [  0%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-foreign] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-renamed] 
+[gw1] [  0%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-renamed] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-duplicate] 
+[gw1] [  0%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-duplicate] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-annotation] 
+[gw1] [  0%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-annotation] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-canonical] 
+[gw1] [  0%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-canonical] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-foreign] 
+[gw1] [  0%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-foreign] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-renamed] 
+[gw1] [  0%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-renamed] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-duplicate] 
+[gw1] [  0%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-duplicate] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-annotation] 
+[gw1] [  0%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-annotation] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-canonical] 
+[gw1] [  0%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-canonical] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-foreign] 
+[gw1] [  0%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-foreign] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-renamed] 
+[gw1] [  0%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-renamed] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-duplicate] 
+[gw1] [  0%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-duplicate] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-annotation] 
+[gw1] [  0%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-annotation] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-canonical] 
+[gw1] [  0%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-canonical] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-foreign] 
+[gw1] [  0%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-foreign] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-renamed] 
+[gw1] [  0%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-renamed] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-duplicate] 
+[gw1] [  0%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-duplicate] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-annotation] 
+[gw1] [  0%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-annotation] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_initializer_retires_exports_moved_into_class_owners 
+[gw1] [  0%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_initializer_retires_exports_moved_into_class_owners 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-c] 
+[gw1] [  0%] FAILED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-c] 
+
+=================================== FAILURES ===================================
+_ TestsFlextInfraApiAliasCutover.test_service_retirement_preserves_kernel_context_and_shadowing[from sample_pkg import s-s-FlextSampleService] _
+[gw0] linux -- Python 3.13.18 /home/marlonsc/worktrees/flext-infra/flext-9qlie/.venv/bin/python
+tests/unit/codemod/test_api_alias_cutover.py:88: in test_service_retirement_preserves_kernel_context_and_shadowing
+    u.Infra.plan_semantic_cutover(
+src/flext_infra/_utilities/_semantic_cutover/base.py:78: in plan_semantic_cutover
+    attempt = r.safe(
+.venv/lib/python3.13/site-packages/flext_core/_result/composition.py:201: in wrapper
+    return cls._create_success(func(*args, **kwargs))
+                               ^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/base.py:142: in _plan_semantic_cutover_phase
+    return cls._plan_selected_phase_dispatch(
+src/flext_infra/_utilities/_semantic_cutover/base.py:340: in _plan_selected_phase_dispatch
+    return factory()
+           ^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/base.py:313: in <lambda>
+    c.Infra.SemanticCutoverPhase.COMPAT_ALIAS: lambda: cls._plan_alias_cutover(
+src/flext_infra/_utilities/_semantic_cutover/base.py:363: in _plan_alias_cutover
+    api = cls._plan_api_aliases(workspace, working, selected, import_normalizer)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/aliases.py:407: in _plan_api_aliases
+    service_aliases, service_graph = cls._service_aliases(workspace, sources)
+                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/aliases.py:150: in _service_aliases
+    if value is not None and cls._inherits_service_kernel(value, kernel):
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/aliases.py:271: in _inherits_service_kernel
+    pending = list(FlextInfraUtilitiesDeclarationPayload.direct_bases(value))
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/declaration_payload.py:218: in direct_bases
+    tuple(value.get_superclasses())
+          ^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:324: in get_superclasses
+    for base in self.get_bases()
+                ^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:309: in get_bases
+    bases = self._get_bases()
+            ^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:482: in _get_bases
+    evaluated = rope.base.evaluate.eval_node(scope, base_node)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/evaluate.py:216: in eval_node
+    return eval_node2(scope, node)[1]
+           ^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/evaluate.py:249: in eval_node2
+    evaluator.visit(node)
+.venv/lib/python3.13/site-packages/rope/base/ast.py:79: in visit
+    return visitor(node)
+           ^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/evaluate.py:898: in _Subscript
+    owner = value.get_metaclass() if is_class else value.get_type()
+            ^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:398: in get_metaclass
+    for base in self.get_bases():
+                ^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:309: in get_bases
+    bases = self._get_bases()
+            ^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:589: in _get_bases
+    generic = self.pycore.project.get_module("typing")["Generic"].get_object()
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/native_project.py:117: in get_module
+    return native.get_module(name, self._native_folder(folder))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/project.py:84: in get_module
+    return self.pycore.resource_to_pyobject(module)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pycore.py:141: in resource_to_pyobject
+    return self.module_cache.get_pymodule(resource, force_errors)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pycore.py:263: in get_pymodule
+    result = pyobjectsdef.PyModule(
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:610: in __init__
+    source, node = self._init_source(pycore, source, resource)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:637: in _init_source
+    ast_node = ast.parse(source_bytes, filename=filename)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/ast.py:46: in parse
+    return ast.parse(source, filename=filename, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../.local/share/mise/installs/python/3.13.18/lib/python3.13/ast.py:50: in parse
+    return compile(source, filename, mode, flags,
+E   Failed: Timeout (>2.0s) from pytest-timeout.
+----------------------------- Captured stdout call -----------------------------
+INFO: rope: opening workspace at /home/marlonsc/tmp/pytest-of-marlonsc/pytest-14904/popen-gw0/test_service_retirement_preser0/flext-test-project
+INFO: rope: workspace ready in 0.22s
+~~~~~~~~~~~~~~~~~~~~~ Stack of <unknown> (140174710273728) ~~~~~~~~~~~~~~~~~~~~~
+  File "/home/marlonsc/worktrees/flext-infra/flext-9qlie/.venv/lib/python3.13/site-packages/execnet/gateway_base.py", line 411, in _perform_spawn
+    reply.run()
+  File "/home/marlonsc/worktrees/flext-infra/flext-9qlie/.venv/lib/python3.13/site-packages/execnet/gateway_base.py", line 341, in run
+    self._result = func(*args, **kwargs)
+  File "/home/marlonsc/worktrees/flext-infra/flext-9qlie/.venv/lib/python3.13/site-packages/execnet/gateway_base.py", line 1160, in _thread_receiver
+    msg = Message.from_io(io)
+  File "/home/marlonsc/worktrees/flext-infra/flext-9qlie/.venv/lib/python3.13/site-packages/execnet/gateway_base.py", line 567, in from_io
+    header = io.read(9)  # type 1, channel 4, payload 4
+  File "/home/marlonsc/worktrees/flext-infra/flext-9qlie/.venv/lib/python3.13/site-packages/execnet/gateway_base.py", line 534, in read
+    data = self._read(numbytes - len(buf))
+_ TestsFlextInfraUtilityFacadeProjection.test_explicit_owner_classes_preserve_publication_identity[publication0-False-c] _
+[gw1] linux -- Python 3.13.18 /home/marlonsc/worktrees/flext-infra/flext-9qlie/.venv/bin/python
+tests/unit/codegen/_utility_facade_projection/owner_publication.py:234: in test_explicit_owner_classes_preserve_publication_identity
+    u.Tests.conform_plan_result(
+tests/_utilities/conform.py:143: in conform_plan_result
+    ).plan(request)
+      ^^^^^^^^^^^^^
+src/flext_infra/codegen/_conform/plan.py:48: in plan
+    return self._plan_request(request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/codegen/_conform/plan.py:65: in _plan_request
+    return self._plan_repositories(request, inputs.value)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/codegen/_conform/plan.py:126: in _plan_repositories
+    return self._plan_selected_repositories(
+src/flext_infra/codegen/_conform/plan.py:148: in _plan_selected_repositories
+    gathered = self._gathered_repository_plans(
+src/flext_infra/codegen/_conform/plan.py:991: in _gathered_repository_plans
+    outcomes = self._repository_plan_outcomes(tasks, surface, inputs, snapshots)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/codegen/_conform/plan.py:678: in _repository_plan_outcomes
+    return self._governed_plan_outcomes(
+src/flext_infra/codegen/_conform/plan.py:739: in _governed_plan_outcomes
+    planned = self._managed_plan_outcomes(
+src/flext_infra/codegen/_conform/plan.py:865: in _managed_plan_outcomes
+    outcome = type(self).plan_repository_task(
+src/flext_infra/codegen/_conform/plan.py:1169: in plan_repository_task
+    outcome = cls._plan_repository_task(task, snapshot)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/codegen/_conform/plan.py:1240: in _plan_repository_task
+    return planner._governed_repository_outcome(
+src/flext_infra/codegen/_conform/plan.py:1307: in _governed_repository_outcome
+    planned = self._governed_repository_plans(
+src/flext_infra/codegen/_conform/plan.py:1542: in _governed_repository_plans
+    repository_plan = planner(
+src/flext_infra/codegen/_conform/scaffold_plan.py:40: in _plan_existing_repository
+    existing = super()._plan_existing_repository(
+src/flext_infra/codegen/_conform/existing_plan.py:132: in _plan_existing_repository
+    return self._plan_existing_managed(
+src/flext_infra/codegen/_conform/existing_plan.py:280: in _plan_existing_managed
+    return self._render_existing_managed(
+src/flext_infra/codegen/_conform/existing_plan.py:686: in _render_existing_managed
+    managed = self._plan_existing_templates(
+src/flext_infra/codegen/_conform/existing_plan.py:1459: in _plan_existing_templates
+    return self._planned_existing_templates(
+src/flext_infra/codegen/_conform/existing_plan.py:1519: in _planned_existing_templates
+    rendered = self._rendered_managed_plan(
+src/flext_infra/codegen/_conform/existing_plan.py:1705: in _rendered_managed_plan
+    else self._rendered_artifact_source(render_inputs, route)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/codegen/_conform/artifact_render.py:557: in _rendered_artifact_source
+    rendered = self._render_artifact_authenticated(
+src/flext_infra/codegen/_conform/artifact_render.py:96: in _render_artifact_authenticated
+    return u.Cli.template_render_authenticated(source, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/flext_cli/_utilities/template.py:262: in template_render_authenticated
+    rendered = u.try_(
+.venv/lib/python3.13/site-packages/flext_core/_utilities/reliability.py:69: in try_
+    return r[TResult].ok(operation())
+                         ^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/flext_cli/_utilities/template.py:265: in <lambda>
+    environment.get_template(source.name),
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/jinja2/environment.py:1016: in get_template
+    return self._load_template(name, globals)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/jinja2/environment.py:975: in _load_template
+    template = self.loader.load(self, name, self.make_globals(globals))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/jinja2/loaders.py:138: in load
+    code = environment.compile(source, name, filename)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/jinja2/environment.py:763: in compile
+    source = self._parse(source, name, filename)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/jinja2/environment.py:622: in _parse
+    return Parser(self, source, name, filename).parse()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/jinja2/parser.py:1047: in parse
+    result = nodes.Template(self.subparse(), lineno=1)
+                            ^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/jinja2/parser.py:1030: in subparse
+    rv = self.parse_statement()
+         ^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/jinja2/parser.py:177: in parse_statement
+    return f()  # type: ignore
+           ^^^
+.venv/lib/python3.13/site-packages/jinja2/parser.py:230: in parse_set
+    expr = self.parse_tuple()
+           ^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/jinja2/parser.py:731: in parse_tuple
+    args.append(parse())
+                ^^^^^^^
+.venv/lib/python3.13/site-packages/jinja2/parser.py:721: in parse
+    return self.parse_expression(with_condexpr=with_condexpr)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/jinja2/parser.py:518: in parse_expression
+    return self.parse_condexpr()
+           ^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/jinja2/parser.py:523: in parse_condexpr
+    expr1 = self.parse_or()
+            ^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/jinja2/parser.py:538: in parse_or
+    left = self.parse_and()
+           ^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/jinja2/parser.py:547: in parse_and
+    left = self.parse_not()
+           ^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/jinja2/parser.py:558: in parse_not
+    return self.parse_compare()
+           ^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/jinja2/parser.py:562: in parse_compare
+    expr = self.parse_math1()
+           ^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/jinja2/parser.py:585: in parse_math1
+    left = self.parse_concat()
+           ^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/jinja2/parser.py:596: in parse_concat
+    args = [self.parse_math2()]
+            ^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/jinja2/parser.py:606: in parse_math2
+    left = self.parse_pow()
+           ^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/jinja2/parser.py:617: in parse_pow
+    left = self.parse_unary()
+           ^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/jinja2/parser.py:637: in parse_unary
+    node = self.parse_primary()
+           ^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/jinja2/parser.py:674: in parse_primary
+    next(self.stream)
+.venv/lib/python3.13/site-packages/jinja2/lexer.py:391: in __next__
+    self.current = next(self._iter)
+                   ^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/jinja2/lexer.py:624: in wrap
+    for lineno, token, value_str in stream:
+                                    ^^^^^^
+.venv/lib/python3.13/site-packages/jinja2/lexer.py:706: in tokeniter
+    m = regex.match(source, pos)
+        ^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: Timeout (>20.0s) from pytest-timeout.
+----------------------------- Captured stdout call -----------------------------
+INFO: stage=plan repositories=1
+INFO: stage=repository state=start repository=flext-test-project root=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-14904/popen-gw1/test_explicit_owner_classes_pr0/flext-test-project source_root=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-14904/popen-gw1/test_explicit_owner_classes_pr0/flext-test-project surface=lazy-init role=standalone
+INFO: stage=lazy-init state=start root=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-14904/popen-gw1/test_explicit_owner_classes_pr0/flext-test-project
+INFO: stage=lazy-init state=end root=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-14904/popen-gw1/test_explicit_owner_classes_pr0/flext-test-project elapsed=0.187s files=1 effects=1
+INFO: stage=repository state=end repository=flext-test-project surface=lazy-init elapsed=0.191s files=1
+INFO: stage=repository state=start repository=flext-test-project root=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-14904/popen-gw1/test_explicit_owner_classes_pr0/flext-test-project source_root=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-14904/popen-gw1/test_explicit_owner_classes_pr0/flext-test-project surface=all role=standalone
+INFO:   stage=pyproject repository=flext-test-project
+INFO: stage=facades state=start root=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-14904/popen-gw1/test_explicit_owner_classes_pr0/flext-test-project
+INFO: stage=facades state=end root=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-14904/popen-gw1/test_explicit_owner_classes_pr0/flext-test-project elapsed=2.397s files=1
+INFO: stage=lazy-init state=start root=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-14904/popen-gw1/test_explicit_owner_classes_pr0/flext-test-project
+INFO: stage=lazy-init state=end root=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-14904/popen-gw1/test_explicit_owner_classes_pr0/flext-test-project elapsed=0.161s files=1 effects=1
+INFO:   stage=templates repository=flext-test-project
++++++++++++++++++++++++++++++++++++ Timeout ++++++++++++++++++++++++++++++++++++
+~~~~~~~~~~~~~~ Stack of flext-async-log-writer (139997185631936) ~~~~~~~~~~~~~~~
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.18/lib/python3.13/threading.py", line 1015, in _bootstrap
+    self._bootstrap_inner()
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.18/lib/python3.13/threading.py", line 1044, in _bootstrap_inner
+    self.run()
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.18/lib/python3.13/threading.py", line 995, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/marlonsc/worktrees/flext-infra/flext-9qlie/.venv/lib/python3.13/site-packages/flext_core/_utilities/_logging/async_writer.py", line 138, in _worker
+    job = self.queue.get(
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.18/lib/python3.13/queue.py", line 210, in get
+    self.not_empty.wait(remaining)
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.18/lib/python3.13/threading.py", line 363, in wait
+    gotit = waiter.acquire(True, timeout)
+~~~~~~~~~~~~~~~~~~~~~ Stack of <unknown> (139997505562304) ~~~~~~~~~~~~~~~~~~~~~
+  File "/home/marlonsc/worktrees/flext-infra/flext-9qlie/.venv/lib/python3.13/site-packages/execnet/gateway_base.py", line 411, in _perform_spawn
+    reply.run()
+  File "/home/marlonsc/worktrees/flext-infra/flext-9qlie/.venv/lib/python3.13/site-packages/execnet/gateway_base.py", line 341, in run
+    self._result = func(*args, **kwargs)
+  File "/home/marlonsc/worktrees/flext-infra/flext-9qlie/.venv/lib/python3.13/site-packages/execnet/gateway_base.py", line 1160, in _thread_receiver
+    msg = Message.from_io(io)
+  File "/home/marlonsc/worktrees/flext-infra/flext-9qlie/.venv/lib/python3.13/site-packages/execnet/gateway_base.py", line 567, in from_io
+    header = io.read(9)  # type 1, channel 4, payload 4
+  File "/home/marlonsc/worktrees/flext-infra/flext-9qlie/.venv/lib/python3.13/site-packages/execnet/gateway_base.py", line 534, in read
+    data = self._read(numbytes - len(buf))
++++++++++++++++++++++++++++++++++++ Timeout ++++++++++++++++++++++++++++++++++++
+- generated xml file: /home/marlonsc/worktrees/flext-infra/flext-9qlie/.reports/tests/20261121T124101.947465Z-4031838/junit.xml -
+- generated report log file: /home/marlonsc/worktrees/flext-infra/flext-9qlie/.reports/tests/20261121T124101.947465Z-4031838/events.jsonl -
+-------------------------------- flext-enforce ---------------------------------
+runtime warnings captured: 0
+------------------------------- flext slow tests -------------------------------
+no test near the ordinary or slow limit
+============================= slowest 25 durations =============================
+20.09s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-c]
+8.83s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-canonical]
+6.82s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-canonical]
+6.57s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-canonical]
+6.55s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-foreign]
+6.48s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-canonical]
+4.46s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-renamed]
+3.98s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-duplicate]
+3.57s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_initializer_retires_exports_moved_into_class_owners
+2.40s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-annotation]
+2.34s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-renamed]
+2.02s call     tests/unit/codemod/test_api_alias_cutover.py::TestsFlextInfraApiAliasCutover::test_service_retirement_preserves_kernel_context_and_shadowing[from sample_pkg import s-s-FlextSampleService]
+
+(13 durations < 2s hidden.)
+=========================== short test summary info ============================
+FAILED tests/unit/codemod/test_api_alias_cutover.py::TestsFlextInfraApiAliasCutover::test_service_retirement_preserves_kernel_context_and_shadowing[from sample_pkg import s-s-FlextSampleService]
+FAILED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-c]
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 2 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!! xdist.dsession.Interrupted: stopping after 1 failures !!!!!!!!!!!!!
+=================== 2 failed, 21 passed in 137.47s (0:02:17) ===================

@@ -2621,7 +2621,7 @@ class FlextInfraUtilitiesModelsProtocol:
                 for node, path, tree in classes:
                     route = f"{module}.{'.'.join(path)}"
                     self.source_model_protocol_destinations[route] = destination
-                    self.source_model_protocols[route] = "".join(
+                    self.source_model_protocols[route] = ".".join(
                         ancestor.name
                         for ancestor, ancestor_path, _source in classes
                         if path[: len(ancestor_path)] == ancestor_path

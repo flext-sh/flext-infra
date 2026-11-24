@@ -1,0 +1,8 @@
+{
+  "execution_mode": "global-incremental",
+  "testmon_db": "/home/marlonsc/.cache/flext/infra/testmon/flext-infra/flext-9qlie/.testmondata",
+  "testmon_lease_acquired": true,
+  "deadline_monotonic": 205779.275786796,
+  "report_directory": "/home/marlonsc/worktrees/flext-infra/flext-9qlie/.reports/tests/20261121T110739.793822Z-3021003",
+  "profile_sha256": null
+}

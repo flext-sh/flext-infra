@@ -1,0 +1,40 @@
+{
+  "errors": [
+    {
+      "line": 12,
+      "column": 13,
+      "stop_line": 12,
+      "stop_column": 29,
+      "path": "src/flext_test_project/consumer.py",
+      "code": -2,
+      "name": "missing-attribute",
+      "description": "Object of class `str` has no attribute `description`",
+      "concise_description": "Object of class `str` has no attribute `description`",
+      "severity": "error"
+    },
+    {
+      "line": 12,
+      "column": 31,
+      "stop_line": 12,
+      "stop_column": 54,
+      "path": "src/flext_test_project/consumer.py",
+      "code": -2,
+      "name": "missing-attribute",
+      "description": "Object of class `str` has no attribute `description`",
+      "concise_description": "Object of class `str` has no attribute `description`",
+      "severity": "error"
+    },
+    {
+      "line": 12,
+      "column": 56,
+      "stop_line": 12,
+      "stop_column": 82,
+      "path": "src/flext_test_project/consumer.py",
+      "code": -2,
+      "name": "missing-attribute",
+      "description": "Object of class `str` has no attribute `description`",
+      "concise_description": "Object of class `str` has no attribute `description`",
+      "severity": "error"
+    }
+  ]
+}
