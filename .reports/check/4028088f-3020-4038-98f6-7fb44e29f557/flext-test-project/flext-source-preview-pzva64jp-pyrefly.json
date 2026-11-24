@@ -1,0 +1,16 @@
+{
+  "errors": [
+    {
+      "line": 5,
+      "column": 5,
+      "stop_line": 5,
+      "stop_column": 35,
+      "path": "src/flext_test_project/consumer.py",
+      "code": -2,
+      "name": "invalid-syntax",
+      "description": "`type` statement is not allowed in this context",
+      "concise_description": "`type` statement is not allowed in this context",
+      "severity": "error"
+    }
+  ]
+}

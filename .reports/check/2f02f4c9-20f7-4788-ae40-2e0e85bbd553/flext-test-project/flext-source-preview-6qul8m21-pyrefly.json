@@ -1,0 +1,16 @@
+{
+  "errors": [
+    {
+      "line": 3,
+      "column": 1,
+      "stop_line": 3,
+      "stop_column": 12,
+      "path": "src/flext_test_project/consumer.py",
+      "code": -2,
+      "name": "deprecated",
+      "description": "`logging.Logger.warn` is deprecated\n  Deprecated since Python 3.3. Use `Logger.warning()` instead.",
+      "concise_description": "`logging.Logger.warn` is deprecated",
+      "severity": "warn"
+    }
+  ]
+}

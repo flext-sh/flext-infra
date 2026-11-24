@@ -1,0 +1,1 @@
+{"id":"collapsed-facade-family-package","language":"Python","rule":{"regex":"^(?:examples|flext_infra|scripts|tests)(?:_constants|_models|_protocols|_typings|_utilities)$"}}

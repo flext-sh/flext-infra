@@ -1,0 +1,10 @@
+{
+  "outcome": {
+    "raw_return_code": 2,
+    "timed_out": false,
+    "forwarded_signal": null
+  },
+  "duration": 0.1380037490162067,
+  "stdout": "",
+  "stderr": "Makefile:387: *** ERROR[upg]: fixture-project is a workspace member; its own runtime has no flext-infra supplier: /home/marlonsc/tmp/pytest-of-marlonsc/pytest-15059/popen-gw1/mws65hki12b1d413ji4ma9o0/make-templates/workspace/workspace/fixture-project. Run make upg from a workspace-shaped lane that attaches fixture-project as a member..  Pare.\n"
+}

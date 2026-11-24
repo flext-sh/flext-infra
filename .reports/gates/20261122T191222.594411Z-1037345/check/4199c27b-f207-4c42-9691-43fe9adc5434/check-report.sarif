@@ -1,0 +1,190 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "flext-infra-check",
+          "informationUri": "https://github.com/flext-sh/flext-infra",
+          "rules": []
+        }
+      },
+      "results": []
+    }
+  ],
+  "properties": {
+    "phase": "complete",
+    "requested_gates": [
+      "lint",
+      "format",
+      "markdown",
+      "markdown-format",
+      "markdown-code",
+      "conflict-markers"
+    ],
+    "pending_gates": [],
+    "targets": [
+      {
+        "name": "infra",
+        "path": "/home/marlonsc/tmp/s221122/infra",
+        "applicable_gates": [
+          "lint",
+          "format",
+          "markdown",
+          "markdown-format",
+          "markdown-code",
+          "conflict-markers"
+        ],
+        "source_identity": {
+          "repo_root": "/home/marlonsc/tmp/s221122/infra",
+          "primary_root": "/home/marlonsc/flext/flext-infra",
+          "head_oid": "55b96428c08d44d0e9d46c48e28ce0c1dc9ec281",
+          "porcelain": "M  tests/integration/test_infra_integration.py\nM  tests/unit/_utilities/test_formatting.py\nM  tests/unit/_utilities/test_git_state_boundaries.py\nM  tests/unit/_utilities/test_git_state_checkpoint.py\nM  tests/unit/_utilities/test_git_sweep_semantics.py\nM  tests/unit/_utilities/test_protected_edit.py\nM  tests/unit/check/deps_gate_tests.py\nM  tests/unit/check/extended_gate_bandit_markdown_tests.py\nM  tests/unit/check/extended_gate_markdown_format_code_tests.py\nM  tests/unit/check/extended_run_projects_tests.py\nM  tests/unit/check/smells_gate_tests.py\nM  tests/unit/check/test_cli.py\nM  tests/unit/codegen/artifact_render_empty_guard_tests.py\nM  tests/unit/codegen/facade_authored_runtime_tests.py\nM  tests/unit/codegen/facade_generic_publication_tests.py\nM  tests/unit/codegen/facade_nested_publication_tests.py\nM  tests/unit/codegen/layout_gitignore_tests.py\nM  tests/unit/codegen/layout_tests.py\nM  tests/unit/codegen/lazy_init_alias_inheritance_tests.py\nM  tests/unit/codegen/lazy_init_bootstrap_package_tests.py\nM  tests/unit/codegen/lazy_init_deferred_instance_tests.py\nM  tests/unit/codegen/lazy_init_documentation_language_tests.py\nM  tests/unit/codegen/lazy_init_export_ownership_tests.py\nM  tests/unit/codegen/lazy_init_file_plan_tests.py\nM  tests/unit/codegen/lazy_init_generation_tests.py\nM  tests/unit/codegen/lazy_init_helpers_tests.py\nM  tests/unit/codegen/lazy_init_process_tests.py\nM  tests/unit/codegen/lazy_init_published_runtime_tests.py\nM  tests/unit/codegen/lazy_init_runtime_tests.py\nM  tests/unit/codegen/lazy_init_service_tests.py\nM  tests/unit/codegen/lazy_init_workspace_election_tests.py\nM  tests/unit/codegen/makefile_bootstrap_soundness_tests.py\nM  tests/unit/codegen/mise_toolchain_proof_tests.py\nM  tests/unit/codegen/release_policy_projection_tests.py\nM  tests/unit/codegen/render_provenance_tests.py\nM  tests/unit/codegen/source_ownership_tests.py\nM  tests/unit/codegen/test_codegen_admission_witnesses.py\nM  tests/unit/codegen/test_codegen_artifact_ssot.py\nM  tests/unit/codegen/test_codegen_beads_projection.py\nM  tests/unit/codegen/test_codegen_conform_progress.py\nM  tests/unit/codegen/test_codegen_documentation_language.py\nM  tests/unit/codegen/test_codegen_make_upgrade.py\nM  tests/unit/codegen/test_codegen_pyproject_conform_scaffold.py\nM  tests/unit/codegen/test_codegen_repository_root_scope.py\nM  tests/unit/codegen/test_codegen_retired_projections.py\nM  tests/unit/codegen/test_codegen_sonarcloud_workspace_scope.py\nM  tests/unit/codegen/test_codegen_workspace_member_group.py\nM  tests/unit/codegen/test_facade_component_source.py\nM  tests/unit/codegen/test_facade_foreign_publication.py\nM  tests/unit/codegen/test_make_bootstrap_publication.py\nM  tests/unit/codegen/test_make_gen_root_contract.py\nM  tests/unit/codegen/test_mise_pin_bootstrap.py\nM  tests/unit/codegen/test_mise_toolchain_repair.py\nM  tests/unit/codegen/test_mixed_model_facade_publication.py\nM  tests/unit/codegen/test_model_protocol_callable_contracts.py\nM  tests/unit/codegen/test_model_protocol_native_mro.py\nM  tests/unit/codegen/test_nested_protocol_facade.py\nM  tests/unit/codegen/test_plan_collection.py\nM  tests/unit/codegen/test_protocol_cross_module_alias.py\nM  tests/unit/codegen/test_protocol_domain_projection.py\nM  tests/unit/codegen/test_protocol_holder_composition.py\nM  tests/unit/codegen/test_protocol_mirror_own_holder_imports.py\nM  tests/unit/codegen/test_protocol_namespace_projection.py\nM  tests/unit/codegen/test_protocol_root_model_projection.py\nM  tests/unit/codegen/test_protocol_subscripted_sibling_base.py\nM  tests/unit/codegen/test_recursive_family_facades.py\nM  tests/unit/codegen/test_root_artifact_ownership.py\nM  tests/unit/codegen/test_source_layout_ownership.py\nM  tests/unit/codegen/test_template_formatter_fixed_point.py\nM  tests/unit/codegen/test_utility_facade_projection.py\nM  tests/unit/codemod/test_apply_renames.py\nM  tests/unit/codemod/test_assertion_cutover.py\nM  tests/unit/codemod/test_attribute_read_proofs.py\nM  tests/unit/codemod/test_class_nesting_consumer_identity.py\nM  tests/unit/codemod/test_class_nesting_owner_derivation.py\nM  tests/unit/codemod/test_class_nesting_suite_scope.py\nM  tests/unit/codemod/test_codemod_import_cycle_source_scan.py\nM  tests/unit/codemod/test_codemod_own_package_scans.py\nM  tests/unit/codemod/test_compat_read_all_letters.py\nM  tests/unit/codemod/test_constant_declarations.py\nM  tests/unit/codemod/test_declaration_import_consumers.py\nM  tests/unit/codemod/test_declaration_payload.py\nM  tests/unit/codemod/test_declaration_relocation.py\nM  tests/unit/codemod/test_declaration_relocation_groups.py\nM  tests/unit/codemod/test_deep_import_own_root.py\nM  tests/unit/codemod/test_duplicate_apply.py\nM  tests/unit/codemod/test_dynamic_environment_cutover.py\nM  tests/unit/codemod/test_facade_member_relocation.py\nM  tests/unit/codemod/test_family_letter_upstream_election.py\nM  tests/unit/codemod/test_family_type_references.py\nM  tests/unit/codemod/test_immutable_constants.py\nM  tests/unit/codemod/test_library_member_capabilities.py\nM  tests/unit/codemod/test_literal_enums.py\nM  tests/unit/codemod/test_mod_evidence_inputs.py\nM  tests/unit/codemod/test_mod_loop_phases.py\nM  tests/unit/codemod/test_mod_scan_selection.py\nM  tests/unit/codemod/test_mod_text_circuit.py\nM  tests/unit/codemod/test_mod_text_publication.py\nM  tests/unit/codemod/test_model_alias_retirement.py\nM  tests/unit/codemod/test_model_envelope_contracts.py\nM  tests/unit/codemod/test_model_fields_cutover.py\nM  tests/unit/codemod/test_model_role_admission.py\nM  tests/unit/codemod/test_portable_rewire.py\nM  tests/unit/codemod/test_portable_rewire_bindings.py\nM  tests/unit/codemod/test_portable_rewire_cohorts.py\nM  tests/unit/codemod/test_protocol_organization.py\nM  tests/unit/codemod/test_protocol_public_routes.py\nM  tests/unit/codemod/test_rename_preflight.py\nM  tests/unit/codemod/test_rope_contract_family_routes.py\nM  tests/unit/codemod/test_rope_contract_fields.py\nM  tests/unit/codemod/test_rope_contracts.py\nM  tests/unit/codemod/test_rule_fixture_snapshots.py\nM  tests/unit/codemod/test_scan_artifact_store.py\nM  tests/unit/codemod/test_scan_cache_content_key.py\nM  tests/unit/codemod/test_self_facade_cutover.py\nM  tests/unit/codemod/test_semantic_constant_cutover.py\nM  tests/unit/codemod/test_semantic_logging_transfer.py\nM  tests/unit/codemod/test_semantic_module_naming.py\nM  tests/unit/codemod/test_semantic_phase_contract.py\nM  tests/unit/codemod/test_semantic_publication.py\nM  tests/unit/codemod/test_semantic_publication_plans.py\nM  tests/unit/codemod/test_semantic_publication_transactions.py\nM  tests/unit/codemod/test_semantic_rename_atomicity.py\nM  tests/unit/codemod/test_semantic_rename_seed.py\nM  tests/unit/codemod/test_shared_helper_promotion.py\nM  tests/unit/codemod/test_source_export_scope.py\nM  tests/unit/codemod/test_symbolic_text_cutover.py\nM  tests/unit/deps/modernizer_packaged_manifest_tests.py\nM  tests/unit/deps/ruff_compose_signature_tests.py\nM  tests/unit/deps/test_detection_deptry.py\nM  tests/unit/deps/test_detection_pip_check.py\nM  tests/unit/deps/test_modernizer_workspace.py\nM  tests/unit/deps/uv_native_resolution_tests.py\nM  tests/unit/docs/auditor_tests.py\nM  tests/unit/docs/documentation_language_tests.py\nM  tests/unit/docs/fixer_tests.py\nM  tests/unit/docs/formatter_tests.py\nM  tests/unit/docs/generator_bundle_tests.py\nM  tests/unit/docs/generator_guides_tests.py\nM  tests/unit/docs/generator_plan_tests.py\nM  tests/unit/docs/generator_tests.py\nM  tests/unit/docs/main_commands_tests.py\nM  tests/unit/docs/main_entry_tests.py\nM  tests/unit/docs/presentation_workflow_tests.py\nM  tests/unit/docs/shared_write_tests.py\nM  tests/unit/docs/validator_tests.py\nM  tests/unit/gates/runtime_integrity_lock_freshness_tests.py\nM  tests/unit/gates/test_gate_admission.py\nM  tests/unit/github/gate_attestation_tests.py\nM  tests/unit/maintenance/sonarcloud_sync_tests.py\nM  tests/unit/promoted/test_process_boundary.py\nM  tests/unit/refactor/test_constants_census_ownership.py\nM  tests/unit/refactor/test_infra_refactor_accessor_migration.py\nM  tests/unit/refactor/test_infra_refactor_cli_models_workflow.py\nM  tests/unit/refactor/test_infra_refactor_import_normalization.py\nM  tests/unit/refactor/test_infra_refactor_import_normalization_bindings.py\nM  tests/unit/refactor/test_infra_refactor_import_normalization_families.py\nM  tests/unit/refactor/test_infra_refactor_namespace_enforcer.py\nM  tests/unit/refactor/test_main_cli.py\nM  tests/unit/refactor/test_payload_census_semantics.py\nM  tests/unit/release/orchestrator_helpers_tests.py\nM  tests/unit/release/orchestrator_publish_tests.py\nM  tests/unit/release/test_release_dag.py\nM  tests/unit/test_facades_defer_every_part.py\nM  tests/unit/test_flext_service_base_alias.py\nM  tests/unit/test_infra_constants_extra.py\nM  tests/unit/test_infra_git_identity_submodules.py\nM  tests/unit/test_infra_rope_imports.py\nM  tests/unit/test_infra_rope_runtime_pymodule.py\nM  tests/unit/test_infra_rope_snapshot.py\nM  tests/unit/test_pytest_project_context.py\nM  tests/unit/test_repository_baseline_branch.py\nM  tests/unit/validate/cprofile_cli_tests.py\nM  tests/unit/validate/cprofile_interruption_tests.py\nM  tests/unit/validate/cprofile_report_tests.py\nM  tests/unit/validate/fresh_import_completeness_tests.py\nM  tests/unit/validate/fresh_import_tests.py\nM  tests/unit/validate/pytest_collection_manifest_tests.py\nM  tests/unit/validate/pytest_markdown_module_tests.py\nM  tests/unit/validate/pytest_runner_harness_tests.py\nM  tests/unit/validate/pytest_worker_ceiling_tests.py\nM  tests/unit/validate/test_pytest_check_independence.py\nM  tests/unit/workspace/live_editable_provenance_tests.py\nM  tests/unit/workspace/test_environment_provenance.py\nM  tests/unit/workspace/test_environment_provenance_callables.py\nM  tests/unit/workspace/test_environment_provenance_declarations.py\nM  tests/unit/workspace/test_fleet_gaps.py\nM  tests/unit/workspace/test_flext_worktree_binding.py\nM  tests/unit/workspace/test_native_callable_admission.py\nM  tests/unit/workspace/test_native_code_constants.py\nM  tests/unit/workspace/test_native_compiler_admission.py\nM  tests/unit/workspace/test_native_observation_scaling.py\nM  tests/unit/workspace/test_native_reference_epoch.py\nM  tests/unit/workspace/test_repository_beads_identity.py\nM  tests/unit/workspace/test_runtime_dependency_collector.py\nM  tests/unit/workspace/test_runtime_environment_projection.py\nM  tests/unit/workspace/test_worktree_topology.py",
+          "dirty": true,
+          "git_dir": "/home/marlonsc/flext/.git/modules/flext-infra/worktrees/infra",
+          "common_dir": "/home/marlonsc/flext/.git/modules/flext-infra",
+          "branch": "fix/ci-fast-tests-20261122",
+          "origin_remote": "https://github.com/flext-sh/flext-infra.git",
+          "upstream_remote": null,
+          "superproject_root": "/home/marlonsc/flext",
+          "requested_path": "/home/marlonsc/tmp/s221122/infra",
+          "is_worktree": true,
+          "is_submodule": true,
+          "is_attached_submodule": false,
+          "has_submodules": false,
+          "is_inside_work_tree": true
+        }
+      }
+    ],
+    "results": [
+      {
+        "project": "infra",
+        "gates": {
+          "lint": {
+            "result": {
+              "project": "infra",
+              "gate": "lint",
+              "passed": true,
+              "errors": [],
+              "duration": 0.616
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/tmp/s221122/infra/.reports/gates/20261122T191222.594411Z-1037345/check/4199c27b-f207-4c42-9691-43fe9adc5434/infra/lint.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          },
+          "format": {
+            "result": {
+              "project": "infra",
+              "gate": "format",
+              "passed": true,
+              "errors": [],
+              "duration": 2.841
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/tmp/s221122/infra/.reports/gates/20261122T191222.594411Z-1037345/check/4199c27b-f207-4c42-9691-43fe9adc5434/infra/format.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          },
+          "markdown": {
+            "result": {
+              "project": "infra",
+              "gate": "markdown",
+              "passed": true,
+              "errors": [],
+              "duration": 1.722
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/tmp/s221122/infra/.reports/gates/20261122T191222.594411Z-1037345/check/4199c27b-f207-4c42-9691-43fe9adc5434/infra/markdown.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          },
+          "markdown-format": {
+            "result": {
+              "project": "infra",
+              "gate": "markdown-format",
+              "passed": true,
+              "errors": [],
+              "duration": 1.723
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/tmp/s221122/infra/.reports/gates/20261122T191222.594411Z-1037345/check/4199c27b-f207-4c42-9691-43fe9adc5434/infra/markdown-format.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          },
+          "markdown-code": {
+            "result": {
+              "project": "infra",
+              "gate": "markdown-code",
+              "passed": true,
+              "errors": [],
+              "duration": 5.089
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/tmp/s221122/infra/.reports/gates/20261122T191222.594411Z-1037345/check/4199c27b-f207-4c42-9691-43fe9adc5434/infra/markdown-code.raw.log",
+            "outcome": "clean",
+            "process": null,
+            "components": {},
+            "requested_components": []
+          },
+          "conflict-markers": {
+            "result": {
+              "project": "infra",
+              "gate": "conflict-markers",
+              "passed": true,
+              "errors": [],
+              "duration": 5.275
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/tmp/s221122/infra/.reports/gates/20261122T191222.594411Z-1037345/check/4199c27b-f207-4c42-9691-43fe9adc5434/infra/conflict-markers.raw.log",
+            "outcome": "clean",
+            "process": null,
+            "components": {},
+            "requested_components": []
+          }
+        }
+      }
+    ],
+    "selected_files": [],
+    "global_targets": [
+      {
+        "name": "infra",
+        "path": "/home/marlonsc/tmp/s221122/infra",
+        "applicable_gates": [
+          "lint",
+          "format",
+          "markdown",
+          "markdown-format",
+          "markdown-code",
+          "conflict-markers"
+        ],
+        "source_identity": null
+      }
+    ]
+  }
+}

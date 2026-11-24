@@ -1,0 +1,1 @@
+{"id":"exports--flext_infra.workspace._environment","language":"Python","rule":{"regex":"^(?:FlextInfraWorkspaceEnvironmentProvenanceEditable|FlextInfraWorkspaceEnvironmentProvenanceModuleSource)$"}}

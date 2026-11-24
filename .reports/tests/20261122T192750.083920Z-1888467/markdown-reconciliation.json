@@ -1,0 +1,1551 @@
+{
+  "eligible": [],
+  "selected": [],
+  "deselected": [],
+  "diagnostics": {
+    "failed_count": 2,
+    "error_count": 0,
+    "warning_count": 0,
+    "skipped_count": 0,
+    "connectivity_skip_cases": [],
+    "collection_failed_count": 0,
+    "collection_skipped_count": 0,
+    "collection_failed_cases": [],
+    "collection_skip_cases": [],
+    "reported_node_ids": [
+      "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespace_cycle_is_not_a_builtin_boundary",
+      "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[-Exception-pass-expected0]",
+      "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[-object-pass-expected1]",
+      "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[class Parent(Exception):\\n    class Shared:\\n        pass\\n-Parent-pass-expected3]",
+      "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[class Parent(object):\\n    class Shared:\\n        pass\\nclass Middle(Parent):\\n    pass\\n-Middle-pass-expected4]",
+      "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[class Parent:\\n    class Shared:\\n        pass\\n-Parent-class Shared:\\n        pass-expected5]",
+      "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[class Parent:\\n    pass\\n-Parent-pass-expected2]",
+      "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[declarations6-Left, Right-pass-expected6]",
+      "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[from .provider import Parent\\n-Parent, Exception-pass-expected7]",
+      "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_namespace_policy_retains_inherited_public_payload",
+      "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_arbitrary_valid_execution_policy_round_trips[1-6-1-1]",
+      "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_arbitrary_valid_execution_policy_round_trips[7-20-2-8]",
+      "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_ci_must_not_exclude_slow_items",
+      "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_deadlines_cannot_exceed_operator_caps[ordinary-timeout-seconds-3]",
+      "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_deadlines_cannot_exceed_operator_caps[run-timeout-seconds-1801]",
+      "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_deadlines_cannot_exceed_operator_caps[slow-timeout-seconds-1801]",
+      "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_long_execution_budget_is_admitted_by_the_operator_caps",
+      "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_native_scheduling_policy_round_trips[False-load]",
+      "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_native_scheduling_policy_round_trips[False-loadscope]",
+      "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_native_scheduling_policy_round_trips[True-load]",
+      "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_native_scheduling_policy_round_trips[True-loadscope]",
+      "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_operator_caps_are_hard_typed_boundaries[run-timeout-seconds]",
+      "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_operator_caps_are_hard_typed_boundaries[slow-timeout-seconds]",
+      "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_operator_caps_are_hard_typed_boundaries[termination-grace-seconds]",
+      "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_policy_round_trips_through_its_production_model",
+      "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_progress_policy_cannot_hide_item_names",
+      "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_project_run_budget_overrides_are_rejected",
+      "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_pytest_ini_override_is_forbidden[--loadscope-reorder]",
+      "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_pytest_ini_override_is_forbidden[--no-loadscope-reorder]",
+      "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_pytest_ini_override_is_forbidden[--override-ini=addopts=]",
+      "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_pytest_ini_override_is_forbidden[--override-ini]",
+      "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_pytest_ini_override_is_forbidden[--timeout=0]",
+      "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_pytest_ini_override_is_forbidden[-o=addopts=]",
+      "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_pytest_ini_override_is_forbidden[-o]",
+      "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reordering_refuses_string_coercion",
+      "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--cov=unowned]",
+      "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--dist=load]",
+      "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--junitxml=elsewhere.xml]",
+      "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--loadscope-reorder]",
+      "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--no-loadscope-reorder]",
+      "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--override-ini=addopts=]",
+      "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--tb=short\\n-o=addopts=]",
+      "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--timeout=999]",
+      "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[-n=auto]",
+      "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[-o]",
+      "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[-p=no:flext_tests.enforcement_plugin]",
+      "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[tests]",
+      "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_run_budget_exceeds_the_derived_suite_stop_reserve",
+      "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_slow_budget_is_a_hard_typed_boundary",
+      "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_slow_budget_is_declared_and_bounded_by_the_run_wall",
+      "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_extraneous_raises_drops_the_emptied_section",
+      "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_extraneous_raises_keeps_the_following_section",
+      "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_extraneous_raises_leaves_only_its_own_entry",
+      "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_gate_owned_recipe_requires_its_runtime_owner[import-outside-top-level]",
+      "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_gate_owned_recipe_requires_its_runtime_owner[line-too-long]",
+      "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_raises_condition_drops_the_opener_its_placeholder_left",
+      "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_raises_condition_with_quotes_keeps_the_literal_intact",
+      "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_raises_section_states_the_message_condition",
+      "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_returns_section_takes_the_summary_object",
+      "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_summary_docstring_derives_from_the_name",
+      "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_bump_version_invalid[invalid-bump-type]",
+      "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_bump_version_invalid[invalid-version]",
+      "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_bump_version_result_type",
+      "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_bump_version_valid[from-zero]",
+      "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_bump_version_valid[major]",
+      "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_bump_version_valid[minor]",
+      "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_bump_version_valid[patch]",
+      "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_current_workspace_version[empty-version]",
+      "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_current_workspace_version[missing-file]",
+      "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_current_workspace_version[missing-project-table]",
+      "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_current_workspace_version[missing-version]",
+      "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_current_workspace_version[success]",
+      "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_parse_semver_invalid[invalid-format]",
+      "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_parse_semver_invalid[legacy-development]",
+      "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_parse_semver_invalid[legacy-release-candidate]",
+      "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_parse_semver_invalid[non-numeric]",
+      "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_parse_semver_invalid[unsupported-suffix]",
+      "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_parse_semver_result_type",
+      "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_parse_semver_valid[development]",
+      "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_parse_semver_valid[large]",
+      "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_parse_semver_valid[release-candidate]",
+      "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_parse_semver_valid[standard]",
+      "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_parse_semver_valid[zero]",
+      "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_render_project_version_preserves_layout_and_scopes_to_project",
+      "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_render_project_version_rejects_invalid_document",
+      "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_replace_project_version[missing-file]",
+      "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_replace_project_version[missing-project-table]",
+      "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_replace_project_version[success]",
+      "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_version_plan_publishes_through_shared_codegen_publisher"
+    ],
+    "phase_outcomes": [
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespace_cycle_is_not_a_builtin_boundary",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespace_cycle_is_not_a_builtin_boundary",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespace_cycle_is_not_a_builtin_boundary",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[-Exception-pass-expected0]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[-Exception-pass-expected0]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[-Exception-pass-expected0]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[-object-pass-expected1]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[-object-pass-expected1]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[-object-pass-expected1]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[class Parent(Exception):\\n    class Shared:\\n        pass\\n-Parent-pass-expected3]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[class Parent(Exception):\\n    class Shared:\\n        pass\\n-Parent-pass-expected3]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[class Parent(Exception):\\n    class Shared:\\n        pass\\n-Parent-pass-expected3]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[class Parent(object):\\n    class Shared:\\n        pass\\nclass Middle(Parent):\\n    pass\\n-Middle-pass-expected4]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[class Parent(object):\\n    class Shared:\\n        pass\\nclass Middle(Parent):\\n    pass\\n-Middle-pass-expected4]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[class Parent(object):\\n    class Shared:\\n        pass\\nclass Middle(Parent):\\n    pass\\n-Middle-pass-expected4]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[class Parent:\\n    class Shared:\\n        pass\\n-Parent-class Shared:\\n        pass-expected5]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[class Parent:\\n    class Shared:\\n        pass\\n-Parent-class Shared:\\n        pass-expected5]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[class Parent:\\n    class Shared:\\n        pass\\n-Parent-class Shared:\\n        pass-expected5]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[class Parent:\\n    pass\\n-Parent-pass-expected2]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[class Parent:\\n    pass\\n-Parent-pass-expected2]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[class Parent:\\n    pass\\n-Parent-pass-expected2]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[declarations6-Left, Right-pass-expected6]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[declarations6-Left, Right-pass-expected6]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[declarations6-Left, Right-pass-expected6]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[from .provider import Parent\\n-Parent, Exception-pass-expected7]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[from .provider import Parent\\n-Parent, Exception-pass-expected7]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[from .provider import Parent\\n-Parent, Exception-pass-expected7]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_namespace_policy_retains_inherited_public_payload",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_namespace_policy_retains_inherited_public_payload",
+        "phase": "call",
+        "outcome": "failed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_namespace_policy_retains_inherited_public_payload",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_arbitrary_valid_execution_policy_round_trips[1-6-1-1]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_arbitrary_valid_execution_policy_round_trips[1-6-1-1]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_arbitrary_valid_execution_policy_round_trips[1-6-1-1]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_arbitrary_valid_execution_policy_round_trips[7-20-2-8]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_arbitrary_valid_execution_policy_round_trips[7-20-2-8]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_arbitrary_valid_execution_policy_round_trips[7-20-2-8]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_ci_must_not_exclude_slow_items",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_ci_must_not_exclude_slow_items",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_ci_must_not_exclude_slow_items",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_deadlines_cannot_exceed_operator_caps[ordinary-timeout-seconds-3]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_deadlines_cannot_exceed_operator_caps[ordinary-timeout-seconds-3]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_deadlines_cannot_exceed_operator_caps[ordinary-timeout-seconds-3]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_deadlines_cannot_exceed_operator_caps[run-timeout-seconds-1801]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_deadlines_cannot_exceed_operator_caps[run-timeout-seconds-1801]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_deadlines_cannot_exceed_operator_caps[run-timeout-seconds-1801]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_deadlines_cannot_exceed_operator_caps[slow-timeout-seconds-1801]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_deadlines_cannot_exceed_operator_caps[slow-timeout-seconds-1801]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_deadlines_cannot_exceed_operator_caps[slow-timeout-seconds-1801]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_long_execution_budget_is_admitted_by_the_operator_caps",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_long_execution_budget_is_admitted_by_the_operator_caps",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_long_execution_budget_is_admitted_by_the_operator_caps",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_native_scheduling_policy_round_trips[False-load]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_native_scheduling_policy_round_trips[False-load]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_native_scheduling_policy_round_trips[False-load]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_native_scheduling_policy_round_trips[False-loadscope]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_native_scheduling_policy_round_trips[False-loadscope]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_native_scheduling_policy_round_trips[False-loadscope]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_native_scheduling_policy_round_trips[True-load]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_native_scheduling_policy_round_trips[True-load]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_native_scheduling_policy_round_trips[True-load]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_native_scheduling_policy_round_trips[True-loadscope]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_native_scheduling_policy_round_trips[True-loadscope]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_native_scheduling_policy_round_trips[True-loadscope]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_operator_caps_are_hard_typed_boundaries[run-timeout-seconds]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_operator_caps_are_hard_typed_boundaries[run-timeout-seconds]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_operator_caps_are_hard_typed_boundaries[run-timeout-seconds]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_operator_caps_are_hard_typed_boundaries[slow-timeout-seconds]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_operator_caps_are_hard_typed_boundaries[slow-timeout-seconds]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_operator_caps_are_hard_typed_boundaries[slow-timeout-seconds]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_operator_caps_are_hard_typed_boundaries[termination-grace-seconds]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_operator_caps_are_hard_typed_boundaries[termination-grace-seconds]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_operator_caps_are_hard_typed_boundaries[termination-grace-seconds]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_policy_round_trips_through_its_production_model",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_policy_round_trips_through_its_production_model",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_policy_round_trips_through_its_production_model",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_progress_policy_cannot_hide_item_names",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_progress_policy_cannot_hide_item_names",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_progress_policy_cannot_hide_item_names",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_project_run_budget_overrides_are_rejected",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_project_run_budget_overrides_are_rejected",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_project_run_budget_overrides_are_rejected",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_pytest_ini_override_is_forbidden[--loadscope-reorder]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_pytest_ini_override_is_forbidden[--loadscope-reorder]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_pytest_ini_override_is_forbidden[--loadscope-reorder]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_pytest_ini_override_is_forbidden[--no-loadscope-reorder]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_pytest_ini_override_is_forbidden[--no-loadscope-reorder]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_pytest_ini_override_is_forbidden[--no-loadscope-reorder]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_pytest_ini_override_is_forbidden[--override-ini=addopts=]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_pytest_ini_override_is_forbidden[--override-ini=addopts=]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_pytest_ini_override_is_forbidden[--override-ini=addopts=]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_pytest_ini_override_is_forbidden[--override-ini]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_pytest_ini_override_is_forbidden[--override-ini]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_pytest_ini_override_is_forbidden[--override-ini]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_pytest_ini_override_is_forbidden[--timeout=0]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_pytest_ini_override_is_forbidden[--timeout=0]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_pytest_ini_override_is_forbidden[--timeout=0]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_pytest_ini_override_is_forbidden[-o=addopts=]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_pytest_ini_override_is_forbidden[-o=addopts=]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_pytest_ini_override_is_forbidden[-o=addopts=]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_pytest_ini_override_is_forbidden[-o]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_pytest_ini_override_is_forbidden[-o]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_pytest_ini_override_is_forbidden[-o]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reordering_refuses_string_coercion",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reordering_refuses_string_coercion",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reordering_refuses_string_coercion",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--cov=unowned]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--cov=unowned]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--cov=unowned]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--dist=load]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--dist=load]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--dist=load]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--junitxml=elsewhere.xml]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--junitxml=elsewhere.xml]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--junitxml=elsewhere.xml]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--loadscope-reorder]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--loadscope-reorder]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--loadscope-reorder]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--no-loadscope-reorder]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--no-loadscope-reorder]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--no-loadscope-reorder]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--override-ini=addopts=]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--override-ini=addopts=]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--override-ini=addopts=]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--tb=short\\n-o=addopts=]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--tb=short\\n-o=addopts=]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--tb=short\\n-o=addopts=]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--timeout=999]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--timeout=999]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--timeout=999]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[-n=auto]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[-n=auto]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[-n=auto]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[-o]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[-o]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[-o]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[-p=no:flext_tests.enforcement_plugin]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[-p=no:flext_tests.enforcement_plugin]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[-p=no:flext_tests.enforcement_plugin]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[tests]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[tests]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[tests]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_run_budget_exceeds_the_derived_suite_stop_reserve",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_run_budget_exceeds_the_derived_suite_stop_reserve",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_run_budget_exceeds_the_derived_suite_stop_reserve",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_slow_budget_is_a_hard_typed_boundary",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_slow_budget_is_a_hard_typed_boundary",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_slow_budget_is_a_hard_typed_boundary",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_slow_budget_is_declared_and_bounded_by_the_run_wall",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_slow_budget_is_declared_and_bounded_by_the_run_wall",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_slow_budget_is_declared_and_bounded_by_the_run_wall",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_extraneous_raises_drops_the_emptied_section",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_extraneous_raises_drops_the_emptied_section",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_extraneous_raises_drops_the_emptied_section",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_extraneous_raises_keeps_the_following_section",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_extraneous_raises_keeps_the_following_section",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_extraneous_raises_keeps_the_following_section",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_extraneous_raises_leaves_only_its_own_entry",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_extraneous_raises_leaves_only_its_own_entry",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_extraneous_raises_leaves_only_its_own_entry",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_gate_owned_recipe_requires_its_runtime_owner[import-outside-top-level]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_gate_owned_recipe_requires_its_runtime_owner[import-outside-top-level]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_gate_owned_recipe_requires_its_runtime_owner[import-outside-top-level]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_gate_owned_recipe_requires_its_runtime_owner[line-too-long]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_gate_owned_recipe_requires_its_runtime_owner[line-too-long]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_gate_owned_recipe_requires_its_runtime_owner[line-too-long]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_raises_condition_drops_the_opener_its_placeholder_left",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_raises_condition_drops_the_opener_its_placeholder_left",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_raises_condition_drops_the_opener_its_placeholder_left",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_raises_condition_with_quotes_keeps_the_literal_intact",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_raises_condition_with_quotes_keeps_the_literal_intact",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_raises_condition_with_quotes_keeps_the_literal_intact",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_raises_section_states_the_message_condition",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_raises_section_states_the_message_condition",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_raises_section_states_the_message_condition",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_returns_section_takes_the_summary_object",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_returns_section_takes_the_summary_object",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_returns_section_takes_the_summary_object",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_summary_docstring_derives_from_the_name",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_summary_docstring_derives_from_the_name",
+        "phase": "call",
+        "outcome": "failed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_summary_docstring_derives_from_the_name",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_bump_version_invalid[invalid-bump-type]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_bump_version_invalid[invalid-bump-type]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_bump_version_invalid[invalid-bump-type]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_bump_version_invalid[invalid-version]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_bump_version_invalid[invalid-version]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_bump_version_invalid[invalid-version]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_bump_version_result_type",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_bump_version_result_type",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_bump_version_result_type",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_bump_version_valid[from-zero]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_bump_version_valid[from-zero]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_bump_version_valid[from-zero]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_bump_version_valid[major]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_bump_version_valid[major]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_bump_version_valid[major]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_bump_version_valid[minor]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_bump_version_valid[minor]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_bump_version_valid[minor]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_bump_version_valid[patch]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_bump_version_valid[patch]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_bump_version_valid[patch]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_current_workspace_version[empty-version]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_current_workspace_version[empty-version]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_current_workspace_version[empty-version]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_current_workspace_version[missing-file]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_current_workspace_version[missing-file]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_current_workspace_version[missing-file]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_current_workspace_version[missing-project-table]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_current_workspace_version[missing-project-table]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_current_workspace_version[missing-project-table]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_current_workspace_version[missing-version]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_current_workspace_version[missing-version]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_current_workspace_version[missing-version]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_current_workspace_version[success]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_current_workspace_version[success]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_current_workspace_version[success]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_parse_semver_invalid[invalid-format]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_parse_semver_invalid[invalid-format]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_parse_semver_invalid[invalid-format]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_parse_semver_invalid[legacy-development]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_parse_semver_invalid[legacy-development]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_parse_semver_invalid[legacy-development]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_parse_semver_invalid[legacy-release-candidate]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_parse_semver_invalid[legacy-release-candidate]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_parse_semver_invalid[legacy-release-candidate]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_parse_semver_invalid[non-numeric]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_parse_semver_invalid[non-numeric]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_parse_semver_invalid[non-numeric]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_parse_semver_invalid[unsupported-suffix]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_parse_semver_invalid[unsupported-suffix]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_parse_semver_invalid[unsupported-suffix]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_parse_semver_result_type",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_parse_semver_result_type",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_parse_semver_result_type",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_parse_semver_valid[development]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_parse_semver_valid[development]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_parse_semver_valid[development]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_parse_semver_valid[large]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_parse_semver_valid[large]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_parse_semver_valid[large]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_parse_semver_valid[release-candidate]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_parse_semver_valid[release-candidate]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_parse_semver_valid[release-candidate]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_parse_semver_valid[standard]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_parse_semver_valid[standard]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_parse_semver_valid[standard]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_parse_semver_valid[zero]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_parse_semver_valid[zero]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_parse_semver_valid[zero]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_render_project_version_preserves_layout_and_scopes_to_project",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_render_project_version_preserves_layout_and_scopes_to_project",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_render_project_version_preserves_layout_and_scopes_to_project",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_render_project_version_rejects_invalid_document",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_render_project_version_rejects_invalid_document",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_render_project_version_rejects_invalid_document",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_replace_project_version[missing-file]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_replace_project_version[missing-file]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_replace_project_version[missing-file]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_replace_project_version[missing-project-table]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_replace_project_version[missing-project-table]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_replace_project_version[missing-project-table]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_replace_project_version[success]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_replace_project_version[success]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_replace_project_version[success]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_version_plan_publishes_through_shared_codegen_publisher",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_version_plan_publishes_through_shared_codegen_publisher",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_version_plan_publishes_through_shared_codegen_publisher",
+        "phase": "teardown",
+        "outcome": "passed"
+      }
+    ],
+    "markdown_attempts": [],
+    "markdown_items": [],
+    "failed_cases": [
+      "tests.unit.gates.test_lint_recipes.TestsFlextInfraLintRecipes::test_summary_docstring_derives_from_the_name",
+      "tests.unit._utilities.test_rope_analysis.TestsFlextInfraRopeAnalysis::test_namespace_policy_retains_inherited_public_payload"
+    ],
+    "error_traces": [
+      "=== FAILURE: tests.unit.gates.test_lint_recipes.TestsFlextInfraLintRecipes::test_summary_docstring_derives_from_the_name ===\nValueError: sample.py: lint finding undocumented-public-init has no declared fix recipe\ntests/unit/gates/test_lint_recipes.py:348: in test_summary_docstring_derives_from_the_name\n    init_repaired = self._apply(\ntests/unit/gates/test_lint_recipes.py:74: in _apply\n    return u.Infra.apply_lint_recipes(\nsrc/flext_infra/_utilities/lint_recipes.py:289: in apply_lint_recipes\n    sections, removed, summaries, wants_notice = cls._collected_sections(\nsrc/flext_infra/_utilities/lint_recipes.py:342: in _collected_sections\n    recipe = cls._recipe_for(issue, recipes, path)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nsrc/flext_infra/_utilities/lint_recipes.py:622: in _recipe_for\n    raise ValueError(msg)\nE   ValueError: sample.py: lint finding undocumented-public-init has no declared fix recipe",
+      "=== FAILURE: tests.unit._utilities.test_rope_analysis.TestsFlextInfraRopeAnalysis::test_namespace_policy_retains_inherited_public_payload ===\nRuntimeError: Python source discovery requires a Git checkout: /home/marlonsc/tmp/pytest-of-marlonsc/pytest-15069/popen-gw0/test_namespace_policy_retains_0/demo-project\n{\"error\":\"Python source discovery requires a Git checkout: /home/marlonsc/tmp/pytest-of-marlonsc/pytest-15069/popen-gw0/test_namespace_policy_retains_0/demo-project\"}\ntests/unit/_utilities/test_rope_analysis.py:137: in test_namespace_policy_retains_inherited_public_payload\n    policy = u.Infra.policy(source, rope_project=rope_project)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nsrc/flext_infra/_utilities/namespace.py:998: in policy\n    policy = cls.publication_policy(\nsrc/flext_infra/_utilities/namespace.py:925: in publication_policy\n    project_layout = cls.layout(project_root, rope_project=rope_project)\n                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nsrc/flext_infra/_utilities/namespace.py:581: in layout\n    cls.repository_namespace_packages(\nsrc/flext_infra/_utilities/namespace.py:765: in repository_namespace_packages\n    ).unwrap()\n      ^^^^^^^^\n.venv/lib/python3.13/site-packages/flext_core/_result/unwrap.py:51: in unwrap\n    return self.value\n           ^^^^^^^^^^\n.venv/lib/python3.13/site-packages/flext_core/_result/behavior.py:58: in value\n    self._raise_failure()\n.venv/lib/python3.13/site-packages/flext_core/_result/behavior.py:73: in _raise_failure\n    raise error\n.venv/lib/python3.13/site-packages/flext_core/_result/construction.py:239: in create_from_callable\n    value = func()\n            ^^^^^^\nsrc/flext_infra/_utilities/_project/discovery_shape.py:67: in detected_project_kind\n    ) or cls._uses_flext_imports(repository_root, source_project):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nsrc/flext_infra/_utilities/_project/discovery_shape.py:112: in _uses_flext_imports\n    for resource in project.get_python_files():\n                    ^^^^^^^^^^^^^^^^^^^^^^^^^^\nsrc/flext_infra/_utilities/_rope/native_project.py:283: in get_python_files\n    for path in FlextInfraUtilitiesProjectDiscovery.discover_python_files(\nsrc/flext_infra/_utilities/project_discovery.py:645: in discover_python_files\n    for path in cls._walk_python_files(\nsrc/flext_infra/_utilities/project_discovery.py:713: in _walk_python_files\n    source_paths = cls._source_scope_paths(directory)\n                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nsrc/flext_infra/_utilities/project_discovery.py:817: in _source_scope_paths\n    raise RuntimeError(msg)\nE   RuntimeError: Python source discovery requires a Git checkout: /home/marlonsc/tmp/pytest-of-marlonsc/pytest-15069/popen-gw0/test_namespace_policy_retains_0/demo-project\nE   {\"error\":\"Python source discovery requires a Git checkout: /home/marlonsc/tmp/pytest-of-marlonsc/pytest-15069/popen-gw0/test_namespace_policy_retains_0/demo-project\"}"
+    ],
+    "warning_lines": [],
+    "skip_cases": [],
+    "slow_entries": [
+      "0.285000s | tests.unit.test_infra_versioning.TestsFlextInfraInfraVersioning::test_version_plan_publishes_through_shared_codegen_publisher",
+      "0.236000s | tests.unit._utilities.test_rope_analysis.TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[-Exception-pass-expected0]",
+      "0.218000s | tests.unit._utilities.test_rope_analysis.TestsFlextInfraRopeAnalysis::test_namespace_policy_retains_inherited_public_payload",
+      "0.082000s | tests.unit.gates.test_lint_recipes.TestsFlextInfraLintRecipes::test_gate_owned_recipe_requires_its_runtime_owner[import-outside-top-level]",
+      "0.065000s | tests.unit.deps.test_pytest_timeout_config.TestsFlextInfraPytestTimeoutConfig::test_native_scheduling_policy_round_trips[False-load]",
+      "0.062000s | tests.unit.test_infra_versioning.TestsFlextInfraInfraVersioning::test_parse_semver_valid[standard]",
+      "0.060000s | tests.unit.test_infra_versioning.TestsFlextInfraInfraVersioning::test_replace_project_version[success]",
+      "0.030000s | tests.unit.test_infra_versioning.TestsFlextInfraInfraVersioning::test_current_workspace_version[success]",
+      "0.023000s | tests.unit._utilities.test_rope_analysis.TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[declarations6-Left, Right-pass-expected6]",
+      "0.021000s | tests.unit._utilities.test_rope_analysis.TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[from .provider import Parent\\n-Parent, Exception-pass-expected7]",
+      "0.020000s | tests.unit._utilities.test_rope_analysis.TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[class Parent(Exception):\\n    class Shared:\\n        pass\\n-Parent-pass-expected3]",
+      "0.019000s | tests.unit.test_infra_versioning.TestsFlextInfraInfraVersioning::test_parse_semver_invalid[invalid-format]",
+      "0.018000s | tests.unit._utilities.test_rope_analysis.TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[class Parent:\\n    class Shared:\\n        pass\\n-Parent-class Shared:\\n        pass-expected5]",
+      "0.018000s | tests.unit._utilities.test_rope_analysis.TestsFlextInfraRopeAnalysis::test_inherited_namespace_cycle_is_not_a_builtin_boundary",
+      "0.017000s | tests.unit._utilities.test_rope_analysis.TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[class Parent:\\n    pass\\n-Parent-pass-expected2]",
+      "0.017000s | tests.unit._utilities.test_rope_analysis.TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[class Parent(object):\\n    class Shared:\\n        pass\\nclass Middle(Parent):\\n    pass\\n-Middle-pass-expected4]",
+      "0.016000s | tests.unit.test_infra_versioning.TestsFlextInfraInfraVersioning::test_replace_project_version[missing-file]",
+      "0.014000s | tests.unit.test_infra_versioning.TestsFlextInfraInfraVersioning::test_replace_project_version[missing-project-table]",
+      "0.013000s | tests.unit.test_infra_versioning.TestsFlextInfraInfraVersioning::test_current_workspace_version[missing-project-table]",
+      "0.013000s | tests.unit.test_infra_versioning.TestsFlextInfraInfraVersioning::test_current_workspace_version[empty-version]",
+      "0.013000s | tests.unit.gates.test_lint_recipes.TestsFlextInfraLintRecipes::test_summary_docstring_derives_from_the_name",
+      "0.013000s | tests.unit.gates.test_lint_recipes.TestsFlextInfraLintRecipes::test_returns_section_takes_the_summary_object",
+      "0.013000s | tests.unit._utilities.test_rope_analysis.TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[-object-pass-expected1]",
+      "0.012000s | tests.unit.test_infra_versioning.TestsFlextInfraInfraVersioning::test_current_workspace_version[missing-version]",
+      "0.012000s | tests.unit.test_infra_versioning.TestsFlextInfraInfraVersioning::test_current_workspace_version[missing-file]",
+      "0.012000s | tests.unit.gates.test_lint_recipes.TestsFlextInfraLintRecipes::test_raises_condition_drops_the_opener_its_placeholder_left",
+      "0.012000s | tests.unit.deps.test_pytest_timeout_config.TestsFlextInfraPytestTimeoutConfig::test_progress_policy_cannot_hide_item_names",
+      "0.012000s | tests.unit.deps.test_pytest_timeout_config.TestsFlextInfraPytestTimeoutConfig::test_arbitrary_valid_execution_policy_round_trips[1-6-1-1]",
+      "0.011000s | tests.unit.gates.test_lint_recipes.TestsFlextInfraLintRecipes::test_raises_section_states_the_message_condition",
+      "0.011000s | tests.unit.gates.test_lint_recipes.TestsFlextInfraLintRecipes::test_raises_condition_with_quotes_keeps_the_literal_intact",
+      "0.011000s | tests.unit.deps.test_pytest_timeout_config.TestsFlextInfraPytestTimeoutConfig::test_native_scheduling_policy_round_trips[True-load]",
+      "0.011000s | tests.unit.deps.test_pytest_timeout_config.TestsFlextInfraPytestTimeoutConfig::test_arbitrary_valid_execution_policy_round_trips[7-20-2-8]",
+      "0.010000s | tests.unit.test_infra_versioning.TestsFlextInfraInfraVersioning::test_bump_version_valid[patch]",
+      "0.010000s | tests.unit.test_infra_versioning.TestsFlextInfraInfraVersioning::test_bump_version_valid[minor]",
+      "0.010000s | tests.unit.gates.test_lint_recipes.TestsFlextInfraLintRecipes::test_gate_owned_recipe_requires_its_runtime_owner[line-too-long]",
+      "0.010000s | tests.unit.gates.test_lint_recipes.TestsFlextInfraLintRecipes::test_extraneous_raises_leaves_only_its_own_entry",
+      "0.010000s | tests.unit.gates.test_lint_recipes.TestsFlextInfraLintRecipes::test_extraneous_raises_keeps_the_following_section",
+      "0.010000s | tests.unit.gates.test_lint_recipes.TestsFlextInfraLintRecipes::test_extraneous_raises_drops_the_emptied_section",
+      "0.010000s | tests.unit.deps.test_pytest_timeout_config.TestsFlextInfraPytestTimeoutConfig::test_slow_budget_is_a_hard_typed_boundary",
+      "0.010000s | tests.unit.deps.test_pytest_timeout_config.TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[tests]",
+      "0.010000s | tests.unit.deps.test_pytest_timeout_config.TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[-o]",
+      "0.010000s | tests.unit.deps.test_pytest_timeout_config.TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--tb=short\\n-o=addopts=]",
+      "0.010000s | tests.unit.deps.test_pytest_timeout_config.TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--cov=unowned]",
+      "0.010000s | tests.unit.deps.test_pytest_timeout_config.TestsFlextInfraPytestTimeoutConfig::test_reordering_refuses_string_coercion",
+      "0.010000s | tests.unit.deps.test_pytest_timeout_config.TestsFlextInfraPytestTimeoutConfig::test_pytest_ini_override_is_forbidden[--no-loadscope-reorder]",
+      "0.010000s | tests.unit.deps.test_pytest_timeout_config.TestsFlextInfraPytestTimeoutConfig::test_operator_caps_are_hard_typed_boundaries[slow-timeout-seconds]",
+      "0.010000s | tests.unit.deps.test_pytest_timeout_config.TestsFlextInfraPytestTimeoutConfig::test_native_scheduling_policy_round_trips[True-loadscope]",
+      "0.010000s | tests.unit.deps.test_pytest_timeout_config.TestsFlextInfraPytestTimeoutConfig::test_native_scheduling_policy_round_trips[False-loadscope]",
+      "0.010000s | tests.unit.deps.test_pytest_timeout_config.TestsFlextInfraPytestTimeoutConfig::test_long_execution_budget_is_admitted_by_the_operator_caps",
+      "0.010000s | tests.unit.deps.test_pytest_timeout_config.TestsFlextInfraPytestTimeoutConfig::test_deadlines_cannot_exceed_operator_caps[ordinary-timeout-seconds-3]",
+      "0.009000s | tests.unit.test_infra_versioning.TestsFlextInfraInfraVersioning::test_render_project_version_preserves_layout_and_scopes_to_project",
+      "0.009000s | tests.unit.test_infra_versioning.TestsFlextInfraInfraVersioning::test_parse_semver_invalid[unsupported-suffix]",
+      "0.009000s | tests.unit.test_infra_versioning.TestsFlextInfraInfraVersioning::test_bump_version_invalid[invalid-bump-type]",
+      "0.009000s | tests.unit.deps.test_pytest_timeout_config.TestsFlextInfraPytestTimeoutConfig::test_slow_budget_is_declared_and_bounded_by_the_run_wall",
+      "0.009000s | tests.unit.deps.test_pytest_timeout_config.TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[-p=no:flext_tests.enforcement_plugin]",
+      "0.009000s | tests.unit.deps.test_pytest_timeout_config.TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[-n=auto]",
+      "0.009000s | tests.unit.deps.test_pytest_timeout_config.TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--timeout=999]",
+      "0.009000s | tests.unit.deps.test_pytest_timeout_config.TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--no-loadscope-reorder]",
+      "0.009000s | tests.unit.deps.test_pytest_timeout_config.TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--loadscope-reorder]",
+      "0.009000s | tests.unit.deps.test_pytest_timeout_config.TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--junitxml=elsewhere.xml]",
+      "0.009000s | tests.unit.deps.test_pytest_timeout_config.TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--dist=load]",
+      "0.009000s | tests.unit.deps.test_pytest_timeout_config.TestsFlextInfraPytestTimeoutConfig::test_pytest_ini_override_is_forbidden[--override-ini=addopts=]",
+      "0.009000s | tests.unit.deps.test_pytest_timeout_config.TestsFlextInfraPytestTimeoutConfig::test_project_run_budget_overrides_are_rejected",
+      "0.009000s | tests.unit.deps.test_pytest_timeout_config.TestsFlextInfraPytestTimeoutConfig::test_policy_round_trips_through_its_production_model",
+      "0.009000s | tests.unit.deps.test_pytest_timeout_config.TestsFlextInfraPytestTimeoutConfig::test_operator_caps_are_hard_typed_boundaries[termination-grace-seconds]",
+      "0.009000s | tests.unit.deps.test_pytest_timeout_config.TestsFlextInfraPytestTimeoutConfig::test_operator_caps_are_hard_typed_boundaries[run-timeout-seconds]",
+      "0.009000s | tests.unit.deps.test_pytest_timeout_config.TestsFlextInfraPytestTimeoutConfig::test_deadlines_cannot_exceed_operator_caps[slow-timeout-seconds-1801]",
+      "0.008000s | tests.unit.test_infra_versioning.TestsFlextInfraInfraVersioning::test_parse_semver_valid[release-candidate]",
+      "0.008000s | tests.unit.test_infra_versioning.TestsFlextInfraInfraVersioning::test_parse_semver_invalid[non-numeric]",
+      "0.008000s | tests.unit.test_infra_versioning.TestsFlextInfraInfraVersioning::test_parse_semver_invalid[legacy-development]",
+      "0.008000s | tests.unit.test_infra_versioning.TestsFlextInfraInfraVersioning::test_bump_version_invalid[invalid-version]",
+      "0.008000s | tests.unit.deps.test_pytest_timeout_config.TestsFlextInfraPytestTimeoutConfig::test_run_budget_exceeds_the_derived_suite_stop_reserve",
+      "0.008000s | tests.unit.deps.test_pytest_timeout_config.TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--override-ini=addopts=]",
+      "0.008000s | tests.unit.deps.test_pytest_timeout_config.TestsFlextInfraPytestTimeoutConfig::test_pytest_ini_override_is_forbidden[-o]",
+      "0.008000s | tests.unit.deps.test_pytest_timeout_config.TestsFlextInfraPytestTimeoutConfig::test_pytest_ini_override_is_forbidden[--timeout=0]",
+      "0.007000s | tests.unit.test_infra_versioning.TestsFlextInfraInfraVersioning::test_render_project_version_rejects_invalid_document",
+      "0.007000s | tests.unit.test_infra_versioning.TestsFlextInfraInfraVersioning::test_parse_semver_valid[zero]",
+      "0.007000s | tests.unit.test_infra_versioning.TestsFlextInfraInfraVersioning::test_parse_semver_valid[large]",
+      "0.007000s | tests.unit.test_infra_versioning.TestsFlextInfraInfraVersioning::test_parse_semver_valid[development]",
+      "0.007000s | tests.unit.test_infra_versioning.TestsFlextInfraInfraVersioning::test_parse_semver_invalid[legacy-release-candidate]",
+      "0.007000s | tests.unit.test_infra_versioning.TestsFlextInfraInfraVersioning::test_bump_version_valid[major]",
+      "0.007000s | tests.unit.test_infra_versioning.TestsFlextInfraInfraVersioning::test_bump_version_valid[from-zero]",
+      "0.007000s | tests.unit.test_infra_versioning.TestsFlextInfraInfraVersioning::test_bump_version_result_type",
+      "0.007000s | tests.unit.deps.test_pytest_timeout_config.TestsFlextInfraPytestTimeoutConfig::test_pytest_ini_override_is_forbidden[--loadscope-reorder]",
+      "0.007000s | tests.unit.deps.test_pytest_timeout_config.TestsFlextInfraPytestTimeoutConfig::test_deadlines_cannot_exceed_operator_caps[run-timeout-seconds-1801]",
+      "0.006000s | tests.unit.test_infra_versioning.TestsFlextInfraInfraVersioning::test_parse_semver_result_type",
+      "0.006000s | tests.unit.deps.test_pytest_timeout_config.TestsFlextInfraPytestTimeoutConfig::test_pytest_ini_override_is_forbidden[-o=addopts=]",
+      "0.006000s | tests.unit.deps.test_pytest_timeout_config.TestsFlextInfraPytestTimeoutConfig::test_pytest_ini_override_is_forbidden[--override-ini]",
+      "0.006000s | tests.unit.deps.test_pytest_timeout_config.TestsFlextInfraPytestTimeoutConfig::test_ci_must_not_exclude_slow_items"
+    ]
+  },
+  "cache_hit": false,
+  "violations": [
+    "selected node IDs differ from executed node IDs"
+  ]
+}

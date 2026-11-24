@@ -1,0 +1,28 @@
+{
+  "errors": [
+    {
+      "line": 19,
+      "column": 5,
+      "stop_line": 19,
+      "stop_column": 24,
+      "path": "src/flext_test_project/consumer.py",
+      "code": -2,
+      "name": "missing-attribute",
+      "description": "Object of class `Sequence` has no attribute `append`",
+      "concise_description": "Object of class `Sequence` has no attribute `append`",
+      "severity": "error"
+    },
+    {
+      "line": 22,
+      "column": 20,
+      "stop_line": 22,
+      "stop_column": 23,
+      "path": "src/flext_test_project/consumer.py",
+      "code": -2,
+      "name": "bad-argument-type",
+      "description": "Argument `list[int]` is not assignable to parameter `values` with type `Iterable[LaxStr]` in function `Payload.__init__`",
+      "concise_description": "Argument `list[int]` is not assignable to parameter `values` with type `Iterable[LaxStr]` in function `Payload.__init__`",
+      "severity": "error"
+    }
+  ]
+}

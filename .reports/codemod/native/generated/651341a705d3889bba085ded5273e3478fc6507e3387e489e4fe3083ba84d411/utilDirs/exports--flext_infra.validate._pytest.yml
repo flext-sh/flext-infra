@@ -1,0 +1,1 @@
+{"id":"exports--flext_infra.validate._pytest","language":"Python","rule":{"regex":"^(?:FlextInfraValidatePytestDiagXml)$"}}

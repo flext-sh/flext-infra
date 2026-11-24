@@ -1,0 +1,1 @@
+{"id":"exports--flext_infra._utilities._protocol_models","language":"Python","rule":{"regex":"^(?:FlextInfraUtilitiesModelsProtocolBootstrapAdmission|FlextInfraUtilitiesModelsProtocolBootstrapPackage|FlextInfraUtilitiesModelsProtocolBootstrapSources)$"}}

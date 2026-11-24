@@ -1,0 +1,10 @@
+{
+  "outcome": {
+    "raw_return_code": 0,
+    "timed_out": false,
+    "forwarded_signal": null
+  },
+  "duration": 1.5027506740298122,
+  "stdout": "13cda59d9eae4bdef8546f68c52617e2362fc939995e3adf25e458a9f31e788f\n",
+  "stderr": ""
+}

@@ -1,0 +1,16 @@
+{
+  "errors": [
+    {
+      "line": 8,
+      "column": 22,
+      "stop_line": 8,
+      "stop_column": 36,
+      "path": "src/flext_test_project/consumer.py",
+      "code": -2,
+      "name": "invalid-annotation",
+      "description": "Function call cannot be used in annotations",
+      "concise_description": "Function call cannot be used in annotations",
+      "severity": "error"
+    }
+  ]
+}

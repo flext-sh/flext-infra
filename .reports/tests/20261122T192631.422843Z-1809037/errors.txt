@@ -1,0 +1,10 @@
+=== FAILURE: tests.unit.deps.test_pytest_timeout_config.TestsFlextInfraPytestTimeoutConfig::test_long_execution_budget_is_admitted_by_the_operator_caps ===
+pydantic_core._pydantic_core.ValidationError: 1 validation error for PytestConfig
+  Value error, pytest run timeout must exceed the suite stop reserve [type=value_error, input_value={'ordinary-timeout-second...'_clear_make_ci_token')}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.14/v/value_error
+tests/unit/deps/test_pytest_timeout_config.py:143: in test_long_execution_budget_is_admitted_by_the_operator_caps
+    admitted = type(policy).model_validate(payload)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   pydantic_core._pydantic_core.ValidationError: 1 validation error for PytestConfig
+E     Value error, pytest run timeout must exceed the suite stop reserve [type=value_error, input_value={'ordinary-timeout-second...'_clear_make_ci_token')}, input_type=dict]
+E       For further information visit https://errors.pydantic.dev/2.14/v/value_error

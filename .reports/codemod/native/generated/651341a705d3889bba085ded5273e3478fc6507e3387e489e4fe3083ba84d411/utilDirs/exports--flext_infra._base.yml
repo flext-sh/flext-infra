@@ -1,0 +1,1 @@
+{"id":"exports--flext_infra._base","language":"Python","rule":{"regex":"^(?:FlextInfraBasePayload|FlextInfraBaseProjects)$"}}

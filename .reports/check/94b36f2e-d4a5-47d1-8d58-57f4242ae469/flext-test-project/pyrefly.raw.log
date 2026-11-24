@@ -1,0 +1,40 @@
+{
+  "errors": [
+    {
+      "line": 5,
+      "column": 30,
+      "stop_line": 5,
+      "stop_column": 56,
+      "path": "src/flext_test_project/consumer.py",
+      "code": -2,
+      "name": "bad-assignment",
+      "description": "`set[Unknown]` is not assignable to `frozenset[str]`",
+      "concise_description": "`set[Unknown]` is not assignable to `frozenset[str]`",
+      "severity": "error"
+    },
+    {
+      "line": 6,
+      "column": 9,
+      "stop_line": 6,
+      "stop_column": 55,
+      "path": "src/flext_test_project/consumer.py",
+      "code": -2,
+      "name": "not-callable",
+      "description": "Expected a callable, got `None`",
+      "concise_description": "Expected a callable, got `None`",
+      "severity": "error"
+    },
+    {
+      "line": 6,
+      "column": 55,
+      "stop_line": 6,
+      "stop_column": 57,
+      "path": "src/flext_test_project/consumer.py",
+      "code": -2,
+      "name": "bad-argument-count",
+      "description": "Expected 1 more positional argument",
+      "concise_description": "Expected 1 more positional argument",
+      "severity": "error"
+    }
+  ]
+}

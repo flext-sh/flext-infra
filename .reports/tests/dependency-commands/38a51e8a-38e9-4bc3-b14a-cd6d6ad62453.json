@@ -1,0 +1,10 @@
+{
+  "outcome": {
+    "raw_return_code": 2,
+    "timed_out": false,
+    "forwarded_signal": null
+  },
+  "duration": 0.6501967769581825,
+  "stdout": "",
+  "stderr": "mise trusted ~/tmp/pytest-of-marlonsc/pytest-15055/popen-gw0/mws454pn12b1d413ptgv0go0/infra-checkouts/builtin/flext-infra\nno oauth token found for github.com\nERROR: the declared GitHub credential command gh auth token exited 1 without a token; refusing anonymous network access\nmake[1]: *** [/home/marlonsc/tmp/pytest-of-marlonsc/pytest-15055/popen-gw0/mws454pn12b1d413ptgv0go0/infra-checkouts/builtin/flext-infra/Makefile:1217: _builtin_require_github_credential] Error 2\nmake: *** [Makefile:983: setup] Error 2\n"
+}

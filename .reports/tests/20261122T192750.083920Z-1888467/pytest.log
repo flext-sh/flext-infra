@@ -1,0 +1,271 @@
+================================================= test session starts ==================================================
+platform linux -- Python 3.13.18, pytest-9.2.0, pluggy-1.7.0 -- /home/marlonsc/tmp/s221122/infra/.venv/bin/python
+cachedir: .pytest_cache
+hypothesis profile 'ci' -> database=None, deadline=None, print_blob=True, derandomize=True, suppress_health_check=(HealthCheck.too_slow,)
+benchmark: 5.3.1 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+Using --randomly-seed=3680122190
+testmon: selection deactivated, environment: toolchain-2c96107a0cd9-6a8897dd-76195a67
+rootdir: /home/marlonsc/tmp/s221122/infra
+configfile: pyproject.toml
+plugins: flext-tests-0.12.0, hypothesis-6.170.15, anyio-4.16.0, asyncio-1.4.1.post1, benchmark-5.3.1, cov-7.1.0, markdown-docs-0.9.2, randomly-5.1.0, reportlog-1.0.0, testmon-2.3.0, timeout-2.4.0, xdist-3.8.0, platformdirs-4.14.5, flext-infra-0.12.3
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
+timeout: 2.0s
+timeout method: signal
+timeout func_only: True
+created: 4/4 workers
+4 workers [2389 items]
+
+scheduling tests via LoadScopeScheduling
+
+tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_gate_owned_recipe_requires_its_runtime_owner[import-outside-top-level] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_native_scheduling_policy_round_trips[False-load] 
+tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_parse_semver_valid[standard] 
+tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[-Exception-pass-expected0] 
+[gw3] [  0%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_native_scheduling_policy_round_trips[False-load] 
+[gw1] [  0%] PASSED tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_parse_semver_valid[standard] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_native_scheduling_policy_round_trips[False-loadscope] 
+tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_parse_semver_valid[development] 
+[gw3] [  0%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_native_scheduling_policy_round_trips[False-loadscope] 
+[gw1] [  0%] PASSED tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_parse_semver_valid[development] 
+[gw2] [  0%] PASSED tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_gate_owned_recipe_requires_its_runtime_owner[import-outside-top-level] 
+tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_parse_semver_valid[release-candidate] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_native_scheduling_policy_round_trips[True-load] 
+[gw1] [  0%] PASSED tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_parse_semver_valid[release-candidate] 
+tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_gate_owned_recipe_requires_its_runtime_owner[line-too-long] 
+[gw3] [  0%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_native_scheduling_policy_round_trips[True-load] 
+tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_parse_semver_valid[zero] 
+[gw2] [  0%] PASSED tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_gate_owned_recipe_requires_its_runtime_owner[line-too-long] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_native_scheduling_policy_round_trips[True-loadscope] 
+[gw1] [  0%] PASSED tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_parse_semver_valid[zero] 
+tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_returns_section_takes_the_summary_object 
+tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_parse_semver_valid[large] 
+[gw3] [  0%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_native_scheduling_policy_round_trips[True-loadscope] 
+[gw1] [  0%] PASSED tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_parse_semver_valid[large] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reordering_refuses_string_coercion 
+[gw2] [  0%] PASSED tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_returns_section_takes_the_summary_object 
+tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_parse_semver_invalid[invalid-format] 
+tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_raises_section_states_the_message_condition 
+[gw3] [  0%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reordering_refuses_string_coercion 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_policy_round_trips_through_its_production_model 
+[gw2] [  0%] PASSED tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_raises_section_states_the_message_condition 
+[gw3] [  0%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_policy_round_trips_through_its_production_model 
+[gw1] [  0%] PASSED tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_parse_semver_invalid[invalid-format] 
+tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_extraneous_raises_leaves_only_its_own_entry 
+tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_parse_semver_invalid[non-numeric] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_arbitrary_valid_execution_policy_round_trips[1-6-1-1] 
+[gw1] [  0%] PASSED tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_parse_semver_invalid[non-numeric] 
+[gw2] [  0%] PASSED tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_extraneous_raises_leaves_only_its_own_entry 
+[gw3] [  0%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_arbitrary_valid_execution_policy_round_trips[1-6-1-1] 
+tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_parse_semver_invalid[unsupported-suffix] 
+tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_extraneous_raises_drops_the_emptied_section 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_arbitrary_valid_execution_policy_round_trips[7-20-2-8] 
+[gw1] [  0%] PASSED tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_parse_semver_invalid[unsupported-suffix] 
+[gw2] [  0%] PASSED tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_extraneous_raises_drops_the_emptied_section 
+tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_parse_semver_invalid[legacy-development] 
+[gw3] [  0%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_arbitrary_valid_execution_policy_round_trips[7-20-2-8] 
+tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_extraneous_raises_keeps_the_following_section 
+[gw1] [  0%] PASSED tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_parse_semver_invalid[legacy-development] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_operator_caps_are_hard_typed_boundaries[slow-timeout-seconds] 
+[gw2] [  1%] PASSED tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_extraneous_raises_keeps_the_following_section 
+tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_parse_semver_invalid[legacy-release-candidate] 
+[gw3] [  1%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_operator_caps_are_hard_typed_boundaries[slow-timeout-seconds] 
+[gw1] [  1%] PASSED tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_parse_semver_invalid[legacy-release-candidate] 
+tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_raises_condition_with_quotes_keeps_the_literal_intact 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_operator_caps_are_hard_typed_boundaries[run-timeout-seconds] 
+tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_parse_semver_result_type 
+[gw2] [  1%] PASSED tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_raises_condition_with_quotes_keeps_the_literal_intact 
+[gw1] [  1%] PASSED tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_parse_semver_result_type 
+[gw3] [  1%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_operator_caps_are_hard_typed_boundaries[run-timeout-seconds] 
+tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_bump_version_valid[major] 
+tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_raises_condition_drops_the_opener_its_placeholder_left 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_operator_caps_are_hard_typed_boundaries[termination-grace-seconds] 
+[gw1] [  1%] PASSED tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_bump_version_valid[major] 
+tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_bump_version_valid[minor] 
+[gw3] [  1%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_operator_caps_are_hard_typed_boundaries[termination-grace-seconds] 
+[gw2] [  1%] PASSED tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_raises_condition_drops_the_opener_its_placeholder_left 
+[gw1] [  1%] PASSED tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_bump_version_valid[minor] 
+tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_summary_docstring_derives_from_the_name 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_deadlines_cannot_exceed_operator_caps[ordinary-timeout-seconds-3] 
+tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_bump_version_valid[patch] 
+[gw3] [  1%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_deadlines_cannot_exceed_operator_caps[ordinary-timeout-seconds-3] 
+[gw1] [  1%] PASSED tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_bump_version_valid[patch] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_deadlines_cannot_exceed_operator_caps[slow-timeout-seconds-1801] 
+tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_bump_version_valid[from-zero] 
+[gw3] [  1%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_deadlines_cannot_exceed_operator_caps[slow-timeout-seconds-1801] 
+[gw1] [  1%] PASSED tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_bump_version_valid[from-zero] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_deadlines_cannot_exceed_operator_caps[run-timeout-seconds-1801] 
+tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_bump_version_invalid[invalid-bump-type] 
+[gw3] [  1%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_deadlines_cannot_exceed_operator_caps[run-timeout-seconds-1801] 
+[gw1] [  1%] PASSED tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_bump_version_invalid[invalid-bump-type] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_long_execution_budget_is_admitted_by_the_operator_caps 
+tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_bump_version_invalid[invalid-version] 
+[gw3] [  1%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_long_execution_budget_is_admitted_by_the_operator_caps 
+[gw1] [  1%] PASSED tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_bump_version_invalid[invalid-version] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_ci_must_not_exclude_slow_items 
+tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_bump_version_result_type 
+[gw3] [  1%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_ci_must_not_exclude_slow_items 
+[gw1] [  1%] PASSED tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_bump_version_result_type 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_pytest_ini_override_is_forbidden[-o] 
+tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_current_workspace_version[success] 
+[gw3] [  1%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_pytest_ini_override_is_forbidden[-o] 
+[gw0] [  1%] PASSED tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[-Exception-pass-expected0] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_pytest_ini_override_is_forbidden[-o=addopts=] 
+tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[-object-pass-expected1] 
+[gw3] [  1%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_pytest_ini_override_is_forbidden[-o=addopts=] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_pytest_ini_override_is_forbidden[--override-ini] 
+[gw3] [  1%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_pytest_ini_override_is_forbidden[--override-ini] 
+[gw2] [  2%] FAILED tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_summary_docstring_derives_from_the_name 
+[gw0] [  2%] PASSED tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[-object-pass-expected1] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_pytest_ini_override_is_forbidden[--override-ini=addopts=] 
+tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[class Parent:\n    pass\n-Parent-pass-expected2] 
+[gw1] [  2%] PASSED tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_current_workspace_version[success] 
+[gw3] [  2%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_pytest_ini_override_is_forbidden[--override-ini=addopts=] 
+tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_current_workspace_version[missing-file] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_pytest_ini_override_is_forbidden[--loadscope-reorder] 
+[gw0] [  2%] PASSED tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[class Parent:\n    pass\n-Parent-pass-expected2] 
+[gw3] [  2%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_pytest_ini_override_is_forbidden[--loadscope-reorder] 
+[gw1] [  2%] PASSED tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_current_workspace_version[missing-file] 
+tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[class Parent(Exception):\n    class Shared:\n        pass\n-Parent-pass-expected3] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_pytest_ini_override_is_forbidden[--no-loadscope-reorder] 
+tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_current_workspace_version[missing-project-table] 
+[gw3] [  2%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_pytest_ini_override_is_forbidden[--no-loadscope-reorder] 
+[gw1] [  2%] PASSED tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_current_workspace_version[missing-project-table] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_pytest_ini_override_is_forbidden[--timeout=0] 
+[gw0] [  2%] PASSED tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[class Parent(Exception):\n    class Shared:\n        pass\n-Parent-pass-expected3] 
+tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_current_workspace_version[missing-version] 
+[gw3] [  2%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_pytest_ini_override_is_forbidden[--timeout=0] 
+tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[class Parent(object):\n    class Shared:\n        pass\nclass Middle(Parent):\n    pass\n-Middle-pass-expected4] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_run_budget_exceeds_the_derived_suite_stop_reserve 
+[gw1] [  2%] PASSED tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_current_workspace_version[missing-version] 
+[gw3] [  2%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_run_budget_exceeds_the_derived_suite_stop_reserve 
+tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_current_workspace_version[empty-version] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_slow_budget_is_declared_and_bounded_by_the_run_wall 
+[gw0] [  2%] PASSED tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[class Parent(object):\n    class Shared:\n        pass\nclass Middle(Parent):\n    pass\n-Middle-pass-expected4] 
+[gw3] [  2%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_slow_budget_is_declared_and_bounded_by_the_run_wall 
+tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[class Parent:\n    class Shared:\n        pass\n-Parent-class Shared:\n        pass-expected5] 
+[gw1] [  2%] PASSED tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_current_workspace_version[empty-version] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_slow_budget_is_a_hard_typed_boundary 
+tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_replace_project_version[success] 
+[gw3] [  2%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_slow_budget_is_a_hard_typed_boundary 
+[gw0] [  2%] PASSED tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[class Parent:\n    class Shared:\n        pass\n-Parent-class Shared:\n        pass-expected5] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_project_run_budget_overrides_are_rejected 
+tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[declarations6-Left, Right-pass-expected6] 
+[gw3] [  2%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_project_run_budget_overrides_are_rejected 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_progress_policy_cannot_hide_item_names 
+[gw3] [  2%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_progress_policy_cannot_hide_item_names 
+[gw0] [  2%] PASSED tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[declarations6-Left, Right-pass-expected6] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[tests] 
+tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[from .provider import Parent\n-Parent, Exception-pass-expected7] 
+[gw3] [  2%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[tests] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[-o] 
+[gw3] [  2%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[-o] 
+[gw1] [  2%] PASSED tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_replace_project_version[success] 
+[gw0] [  3%] PASSED tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[from .provider import Parent\n-Parent, Exception-pass-expected7] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--override-ini=addopts=] 
+tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_replace_project_version[missing-file] 
+tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespace_cycle_is_not_a_builtin_boundary 
+[gw3] [  3%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--override-ini=addopts=] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--timeout=999] 
+[gw1] [  3%] PASSED tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_replace_project_version[missing-file] 
+[gw3] [  3%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--timeout=999] 
+[gw0] [  3%] PASSED tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespace_cycle_is_not_a_builtin_boundary 
+tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_replace_project_version[missing-project-table] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[-n=auto] 
+tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_namespace_policy_retains_inherited_public_payload 
+[gw3] [  3%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[-n=auto] 
+[gw1] [  3%] PASSED tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_replace_project_version[missing-project-table] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--dist=load] 
+tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_render_project_version_preserves_layout_and_scopes_to_project 
+[gw3] [  3%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--dist=load] 
+[gw1] [  3%] PASSED tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_render_project_version_preserves_layout_and_scopes_to_project 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--loadscope-reorder] 
+tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_render_project_version_rejects_invalid_document 
+[gw3] [  3%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--loadscope-reorder] 
+[gw1] [  3%] PASSED tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_render_project_version_rejects_invalid_document 
+tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_version_plan_publishes_through_shared_codegen_publisher 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--no-loadscope-reorder] 
+[gw3] [  3%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--no-loadscope-reorder] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[-p=no:flext_tests.enforcement_plugin] 
+[gw3] [  3%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[-p=no:flext_tests.enforcement_plugin] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--junitxml=elsewhere.xml] 
+[gw3] [  3%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--junitxml=elsewhere.xml] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--cov=unowned] 
+[gw3] [  3%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--cov=unowned] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--tb=short\n-o=addopts=] 
+[gw3] [  3%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--tb=short\n-o=addopts=] 
+[gw0] [  3%] FAILED tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_namespace_policy_retains_inherited_public_payload 
+[gw1] [  3%] PASSED tests/unit/test_infra_versioning.py::TestsFlextInfraInfraVersioning::test_version_plan_publishes_through_shared_codegen_publisher 
+
+======================================================= FAILURES =======================================================
+_______________________ TestsFlextInfraLintRecipes.test_summary_docstring_derives_from_the_name ________________________
+[gw2] linux -- Python 3.13.18 /home/marlonsc/tmp/s221122/infra/.venv/bin/python
+tests/unit/gates/test_lint_recipes.py:348: in test_summary_docstring_derives_from_the_name
+    init_repaired = self._apply(
+tests/unit/gates/test_lint_recipes.py:74: in _apply
+    return u.Infra.apply_lint_recipes(
+src/flext_infra/_utilities/lint_recipes.py:289: in apply_lint_recipes
+    sections, removed, summaries, wants_notice = cls._collected_sections(
+src/flext_infra/_utilities/lint_recipes.py:342: in _collected_sections
+    recipe = cls._recipe_for(issue, recipes, path)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/lint_recipes.py:622: in _recipe_for
+    raise ValueError(msg)
+E   ValueError: sample.py: lint finding undocumented-public-init has no declared fix recipe
+__________________ TestsFlextInfraRopeAnalysis.test_namespace_policy_retains_inherited_public_payload __________________
+[gw0] linux -- Python 3.13.18 /home/marlonsc/tmp/s221122/infra/.venv/bin/python
+tests/unit/_utilities/test_rope_analysis.py:137: in test_namespace_policy_retains_inherited_public_payload
+    policy = u.Infra.policy(source, rope_project=rope_project)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/namespace.py:998: in policy
+    policy = cls.publication_policy(
+src/flext_infra/_utilities/namespace.py:925: in publication_policy
+    project_layout = cls.layout(project_root, rope_project=rope_project)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/namespace.py:581: in layout
+    cls.repository_namespace_packages(
+src/flext_infra/_utilities/namespace.py:765: in repository_namespace_packages
+    ).unwrap()
+      ^^^^^^^^
+.venv/lib/python3.13/site-packages/flext_core/_result/unwrap.py:51: in unwrap
+    return self.value
+           ^^^^^^^^^^
+.venv/lib/python3.13/site-packages/flext_core/_result/behavior.py:58: in value
+    self._raise_failure()
+.venv/lib/python3.13/site-packages/flext_core/_result/behavior.py:73: in _raise_failure
+    raise error
+.venv/lib/python3.13/site-packages/flext_core/_result/construction.py:239: in create_from_callable
+    value = func()
+            ^^^^^^
+src/flext_infra/_utilities/_project/discovery_shape.py:67: in detected_project_kind
+    ) or cls._uses_flext_imports(repository_root, source_project):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_project/discovery_shape.py:112: in _uses_flext_imports
+    for resource in project.get_python_files():
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/native_project.py:283: in get_python_files
+    for path in FlextInfraUtilitiesProjectDiscovery.discover_python_files(
+src/flext_infra/_utilities/project_discovery.py:645: in discover_python_files
+    for path in cls._walk_python_files(
+src/flext_infra/_utilities/project_discovery.py:713: in _walk_python_files
+    source_paths = cls._source_scope_paths(directory)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/project_discovery.py:817: in _source_scope_paths
+    raise RuntimeError(msg)
+E   RuntimeError: Python source discovery requires a Git checkout: /home/marlonsc/tmp/pytest-of-marlonsc/pytest-15069/popen-gw0/test_namespace_policy_retains_0/demo-project
+E   {"error":"Python source discovery requires a Git checkout: /home/marlonsc/tmp/pytest-of-marlonsc/pytest-15069/popen-gw0/test_namespace_policy_retains_0/demo-project"}
+---- generated xml file: /home/marlonsc/tmp/s221122/infra/.reports/tests/20261122T192750.083920Z-1888467/junit.xml -----
+- generated report log file: /home/marlonsc/tmp/s221122/infra/.reports/tests/20261122T192750.083920Z-1888467/events.jsonl -
+---------------------------------------------------- flext-enforce -----------------------------------------------------
+runtime warnings captured: 0
+--------------------------------------------------- flext slow tests ---------------------------------------------------
+no test near the ordinary or slow limit
+================================================= slowest 25 durations =================================================
+
+(25 durations < 2s hidden.)
+=============================================== short test summary info ================================================
+FAILED tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_summary_docstring_derives_from_the_name - ValueError: sample.py: lint finding undocumented-public-init has no declared fix recipe
+FAILED tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_namespace_policy_retains_inherited_public_payload - RuntimeError: Python source discovery requires a Git checkout: /home/marlonsc/tmp/pytest-of-marlonsc/pytest-15069/popen-gw0/test_namespace_policy_retains_0/demo-project
+{"error":"Python source discovery requires a Git checkout: /home/marlonsc/tmp/pytest-of-marlonsc/pytest-15069/popen-gw0/test_namespace_policy_retains_0/demo-project"}
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 2 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! xdist.dsession.Interrupted: stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+============================================ 2 failed, 87 passed in 18.41s =============================================

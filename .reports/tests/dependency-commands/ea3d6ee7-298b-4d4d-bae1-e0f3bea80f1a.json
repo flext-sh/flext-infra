@@ -1,0 +1,10 @@
+{
+  "outcome": {
+    "raw_return_code": 2,
+    "timed_out": false,
+    "forwarded_signal": null
+  },
+  "duration": 0.012696244986727834,
+  "stdout": "",
+  "stderr": "Makefile:105: *** Resolution and member propagation are forbidden in CI.  Pare.\n"
+}

@@ -1,0 +1,16 @@
+{
+  "errors": [
+    {
+      "line": 14,
+      "column": 20,
+      "stop_line": 14,
+      "stop_column": 29,
+      "path": "src/flext_test_project/consumer.py",
+      "code": -2,
+      "name": "bad-argument-type",
+      "description": "Argument `list[str]` is not assignable to parameter `values` with type `Iterable[Literal['entry']]` in function `Payload.__init__`",
+      "concise_description": "Argument `list[str]` is not assignable to parameter `values` with type `Iterable[Literal['entry']]` in function `Payload.__init__`",
+      "severity": "error"
+    }
+  ]
+}

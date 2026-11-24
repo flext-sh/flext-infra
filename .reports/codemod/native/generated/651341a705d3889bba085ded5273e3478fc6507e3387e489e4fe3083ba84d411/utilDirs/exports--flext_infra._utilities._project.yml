@@ -1,0 +1,1 @@
+{"id":"exports--flext_infra._utilities._project","language":"Python","rule":{"regex":"^(?:FlextInfraUtilitiesProjectDiscoveryCandidates|FlextInfraUtilitiesProjectDiscoveryShape)$"}}

@@ -1,0 +1,1 @@
+{"id":"exports--flext_infra.refactor._accessor","language":"Python","rule":{"regex":"^(?:FlextInfraRefactorAccessorExpression|FlextInfraRefactorAccessorOrigin|FlextInfraRefactorAccessorReport|FlextInfraRefactorAccessorRewrite|FlextInfraRefactorAccessorWarnings)$"}}

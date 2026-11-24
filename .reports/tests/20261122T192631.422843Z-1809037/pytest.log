@@ -1,0 +1,316 @@
+================================================= test session starts ==================================================
+platform linux -- Python 3.13.18, pytest-9.2.0, pluggy-1.7.0 -- /home/marlonsc/tmp/s221122/infra/.venv/bin/python
+cachedir: .pytest_cache
+hypothesis profile 'ci' -> database=None, deadline=None, print_blob=True, derandomize=True, suppress_health_check=(HealthCheck.too_slow,)
+benchmark: 5.3.1 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+Using --randomly-seed=3086929256
+testmon: selection deactivated, environment: toolchain-2c96107a0cd9-6a8897dd-76195a67
+Help shape testmon! Tell us what saves you time and what we can improve: https://testmon.org/survey
+rootdir: /home/marlonsc/tmp/s221122/infra
+configfile: pyproject.toml
+plugins: flext-tests-0.12.0, hypothesis-6.170.15, anyio-4.16.0, asyncio-1.4.1.post1, benchmark-5.3.1, cov-7.1.0, markdown-docs-0.9.2, randomly-5.1.0, reportlog-1.0.0, testmon-2.3.0, timeout-2.4.0, xdist-3.8.0, platformdirs-4.14.5, flext-infra-0.12.3
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
+timeout: 2.0s
+timeout method: signal
+timeout func_only: True
+created: 4/4 workers
+4 workers [2509 items]
+
+scheduling tests via LoadScopeScheduling
+
+tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_policy_floor_replaces_a_declared_constraint_of_its_distribution 
+tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dep_name[requests-requests] 
+tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_creates_marker_in_dir_with_py_files 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_native_scheduling_policy_round_trips[False-load] 
+[gw2] [  0%] PASSED tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dep_name[requests-requests] 
+tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dep_name[requests>=2.0-requests] 
+[gw2] [  0%] PASSED tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dep_name[requests>=2.0-requests] 
+tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dep_name[requests @ git+https://github.com/psf/requests.git-requests] 
+[gw1] [  0%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_native_scheduling_policy_round_trips[False-load] 
+[gw2] [  0%] PASSED tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dep_name[requests @ git+https://github.com/psf/requests.git-requests] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_native_scheduling_policy_round_trips[False-loadscope] 
+tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dep_name[../flext-core-flext-core] 
+[gw1] [  0%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_native_scheduling_policy_round_trips[False-loadscope] 
+[gw2] [  0%] PASSED tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dep_name[../flext-core-flext-core] 
+tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dep_name[my_package-my-package] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_native_scheduling_policy_round_trips[True-load] 
+[gw2] [  0%] PASSED tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dep_name[my_package-my-package] 
+[gw1] [  0%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_native_scheduling_policy_round_trips[True-load] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_native_scheduling_policy_round_trips[True-loadscope] 
+tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dep_name[  requests  -requests] 
+[gw1] [  0%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_native_scheduling_policy_round_trips[True-loadscope] 
+[gw2] [  0%] PASSED tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dep_name[  requests  -requests] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reordering_refuses_string_coercion 
+tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dep_name[-None] 
+[gw1] [  0%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reordering_refuses_string_coercion 
+[gw2] [  0%] PASSED tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dep_name[-None] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_policy_round_trips_through_its_production_model 
+tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dep_name[Django>=3.0,<4.0-django] 
+[gw1] [  0%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_policy_round_trips_through_its_production_model 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_arbitrary_valid_execution_policy_round_trips[1-6-1-1] 
+[gw2] [  0%] PASSED tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dep_name[Django>=3.0,<4.0-django] 
+[gw1] [  0%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_arbitrary_valid_execution_policy_round_trips[1-6-1-1] 
+tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dedupe_specs[specs0-2-expected_names0-False] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_arbitrary_valid_execution_policy_round_trips[7-20-2-8] 
+[gw1] [  0%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_arbitrary_valid_execution_policy_round_trips[7-20-2-8] 
+[gw2] [  0%] PASSED tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dedupe_specs[specs0-2-expected_names0-False] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_operator_caps_are_hard_typed_boundaries[slow-timeout-seconds] 
+tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dedupe_specs[specs1-2-expected_names1-False] 
+[gw1] [  0%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_operator_caps_are_hard_typed_boundaries[slow-timeout-seconds] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_operator_caps_are_hard_typed_boundaries[run-timeout-seconds] 
+[gw2] [  0%] PASSED tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dedupe_specs[specs1-2-expected_names1-False] 
+[gw1] [  0%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_operator_caps_are_hard_typed_boundaries[run-timeout-seconds] 
+tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dedupe_specs[specs2-0-expected_names2-False] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_operator_caps_are_hard_typed_boundaries[termination-grace-seconds] 
+[gw2] [  0%] PASSED tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dedupe_specs[specs2-0-expected_names2-False] 
+[gw1] [  0%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_operator_caps_are_hard_typed_boundaries[termination-grace-seconds] 
+tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dedupe_specs[specs3-2-expected_names3-True] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_deadlines_cannot_exceed_operator_caps[ordinary-timeout-seconds-3] 
+[gw2] [  0%] PASSED tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dedupe_specs[specs3-2-expected_names3-True] 
+[gw1] [  0%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_deadlines_cannot_exceed_operator_caps[ordinary-timeout-seconds-3] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_deadlines_cannot_exceed_operator_caps[slow-timeout-seconds-1801] 
+tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dedupe_specs[specs4-1-expected_names4-False] 
+[gw1] [  0%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_deadlines_cannot_exceed_operator_caps[slow-timeout-seconds-1801] 
+[gw2] [  1%] PASSED tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dedupe_specs[specs4-1-expected_names4-False] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_deadlines_cannot_exceed_operator_caps[run-timeout-seconds-1801] 
+[gw0] [  1%] PASSED tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_creates_marker_in_dir_with_py_files 
+[gw1] [  1%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_deadlines_cannot_exceed_operator_caps[run-timeout-seconds-1801] 
+tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_unwrap_item[test-test] 
+tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_removes_stale_marker_when_no_py_files 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_long_execution_budget_is_admitted_by_the_operator_caps 
+[gw2] [  1%] PASSED tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_unwrap_item[test-test] 
+tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_unwrap_item[None-None] 
+[gw0] [  1%] PASSED tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_removes_stale_marker_when_no_py_files 
+[gw1] [  1%] FAILED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_long_execution_budget_is_admitted_by_the_operator_caps 
+[gw2] [  1%] PASSED tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_unwrap_item[None-None] 
+tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_check_only_does_not_write_marker 
+tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_unwrap_item[value2-expected2] 
+[gw0] [  1%] PASSED tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_check_only_does_not_write_marker 
+[gw2] [  1%] PASSED tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_unwrap_item[value2-expected2] 
+tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_check_only_does_not_remove_marker 
+tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_unwrap_item_toml_item 
+[gw0] [  1%] PASSED tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_check_only_does_not_remove_marker 
+tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.hidden] 
+[gw2] [  1%] PASSED tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_unwrap_item_toml_item 
+[gw0] [  1%] PASSED tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.hidden] 
+tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_as_string_list[value0-expected0] 
+tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[*.egg-info] 
+[gw2] [  1%] PASSED tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_as_string_list[value0-expected0] 
+[gw0] [  1%] PASSED tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[*.egg-info] 
+tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_as_string_list[None-expected1] 
+tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.agents-sync-home] 
+[gw2] [  1%] PASSED tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_as_string_list[None-expected1] 
+[gw0] [  1%] PASSED tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.agents-sync-home] 
+tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_as_string_list[test-expected2] 
+tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.archive] 
+[gw3] [  1%] PASSED tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_policy_floor_replaces_a_declared_constraint_of_its_distribution 
+[gw2] [  1%] PASSED tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_as_string_list[test-expected2] 
+[gw0] [  1%] PASSED tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.archive] 
+tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_development_composition_preserves_complete_requirement_identity[same] 
+tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_as_string_list[value3-expected3] 
+tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.benchmarks] 
+[gw2] [  1%] PASSED tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_as_string_list[value3-expected3] 
+[gw0] [  1%] PASSED tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.benchmarks] 
+tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_as_string_list[42-expected4] 
+tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.bkp] 
+[gw2] [  1%] PASSED tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_as_string_list[42-expected4] 
+[gw0] [  1%] PASSED tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.bkp] 
+tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_as_string_list_toml_item 
+tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.cache] 
+[gw2] [  1%] PASSED tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_as_string_list_toml_item 
+[gw0] [  1%] PASSED tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.cache] 
+tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_array[items0-3] 
+tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.git] 
+[gw2] [  2%] PASSED tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_array[items0-3] 
+[gw0] [  2%] PASSED tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.git] 
+tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_array[items1-0] 
+tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.pylance_cache] 
+[gw3] [  2%] PASSED tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_development_composition_preserves_complete_requirement_identity[same] 
+[gw2] [  2%] PASSED tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_array[items1-0] 
+tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_development_composition_preserves_complete_requirement_identity[extras] 
+[gw0] [  2%] PASSED tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.pylance_cache] 
+tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_array[items2-1] 
+tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.pyrefly_cache] 
+[gw2] [  2%] PASSED tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_array[items2-1] 
+[gw0] [  2%] PASSED tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.pyrefly_cache] 
+tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_ensure_table[new] 
+tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.pytest_cache] 
+[gw2] [  2%] PASSED tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_ensure_table[new] 
+[gw0] [  2%] PASSED tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.pytest_cache] 
+tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_ensure_table[existing] 
+tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.reports] 
+[gw2] [  2%] PASSED tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_ensure_table[existing] 
+tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_ensure_table[replace-non-table] 
+[gw0] [  2%] PASSED tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.reports] 
+tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.ruff_cache] 
+[gw2] [  2%] PASSED tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_ensure_table[replace-non-table] 
+[gw0] [  2%] PASSED tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.ruff_cache] 
+tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_project_dev_groups[optional_deps0-expected_dev0-expected_docs0] 
+[gw3] [  2%] PASSED tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_development_composition_preserves_complete_requirement_identity[extras] 
+tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.test-tmp] 
+tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_development_composition_preserves_complete_requirement_identity[marker] 
+[gw2] [  2%] PASSED tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_project_dev_groups[optional_deps0-expected_dev0-expected_docs0] 
+[gw0] [  2%] PASSED tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.test-tmp] 
+tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_project_dev_groups[optional_deps1-expected_dev1-expected_docs1] 
+tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.tox] 
+[gw2] [  2%] PASSED tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_project_dev_groups[optional_deps1-expected_dev1-expected_docs1] 
+[gw0] [  2%] PASSED tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.tox] 
+tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_project_dev_groups[optional_deps2-expected_dev2-expected_docs2] 
+tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.venv] 
+[gw0] [  2%] PASSED tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.venv] 
+[gw2] [  2%] PASSED tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_project_dev_groups[optional_deps2-expected_dev2-expected_docs2] 
+tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.venv.*] 
+tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_project_dev_groups_missing_sections 
+[gw0] [  2%] PASSED tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.venv.*] 
+[gw2] [  2%] PASSED tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_project_dev_groups_missing_sections 
+tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.worktrees] 
+tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_canonical_dev_dependencies[optional_deps0-5-True] 
+[gw0] [  2%] PASSED tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.worktrees] 
+[gw2] [  2%] PASSED tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_canonical_dev_dependencies[optional_deps0-5-True] 
+tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[__pycache__] 
+[gw3] [  2%] PASSED tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_development_composition_preserves_complete_requirement_identity[marker] 
+tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_canonical_dev_dependencies[optional_deps1-0-False] 
+[gw0] [  3%] PASSED tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[__pycache__] 
+tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_development_composition_preserves_complete_requirement_identity[origin] 
+tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[__pyrefly_virtual__] 
+[gw2] [  3%] PASSED tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_canonical_dev_dependencies[optional_deps1-0-False] 
+tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_canonical_dev_dependencies[optional_deps2-1-True] 
+[gw0] [  3%] PASSED tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[__pyrefly_virtual__] 
+[gw2] [  3%] PASSED tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_canonical_dev_dependencies[optional_deps2-1-True] 
+tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[_tmp_*] 
+tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_declared_dependency_names_collects_all_supported_groups 
+[gw0] [  3%] PASSED tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[_tmp_*] 
+tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[build] 
+[gw2] [  3%] PASSED tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_declared_dependency_names_collects_all_supported_groups 
+[gw0] [  3%] PASSED tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[build] 
+tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_bounded_requirement_rewrites_only_the_owned_bound[httpx[socks]>=0.1,<1; python_version < '3.14'->=-0.2-httpx[socks]>=0.2,<1; python_version < "3.14"] 
+tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[dist] 
+[gw2] [  3%] PASSED tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_bounded_requirement_rewrites_only_the_owned_bound[httpx[socks]>=0.1,<1; python_version < '3.14'->=-0.2-httpx[socks]>=0.2,<1; python_version < "3.14"] 
+[gw0] [  3%] PASSED tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[dist] 
+tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_bounded_requirement_rewrites_only_the_owned_bound[pikepdf==10.18.0-==-0.2-pikepdf==0.2] 
+[gw3] [  3%] PASSED tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_development_composition_preserves_complete_requirement_identity[origin] 
+tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[dist-packages] 
+tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_conform_preserves_ordered_nested_includes_and_dependency_tiers[standalone] 
+[gw2] [  3%] PASSED tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_bounded_requirement_rewrites_only_the_owned_bound[pikepdf==10.18.0-==-0.2-pikepdf==0.2] 
+[gw0] [  3%] PASSED tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[dist-packages] 
+tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_bounded_requirement_rewrites_only_the_owned_bound[pikepdf>=10.18,<11-==-0.2-pikepdf==0.2] 
+tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[node_modules] 
+[gw2] [  3%] PASSED tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_bounded_requirement_rewrites_only_the_owned_bound[pikepdf>=10.18,<11-==-0.2-pikepdf==0.2] 
+tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_bounded_requirement_rewrites_only_the_owned_bound[pikepdf>=10.18,<11->=-None-pikepdf<11] 
+[gw0] [  3%] PASSED tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[node_modules] 
+[gw2] [  3%] PASSED tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_bounded_requirement_rewrites_only_the_owned_bound[pikepdf>=10.18,<11->=-None-pikepdf<11] 
+tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[site] 
+tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_bounded_requirement_rewrites_only_the_owned_bound[pikepdf==10.18.0-==-None-pikepdf] 
+[gw0] [  3%] PASSED tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[site] 
+[gw2] [  3%] PASSED tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_bounded_requirement_rewrites_only_the_owned_bound[pikepdf==10.18.0-==-None-pikepdf] 
+tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[site-packages] 
+tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_registry_requirement_name_skips_sourced_and_direct[Pike_PDF>=1-pike-pdf] 
+[gw2] [  3%] PASSED tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_registry_requirement_name_skips_sourced_and_direct[Pike_PDF>=1-pike-pdf] 
+[gw0] [  3%] PASSED tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[site-packages] 
+tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_registry_requirement_name_skips_sourced_and_direct[flext-core>=0.12-None] 
+tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[target] 
+[gw2] [  3%] PASSED tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_registry_requirement_name_skips_sourced_and_direct[flext-core>=0.12-None] 
+[gw0] [  3%] PASSED tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[target] 
+tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_registry_requirement_name_skips_sourced_and_direct[example @ https://example.org/example.whl-None] 
+tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[venv] 
+[gw2] [  3%] PASSED tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_registry_requirement_name_skips_sourced_and_direct[example @ https://example.org/example.whl-None] 
+[gw0] [  3%] PASSED tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[venv] 
+tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_no_change_when_marker_already_exists 
+[gw3] [  3%] PASSED tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_conform_preserves_ordered_nested_includes_and_dependency_tiers[standalone] 
+[gw0] [  3%] PASSED tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_no_change_when_marker_already_exists 
+tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_conform_preserves_ordered_nested_includes_and_dependency_tiers[workspace] 
+tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_execute_returns_success 
+[gw0] [  4%] PASSED tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_execute_returns_success 
+tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_tests_dir_packages_also_scanned 
+[gw0] [  4%] PASSED tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_tests_dir_packages_also_scanned 
+tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_nested_hidden_virtualenv_directories 
+[gw0] [  4%] PASSED tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_nested_hidden_virtualenv_directories 
+tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_only_expected_namespace_marker_is_created 
+[gw0] [  4%] PASSED tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_only_expected_namespace_marker_is_created 
+tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_multiple_packages_all_get_markers 
+[gw0] [  4%] PASSED tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_multiple_packages_all_get_markers 
+[gw3] [  4%] PASSED tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_conform_preserves_ordered_nested_includes_and_dependency_tiers[workspace] 
+tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_normalized_group_identity_does_not_create_a_second_group[dev-standalone] 
+[gw3] [  4%] PASSED tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_normalized_group_identity_does_not_create_a_second_group[dev-standalone] 
+tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_normalized_group_identity_does_not_create_a_second_group[dev-workspace] 
+[gw3] [  4%] PASSED tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_normalized_group_identity_does_not_create_a_second_group[dev-workspace] 
+tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_normalized_group_identity_does_not_create_a_second_group[codegen-standalone] 
+[gw3] [  4%] PASSED tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_normalized_group_identity_does_not_create_a_second_group[codegen-standalone] 
+tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_normalized_group_identity_does_not_create_a_second_group[codegen-workspace] 
+[gw3] [  4%] PASSED tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_normalized_group_identity_does_not_create_a_second_group[codegen-workspace] 
+tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_floor_merge_preserves_authored_requirement_variants[standalone] 
+[gw3] [  4%] PASSED tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_floor_merge_preserves_authored_requirement_variants[standalone] 
+tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_floor_merge_preserves_authored_requirement_variants[workspace] 
+[gw3] [  4%] PASSED tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_floor_merge_preserves_authored_requirement_variants[workspace] 
+tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_internal_floor_yields_only_its_unbounded_matching_dimension[extra-standalone] 
+[gw3] [  4%] PASSED tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_internal_floor_yields_only_its_unbounded_matching_dimension[extra-standalone] 
+tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_internal_floor_yields_only_its_unbounded_matching_dimension[extra-workspace] 
+[gw3] [  4%] PASSED tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_internal_floor_yields_only_its_unbounded_matching_dimension[extra-workspace] 
+tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_internal_floor_yields_only_its_unbounded_matching_dimension[marker-standalone] 
+[gw3] [  4%] PASSED tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_internal_floor_yields_only_its_unbounded_matching_dimension[marker-standalone] 
+tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_internal_floor_yields_only_its_unbounded_matching_dimension[marker-workspace] 
+[gw3] [  4%] PASSED tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_internal_floor_yields_only_its_unbounded_matching_dimension[marker-workspace] 
+tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_internal_floor_yields_only_its_unbounded_matching_dimension[bounded-standalone] 
+[gw3] [  4%] PASSED tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_internal_floor_yields_only_its_unbounded_matching_dimension[bounded-standalone] 
+tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_internal_floor_yields_only_its_unbounded_matching_dimension[bounded-workspace] 
+[gw3] [  4%] PASSED tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_internal_floor_yields_only_its_unbounded_matching_dimension[bounded-workspace] 
+tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_internal_floor_yields_only_its_unbounded_matching_dimension[origin-standalone] 
+[gw3] [  4%] PASSED tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_internal_floor_yields_only_its_unbounded_matching_dimension[origin-standalone] 
+tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_internal_floor_yields_only_its_unbounded_matching_dimension[origin-workspace] 
+[gw3] [  4%] PASSED tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_internal_floor_yields_only_its_unbounded_matching_dimension[origin-workspace] 
+tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_extra_name_does_not_migrate_its_requirements_into_a_group[dev-standalone] 
+[gw3] [  4%] PASSED tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_extra_name_does_not_migrate_its_requirements_into_a_group[dev-standalone] 
+tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_extra_name_does_not_migrate_its_requirements_into_a_group[dev-workspace] 
+[gw3] [  4%] PASSED tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_extra_name_does_not_migrate_its_requirements_into_a_group[dev-workspace] 
+tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_extra_name_does_not_migrate_its_requirements_into_a_group[codegen-standalone] 
+[gw3] [  4%] PASSED tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_extra_name_does_not_migrate_its_requirements_into_a_group[codegen-standalone] 
+tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_extra_name_does_not_migrate_its_requirements_into_a_group[codegen-workspace] 
+[gw3] [  4%] PASSED tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_extra_name_does_not_migrate_its_requirements_into_a_group[codegen-workspace] 
+tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_conform_rejects_invalid_local_group_graph[dev = [{include-group = "missing"}]] 
+[gw3] [  4%] PASSED tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_conform_rejects_invalid_local_group_graph[dev = [{include-group = "missing"}]] 
+tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_conform_rejects_invalid_local_group_graph[dev = [{include-group = "dev"}]] 
+[gw3] [  5%] PASSED tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_conform_rejects_invalid_local_group_graph[dev = [{include-group = "dev"}]] 
+tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_conform_rejects_invalid_local_group_graph[groups2] 
+[gw3] [  5%] PASSED tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_conform_rejects_invalid_local_group_graph[groups2] 
+tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_conform_rejects_invalid_local_group_graph[dev = []\nexamples = []\nEXAMPLES = []] 
+[gw3] [  5%] PASSED tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_conform_rejects_invalid_local_group_graph[dev = []\nexamples = []\nEXAMPLES = []] 
+tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_optional_dependencies_keep_pep508_string_grammar 
+[gw3] [  5%] PASSED tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_optional_dependencies_keep_pep508_string_grammar 
+tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_runtime_dependencies_keep_pep508_string_grammar 
+[gw3] [  5%] PASSED tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_runtime_dependencies_keep_pep508_string_grammar 
+tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_invalid_native_entries_escape_at_the_public_boundary[{"include-group" = "examples", unexpected = "value"}] 
+[gw3] [  5%] PASSED tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_invalid_native_entries_escape_at_the_public_boundary[{"include-group" = "examples", unexpected = "value"}] 
+tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_invalid_native_entries_escape_at_the_public_boundary[{"include-group" = 42}] 
+[gw3] [  5%] PASSED tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_invalid_native_entries_escape_at_the_public_boundary[{"include-group" = 42}] 
+tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_invalid_native_entries_escape_at_the_public_boundary[42] 
+[gw3] [  5%] PASSED tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_invalid_native_entries_escape_at_the_public_boundary[42] 
+tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_empty_native_groups_remain_available_for_inclusion 
+[gw3] [  5%] PASSED tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_empty_native_groups_remain_available_for_inclusion 
+tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_fleet_dev_suppliers_apply_only_to_the_workspace_root 
+[gw3] [  5%] PASSED tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_fleet_dev_suppliers_apply_only_to_the_workspace_root 
+
+======================================================= FAILURES =======================================================
+____________ TestsFlextInfraPytestTimeoutConfig.test_long_execution_budget_is_admitted_by_the_operator_caps ____________
+[gw1] linux -- Python 3.13.18 /home/marlonsc/tmp/s221122/infra/.venv/bin/python
+tests/unit/deps/test_pytest_timeout_config.py:143: in test_long_execution_budget_is_admitted_by_the_operator_caps
+    admitted = type(policy).model_validate(payload)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   pydantic_core._pydantic_core.ValidationError: 1 validation error for PytestConfig
+E     Value error, pytest run timeout must exceed the suite stop reserve [type=value_error, input_value={'ordinary-timeout-second...'_clear_make_ci_token')}, input_type=dict]
+E       For further information visit https://errors.pydantic.dev/2.14/v/value_error
+---- generated xml file: /home/marlonsc/tmp/s221122/infra/.reports/tests/20261122T192631.422843Z-1809037/junit.xml -----
+- generated report log file: /home/marlonsc/tmp/s221122/infra/.reports/tests/20261122T192631.422843Z-1809037/events.jsonl -
+---------------------------------------------------- flext-enforce -----------------------------------------------------
+runtime warnings captured: 0
+--------------------------------------------------- flext slow tests ---------------------------------------------------
+no test near the ordinary or slow limit
+================================================= slowest 25 durations =================================================
+
+(25 durations < 2s hidden.)
+=============================================== short test summary info ================================================
+FAILED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_long_execution_budget_is_admitted_by_the_operator_caps - pydantic_core._pydantic_core.ValidationError: 1 validation error for PytestConfig
+  Value error, pytest run timeout must exceed the suite stop reserve [type=value_error, input_value={'ordinary-timeout-second...'_clear_make_ci_token')}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.14/v/value_error
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! xdist.dsession.Interrupted: stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+============================================ 1 failed, 134 passed in 19.70s ============================================

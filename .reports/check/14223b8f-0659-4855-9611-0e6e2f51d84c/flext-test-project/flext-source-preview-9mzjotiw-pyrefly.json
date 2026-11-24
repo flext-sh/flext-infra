@@ -1,0 +1,16 @@
+{
+  "errors": [
+    {
+      "line": 21,
+      "column": 13,
+      "stop_line": 21,
+      "stop_column": 21,
+      "path": "src/flext_test_project/consumer.py",
+      "code": -2,
+      "name": "unbound-name",
+      "description": "`rejected` may be uninitialized",
+      "concise_description": "`rejected` may be uninitialized",
+      "severity": "error"
+    }
+  ]
+}

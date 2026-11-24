@@ -1,0 +1,35 @@
+INFO: check: registry initialization start
+INFO: check: registry initialization complete
+INFO: check: selection start phase=complete
+INFO: check: selection complete projects=1 gates=6
+INFO: check: preparation start identity=True
+INFO: check: preparation complete projects=1
+INFO: check: prerequisite planning start projects=1
+INFO: check: prerequisite planning complete gates=1
+INFO: check: prerequisite wave start gate=lint jobs=1
+INFO: gate_executed project=infra gate=lint passed=True elapsed=2.416
+2026-11-22T17:48:25.816572Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=2428.04 failed=0 skipped=0 total_stages=1
+INFO: check: prerequisite wave complete gate=lint
+    [OK] lint           0 errors  (2.42s)
+[1/1] infra check ...
+INFO: gate_executed project=infra gate=markdown-format passed=True elapsed=2.196
+2026-11-22T17:48:29.684466Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=2197.31 failed=0 skipped=0 total_stages=1
+INFO: gate_executed project=infra gate=markdown passed=True elapsed=2.218
+2026-11-22T17:48:29.704373Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=2218.55 failed=0 skipped=0 total_stages=1
+INFO: gate_executed project=infra gate=format passed=True elapsed=5.88
+2026-11-22T17:48:33.365286Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=5880.05 failed=0 skipped=0 total_stages=1
+INFO: gate_executed project=infra gate=markdown-code passed=True elapsed=6.03
+2026-11-22T17:48:33.517496Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=6030.27 failed=0 skipped=0 total_stages=1
+INFO: gate_executed project=infra gate=conflict-markers passed=True elapsed=6.767
+2026-11-22T17:48:36.289286Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=8801.5 failed=0 skipped=0 total_stages=1
+    [OK] format         0 errors  (5.88s)
+    [OK] markdown       0 errors  (2.22s)
+    [OK] markdown-format     0 errors  (2.20s)
+    [OK] markdown-code     0 errors  (6.03s)
+    [OK] conflict-markers     0 errors  (6.77s)
+  [OK] check    infra                    8.92s
+
+-- check summary --
+Total: 1  Success: 1  Failed: 0  Skipped: 0  (11.38s)
+INFO: Reports: /home/marlonsc/tmp/s221122/infra/.reports/gates/20261122T174815.395033Z-1755381/check/92967389-457c-45ae-98b4-50a0eb57c6a5/check-report.md
+INFO:          /home/marlonsc/tmp/s221122/infra/.reports/gates/20261122T174815.395033Z-1755381/check/92967389-457c-45ae-98b4-50a0eb57c6a5/check-report.sarif

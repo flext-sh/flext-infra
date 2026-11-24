@@ -1,0 +1,11 @@
+outcome=interrupted
+phase=suite
+suite=incomplete
+executed=unknown
+reported=unknown
+inventory_complete=unknown
+diagnostics=incomplete
+exit=-9
+timed_out=True
+forwarded_signal=None
+raw_log=/home/marlonsc/tmp/s221122/infra/.reports/tests/20261122T192900.166023Z-1944249/pytest.log

@@ -1,0 +1,16 @@
+{
+  "errors": [
+    {
+      "line": 3,
+      "column": 48,
+      "stop_line": 3,
+      "stop_column": 55,
+      "path": "src/flext_test_project/consumer.py",
+      "code": -2,
+      "name": "unexpected-keyword",
+      "description": "Unexpected keyword argument `verbose` in function `flext_cli._utilities.commands.FlextCliUtilitiesCommands.commands_emit_result_error`",
+      "concise_description": "Unexpected keyword argument `verbose` in function `flext_cli._utilities.commands.FlextCliUtilitiesCommands.commands_emit_result_error`",
+      "severity": "error"
+    }
+  ]
+}

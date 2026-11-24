@@ -1,0 +1,8 @@
+{
+  "execution_mode": "global-incremental",
+  "isolated_fixture": false,
+  "testmon_db": "/home/marlonsc/tmp/s221122/infra/.testmondata",
+  "deadline_monotonic": 322108.781398888,
+  "report_directory": "/home/marlonsc/tmp/s221122/infra/.reports/tests/20261122T192631.422843Z-1809037",
+  "profile_sha256": null
+}

@@ -1,0 +1,16 @@
+{
+  "errors": [
+    {
+      "line": 10,
+      "column": 6,
+      "stop_line": 10,
+      "stop_column": 14,
+      "path": "src/flext_test_project/consumer.py",
+      "code": -2,
+      "name": "redefinition",
+      "description": "Cannot redefine existing type alias `Contract`",
+      "concise_description": "Cannot redefine existing type alias `Contract`",
+      "severity": "error"
+    }
+  ]
+}

@@ -1,0 +1,1 @@
+{"id":"exports--flext_infra.check","language":"Python","rule":{"regex":"^(?:FlextInfraCheckWorkspace|FlextInfraGateRegistry|FlextInfraWorkspaceCheckGates|FlextInfraWorkspaceCheckUnion|FlextInfraWorkspaceChecker)$"}}

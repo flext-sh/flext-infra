@@ -1,0 +1,16 @@
+{
+  "errors": [
+    {
+      "line": 6,
+      "column": 42,
+      "stop_line": 6,
+      "stop_column": 62,
+      "path": "src/flext_test_project/consumer.py",
+      "code": -2,
+      "name": "missing-attribute",
+      "description": "Object of class `list` has no attribute `default_factory`",
+      "concise_description": "Object of class `list` has no attribute `default_factory`",
+      "severity": "error"
+    }
+  ]
+}

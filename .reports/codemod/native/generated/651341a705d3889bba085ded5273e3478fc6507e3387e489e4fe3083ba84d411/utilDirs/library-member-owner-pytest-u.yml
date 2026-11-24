@@ -1,0 +1,1 @@
+{"id":"library-member-owner-pytest-u","language":"Python","rule":{"regex":"^(?:approx|exit|fixture|hookimpl|importorskip|main|param|raises|skip|warns)$"}}

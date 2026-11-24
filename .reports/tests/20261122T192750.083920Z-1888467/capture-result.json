@@ -1,0 +1,1 @@
+{"process":{"raw_return_code":2,"timed_out":false,"forwarded_signal":null},"receipt":null,"issues":[{"file":"/home/marlonsc/tmp/s221122/infra","line":0,"column":0,"code":"error","message":"test reports contain incomplete or operational execution","severity":"error","locations":[],"related_locations":[]}]}

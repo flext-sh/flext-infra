@@ -1,0 +1,2331 @@
+{
+  "eligible": [],
+  "selected": [],
+  "deselected": [],
+  "diagnostics": {
+    "failed_count": 1,
+    "error_count": 0,
+    "warning_count": 0,
+    "skipped_count": 0,
+    "connectivity_skip_cases": [],
+    "collection_failed_count": 0,
+    "collection_skipped_count": 0,
+    "collection_failed_cases": [],
+    "collection_skip_cases": [],
+    "reported_node_ids": [
+      "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_check_only_does_not_remove_marker",
+      "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_check_only_does_not_write_marker",
+      "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_creates_marker_in_dir_with_py_files",
+      "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_execute_returns_success",
+      "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_multiple_packages_all_get_markers",
+      "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_no_change_when_marker_already_exists",
+      "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_only_expected_namespace_marker_is_created",
+      "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_removes_stale_marker_when_no_py_files",
+      "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[*.egg-info]",
+      "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.agents-sync-home]",
+      "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.archive]",
+      "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.benchmarks]",
+      "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.bkp]",
+      "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.cache]",
+      "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.git]",
+      "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.hidden]",
+      "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.pylance_cache]",
+      "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.pyrefly_cache]",
+      "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.pytest_cache]",
+      "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.reports]",
+      "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.ruff_cache]",
+      "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.test-tmp]",
+      "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.tox]",
+      "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.venv.*]",
+      "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.venv]",
+      "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.worktrees]",
+      "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[__pycache__]",
+      "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[__pyrefly_virtual__]",
+      "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[_tmp_*]",
+      "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[build]",
+      "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[dist-packages]",
+      "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[dist]",
+      "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[node_modules]",
+      "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[site-packages]",
+      "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[site]",
+      "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[target]",
+      "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[venv]",
+      "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_nested_hidden_virtualenv_directories",
+      "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_tests_dir_packages_also_scanned",
+      "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_array[items0-3]",
+      "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_array[items1-0]",
+      "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_array[items2-1]",
+      "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_as_string_list[42-expected4]",
+      "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_as_string_list[None-expected1]",
+      "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_as_string_list[test-expected2]",
+      "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_as_string_list[value0-expected0]",
+      "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_as_string_list[value3-expected3]",
+      "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_as_string_list_toml_item",
+      "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_bounded_requirement_rewrites_only_the_owned_bound[httpx[socks]>=0.1,<1; python_version < '3.14'->=-0.2-httpx[socks]>=0.2,<1; python_version < \"3.14\"]",
+      "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_bounded_requirement_rewrites_only_the_owned_bound[pikepdf==10.18.0-==-0.2-pikepdf==0.2]",
+      "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_bounded_requirement_rewrites_only_the_owned_bound[pikepdf==10.18.0-==-None-pikepdf]",
+      "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_bounded_requirement_rewrites_only_the_owned_bound[pikepdf>=10.18,<11-==-0.2-pikepdf==0.2]",
+      "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_bounded_requirement_rewrites_only_the_owned_bound[pikepdf>=10.18,<11->=-None-pikepdf<11]",
+      "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_canonical_dev_dependencies[optional_deps0-5-True]",
+      "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_canonical_dev_dependencies[optional_deps1-0-False]",
+      "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_canonical_dev_dependencies[optional_deps2-1-True]",
+      "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_declared_dependency_names_collects_all_supported_groups",
+      "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dedupe_specs[specs0-2-expected_names0-False]",
+      "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dedupe_specs[specs1-2-expected_names1-False]",
+      "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dedupe_specs[specs2-0-expected_names2-False]",
+      "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dedupe_specs[specs3-2-expected_names3-True]",
+      "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dedupe_specs[specs4-1-expected_names4-False]",
+      "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dep_name[  requests  -requests]",
+      "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dep_name[-None]",
+      "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dep_name[../flext-core-flext-core]",
+      "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dep_name[Django>=3.0,<4.0-django]",
+      "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dep_name[my_package-my-package]",
+      "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dep_name[requests @ git+https://github.com/psf/requests.git-requests]",
+      "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dep_name[requests-requests]",
+      "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dep_name[requests>=2.0-requests]",
+      "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_ensure_table[existing]",
+      "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_ensure_table[new]",
+      "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_ensure_table[replace-non-table]",
+      "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_project_dev_groups[optional_deps0-expected_dev0-expected_docs0]",
+      "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_project_dev_groups[optional_deps1-expected_dev1-expected_docs1]",
+      "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_project_dev_groups[optional_deps2-expected_dev2-expected_docs2]",
+      "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_project_dev_groups_missing_sections",
+      "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_registry_requirement_name_skips_sourced_and_direct[Pike_PDF>=1-pike-pdf]",
+      "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_registry_requirement_name_skips_sourced_and_direct[example @ https://example.org/example.whl-None]",
+      "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_registry_requirement_name_skips_sourced_and_direct[flext-core>=0.12-None]",
+      "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_unwrap_item[None-None]",
+      "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_unwrap_item[test-test]",
+      "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_unwrap_item[value2-expected2]",
+      "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_unwrap_item_toml_item",
+      "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_arbitrary_valid_execution_policy_round_trips[1-6-1-1]",
+      "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_arbitrary_valid_execution_policy_round_trips[7-20-2-8]",
+      "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_deadlines_cannot_exceed_operator_caps[ordinary-timeout-seconds-3]",
+      "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_deadlines_cannot_exceed_operator_caps[run-timeout-seconds-1801]",
+      "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_deadlines_cannot_exceed_operator_caps[slow-timeout-seconds-1801]",
+      "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_long_execution_budget_is_admitted_by_the_operator_caps",
+      "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_native_scheduling_policy_round_trips[False-load]",
+      "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_native_scheduling_policy_round_trips[False-loadscope]",
+      "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_native_scheduling_policy_round_trips[True-load]",
+      "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_native_scheduling_policy_round_trips[True-loadscope]",
+      "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_operator_caps_are_hard_typed_boundaries[run-timeout-seconds]",
+      "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_operator_caps_are_hard_typed_boundaries[slow-timeout-seconds]",
+      "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_operator_caps_are_hard_typed_boundaries[termination-grace-seconds]",
+      "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_policy_round_trips_through_its_production_model",
+      "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reordering_refuses_string_coercion",
+      "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_conform_preserves_ordered_nested_includes_and_dependency_tiers[standalone]",
+      "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_conform_preserves_ordered_nested_includes_and_dependency_tiers[workspace]",
+      "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_conform_rejects_invalid_local_group_graph[dev = []\\nexamples = []\\nEXAMPLES = []]",
+      "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_conform_rejects_invalid_local_group_graph[dev = [{include-group = \"dev\"}]]",
+      "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_conform_rejects_invalid_local_group_graph[dev = [{include-group = \"missing\"}]]",
+      "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_conform_rejects_invalid_local_group_graph[groups2]",
+      "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_development_composition_preserves_complete_requirement_identity[extras]",
+      "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_development_composition_preserves_complete_requirement_identity[marker]",
+      "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_development_composition_preserves_complete_requirement_identity[origin]",
+      "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_development_composition_preserves_complete_requirement_identity[same]",
+      "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_empty_native_groups_remain_available_for_inclusion",
+      "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_extra_name_does_not_migrate_its_requirements_into_a_group[codegen-standalone]",
+      "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_extra_name_does_not_migrate_its_requirements_into_a_group[codegen-workspace]",
+      "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_extra_name_does_not_migrate_its_requirements_into_a_group[dev-standalone]",
+      "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_extra_name_does_not_migrate_its_requirements_into_a_group[dev-workspace]",
+      "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_fleet_dev_suppliers_apply_only_to_the_workspace_root",
+      "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_floor_merge_preserves_authored_requirement_variants[standalone]",
+      "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_floor_merge_preserves_authored_requirement_variants[workspace]",
+      "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_internal_floor_yields_only_its_unbounded_matching_dimension[bounded-standalone]",
+      "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_internal_floor_yields_only_its_unbounded_matching_dimension[bounded-workspace]",
+      "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_internal_floor_yields_only_its_unbounded_matching_dimension[extra-standalone]",
+      "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_internal_floor_yields_only_its_unbounded_matching_dimension[extra-workspace]",
+      "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_internal_floor_yields_only_its_unbounded_matching_dimension[marker-standalone]",
+      "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_internal_floor_yields_only_its_unbounded_matching_dimension[marker-workspace]",
+      "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_internal_floor_yields_only_its_unbounded_matching_dimension[origin-standalone]",
+      "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_internal_floor_yields_only_its_unbounded_matching_dimension[origin-workspace]",
+      "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_invalid_native_entries_escape_at_the_public_boundary[42]",
+      "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_invalid_native_entries_escape_at_the_public_boundary[{\"include-group\" = \"examples\", unexpected = \"value\"}]",
+      "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_invalid_native_entries_escape_at_the_public_boundary[{\"include-group\" = 42}]",
+      "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_normalized_group_identity_does_not_create_a_second_group[codegen-standalone]",
+      "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_normalized_group_identity_does_not_create_a_second_group[codegen-workspace]",
+      "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_normalized_group_identity_does_not_create_a_second_group[dev-standalone]",
+      "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_normalized_group_identity_does_not_create_a_second_group[dev-workspace]",
+      "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_optional_dependencies_keep_pep508_string_grammar",
+      "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_policy_floor_replaces_a_declared_constraint_of_its_distribution",
+      "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_runtime_dependencies_keep_pep508_string_grammar"
+    ],
+    "phase_outcomes": [
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_check_only_does_not_remove_marker",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_check_only_does_not_remove_marker",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_check_only_does_not_remove_marker",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_check_only_does_not_write_marker",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_check_only_does_not_write_marker",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_check_only_does_not_write_marker",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_creates_marker_in_dir_with_py_files",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_creates_marker_in_dir_with_py_files",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_creates_marker_in_dir_with_py_files",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_execute_returns_success",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_execute_returns_success",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_execute_returns_success",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_multiple_packages_all_get_markers",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_multiple_packages_all_get_markers",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_multiple_packages_all_get_markers",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_no_change_when_marker_already_exists",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_no_change_when_marker_already_exists",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_no_change_when_marker_already_exists",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_only_expected_namespace_marker_is_created",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_only_expected_namespace_marker_is_created",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_only_expected_namespace_marker_is_created",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_removes_stale_marker_when_no_py_files",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_removes_stale_marker_when_no_py_files",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_removes_stale_marker_when_no_py_files",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[*.egg-info]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[*.egg-info]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[*.egg-info]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.agents-sync-home]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.agents-sync-home]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.agents-sync-home]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.archive]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.archive]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.archive]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.benchmarks]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.benchmarks]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.benchmarks]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.bkp]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.bkp]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.bkp]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.cache]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.cache]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.cache]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.git]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.git]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.git]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.hidden]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.hidden]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.hidden]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.pylance_cache]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.pylance_cache]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.pylance_cache]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.pyrefly_cache]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.pyrefly_cache]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.pyrefly_cache]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.pytest_cache]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.pytest_cache]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.pytest_cache]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.reports]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.reports]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.reports]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.ruff_cache]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.ruff_cache]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.ruff_cache]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.test-tmp]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.test-tmp]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.test-tmp]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.tox]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.tox]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.tox]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.venv.*]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.venv.*]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.venv.*]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.venv]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.venv]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.venv]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.worktrees]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.worktrees]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.worktrees]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[__pycache__]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[__pycache__]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[__pycache__]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[__pyrefly_virtual__]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[__pyrefly_virtual__]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[__pyrefly_virtual__]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[_tmp_*]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[_tmp_*]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[_tmp_*]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[build]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[build]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[build]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[dist-packages]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[dist-packages]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[dist-packages]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[dist]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[dist]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[dist]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[node_modules]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[node_modules]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[node_modules]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[site-packages]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[site-packages]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[site-packages]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[site]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[site]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[site]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[target]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[target]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[target]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[venv]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[venv]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[venv]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_nested_hidden_virtualenv_directories",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_nested_hidden_virtualenv_directories",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_skips_nested_hidden_virtualenv_directories",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_tests_dir_packages_also_scanned",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_tests_dir_packages_also_scanned",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_py_typed.py::TestsFlextInfraCodegenPyTyped::test_tests_dir_packages_also_scanned",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_array[items0-3]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_array[items0-3]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_array[items0-3]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_array[items1-0]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_array[items1-0]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_array[items1-0]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_array[items2-1]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_array[items2-1]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_array[items2-1]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_as_string_list[42-expected4]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_as_string_list[42-expected4]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_as_string_list[42-expected4]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_as_string_list[None-expected1]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_as_string_list[None-expected1]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_as_string_list[None-expected1]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_as_string_list[test-expected2]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_as_string_list[test-expected2]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_as_string_list[test-expected2]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_as_string_list[value0-expected0]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_as_string_list[value0-expected0]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_as_string_list[value0-expected0]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_as_string_list[value3-expected3]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_as_string_list[value3-expected3]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_as_string_list[value3-expected3]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_as_string_list_toml_item",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_as_string_list_toml_item",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_as_string_list_toml_item",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_bounded_requirement_rewrites_only_the_owned_bound[httpx[socks]>=0.1,<1; python_version < '3.14'->=-0.2-httpx[socks]>=0.2,<1; python_version < \"3.14\"]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_bounded_requirement_rewrites_only_the_owned_bound[httpx[socks]>=0.1,<1; python_version < '3.14'->=-0.2-httpx[socks]>=0.2,<1; python_version < \"3.14\"]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_bounded_requirement_rewrites_only_the_owned_bound[httpx[socks]>=0.1,<1; python_version < '3.14'->=-0.2-httpx[socks]>=0.2,<1; python_version < \"3.14\"]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_bounded_requirement_rewrites_only_the_owned_bound[pikepdf==10.18.0-==-0.2-pikepdf==0.2]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_bounded_requirement_rewrites_only_the_owned_bound[pikepdf==10.18.0-==-0.2-pikepdf==0.2]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_bounded_requirement_rewrites_only_the_owned_bound[pikepdf==10.18.0-==-0.2-pikepdf==0.2]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_bounded_requirement_rewrites_only_the_owned_bound[pikepdf==10.18.0-==-None-pikepdf]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_bounded_requirement_rewrites_only_the_owned_bound[pikepdf==10.18.0-==-None-pikepdf]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_bounded_requirement_rewrites_only_the_owned_bound[pikepdf==10.18.0-==-None-pikepdf]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_bounded_requirement_rewrites_only_the_owned_bound[pikepdf>=10.18,<11-==-0.2-pikepdf==0.2]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_bounded_requirement_rewrites_only_the_owned_bound[pikepdf>=10.18,<11-==-0.2-pikepdf==0.2]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_bounded_requirement_rewrites_only_the_owned_bound[pikepdf>=10.18,<11-==-0.2-pikepdf==0.2]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_bounded_requirement_rewrites_only_the_owned_bound[pikepdf>=10.18,<11->=-None-pikepdf<11]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_bounded_requirement_rewrites_only_the_owned_bound[pikepdf>=10.18,<11->=-None-pikepdf<11]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_bounded_requirement_rewrites_only_the_owned_bound[pikepdf>=10.18,<11->=-None-pikepdf<11]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_canonical_dev_dependencies[optional_deps0-5-True]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_canonical_dev_dependencies[optional_deps0-5-True]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_canonical_dev_dependencies[optional_deps0-5-True]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_canonical_dev_dependencies[optional_deps1-0-False]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_canonical_dev_dependencies[optional_deps1-0-False]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_canonical_dev_dependencies[optional_deps1-0-False]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_canonical_dev_dependencies[optional_deps2-1-True]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_canonical_dev_dependencies[optional_deps2-1-True]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_canonical_dev_dependencies[optional_deps2-1-True]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_declared_dependency_names_collects_all_supported_groups",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_declared_dependency_names_collects_all_supported_groups",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_declared_dependency_names_collects_all_supported_groups",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dedupe_specs[specs0-2-expected_names0-False]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dedupe_specs[specs0-2-expected_names0-False]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dedupe_specs[specs0-2-expected_names0-False]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dedupe_specs[specs1-2-expected_names1-False]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dedupe_specs[specs1-2-expected_names1-False]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dedupe_specs[specs1-2-expected_names1-False]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dedupe_specs[specs2-0-expected_names2-False]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dedupe_specs[specs2-0-expected_names2-False]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dedupe_specs[specs2-0-expected_names2-False]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dedupe_specs[specs3-2-expected_names3-True]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dedupe_specs[specs3-2-expected_names3-True]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dedupe_specs[specs3-2-expected_names3-True]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dedupe_specs[specs4-1-expected_names4-False]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dedupe_specs[specs4-1-expected_names4-False]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dedupe_specs[specs4-1-expected_names4-False]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dep_name[  requests  -requests]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dep_name[  requests  -requests]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dep_name[  requests  -requests]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dep_name[-None]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dep_name[-None]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dep_name[-None]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dep_name[../flext-core-flext-core]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dep_name[../flext-core-flext-core]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dep_name[../flext-core-flext-core]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dep_name[Django>=3.0,<4.0-django]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dep_name[Django>=3.0,<4.0-django]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dep_name[Django>=3.0,<4.0-django]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dep_name[my_package-my-package]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dep_name[my_package-my-package]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dep_name[my_package-my-package]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dep_name[requests @ git+https://github.com/psf/requests.git-requests]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dep_name[requests @ git+https://github.com/psf/requests.git-requests]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dep_name[requests @ git+https://github.com/psf/requests.git-requests]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dep_name[requests-requests]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dep_name[requests-requests]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dep_name[requests-requests]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dep_name[requests>=2.0-requests]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dep_name[requests>=2.0-requests]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_dep_name[requests>=2.0-requests]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_ensure_table[existing]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_ensure_table[existing]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_ensure_table[existing]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_ensure_table[new]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_ensure_table[new]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_ensure_table[new]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_ensure_table[replace-non-table]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_ensure_table[replace-non-table]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_ensure_table[replace-non-table]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_project_dev_groups[optional_deps0-expected_dev0-expected_docs0]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_project_dev_groups[optional_deps0-expected_dev0-expected_docs0]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_project_dev_groups[optional_deps0-expected_dev0-expected_docs0]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_project_dev_groups[optional_deps1-expected_dev1-expected_docs1]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_project_dev_groups[optional_deps1-expected_dev1-expected_docs1]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_project_dev_groups[optional_deps1-expected_dev1-expected_docs1]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_project_dev_groups[optional_deps2-expected_dev2-expected_docs2]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_project_dev_groups[optional_deps2-expected_dev2-expected_docs2]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_project_dev_groups[optional_deps2-expected_dev2-expected_docs2]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_project_dev_groups_missing_sections",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_project_dev_groups_missing_sections",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_project_dev_groups_missing_sections",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_registry_requirement_name_skips_sourced_and_direct[Pike_PDF>=1-pike-pdf]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_registry_requirement_name_skips_sourced_and_direct[Pike_PDF>=1-pike-pdf]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_registry_requirement_name_skips_sourced_and_direct[Pike_PDF>=1-pike-pdf]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_registry_requirement_name_skips_sourced_and_direct[example @ https://example.org/example.whl-None]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_registry_requirement_name_skips_sourced_and_direct[example @ https://example.org/example.whl-None]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_registry_requirement_name_skips_sourced_and_direct[example @ https://example.org/example.whl-None]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_registry_requirement_name_skips_sourced_and_direct[flext-core>=0.12-None]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_registry_requirement_name_skips_sourced_and_direct[flext-core>=0.12-None]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_registry_requirement_name_skips_sourced_and_direct[flext-core>=0.12-None]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_unwrap_item[None-None]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_unwrap_item[None-None]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_unwrap_item[None-None]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_unwrap_item[test-test]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_unwrap_item[test-test]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_unwrap_item[test-test]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_unwrap_item[value2-expected2]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_unwrap_item[value2-expected2]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_unwrap_item[value2-expected2]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_unwrap_item_toml_item",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_unwrap_item_toml_item",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_modernizer_helpers.py::TestsFlextInfraDepsModernizerHelpers::test_unwrap_item_toml_item",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_arbitrary_valid_execution_policy_round_trips[1-6-1-1]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_arbitrary_valid_execution_policy_round_trips[1-6-1-1]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_arbitrary_valid_execution_policy_round_trips[1-6-1-1]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_arbitrary_valid_execution_policy_round_trips[7-20-2-8]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_arbitrary_valid_execution_policy_round_trips[7-20-2-8]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_arbitrary_valid_execution_policy_round_trips[7-20-2-8]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_deadlines_cannot_exceed_operator_caps[ordinary-timeout-seconds-3]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_deadlines_cannot_exceed_operator_caps[ordinary-timeout-seconds-3]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_deadlines_cannot_exceed_operator_caps[ordinary-timeout-seconds-3]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_deadlines_cannot_exceed_operator_caps[run-timeout-seconds-1801]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_deadlines_cannot_exceed_operator_caps[run-timeout-seconds-1801]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_deadlines_cannot_exceed_operator_caps[run-timeout-seconds-1801]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_deadlines_cannot_exceed_operator_caps[slow-timeout-seconds-1801]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_deadlines_cannot_exceed_operator_caps[slow-timeout-seconds-1801]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_deadlines_cannot_exceed_operator_caps[slow-timeout-seconds-1801]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_long_execution_budget_is_admitted_by_the_operator_caps",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_long_execution_budget_is_admitted_by_the_operator_caps",
+        "phase": "call",
+        "outcome": "failed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_long_execution_budget_is_admitted_by_the_operator_caps",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_native_scheduling_policy_round_trips[False-load]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_native_scheduling_policy_round_trips[False-load]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_native_scheduling_policy_round_trips[False-load]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_native_scheduling_policy_round_trips[False-loadscope]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_native_scheduling_policy_round_trips[False-loadscope]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_native_scheduling_policy_round_trips[False-loadscope]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_native_scheduling_policy_round_trips[True-load]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_native_scheduling_policy_round_trips[True-load]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_native_scheduling_policy_round_trips[True-load]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_native_scheduling_policy_round_trips[True-loadscope]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_native_scheduling_policy_round_trips[True-loadscope]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_native_scheduling_policy_round_trips[True-loadscope]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_operator_caps_are_hard_typed_boundaries[run-timeout-seconds]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_operator_caps_are_hard_typed_boundaries[run-timeout-seconds]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_operator_caps_are_hard_typed_boundaries[run-timeout-seconds]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_operator_caps_are_hard_typed_boundaries[slow-timeout-seconds]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_operator_caps_are_hard_typed_boundaries[slow-timeout-seconds]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_operator_caps_are_hard_typed_boundaries[slow-timeout-seconds]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_operator_caps_are_hard_typed_boundaries[termination-grace-seconds]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_operator_caps_are_hard_typed_boundaries[termination-grace-seconds]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_operator_caps_are_hard_typed_boundaries[termination-grace-seconds]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_policy_round_trips_through_its_production_model",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_policy_round_trips_through_its_production_model",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_policy_round_trips_through_its_production_model",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reordering_refuses_string_coercion",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reordering_refuses_string_coercion",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reordering_refuses_string_coercion",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_conform_preserves_ordered_nested_includes_and_dependency_tiers[standalone]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_conform_preserves_ordered_nested_includes_and_dependency_tiers[standalone]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_conform_preserves_ordered_nested_includes_and_dependency_tiers[standalone]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_conform_preserves_ordered_nested_includes_and_dependency_tiers[workspace]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_conform_preserves_ordered_nested_includes_and_dependency_tiers[workspace]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_conform_preserves_ordered_nested_includes_and_dependency_tiers[workspace]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_conform_rejects_invalid_local_group_graph[dev = []\\nexamples = []\\nEXAMPLES = []]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_conform_rejects_invalid_local_group_graph[dev = []\\nexamples = []\\nEXAMPLES = []]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_conform_rejects_invalid_local_group_graph[dev = []\\nexamples = []\\nEXAMPLES = []]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_conform_rejects_invalid_local_group_graph[dev = [{include-group = \"dev\"}]]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_conform_rejects_invalid_local_group_graph[dev = [{include-group = \"dev\"}]]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_conform_rejects_invalid_local_group_graph[dev = [{include-group = \"dev\"}]]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_conform_rejects_invalid_local_group_graph[dev = [{include-group = \"missing\"}]]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_conform_rejects_invalid_local_group_graph[dev = [{include-group = \"missing\"}]]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_conform_rejects_invalid_local_group_graph[dev = [{include-group = \"missing\"}]]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_conform_rejects_invalid_local_group_graph[groups2]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_conform_rejects_invalid_local_group_graph[groups2]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_conform_rejects_invalid_local_group_graph[groups2]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_development_composition_preserves_complete_requirement_identity[extras]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_development_composition_preserves_complete_requirement_identity[extras]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_development_composition_preserves_complete_requirement_identity[extras]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_development_composition_preserves_complete_requirement_identity[marker]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_development_composition_preserves_complete_requirement_identity[marker]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_development_composition_preserves_complete_requirement_identity[marker]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_development_composition_preserves_complete_requirement_identity[origin]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_development_composition_preserves_complete_requirement_identity[origin]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_development_composition_preserves_complete_requirement_identity[origin]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_development_composition_preserves_complete_requirement_identity[same]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_development_composition_preserves_complete_requirement_identity[same]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_development_composition_preserves_complete_requirement_identity[same]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_empty_native_groups_remain_available_for_inclusion",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_empty_native_groups_remain_available_for_inclusion",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_empty_native_groups_remain_available_for_inclusion",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_extra_name_does_not_migrate_its_requirements_into_a_group[codegen-standalone]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_extra_name_does_not_migrate_its_requirements_into_a_group[codegen-standalone]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_extra_name_does_not_migrate_its_requirements_into_a_group[codegen-standalone]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_extra_name_does_not_migrate_its_requirements_into_a_group[codegen-workspace]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_extra_name_does_not_migrate_its_requirements_into_a_group[codegen-workspace]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_extra_name_does_not_migrate_its_requirements_into_a_group[codegen-workspace]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_extra_name_does_not_migrate_its_requirements_into_a_group[dev-standalone]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_extra_name_does_not_migrate_its_requirements_into_a_group[dev-standalone]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_extra_name_does_not_migrate_its_requirements_into_a_group[dev-standalone]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_extra_name_does_not_migrate_its_requirements_into_a_group[dev-workspace]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_extra_name_does_not_migrate_its_requirements_into_a_group[dev-workspace]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_extra_name_does_not_migrate_its_requirements_into_a_group[dev-workspace]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_fleet_dev_suppliers_apply_only_to_the_workspace_root",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_fleet_dev_suppliers_apply_only_to_the_workspace_root",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_fleet_dev_suppliers_apply_only_to_the_workspace_root",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_floor_merge_preserves_authored_requirement_variants[standalone]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_floor_merge_preserves_authored_requirement_variants[standalone]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_floor_merge_preserves_authored_requirement_variants[standalone]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_floor_merge_preserves_authored_requirement_variants[workspace]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_floor_merge_preserves_authored_requirement_variants[workspace]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_floor_merge_preserves_authored_requirement_variants[workspace]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_internal_floor_yields_only_its_unbounded_matching_dimension[bounded-standalone]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_internal_floor_yields_only_its_unbounded_matching_dimension[bounded-standalone]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_internal_floor_yields_only_its_unbounded_matching_dimension[bounded-standalone]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_internal_floor_yields_only_its_unbounded_matching_dimension[bounded-workspace]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_internal_floor_yields_only_its_unbounded_matching_dimension[bounded-workspace]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_internal_floor_yields_only_its_unbounded_matching_dimension[bounded-workspace]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_internal_floor_yields_only_its_unbounded_matching_dimension[extra-standalone]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_internal_floor_yields_only_its_unbounded_matching_dimension[extra-standalone]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_internal_floor_yields_only_its_unbounded_matching_dimension[extra-standalone]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_internal_floor_yields_only_its_unbounded_matching_dimension[extra-workspace]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_internal_floor_yields_only_its_unbounded_matching_dimension[extra-workspace]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_internal_floor_yields_only_its_unbounded_matching_dimension[extra-workspace]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_internal_floor_yields_only_its_unbounded_matching_dimension[marker-standalone]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_internal_floor_yields_only_its_unbounded_matching_dimension[marker-standalone]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_internal_floor_yields_only_its_unbounded_matching_dimension[marker-standalone]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_internal_floor_yields_only_its_unbounded_matching_dimension[marker-workspace]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_internal_floor_yields_only_its_unbounded_matching_dimension[marker-workspace]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_internal_floor_yields_only_its_unbounded_matching_dimension[marker-workspace]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_internal_floor_yields_only_its_unbounded_matching_dimension[origin-standalone]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_internal_floor_yields_only_its_unbounded_matching_dimension[origin-standalone]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_internal_floor_yields_only_its_unbounded_matching_dimension[origin-standalone]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_internal_floor_yields_only_its_unbounded_matching_dimension[origin-workspace]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_internal_floor_yields_only_its_unbounded_matching_dimension[origin-workspace]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_internal_floor_yields_only_its_unbounded_matching_dimension[origin-workspace]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_invalid_native_entries_escape_at_the_public_boundary[42]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_invalid_native_entries_escape_at_the_public_boundary[42]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_invalid_native_entries_escape_at_the_public_boundary[42]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_invalid_native_entries_escape_at_the_public_boundary[{\"include-group\" = \"examples\", unexpected = \"value\"}]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_invalid_native_entries_escape_at_the_public_boundary[{\"include-group\" = \"examples\", unexpected = \"value\"}]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_invalid_native_entries_escape_at_the_public_boundary[{\"include-group\" = \"examples\", unexpected = \"value\"}]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_invalid_native_entries_escape_at_the_public_boundary[{\"include-group\" = 42}]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_invalid_native_entries_escape_at_the_public_boundary[{\"include-group\" = 42}]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_invalid_native_entries_escape_at_the_public_boundary[{\"include-group\" = 42}]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_normalized_group_identity_does_not_create_a_second_group[codegen-standalone]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_normalized_group_identity_does_not_create_a_second_group[codegen-standalone]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_normalized_group_identity_does_not_create_a_second_group[codegen-standalone]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_normalized_group_identity_does_not_create_a_second_group[codegen-workspace]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_normalized_group_identity_does_not_create_a_second_group[codegen-workspace]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_normalized_group_identity_does_not_create_a_second_group[codegen-workspace]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_normalized_group_identity_does_not_create_a_second_group[dev-standalone]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_normalized_group_identity_does_not_create_a_second_group[dev-standalone]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_normalized_group_identity_does_not_create_a_second_group[dev-standalone]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_normalized_group_identity_does_not_create_a_second_group[dev-workspace]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_normalized_group_identity_does_not_create_a_second_group[dev-workspace]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_normalized_group_identity_does_not_create_a_second_group[dev-workspace]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_optional_dependencies_keep_pep508_string_grammar",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_optional_dependencies_keep_pep508_string_grammar",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_optional_dependencies_keep_pep508_string_grammar",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_policy_floor_replaces_a_declared_constraint_of_its_distribution",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_policy_floor_replaces_a_declared_constraint_of_its_distribution",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_policy_floor_replaces_a_declared_constraint_of_its_distribution",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_runtime_dependencies_keep_pep508_string_grammar",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_runtime_dependencies_keep_pep508_string_grammar",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/test_pyproject_dependency_groups.py::TestsFlextInfraPyprojectDependencyGroups::test_runtime_dependencies_keep_pep508_string_grammar",
+        "phase": "teardown",
+        "outcome": "passed"
+      }
+    ],
+    "markdown_attempts": [],
+    "markdown_items": [],
+    "failed_cases": [
+      "tests.unit.deps.test_pytest_timeout_config.TestsFlextInfraPytestTimeoutConfig::test_long_execution_budget_is_admitted_by_the_operator_caps"
+    ],
+    "error_traces": [
+      "=== FAILURE: tests.unit.deps.test_pytest_timeout_config.TestsFlextInfraPytestTimeoutConfig::test_long_execution_budget_is_admitted_by_the_operator_caps ===\npydantic_core._pydantic_core.ValidationError: 1 validation error for PytestConfig\n  Value error, pytest run timeout must exceed the suite stop reserve [type=value_error, input_value={'ordinary-timeout-second...'_clear_make_ci_token')}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.14/v/value_error\ntests/unit/deps/test_pytest_timeout_config.py:143: in test_long_execution_budget_is_admitted_by_the_operator_caps\n    admitted = type(policy).model_validate(payload)\n               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   pydantic_core._pydantic_core.ValidationError: 1 validation error for PytestConfig\nE     Value error, pytest run timeout must exceed the suite stop reserve [type=value_error, input_value={'ordinary-timeout-second...'_clear_make_ci_token')}, input_type=dict]\nE       For further information visit https://errors.pydantic.dev/2.14/v/value_error"
+    ],
+    "warning_lines": [],
+    "skip_cases": [],
+    "slow_entries": [
+      "0.283000s | tests.unit.test_pyproject_dependency_groups.TestsFlextInfraPyprojectDependencyGroups::test_policy_floor_replaces_a_declared_constraint_of_its_distribution",
+      "0.186000s | tests.unit.test_pyproject_dependency_groups.TestsFlextInfraPyprojectDependencyGroups::test_normalized_group_identity_does_not_create_a_second_group[codegen-workspace]",
+      "0.156000s | tests.unit.codegen.test_codegen_py_typed.TestsFlextInfraCodegenPyTyped::test_creates_marker_in_dir_with_py_files",
+      "0.145000s | tests.unit.test_pyproject_dependency_groups.TestsFlextInfraPyprojectDependencyGroups::test_normalized_group_identity_does_not_create_a_second_group[dev-workspace]",
+      "0.139000s | tests.unit.test_pyproject_dependency_groups.TestsFlextInfraPyprojectDependencyGroups::test_normalized_group_identity_does_not_create_a_second_group[codegen-standalone]",
+      "0.120000s | tests.unit.test_pyproject_dependency_groups.TestsFlextInfraPyprojectDependencyGroups::test_normalized_group_identity_does_not_create_a_second_group[dev-standalone]",
+      "0.109000s | tests.unit.test_pyproject_dependency_groups.TestsFlextInfraPyprojectDependencyGroups::test_conform_preserves_ordered_nested_includes_and_dependency_tiers[workspace]",
+      "0.106000s | tests.unit.test_pyproject_dependency_groups.TestsFlextInfraPyprojectDependencyGroups::test_conform_preserves_ordered_nested_includes_and_dependency_tiers[standalone]",
+      "0.094000s | tests.unit.test_pyproject_dependency_groups.TestsFlextInfraPyprojectDependencyGroups::test_development_composition_preserves_complete_requirement_identity[marker]",
+      "0.084000s | tests.unit.test_pyproject_dependency_groups.TestsFlextInfraPyprojectDependencyGroups::test_internal_floor_yields_only_its_unbounded_matching_dimension[marker-workspace]",
+      "0.075000s | tests.unit.test_pyproject_dependency_groups.TestsFlextInfraPyprojectDependencyGroups::test_internal_floor_yields_only_its_unbounded_matching_dimension[marker-standalone]",
+      "0.074000s | tests.unit.test_pyproject_dependency_groups.TestsFlextInfraPyprojectDependencyGroups::test_development_composition_preserves_complete_requirement_identity[origin]",
+      "0.073000s | tests.unit.test_pyproject_dependency_groups.TestsFlextInfraPyprojectDependencyGroups::test_development_composition_preserves_complete_requirement_identity[same]",
+      "0.071000s | tests.unit.test_pyproject_dependency_groups.TestsFlextInfraPyprojectDependencyGroups::test_extra_name_does_not_migrate_its_requirements_into_a_group[dev-workspace]",
+      "0.071000s | tests.unit.test_pyproject_dependency_groups.TestsFlextInfraPyprojectDependencyGroups::test_development_composition_preserves_complete_requirement_identity[extras]",
+      "0.070000s | tests.unit.test_pyproject_dependency_groups.TestsFlextInfraPyprojectDependencyGroups::test_internal_floor_yields_only_its_unbounded_matching_dimension[bounded-standalone]",
+      "0.063000s | tests.unit.test_pyproject_dependency_groups.TestsFlextInfraPyprojectDependencyGroups::test_floor_merge_preserves_authored_requirement_variants[workspace]",
+      "0.062000s | tests.unit.test_pyproject_dependency_groups.TestsFlextInfraPyprojectDependencyGroups::test_floor_merge_preserves_authored_requirement_variants[standalone]",
+      "0.061000s | tests.unit.test_pyproject_dependency_groups.TestsFlextInfraPyprojectDependencyGroups::test_extra_name_does_not_migrate_its_requirements_into_a_group[codegen-workspace]",
+      "0.060000s | tests.unit.test_pyproject_dependency_groups.TestsFlextInfraPyprojectDependencyGroups::test_internal_floor_yields_only_its_unbounded_matching_dimension[extra-standalone]",
+      "0.057000s | tests.unit.test_pyproject_dependency_groups.TestsFlextInfraPyprojectDependencyGroups::test_internal_floor_yields_only_its_unbounded_matching_dimension[bounded-workspace]",
+      "0.053000s | tests.unit.test_pyproject_dependency_groups.TestsFlextInfraPyprojectDependencyGroups::test_extra_name_does_not_migrate_its_requirements_into_a_group[codegen-standalone]",
+      "0.051000s | tests.unit.test_pyproject_dependency_groups.TestsFlextInfraPyprojectDependencyGroups::test_internal_floor_yields_only_its_unbounded_matching_dimension[extra-workspace]",
+      "0.050000s | tests.unit.test_pyproject_dependency_groups.TestsFlextInfraPyprojectDependencyGroups::test_extra_name_does_not_migrate_its_requirements_into_a_group[dev-standalone]",
+      "0.049000s | tests.unit.deps.test_pytest_timeout_config.TestsFlextInfraPytestTimeoutConfig::test_native_scheduling_policy_round_trips[False-load]",
+      "0.040000s | tests.unit.test_pyproject_dependency_groups.TestsFlextInfraPyprojectDependencyGroups::test_internal_floor_yields_only_its_unbounded_matching_dimension[origin-standalone]",
+      "0.039000s | tests.unit.test_pyproject_dependency_groups.TestsFlextInfraPyprojectDependencyGroups::test_internal_floor_yields_only_its_unbounded_matching_dimension[origin-workspace]",
+      "0.039000s | tests.unit.deps.test_modernizer_helpers.TestsFlextInfraDepsModernizerHelpers::test_dep_name[requests-requests]",
+      "0.020000s | tests.unit.codegen.test_codegen_py_typed.TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[__pyrefly_virtual__]",
+      "0.019000s | tests.unit.test_pyproject_dependency_groups.TestsFlextInfraPyprojectDependencyGroups::test_empty_native_groups_remain_available_for_inclusion",
+      "0.018000s | tests.unit.deps.test_modernizer_helpers.TestsFlextInfraDepsModernizerHelpers::test_project_dev_groups[optional_deps2-expected_dev2-expected_docs2]",
+      "0.018000s | tests.unit.codegen.test_codegen_py_typed.TestsFlextInfraCodegenPyTyped::test_removes_stale_marker_when_no_py_files",
+      "0.017000s | tests.unit.test_pyproject_dependency_groups.TestsFlextInfraPyprojectDependencyGroups::test_fleet_dev_suppliers_apply_only_to_the_workspace_root",
+      "0.017000s | tests.unit.codegen.test_codegen_py_typed.TestsFlextInfraCodegenPyTyped::test_multiple_packages_all_get_markers",
+      "0.016000s | tests.unit.deps.test_modernizer_helpers.TestsFlextInfraDepsModernizerHelpers::test_declared_dependency_names_collects_all_supported_groups",
+      "0.015000s | tests.unit.test_pyproject_dependency_groups.TestsFlextInfraPyprojectDependencyGroups::test_conform_rejects_invalid_local_group_graph[dev = [{include-group = \"missing\"}]]",
+      "0.015000s | tests.unit.deps.test_modernizer_helpers.TestsFlextInfraDepsModernizerHelpers::test_project_dev_groups[optional_deps1-expected_dev1-expected_docs1]",
+      "0.015000s | tests.unit.deps.test_modernizer_helpers.TestsFlextInfraDepsModernizerHelpers::test_project_dev_groups[optional_deps0-expected_dev0-expected_docs0]",
+      "0.015000s | tests.unit.deps.test_modernizer_helpers.TestsFlextInfraDepsModernizerHelpers::test_canonical_dev_dependencies[optional_deps2-1-True]",
+      "0.015000s | tests.unit.deps.test_modernizer_helpers.TestsFlextInfraDepsModernizerHelpers::test_canonical_dev_dependencies[optional_deps1-0-False]",
+      "0.015000s | tests.unit.deps.test_modernizer_helpers.TestsFlextInfraDepsModernizerHelpers::test_canonical_dev_dependencies[optional_deps0-5-True]",
+      "0.015000s | tests.unit.deps.test_modernizer_helpers.TestsFlextInfraDepsModernizerHelpers::test_bounded_requirement_rewrites_only_the_owned_bound[httpx[socks]>=0.1,<1; python_version < '3.14'->=-0.2-httpx[socks]>=0.2,<1; python_version < \"3.14\"]",
+      "0.015000s | tests.unit.codegen.test_codegen_py_typed.TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[node_modules]",
+      "0.015000s | tests.unit.codegen.test_codegen_py_typed.TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.venv]",
+      "0.014000s | tests.unit.deps.test_modernizer_helpers.TestsFlextInfraDepsModernizerHelpers::test_unwrap_item_toml_item",
+      "0.014000s | tests.unit.deps.test_modernizer_helpers.TestsFlextInfraDepsModernizerHelpers::test_project_dev_groups_missing_sections",
+      "0.014000s | tests.unit.codegen.test_codegen_py_typed.TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[site]",
+      "0.014000s | tests.unit.codegen.test_codegen_py_typed.TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[dist-packages]",
+      "0.014000s | tests.unit.codegen.test_codegen_py_typed.TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[build]",
+      "0.014000s | tests.unit.codegen.test_codegen_py_typed.TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.venv.*]",
+      "0.014000s | tests.unit.codegen.test_codegen_py_typed.TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.tox]",
+      "0.014000s | tests.unit.codegen.test_codegen_py_typed.TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.agents-sync-home]",
+      "0.014000s | tests.unit.codegen.test_codegen_py_typed.TestsFlextInfraCodegenPyTyped::test_execute_returns_success",
+      "0.013000s | tests.unit.deps.test_modernizer_helpers.TestsFlextInfraDepsModernizerHelpers::test_ensure_table[replace-non-table]",
+      "0.013000s | tests.unit.deps.test_modernizer_helpers.TestsFlextInfraDepsModernizerHelpers::test_bounded_requirement_rewrites_only_the_owned_bound[pikepdf>=10.18,<11->=-None-pikepdf<11]",
+      "0.013000s | tests.unit.deps.test_modernizer_helpers.TestsFlextInfraDepsModernizerHelpers::test_bounded_requirement_rewrites_only_the_owned_bound[pikepdf==10.18.0-==-0.2-pikepdf==0.2]",
+      "0.013000s | tests.unit.deps.test_modernizer_helpers.TestsFlextInfraDepsModernizerHelpers::test_as_string_list[value0-expected0]",
+      "0.013000s | tests.unit.deps.test_modernizer_helpers.TestsFlextInfraDepsModernizerHelpers::test_array[items2-1]",
+      "0.013000s | tests.unit.deps.test_modernizer_helpers.TestsFlextInfraDepsModernizerHelpers::test_array[items0-3]",
+      "0.013000s | tests.unit.codegen.test_codegen_py_typed.TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[venv]",
+      "0.013000s | tests.unit.codegen.test_codegen_py_typed.TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[target]",
+      "0.013000s | tests.unit.codegen.test_codegen_py_typed.TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[site-packages]",
+      "0.013000s | tests.unit.codegen.test_codegen_py_typed.TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[dist]",
+      "0.013000s | tests.unit.codegen.test_codegen_py_typed.TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[_tmp_*]",
+      "0.013000s | tests.unit.codegen.test_codegen_py_typed.TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[__pycache__]",
+      "0.013000s | tests.unit.codegen.test_codegen_py_typed.TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.worktrees]",
+      "0.013000s | tests.unit.codegen.test_codegen_py_typed.TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.test-tmp]",
+      "0.013000s | tests.unit.codegen.test_codegen_py_typed.TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.pytest_cache]",
+      "0.013000s | tests.unit.codegen.test_codegen_py_typed.TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.pylance_cache]",
+      "0.013000s | tests.unit.codegen.test_codegen_py_typed.TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.git]",
+      "0.013000s | tests.unit.codegen.test_codegen_py_typed.TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.cache]",
+      "0.013000s | tests.unit.codegen.test_codegen_py_typed.TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.benchmarks]",
+      "0.013000s | tests.unit.codegen.test_codegen_py_typed.TestsFlextInfraCodegenPyTyped::test_only_expected_namespace_marker_is_created",
+      "0.012000s | tests.unit.test_pyproject_dependency_groups.TestsFlextInfraPyprojectDependencyGroups::test_runtime_dependencies_keep_pep508_string_grammar",
+      "0.012000s | tests.unit.test_pyproject_dependency_groups.TestsFlextInfraPyprojectDependencyGroups::test_invalid_native_entries_escape_at_the_public_boundary[{\"include-group\" = \"examples\", unexpected = \"value\"}]",
+      "0.012000s | tests.unit.deps.test_modernizer_helpers.TestsFlextInfraDepsModernizerHelpers::test_ensure_table[new]",
+      "0.012000s | tests.unit.deps.test_modernizer_helpers.TestsFlextInfraDepsModernizerHelpers::test_as_string_list_toml_item",
+      "0.012000s | tests.unit.deps.test_modernizer_helpers.TestsFlextInfraDepsModernizerHelpers::test_as_string_list[value3-expected3]",
+      "0.012000s | tests.unit.deps.test_modernizer_helpers.TestsFlextInfraDepsModernizerHelpers::test_as_string_list[test-expected2]",
+      "0.012000s | tests.unit.deps.test_modernizer_helpers.TestsFlextInfraDepsModernizerHelpers::test_as_string_list[None-expected1]",
+      "0.012000s | tests.unit.deps.test_modernizer_helpers.TestsFlextInfraDepsModernizerHelpers::test_as_string_list[42-expected4]",
+      "0.012000s | tests.unit.deps.test_modernizer_helpers.TestsFlextInfraDepsModernizerHelpers::test_array[items1-0]",
+      "0.012000s | tests.unit.codegen.test_codegen_py_typed.TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.ruff_cache]",
+      "0.012000s | tests.unit.codegen.test_codegen_py_typed.TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.reports]",
+      "0.012000s | tests.unit.codegen.test_codegen_py_typed.TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.pyrefly_cache]",
+      "0.012000s | tests.unit.codegen.test_codegen_py_typed.TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.bkp]",
+      "0.012000s | tests.unit.codegen.test_codegen_py_typed.TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.archive]",
+      "0.012000s | tests.unit.codegen.test_codegen_py_typed.TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[*.egg-info]",
+      "0.012000s | tests.unit.codegen.test_codegen_py_typed.TestsFlextInfraCodegenPyTyped::test_no_change_when_marker_already_exists",
+      "0.011000s | tests.unit.test_pyproject_dependency_groups.TestsFlextInfraPyprojectDependencyGroups::test_optional_dependencies_keep_pep508_string_grammar",
+      "0.011000s | tests.unit.deps.test_modernizer_helpers.TestsFlextInfraDepsModernizerHelpers::test_unwrap_item[test-test]",
+      "0.011000s | tests.unit.deps.test_modernizer_helpers.TestsFlextInfraDepsModernizerHelpers::test_unwrap_item[None-None]",
+      "0.011000s | tests.unit.deps.test_modernizer_helpers.TestsFlextInfraDepsModernizerHelpers::test_registry_requirement_name_skips_sourced_and_direct[example @ https://example.org/example.whl-None]",
+      "0.011000s | tests.unit.deps.test_modernizer_helpers.TestsFlextInfraDepsModernizerHelpers::test_registry_requirement_name_skips_sourced_and_direct[Pike_PDF>=1-pike-pdf]",
+      "0.011000s | tests.unit.deps.test_modernizer_helpers.TestsFlextInfraDepsModernizerHelpers::test_ensure_table[existing]",
+      "0.011000s | tests.unit.deps.test_modernizer_helpers.TestsFlextInfraDepsModernizerHelpers::test_dedupe_specs[specs4-1-expected_names4-False]",
+      "0.011000s | tests.unit.deps.test_modernizer_helpers.TestsFlextInfraDepsModernizerHelpers::test_dedupe_specs[specs0-2-expected_names0-False]",
+      "0.011000s | tests.unit.deps.test_modernizer_helpers.TestsFlextInfraDepsModernizerHelpers::test_bounded_requirement_rewrites_only_the_owned_bound[pikepdf>=10.18,<11-==-0.2-pikepdf==0.2]",
+      "0.011000s | tests.unit.codegen.test_codegen_py_typed.TestsFlextInfraCodegenPyTyped::test_tests_dir_packages_also_scanned",
+      "0.011000s | tests.unit.codegen.test_codegen_py_typed.TestsFlextInfraCodegenPyTyped::test_skips_nested_hidden_virtualenv_directories",
+      "0.011000s | tests.unit.codegen.test_codegen_py_typed.TestsFlextInfraCodegenPyTyped::test_skips_known_excluded_directories[.hidden]",
+      "0.010000s | tests.unit.test_pyproject_dependency_groups.TestsFlextInfraPyprojectDependencyGroups::test_conform_rejects_invalid_local_group_graph[groups2]",
+      "0.010000s | tests.unit.test_pyproject_dependency_groups.TestsFlextInfraPyprojectDependencyGroups::test_conform_rejects_invalid_local_group_graph[dev = []\\nexamples = []\\nEXAMPLES = []]",
+      "0.010000s | tests.unit.deps.test_modernizer_helpers.TestsFlextInfraDepsModernizerHelpers::test_registry_requirement_name_skips_sourced_and_direct[flext-core>=0.12-None]",
+      "0.010000s | tests.unit.deps.test_modernizer_helpers.TestsFlextInfraDepsModernizerHelpers::test_dedupe_specs[specs3-2-expected_names3-True]",
+      "0.010000s | tests.unit.deps.test_modernizer_helpers.TestsFlextInfraDepsModernizerHelpers::test_bounded_requirement_rewrites_only_the_owned_bound[pikepdf==10.18.0-==-None-pikepdf]",
+      "0.010000s | tests.unit.codegen.test_codegen_py_typed.TestsFlextInfraCodegenPyTyped::test_check_only_does_not_remove_marker",
+      "0.009000s | tests.unit.test_pyproject_dependency_groups.TestsFlextInfraPyprojectDependencyGroups::test_invalid_native_entries_escape_at_the_public_boundary[{\"include-group\" = 42}]",
+      "0.009000s | tests.unit.test_pyproject_dependency_groups.TestsFlextInfraPyprojectDependencyGroups::test_invalid_native_entries_escape_at_the_public_boundary[42]",
+      "0.009000s | tests.unit.test_pyproject_dependency_groups.TestsFlextInfraPyprojectDependencyGroups::test_conform_rejects_invalid_local_group_graph[dev = [{include-group = \"dev\"}]]",
+      "0.009000s | tests.unit.deps.test_pytest_timeout_config.TestsFlextInfraPytestTimeoutConfig::test_native_scheduling_policy_round_trips[False-loadscope]",
+      "0.009000s | tests.unit.deps.test_pytest_timeout_config.TestsFlextInfraPytestTimeoutConfig::test_long_execution_budget_is_admitted_by_the_operator_caps",
+      "0.009000s | tests.unit.deps.test_pytest_timeout_config.TestsFlextInfraPytestTimeoutConfig::test_deadlines_cannot_exceed_operator_caps[ordinary-timeout-seconds-3]",
+      "0.009000s | tests.unit.deps.test_modernizer_helpers.TestsFlextInfraDepsModernizerHelpers::test_unwrap_item[value2-expected2]",
+      "0.009000s | tests.unit.deps.test_modernizer_helpers.TestsFlextInfraDepsModernizerHelpers::test_dep_name[Django>=3.0,<4.0-django]",
+      "0.008000s | tests.unit.deps.test_pytest_timeout_config.TestsFlextInfraPytestTimeoutConfig::test_deadlines_cannot_exceed_operator_caps[slow-timeout-seconds-1801]",
+      "0.008000s | tests.unit.codegen.test_codegen_py_typed.TestsFlextInfraCodegenPyTyped::test_check_only_does_not_write_marker",
+      "0.007000s | tests.unit.deps.test_modernizer_helpers.TestsFlextInfraDepsModernizerHelpers::test_dep_name[my_package-my-package]",
+      "0.007000s | tests.unit.deps.test_modernizer_helpers.TestsFlextInfraDepsModernizerHelpers::test_dep_name[../flext-core-flext-core]",
+      "0.007000s | tests.unit.deps.test_modernizer_helpers.TestsFlextInfraDepsModernizerHelpers::test_dep_name[-None]",
+      "0.007000s | tests.unit.deps.test_modernizer_helpers.TestsFlextInfraDepsModernizerHelpers::test_dep_name[  requests  -requests]",
+      "0.007000s | tests.unit.deps.test_modernizer_helpers.TestsFlextInfraDepsModernizerHelpers::test_dedupe_specs[specs2-0-expected_names2-False]",
+      "0.007000s | tests.unit.deps.test_modernizer_helpers.TestsFlextInfraDepsModernizerHelpers::test_dedupe_specs[specs1-2-expected_names1-False]",
+      "0.006000s | tests.unit.deps.test_pytest_timeout_config.TestsFlextInfraPytestTimeoutConfig::test_reordering_refuses_string_coercion",
+      "0.006000s | tests.unit.deps.test_pytest_timeout_config.TestsFlextInfraPytestTimeoutConfig::test_operator_caps_are_hard_typed_boundaries[slow-timeout-seconds]",
+      "0.006000s | tests.unit.deps.test_pytest_timeout_config.TestsFlextInfraPytestTimeoutConfig::test_operator_caps_are_hard_typed_boundaries[run-timeout-seconds]",
+      "0.006000s | tests.unit.deps.test_pytest_timeout_config.TestsFlextInfraPytestTimeoutConfig::test_native_scheduling_policy_round_trips[True-loadscope]",
+      "0.006000s | tests.unit.deps.test_pytest_timeout_config.TestsFlextInfraPytestTimeoutConfig::test_native_scheduling_policy_round_trips[True-load]",
+      "0.006000s | tests.unit.deps.test_pytest_timeout_config.TestsFlextInfraPytestTimeoutConfig::test_deadlines_cannot_exceed_operator_caps[run-timeout-seconds-1801]",
+      "0.006000s | tests.unit.deps.test_pytest_timeout_config.TestsFlextInfraPytestTimeoutConfig::test_arbitrary_valid_execution_policy_round_trips[7-20-2-8]",
+      "0.006000s | tests.unit.deps.test_pytest_timeout_config.TestsFlextInfraPytestTimeoutConfig::test_arbitrary_valid_execution_policy_round_trips[1-6-1-1]",
+      "0.006000s | tests.unit.deps.test_modernizer_helpers.TestsFlextInfraDepsModernizerHelpers::test_dep_name[requests>=2.0-requests]",
+      "0.006000s | tests.unit.deps.test_modernizer_helpers.TestsFlextInfraDepsModernizerHelpers::test_dep_name[requests @ git+https://github.com/psf/requests.git-requests]",
+      "0.005000s | tests.unit.deps.test_pytest_timeout_config.TestsFlextInfraPytestTimeoutConfig::test_policy_round_trips_through_its_production_model",
+      "0.005000s | tests.unit.deps.test_pytest_timeout_config.TestsFlextInfraPytestTimeoutConfig::test_operator_caps_are_hard_typed_boundaries[termination-grace-seconds]"
+    ]
+  },
+  "cache_hit": false,
+  "violations": [
+    "selected node IDs differ from executed node IDs"
+  ]
+}

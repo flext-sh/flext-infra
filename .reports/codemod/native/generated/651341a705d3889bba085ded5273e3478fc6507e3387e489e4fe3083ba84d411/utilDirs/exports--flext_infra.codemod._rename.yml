@@ -1,0 +1,1 @@
+{"id":"exports--flext_infra.codemod._rename","language":"Python","rule":{"regex":"^(?:FlextInfraCodemodRenameSources|FlextInfraCodemodRenameSymbols)$"}}

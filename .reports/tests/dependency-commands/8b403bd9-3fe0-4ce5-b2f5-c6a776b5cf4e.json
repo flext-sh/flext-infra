@@ -1,0 +1,10 @@
+{
+  "outcome": {
+    "raw_return_code": 2,
+    "timed_out": false,
+    "forwarded_signal": null
+  },
+  "duration": 0.008284001029096544,
+  "stdout": "Do not wait for the load to drop; run the lighter form now, it runs at idle priority.\nPrefer make tests (incremental Testmon) over make tests-full; run tests-full only occasionally.\nPrefer a narrow make mod RULES=<rule ids> over a full make mod, and make check CHECK_PHASE=primary over the full check.\nUse at most 2 workers and never run heavy verbs in parallel across lanes.\nA verb exception is a declared make.admission.overrides entry in the config SSOT, never a local edit or an environment bypass.\n",
+  "stderr": "Makefile:44: *** Refused: 5-minute load average 23.02 exceeds the admission limit 20.0 of 'upg'; run its lighter form now, or declare make.admission.overrides.<verb>.max_load5 in config/codegen.yaml (flext-infra for canonical verbs, the project for its own extra_verbs).  Pare.\n"
+}

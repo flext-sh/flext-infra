@@ -1,0 +1,3 @@
+tests.unit.gates.test_lint_recipes.TestsFlextInfraLintRecipes::test_summary_docstring_derives_from_the_name
+
+tests.unit._utilities.test_rope_analysis.TestsFlextInfraRopeAnalysis::test_namespace_policy_retains_inherited_public_payload
