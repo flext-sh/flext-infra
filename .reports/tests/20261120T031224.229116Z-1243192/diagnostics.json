@@ -1,0 +1,63 @@
+{
+  "failed_count": 2,
+  "error_count": 0,
+  "warning_count": 0,
+  "skipped_count": 0,
+  "connectivity_skip_cases": [],
+  "collection_failed_count": 0,
+  "collection_skipped_count": 0,
+  "collection_failed_cases": [],
+  "collection_skip_cases": [],
+  "reported_node_ids": [
+    "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-canonical]",
+    "tests/unit/codemod/test_api_alias_cutover.py::TestsFlextInfraApiAliasCutover::test_service_retirement_preserves_kernel_context_and_shadowing[from sample_pkg import s-s-FlextSampleService]"
+  ],
+  "phase_outcomes": [
+    {
+      "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-canonical]",
+      "phase": "setup",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-canonical]",
+      "phase": "call",
+      "outcome": "failed"
+    },
+    {
+      "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-canonical]",
+      "phase": "teardown",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/codemod/test_api_alias_cutover.py::TestsFlextInfraApiAliasCutover::test_service_retirement_preserves_kernel_context_and_shadowing[from sample_pkg import s-s-FlextSampleService]",
+      "phase": "setup",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/codemod/test_api_alias_cutover.py::TestsFlextInfraApiAliasCutover::test_service_retirement_preserves_kernel_context_and_shadowing[from sample_pkg import s-s-FlextSampleService]",
+      "phase": "call",
+      "outcome": "failed"
+    },
+    {
+      "node_id": "tests/unit/codemod/test_api_alias_cutover.py::TestsFlextInfraApiAliasCutover::test_service_retirement_preserves_kernel_context_and_shadowing[from sample_pkg import s-s-FlextSampleService]",
+      "phase": "teardown",
+      "outcome": "passed"
+    }
+  ],
+  "markdown_attempts": [],
+  "markdown_items": [],
+  "failed_cases": [
+    "tests.unit.codemod.test_api_alias_cutover.TestsFlextInfraApiAliasCutover::test_service_retirement_preserves_kernel_context_and_shadowing[from sample_pkg import s-s-FlextSampleService]",
+    "tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-canonical]"
+  ],
+  "error_traces": [
+    "=== FAILURE: tests.unit.codemod.test_api_alias_cutover.TestsFlextInfraApiAliasCutover::test_service_retirement_preserves_kernel_context_and_shadowing[from sample_pkg import s-s-FlextSampleService] ===\nFailed: Timeout (>2.0s) from pytest-timeout.\ntests/unit/codemod/test_api_alias_cutover.py:88: in test_service_retirement_preserves_kernel_context_and_shadowing\n    u.Infra.plan_semantic_cutover(\nsrc/flext_infra/_utilities/_semantic_cutover/base.py:78: in plan_semantic_cutover\n    attempt = r.safe(\n.venv/lib/python3.13/site-packages/flext_core/_result/composition.py:201: in wrapper\n    return cls._create_success(func(*args, **kwargs))\n                               ^^^^^^^^^^^^^^^^^^^^^\nsrc/flext_infra/_utilities/_semantic_cutover/base.py:142: in _plan_semantic_cutover_phase\n    return cls._plan_selected_phase_dispatch(\nsrc/flext_infra/_utilities/_semantic_cutover/base.py:340: in _plan_selected_phase_dispatch\n    return factory()\n           ^^^^^^^^^\nsrc/flext_infra/_utilities/_semantic_cutover/base.py:313: in <lambda>\n    c.Infra.SemanticCutoverPhase.COMPAT_ALIAS: lambda: cls._plan_alias_cutover(\nsrc/flext_infra/_utilities/_semantic_cutover/base.py:363: in _plan_alias_cutover\n    api = cls._plan_api_aliases(workspace, working, selected, import_normalizer)\n          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nsrc/flext_infra/_utilities/_semantic_cutover/aliases.py:407: in _plan_api_aliases\n    service_aliases, service_graph = cls._service_aliases(workspace, sources)\n                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nsrc/flext_infra/_utilities/_semantic_cutover/aliases.py:116: in _service_aliases\n    ancestry_sources[path] = cls._rewrite_compatibility_alias_source(\n                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n.venv/lib/python3.13/site-packages/flext_core/flextlazy_member.py:93: in __get__\n    raw = self.resolve()\n          ^^^^^^^^^^^^^^\n.venv/lib/python3.13/site-packages/flext_core/flextlazy_member.py:136: in resolve\n    getattr(self._load(self._module), self._owner),\n            ^^^^^^^^^^^^^^^^^^^^^^^^\n.venv/lib/python3.13/site-packages/flext_core/flextlazy_bootstrap.py:200: in load\n    mod = self._import_module(module_path)\n          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n../../../.local/share/mise/installs/python/3.13.17/lib/python3.13/importlib/__init__.py:88: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n<frozen importlib._bootstrap>:1404: in _gcd_import\n    ???\n<frozen importlib._bootstrap>:1369: in _find_and_load\n    ???\n<frozen importlib._bootstrap>:1340: in _find_and_load_unlocked\n    ???\n<frozen importlib._bootstrap>:935: in _load_unlocked\n    ???\n.venv/lib/python3.13/site-packages/_pytest/assertion/rewrite.py:185: in exec_module\n    exec(co, module.__dict__)\nsrc/flext_infra/_utilities/_semantic_cutover/alias_cst.py:12: in <module>\n    import libcst as cst\n.venv/lib/python3.13/site-packages/libcst/__init__.py:234: in <module>\n    from libcst.metadata.base_provider import (\n<frozen importlib._bootstrap>:1369: in _find_and_load\n    ???\n<frozen importlib._bootstrap>:1331: in _find_and_load_unlocked\n    ???\n<frozen importlib._bootstrap>:1265: in _find_spec\n    ???\n<frozen importlib._bootstrap_external>:1560: in find_spec\n    ???\n<frozen importlib._bootstrap_external>:1534: in _get_spec\n    ???\n<frozen importlib._bootstrap_external>:1652: in find_spec\n    ???\nE   Failed: Timeout (>2.0s) from pytest-timeout.",
+    "=== FAILURE: tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-canonical] ===\nFailed: Timeout (>20.0s) from pytest-timeout.\ntests/unit/codegen/_utility_facade_projection/owner_publication.py:88: in test_explicit_owner_config_requires_canonical_metadata\n    native_consumer(\ntests/fixtures/infra.py:86: in consume\n    u.Tests.run_lazy_init_probe(\ntests/_utilities/codegen.py:377: in run_lazy_init_probe\n    u.Cli.run(\n.venv/lib/python3.13/site-packages/flext_cli/_utilities/_runtime/commands.py:79: in run\n    return cls.run_raw(\n.venv/lib/python3.13/site-packages/flext_cli/_utilities/runtime.py:201: in run_raw\n    return cls._execute_streamed_process(\n.venv/lib/python3.13/site-packages/flext_cli/_utilities/_runtime/process_execution.py:66: in _execute_streamed_process\n    cls._execute_lifecycle(request, state, timing)\n.venv/lib/python3.13/site-packages/flext_cli/_utilities/_runtime/process_execution.py:173: in _execute_lifecycle\n    state.timed_out, state.final_deadline = cls._monitor_process(\n.venv/lib/python3.13/site-packages/flext_cli/_utilities/_runtime/process_monitor.py:49: in _monitor_process\n    cls._wait_next_boundary(state, phase, now)\n.venv/lib/python3.13/site-packages/flext_cli/_utilities/_runtime/process_monitor.py:113: in _wait_next_boundary\n    state.wake.wait(\n../../../.local/share/mise/installs/python/3.13.17/lib/python3.13/threading.py:660: in wait\n    signaled = self._cond.wait(timeout)\n               ^^^^^^^^^^^^^^^^^^^^^^^^\n../../../.local/share/mise/installs/python/3.13.17/lib/python3.13/threading.py:359: in wait\n    waiter.acquire()\nE   Failed: Timeout (>20.0s) from pytest-timeout."
+  ],
+  "warning_lines": [],
+  "skip_cases": [],
+  "slow_entries": [
+    "20.600000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-canonical]",
+    "2.016000s | tests.unit.codemod.test_api_alias_cutover.TestsFlextInfraApiAliasCutover::test_service_retirement_preserves_kernel_context_and_shadowing[from sample_pkg import s-s-FlextSampleService]"
+  ]
+}

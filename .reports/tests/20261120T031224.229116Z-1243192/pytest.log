@@ -1,0 +1,210 @@
+================================================= test session starts ==================================================
+platform linux -- Python 3.13.17, pytest-9.2.0, pluggy-1.7.0 -- /home/marlonsc/worktrees/flext-infra/cold-3pmw9/.venv/bin/python
+cachedir: .pytest_cache
+hypothesis profile 'default'
+testmon: selection deactivated, environment: toolchain-daf7b41fb9da-7c745462-5834a665
+benchmark: 5.3.1 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+Using --randomly-seed=1940334308
+rootdir: /home/marlonsc/worktrees/flext-infra/cold-3pmw9
+configfile: pyproject.toml
+plugins: flext-tests-0.12.0, flext-infra-0.12.2, hypothesis-6.170.15, anyio-4.16.0, platformdirs-4.14.5, testmon-2.3.0, timeout-2.4.0, xdist-3.8.0, asyncio-1.4.1.post1, benchmark-5.3.1, cov-7.1.0, markdown-docs-0.9.2, randomly-5.1.0, reportlog-1.0.0
+timeout: 2.0s
+timeout method: signal
+timeout func_only: True
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
+created: 2/2 workers
+2 workers [6618 items]
+
+scheduling tests via LoadScopeScheduling
+
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-canonical] 
+tests/unit/codemod/test_api_alias_cutover.py::TestsFlextInfraApiAliasCutover::test_service_retirement_preserves_kernel_context_and_shadowing[from sample_pkg import s-s-FlextSampleService] 
+[gw1] [  0%] FAILED tests/unit/codemod/test_api_alias_cutover.py::TestsFlextInfraApiAliasCutover::test_service_retirement_preserves_kernel_context_and_shadowing[from sample_pkg import s-s-FlextSampleService] 
+[gw0] [  0%] FAILED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-canonical] 
+
+======================================================= FAILURES =======================================================
+_ TestsFlextInfraApiAliasCutover.test_service_retirement_preserves_kernel_context_and_shadowing[from sample_pkg import s-s-FlextSampleService] _
+[gw1] linux -- Python 3.13.17 /home/marlonsc/worktrees/flext-infra/cold-3pmw9/.venv/bin/python
+tests/unit/codemod/test_api_alias_cutover.py:88: in test_service_retirement_preserves_kernel_context_and_shadowing
+    u.Infra.plan_semantic_cutover(
+src/flext_infra/_utilities/_semantic_cutover/base.py:78: in plan_semantic_cutover
+    attempt = r.safe(
+.venv/lib/python3.13/site-packages/flext_core/_result/composition.py:201: in wrapper
+    return cls._create_success(func(*args, **kwargs))
+                               ^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/base.py:142: in _plan_semantic_cutover_phase
+    return cls._plan_selected_phase_dispatch(
+src/flext_infra/_utilities/_semantic_cutover/base.py:340: in _plan_selected_phase_dispatch
+    return factory()
+           ^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/base.py:313: in <lambda>
+    c.Infra.SemanticCutoverPhase.COMPAT_ALIAS: lambda: cls._plan_alias_cutover(
+src/flext_infra/_utilities/_semantic_cutover/base.py:363: in _plan_alias_cutover
+    api = cls._plan_api_aliases(workspace, working, selected, import_normalizer)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/aliases.py:407: in _plan_api_aliases
+    service_aliases, service_graph = cls._service_aliases(workspace, sources)
+                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/aliases.py:116: in _service_aliases
+    ancestry_sources[path] = cls._rewrite_compatibility_alias_source(
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/flext_core/flextlazy_member.py:93: in __get__
+    raw = self.resolve()
+          ^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/flext_core/flextlazy_member.py:136: in resolve
+    getattr(self._load(self._module), self._owner),
+            ^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/flext_core/flextlazy_bootstrap.py:200: in load
+    mod = self._import_module(module_path)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../.local/share/mise/installs/python/3.13.17/lib/python3.13/importlib/__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1404: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1369: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1340: in _find_and_load_unlocked
+    ???
+<frozen importlib._bootstrap>:935: in _load_unlocked
+    ???
+.venv/lib/python3.13/site-packages/_pytest/assertion/rewrite.py:185: in exec_module
+    exec(co, module.__dict__)
+src/flext_infra/_utilities/_semantic_cutover/alias_cst.py:12: in <module>
+    import libcst as cst
+.venv/lib/python3.13/site-packages/libcst/__init__.py:234: in <module>
+    from libcst.metadata.base_provider import (
+<frozen importlib._bootstrap>:1369: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1331: in _find_and_load_unlocked
+    ???
+<frozen importlib._bootstrap>:1265: in _find_spec
+    ???
+<frozen importlib._bootstrap_external>:1560: in find_spec
+    ???
+<frozen importlib._bootstrap_external>:1534: in _get_spec
+    ???
+<frozen importlib._bootstrap_external>:1652: in find_spec
+    ???
+E   Failed: Timeout (>2.0s) from pytest-timeout.
+------------------------------------------------- Captured stdout call -------------------------------------------------
+INFO: rope: opening workspace at /home/marlonsc/tmp/pytest-of-marlonsc/pytest-14741/popen-gw1/test_service_retirement_preser0/flext-test-project
+INFO: rope: workspace ready in 0.98s
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Stack of <unknown> (140566387402432) ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  File "/home/marlonsc/worktrees/flext-infra/cold-3pmw9/.venv/lib/python3.13/site-packages/execnet/gateway_base.py", line 411, in _perform_spawn
+    reply.run()
+  File "/home/marlonsc/worktrees/flext-infra/cold-3pmw9/.venv/lib/python3.13/site-packages/execnet/gateway_base.py", line 341, in run
+    self._result = func(*args, **kwargs)
+  File "/home/marlonsc/worktrees/flext-infra/cold-3pmw9/.venv/lib/python3.13/site-packages/execnet/gateway_base.py", line 1160, in _thread_receiver
+    msg = Message.from_io(io)
+  File "/home/marlonsc/worktrees/flext-infra/cold-3pmw9/.venv/lib/python3.13/site-packages/execnet/gateway_base.py", line 567, in from_io
+    header = io.read(9)  # type 1, channel 4, payload 4
+  File "/home/marlonsc/worktrees/flext-infra/cold-3pmw9/.venv/lib/python3.13/site-packages/execnet/gateway_base.py", line 534, in read
+    data = self._read(numbytes - len(buf))
+_ TestsFlextInfraUtilityFacadeProjection.test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-canonical] _
+[gw0] linux -- Python 3.13.17 /home/marlonsc/worktrees/flext-infra/cold-3pmw9/.venv/bin/python
+tests/unit/codegen/_utility_facade_projection/owner_publication.py:88: in test_explicit_owner_config_requires_canonical_metadata
+    native_consumer(
+tests/fixtures/infra.py:86: in consume
+    u.Tests.run_lazy_init_probe(
+tests/_utilities/codegen.py:377: in run_lazy_init_probe
+    u.Cli.run(
+.venv/lib/python3.13/site-packages/flext_cli/_utilities/_runtime/commands.py:79: in run
+    return cls.run_raw(
+.venv/lib/python3.13/site-packages/flext_cli/_utilities/runtime.py:201: in run_raw
+    return cls._execute_streamed_process(
+.venv/lib/python3.13/site-packages/flext_cli/_utilities/_runtime/process_execution.py:66: in _execute_streamed_process
+    cls._execute_lifecycle(request, state, timing)
+.venv/lib/python3.13/site-packages/flext_cli/_utilities/_runtime/process_execution.py:173: in _execute_lifecycle
+    state.timed_out, state.final_deadline = cls._monitor_process(
+.venv/lib/python3.13/site-packages/flext_cli/_utilities/_runtime/process_monitor.py:49: in _monitor_process
+    cls._wait_next_boundary(state, phase, now)
+.venv/lib/python3.13/site-packages/flext_cli/_utilities/_runtime/process_monitor.py:113: in _wait_next_boundary
+    state.wake.wait(
+../../../.local/share/mise/installs/python/3.13.17/lib/python3.13/threading.py:660: in wait
+    signaled = self._cond.wait(timeout)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+../../../.local/share/mise/installs/python/3.13.17/lib/python3.13/threading.py:359: in wait
+    waiter.acquire()
+E   Failed: Timeout (>20.0s) from pytest-timeout.
+------------------------------------------------- Captured stdout call -------------------------------------------------
++++++++++++++++++++++++++++++++++++++++++++++++++++++++ Timeout ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Stack of flext-cli-process-stderr (140395388663488) ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.17/lib/python3.13/threading.py", line 1015, in _bootstrap
+    self._bootstrap_inner()
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.17/lib/python3.13/threading.py", line 1044, in _bootstrap_inner
+    self.run()
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.17/lib/python3.13/threading.py", line 995, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/marlonsc/worktrees/flext-infra/cold-3pmw9/.venv/lib/python3.13/site-packages/flext_cli/_utilities/_runtime/process_stream.py", line 72, in _pump_process_output
+    chunk = cls._read_process_chunk(source, state.failures)
+  File "/home/marlonsc/worktrees/flext-infra/cold-3pmw9/.venv/lib/python3.13/site-packages/flext_cli/_utilities/_runtime/process_stream.py", line 99, in _read_process_chunk
+    chunk = source.read(cls._STREAM_CHUNK_BYTES)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Stack of flext-cli-process-stdout (140395397056192) ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.17/lib/python3.13/threading.py", line 1015, in _bootstrap
+    self._bootstrap_inner()
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.17/lib/python3.13/threading.py", line 1044, in _bootstrap_inner
+    self.run()
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.17/lib/python3.13/threading.py", line 995, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/marlonsc/worktrees/flext-infra/cold-3pmw9/.venv/lib/python3.13/site-packages/flext_cli/_utilities/_runtime/process_stream.py", line 72, in _pump_process_output
+    chunk = cls._read_process_chunk(source, state.failures)
+  File "/home/marlonsc/worktrees/flext-infra/cold-3pmw9/.venv/lib/python3.13/site-packages/flext_cli/_utilities/_runtime/process_stream.py", line 99, in _read_process_chunk
+    chunk = source.read(cls._STREAM_CHUNK_BYTES)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Stack of flext-cli-process-waiter (140395155551936) ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.17/lib/python3.13/threading.py", line 1015, in _bootstrap
+    self._bootstrap_inner()
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.17/lib/python3.13/threading.py", line 1044, in _bootstrap_inner
+    self.run()
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.17/lib/python3.13/threading.py", line 995, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/marlonsc/worktrees/flext-infra/cold-3pmw9/.venv/lib/python3.13/site-packages/flext_cli/_utilities/_runtime/process_wait.py", line 21, in _wait_for_root_process
+    state.return_codes.append(process.wait())
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.17/lib/python3.13/subprocess.py", line 1281, in wait
+    return self._wait(timeout=timeout)
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.17/lib/python3.13/subprocess.py", line 2086, in _wait
+    (pid, sts) = self._try_wait(0)
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.17/lib/python3.13/subprocess.py", line 2044, in _try_wait
+    (pid, sts) = os.waitpid(self.pid, wait_flags)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Stack of flext-async-log-writer (140395380270784) ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.17/lib/python3.13/threading.py", line 1015, in _bootstrap
+    self._bootstrap_inner()
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.17/lib/python3.13/threading.py", line 1044, in _bootstrap_inner
+    self.run()
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.17/lib/python3.13/threading.py", line 995, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/marlonsc/worktrees/flext-infra/cold-3pmw9/.venv/lib/python3.13/site-packages/flext_core/_utilities/_logging/async_writer.py", line 138, in _worker
+    job = self.queue.get(
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.17/lib/python3.13/queue.py", line 209, in get
+    raise Empty
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.17/lib/python3.13/threading.py", line 371, in wait
+    self._waiters.remove(waiter)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Stack of <unknown> (140395701860032) ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  File "/home/marlonsc/worktrees/flext-infra/cold-3pmw9/.venv/lib/python3.13/site-packages/execnet/gateway_base.py", line 411, in _perform_spawn
+    reply.run()
+  File "/home/marlonsc/worktrees/flext-infra/cold-3pmw9/.venv/lib/python3.13/site-packages/execnet/gateway_base.py", line 341, in run
+    self._result = func(*args, **kwargs)
+  File "/home/marlonsc/worktrees/flext-infra/cold-3pmw9/.venv/lib/python3.13/site-packages/execnet/gateway_base.py", line 1160, in _thread_receiver
+    msg = Message.from_io(io)
+  File "/home/marlonsc/worktrees/flext-infra/cold-3pmw9/.venv/lib/python3.13/site-packages/execnet/gateway_base.py", line 567, in from_io
+    header = io.read(9)  # type 1, channel 4, payload 4
+  File "/home/marlonsc/worktrees/flext-infra/cold-3pmw9/.venv/lib/python3.13/site-packages/execnet/gateway_base.py", line 534, in read
+    data = self._read(numbytes - len(buf))
++++++++++++++++++++++++++++++++++++++++++++++++++++++++ Timeout ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+- generated xml file: /home/marlonsc/worktrees/flext-infra/cold-3pmw9/.reports/tests/20261120T031224.229116Z-1243192/junit.xml -
+- generated report log file: /home/marlonsc/worktrees/flext-infra/cold-3pmw9/.reports/tests/20261120T031224.229116Z-1243192/events.jsonl -
+---------------------------------------------------- flext-enforce -----------------------------------------------------
+runtime warnings captured: 0
+--------------------------------------------------- flext slow tests ---------------------------------------------------
+no test near the ordinary or slow limit
+================================================= slowest 25 durations =================================================
+20.20s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-canonical]
+2.01s call     tests/unit/codemod/test_api_alias_cutover.py::TestsFlextInfraApiAliasCutover::test_service_retirement_preserves_kernel_context_and_shadowing[from sample_pkg import s-s-FlextSampleService]
+
+(4 durations < 2s hidden.)
+=============================================== short test summary info ================================================
+FAILED tests/unit/codemod/test_api_alias_cutover.py::TestsFlextInfraApiAliasCutover::test_service_retirement_preserves_kernel_context_and_shadowing[from sample_pkg import s-s-FlextSampleService]
+FAILED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-canonical]
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 2 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! xdist.dsession.Interrupted: stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+================================================== 2 failed in 54.81s ==================================================
