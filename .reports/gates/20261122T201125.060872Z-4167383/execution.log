@@ -1,0 +1,35 @@
+INFO: check: registry initialization start
+INFO: check: registry initialization complete
+INFO: check: selection start phase=complete
+INFO: check: selection complete projects=1 gates=6
+INFO: check: preparation start identity=True
+INFO: check: preparation complete projects=1
+INFO: check: prerequisite planning start projects=1
+INFO: check: prerequisite planning complete gates=1
+INFO: check: prerequisite wave start gate=lint jobs=1
+INFO: gate_executed project=gen-ungated gate=lint passed=True elapsed=2.319
+2026-11-22T20:11:30.551189Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=2343.04 failed=0 skipped=0 total_stages=1
+INFO: check: prerequisite wave complete gate=lint
+    [OK] lint           0 errors  (2.32s)
+[1/1] gen-ungated check ...
+INFO: gate_executed project=gen-ungated gate=markdown passed=True elapsed=1.57
+2026-11-22T20:11:33.319387Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=1570.79 failed=0 skipped=0 total_stages=1
+INFO: gate_executed project=gen-ungated gate=markdown-format passed=True elapsed=1.581
+2026-11-22T20:11:33.331181Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=1581.61 failed=0 skipped=0 total_stages=1
+INFO: gate_executed project=gen-ungated gate=format passed=True elapsed=2.996
+2026-11-22T20:11:34.749851Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=3001.72 failed=0 skipped=0 total_stages=1
+INFO: gate_executed project=gen-ungated gate=markdown-code passed=True elapsed=5.508
+2026-11-22T20:11:37.258587Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=5508.33 failed=0 skipped=0 total_stages=1
+INFO: gate_executed project=gen-ungated gate=conflict-markers passed=True elapsed=5.62
+2026-11-22T20:11:39.088535Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=7338.05 failed=0 skipped=0 total_stages=1
+    [OK] format         0 errors  (3.00s)
+    [OK] markdown       0 errors  (1.57s)
+    [OK] markdown-format     0 errors  (1.58s)
+    [OK] markdown-code     0 errors  (5.51s)
+    [OK] conflict-markers     0 errors  (5.62s)
+  [OK] check    gen-ungated              7.44s
+
+-- check summary --
+Total: 1  Success: 1  Failed: 0  Skipped: 0  (9.86s)
+INFO: Reports: /home/marlonsc/worktrees/flext-infra/gen-ungated/.reports/gates/20261122T201125.060872Z-4167383/check/d0ed94e0-ddc5-4f30-af25-b973e5c3b3f9/check-report.md
+INFO:          /home/marlonsc/worktrees/flext-infra/gen-ungated/.reports/gates/20261122T201125.060872Z-4167383/check/d0ed94e0-ddc5-4f30-af25-b973e5c3b3f9/check-report.sarif

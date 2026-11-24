@@ -1,0 +1,97 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/marlon-costa-dc/openmoat/main/crates/openmoat-core/policies/repo-policy-v1.schema.json
+# Repository OpenMoat policy for a generated Make owner (ADR-0030 Increment 4,
+# bead aihub-j7ai5).
+#
+# Authored here, projected verbatim as `.moat/policy.yaml` only into
+# repositories whose Makefile carries the flext-infra generated header (the
+# legacy `repo.has_make_owner` fact); a repository without that surface never
+# receives it, so its toolchain stays callable. The operator runs
+# `openmoat trust` in each receiving repository. Group ids are the legacy
+# execution-gate rule codes in lower case; agents.yaml
+# `openmoat_make_owner_policy.examples` declares the calls proving each group
+# (tests/unit/test_aihub_openmoat_pack.py).
+#
+# OpenMoat judges the command the agent asks for, never the children of a
+# Make verb, so `make setup`, `make upg` and `make check` keep running uv,
+# mise, ruff and pytest; the lock groups are `hook_only` so no OS sandbox
+# blocks `make upg` writing uv.lock or mise.lock.
+#
+# Why (bead aihub-vkb1j.31, measured 2026-11-23): the audit log showed these
+# groups denying the documented workflow itself — `ruff check <path>` and
+# `pyrefly check <path>` (the AGENTS.md light gate), a targeted `pytest` node
+# id, `uv run <cli>`, `mise trust`, read-only inline Python and `cargo test`
+# for the OpenMoat fork. Each group now denies only the owner-replacing form:
+# whole-tree gates, dependency or toolchain resolution, and repairs.
+version: 1
+deny:
+  - id: bg-exec-007
+    reason: make-owner-uv
+    title: Dependency resolution outside the Make owner
+    why: Only make setup and make upg resolve dependencies; uv run starts a CLI.
+    shell: ["uv {add,remove,sync,lock,pip,tree,venv,init}*"]
+  - id: bg-exec-008
+    reason: make-owner-pip
+    title: Direct pip where a Make owner exists
+    why: Dependency management runs through make setup and make upg.
+    shell: ["{pip,pip3} *"]
+  - id: bg-exec-009
+    reason: make-owner-ruff
+    title: A bare lint, format or in-place repair outside make
+    why: The repository-wide gate and repairs belong to make check and make fix; a named path is a light gate.
+    shell:
+      - "ruff check $"
+      - "ruff check --fix*"
+      - "ruff check --unsafe-fixes*"
+      - "ruff format $"
+      - "ruff format --fix*"
+  - id: bg-exec-010
+    reason: make-owner-type-check
+    title: A whole-project type check outside make
+    why: The repository-wide type gate belongs to make check; a named path is a light gate.
+    shell: ["pyrefly check $", "pyrefly check .", "{pyright,mypy} *"]
+  - id: bg-exec-011
+    reason: make-owner-pytest
+    title: The whole suite outside make
+    why: The full selection belongs to make tests; a node id or a named file is a targeted run.
+    shell:
+      - "pytest $"
+      - "pytest -q $"
+      - "pytest tests $"
+      - "pytest tests/ $"
+      - "pytest -q tests $"
+      - "pytest -q tests/ $"
+  - id: bg-exec-012
+    reason: make-owner-python
+    title: An owner's tool run through python -m
+    why: The tool keeps its Make owner; inline python for reading data is analysis, not a gate.
+    shell:
+      - "{python,python3*} -m {pytest,ruff,pyrefly,pyright,mypy,pip,venv,ensurepip} *"
+  - id: bg-exec-013
+    reason: make-owner-mise
+    title: Toolchain provisioning outside make setup
+    why: Installing or switching tools belongs to make setup; trust, exec and queries do not.
+    shell: ["mise {install,use,upgrade,uninstall,prune,reshim}*"]
+  - id: bg-exec-028
+    reason: make-owner-toolchain
+    title: A toolchain or task runner outside its owner
+    why: Provision and run through the owner; Make verbs for the toolchain, the MCP gateway for Node tools. Cargo is absent on purpose — the OpenMoat fork builds here.
+    shell:
+      - "{uvx,npx,npm,pnpm,yarn,node,bun,deno,go,just,task,tox,nox,poetry,pipx,virtualenv,conda,nix-shell,busybox} *"
+  - id: bg-exec-031
+    reason: make-owner-local-file
+    title: A local file executed outside any owner
+    why: Run it through its owner; a Make verb, the project CLI or the documented entry point.
+    shell: ["./* *", "../* *"]
+  - id: bg-env-003
+    reason: lock-hand-written
+    title: Writing uv.lock or mise.lock by hand
+    why: Only make upg writes the locks.
+    hook_only: true
+    fs.write: &locks ["**/uv.lock", "**/mise.lock"]
+  - id: bg-env-004
+    reason: lock-redirect
+    title: Redirecting into uv.lock or mise.lock
+    why: Only make upg writes the locks.
+    hook_only: true
+    fs.write: *locks
+review: []

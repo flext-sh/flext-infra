@@ -1,0 +1,190 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "flext-infra-check",
+          "informationUri": "https://github.com/flext-sh/flext-infra",
+          "rules": []
+        }
+      },
+      "results": []
+    }
+  ],
+  "properties": {
+    "phase": "complete",
+    "requested_gates": [
+      "lint",
+      "format",
+      "markdown",
+      "markdown-format",
+      "markdown-code",
+      "conflict-markers"
+    ],
+    "pending_gates": [],
+    "targets": [
+      {
+        "name": "gen-ungated",
+        "path": "/home/marlonsc/worktrees/flext-infra/gen-ungated",
+        "applicable_gates": [
+          "lint",
+          "format",
+          "markdown",
+          "markdown-format",
+          "markdown-code",
+          "conflict-markers"
+        ],
+        "source_identity": {
+          "repo_root": "/home/marlonsc/worktrees/flext-infra/gen-ungated",
+          "primary_root": "/home/marlonsc/flext/flext-infra",
+          "head_oid": "f7488627867d6477c869ddb6e1f49fc5a8a9700f",
+          "porcelain": "M  src/flext_infra/config/codegen.yaml",
+          "dirty": true,
+          "git_dir": "/home/marlonsc/flext/.git/modules/flext-infra/worktrees/gen-ungated",
+          "common_dir": "/home/marlonsc/flext/.git/modules/flext-infra",
+          "branch": "fix/admission-gen-ungated-20261122",
+          "origin_remote": "https://github.com/flext-sh/flext-infra.git",
+          "upstream_remote": null,
+          "superproject_root": "/home/marlonsc/flext",
+          "requested_path": "/home/marlonsc/worktrees/flext-infra/gen-ungated",
+          "is_worktree": true,
+          "is_submodule": true,
+          "is_attached_submodule": false,
+          "has_submodules": false,
+          "is_inside_work_tree": true
+        }
+      }
+    ],
+    "results": [
+      {
+        "project": "gen-ungated",
+        "gates": {
+          "lint": {
+            "result": {
+              "project": "gen-ungated",
+              "gate": "lint",
+              "passed": true,
+              "errors": [],
+              "duration": 2.319
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/worktrees/flext-infra/gen-ungated/.reports/gates/20261122T201125.060872Z-4167383/check/d0ed94e0-ddc5-4f30-af25-b973e5c3b3f9/gen-ungated/lint.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          },
+          "format": {
+            "result": {
+              "project": "gen-ungated",
+              "gate": "format",
+              "passed": true,
+              "errors": [],
+              "duration": 2.996
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/worktrees/flext-infra/gen-ungated/.reports/gates/20261122T201125.060872Z-4167383/check/d0ed94e0-ddc5-4f30-af25-b973e5c3b3f9/gen-ungated/format.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          },
+          "markdown": {
+            "result": {
+              "project": "gen-ungated",
+              "gate": "markdown",
+              "passed": true,
+              "errors": [],
+              "duration": 1.57
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/worktrees/flext-infra/gen-ungated/.reports/gates/20261122T201125.060872Z-4167383/check/d0ed94e0-ddc5-4f30-af25-b973e5c3b3f9/gen-ungated/markdown.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          },
+          "markdown-format": {
+            "result": {
+              "project": "gen-ungated",
+              "gate": "markdown-format",
+              "passed": true,
+              "errors": [],
+              "duration": 1.581
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/worktrees/flext-infra/gen-ungated/.reports/gates/20261122T201125.060872Z-4167383/check/d0ed94e0-ddc5-4f30-af25-b973e5c3b3f9/gen-ungated/markdown-format.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          },
+          "markdown-code": {
+            "result": {
+              "project": "gen-ungated",
+              "gate": "markdown-code",
+              "passed": true,
+              "errors": [],
+              "duration": 5.508
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/worktrees/flext-infra/gen-ungated/.reports/gates/20261122T201125.060872Z-4167383/check/d0ed94e0-ddc5-4f30-af25-b973e5c3b3f9/gen-ungated/markdown-code.raw.log",
+            "outcome": "clean",
+            "process": null,
+            "components": {},
+            "requested_components": []
+          },
+          "conflict-markers": {
+            "result": {
+              "project": "gen-ungated",
+              "gate": "conflict-markers",
+              "passed": true,
+              "errors": [],
+              "duration": 5.62
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/worktrees/flext-infra/gen-ungated/.reports/gates/20261122T201125.060872Z-4167383/check/d0ed94e0-ddc5-4f30-af25-b973e5c3b3f9/gen-ungated/conflict-markers.raw.log",
+            "outcome": "clean",
+            "process": null,
+            "components": {},
+            "requested_components": []
+          }
+        }
+      }
+    ],
+    "selected_files": [],
+    "global_targets": [
+      {
+        "name": "gen-ungated",
+        "path": "/home/marlonsc/worktrees/flext-infra/gen-ungated",
+        "applicable_gates": [
+          "lint",
+          "format",
+          "markdown",
+          "markdown-format",
+          "markdown-code",
+          "conflict-markers"
+        ],
+        "source_identity": null
+      }
+    ]
+  }
+}
