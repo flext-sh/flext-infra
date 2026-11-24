@@ -1,0 +1,104 @@
+=== FAILURE: tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-canonical] ===
+AssertionError: Expected success but got failure: failed (1): /home/marlonsc/flext/flext-infra/worktrees/m6igj/.venv/bin/python -c 'import importlib, pathlib, sys
+from pathlib import Path
+from flext_infra import m
+from flext_infra.workspace import FlextInfraWorkspaceNativeReference as native
+runtime_root = Path('"'"'/home/marlonsc/flext/flext-infra/worktrees/m6igj'"'"')
+[+82 more lines; full report in element text]
+tests/unit/codegen/_utility_facade_projection/owner_publication.py:88: in test_explicit_owner_config_requires_canonical_metadata
+    native_consumer(
+tests/fixtures/infra.py:86: in consume
+    u.Tests.run_lazy_init_probe(
+tests/_utilities/codegen.py:376: in run_lazy_init_probe
+    result = tm.ok(
+.venv/lib/python3.13/site-packages/flext_tests/_utilities/_matchers/result.py:270: in ok
+    original = FlextTestsUtilitiesResult.assert_success(
+.venv/lib/python3.13/site-packages/flext_tests/_utilities/result.py:62: in assert_success
+    raise AssertionError(
+E   AssertionError: Expected success but got failure: failed (1): /home/marlonsc/flext/flext-infra/worktrees/m6igj/.venv/bin/python -c 'import importlib, pathlib, sys
+E   from pathlib import Path
+E   from flext_infra import m
+E   from flext_infra.workspace import FlextInfraWorkspaceNativeReference as native
+E   runtime_root = Path('"'"'/home/marlonsc/flext/flext-infra/worktrees/m6igj'"'"')
+E   sys.path.insert(0, '"'"'/home/marlonsc/tmp/pytest-of-marlonsc/pytest-14911/popen-gw1/test_explicit_owner_config_req15/flext-test-project/src'"'"')
+E   from flext_test_project.utilities import u
+E   from flext_test_project._utilities.owner import Owner
+E   assert Owner not in u.__mro__
+E   assert u.model_config == Owner.model_config
+E   assert u.Cli is Owner
+E   ': timed_out=False, forwarded_signal=None: Traceback (most recent call last):
+E     File "<string>", line 4, in <module>
+E       from flext_infra.workspace import FlextInfraWorkspaceNativeReference as native
+E     File "<frozen importlib._bootstrap>", line 1429, in _handle_fromlist
+E     File "/home/marlonsc/flext/flext-infra/worktrees/m6igj/.venv/lib/python3.13/site-packages/flext_core/flextlazy_exports.py", line 582, in _module_getattr
+E       return self.get(name, normalized, module_globals, module_name)
+E              ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E     File "/home/marlonsc/flext/flext-infra/worktrees/m6igj/.venv/lib/python3.13/site-packages/flext_core/flextlazy_exports.py", line 430, in get
+E       mod = self.load(module_path)
+E     File "/home/marlonsc/flext/flext-infra/worktrees/m6igj/.venv/lib/python3.13/site-packages/flext_core/flextlazy_bootstrap.py", line 200, in load
+E       mod = self._import_module(module_path)
+E     File "/home/marlonsc/.local/share/mise/installs/python/3.13.18/lib/python3.13/importlib/__init__.py", line 88, in import_module
+E       return _bootstrap._gcd_import(name[level:], package, level)
+E              ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E     File "/home/marlonsc/flext/flext-infra/worktrees/m6igj/src/flext_infra/workspace/native_reference.py", line 54, in <module>
+E       from flext_infra import c, m, p, r, t, u
+E     File "<frozen importlib._bootstrap>", line 1429, in _handle_fromlist
+E     File "/home/marlonsc/flext/flext-infra/worktrees/m6igj/.venv/lib/python3.13/site-packages/flext_core/flextlazy_exports.py", line 582, in _module_getattr
+E       return self.get(name, normalized, module_globals, module_name)
+E              ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E     File "/home/marlonsc/flext/flext-infra/worktrees/m6igj/.venv/lib/python3.13/site-packages/flext_core/flextlazy_exports.py", line 430, in get
+E       mod = self.load(module_path)
+E     File "/home/marlonsc/flext/flext-infra/worktrees/m6igj/.venv/lib/python3.13/site-packages/flext_core/flextlazy_bootstrap.py", line 200, in load
+E       mod = self._import_module(module_path)
+E     File "/home/marlonsc/.local/share/mise/installs/python/3.13.18/lib/python3.13/importlib/__init__.py", line 88, in import_module
+E       return _bootstrap._gcd_import(name[level:], package, level)
+E              ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E     File "/home/marlonsc/flext/flext-infra/worktrees/m6igj/src/flext_infra/utilities.py", line 15, in <module>
+E       from flext_infra._utilities import (
+E       ...<42 lines>...
+E       )
+E     File "<frozen importlib._bootstrap>", line 1429, in _handle_fromlist
+E     File "/home/marlonsc/flext/flext-infra/worktrees/m6igj/.venv/lib/python3.13/site-packages/flext_core/flextlazy_exports.py", line 579, in _module_getattr
+E       standin = self.standin(module_path, attr)
+E     File "/home/marlonsc/flext/flext-infra/worktrees/m6igj/.venv/lib/python3.13/site-packages/flext_core/flextlazy_exports.py", line 156, in standin
+E       bases = tuple(
+E           self._base_value(module_path, qualname, base)
+E           for base in self._class_bases(module_path, qualname)
+E       )
+E     File "/home/marlonsc/flext/flext-infra/worktrees/m6igj/.venv/lib/python3.13/site-packages/flext_core/flextlazy_exports.py", line 157, in <genexpr>
+E       self._base_value(module_path, qualname, base)
+E       ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E     File "/home/marlonsc/flext/flext-infra/worktrees/m6igj/.venv/lib/python3.13/site-packages/flext_core/flextlazy_exports.py", line 285, in _base_value
+E       value = getattr(self.load(route[0]), route[1])
+E     File "/home/marlonsc/flext/flext-infra/worktrees/m6igj/.venv/lib/python3.13/site-packages/flext_core/flextlazy_exports.py", line 579, in _module_getattr
+E       standin = self.standin(module_path, attr)
+E     File "/home/marlonsc/flext/flext-infra/worktrees/m6igj/.venv/lib/python3.13/site-packages/flext_core/flextlazy_exports.py", line 156, in standin
+E       bases = tuple(
+E           self._base_value(module_path, qualname, base)
+E           for base in self._class_bases(module_path, qualname)
+E       )
+E     File "/home/marlonsc/flext/flext-infra/worktrees/m6igj/.venv/lib/python3.13/site-packages/flext_core/flextlazy_exports.py", line 157, in <genexpr>
+E       self._base_value(module_path, qualname, base)
+E       ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E     File "/home/marlonsc/flext/flext-infra/worktrees/m6igj/.venv/lib/python3.13/site-packages/flext_core/flextlazy_exports.py", line 285, in _base_value
+E       value = getattr(self.load(route[0]), route[1])
+E     File "/home/marlonsc/flext/flext-infra/worktrees/m6igj/.venv/lib/python3.13/site-packages/flext_core/flextlazy_exports.py", line 579, in _module_getattr
+E       standin = self.standin(module_path, attr)
+E     File "/home/marlonsc/flext/flext-infra/worktrees/m6igj/.venv/lib/python3.13/site-packages/flext_core/flextlazy_exports.py", line 151, in standin
+E       members = self._class_members(module_path, qualname)
+E     File "/home/marlonsc/flext/flext-infra/worktrees/m6igj/.venv/lib/python3.13/site-packages/flext_core/flextlazy_bootstrap.py", line 345, in _class_members
+E       body, _ = self._class_statement(module_path, qualname)
+E                 ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+E     File "/home/marlonsc/flext/flext-infra/worktrees/m6igj/.venv/lib/python3.13/site-packages/flext_core/flextlazy_bootstrap.py", line 285, in _class_statement
+E       found = self._module_classes(module_path).get(qualname)
+E               ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+E     File "/home/marlonsc/flext/flext-infra/worktrees/m6igj/.venv/lib/python3.13/site-packages/flext_core/flextlazy_bootstrap.py", line 259, in _module_classes
+E       pending = [self._module_code(module_path)]
+E                  ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+E     File "/home/marlonsc/flext/flext-infra/worktrees/m6igj/.venv/lib/python3.13/site-packages/flext_core/flextlazy_bootstrap.py", line 233, in _module_code
+E       loader.get_code(module_path) if isinstance(loader, InspectLoader) else None
+E       ~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+E     File "/home/marlonsc/flext/flext-infra/worktrees/m6igj/src/flext_infra/_utilities/_semantic_cutover/aliases.py", line 133
+E       try, project.frozen_layout():
+E          ^
+E   SyntaxError: expected ':'

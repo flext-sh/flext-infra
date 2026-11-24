@@ -1,0 +1,35 @@
+INFO: check: registry initialization start
+INFO: check: registry initialization complete
+INFO: check: selection start phase=complete
+INFO: check: selection complete projects=1 gates=6
+INFO: check: preparation start identity=True
+INFO: check: preparation complete projects=1
+INFO: check: prerequisite planning start projects=1
+INFO: check: prerequisite planning complete gates=1
+INFO: check: prerequisite wave start gate=lint jobs=1
+INFO: gate_executed project=m6igj gate=lint passed=True elapsed=0.688
+2026-11-21T20:26:05.533539Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=710.04 failed=0 skipped=0 total_stages=1
+INFO: check: prerequisite wave complete gate=lint
+    [OK] lint           0 errors  (0.69s)
+[1/1] m6igj check ...
+INFO: gate_executed project=m6igj gate=format passed=True elapsed=1.196
+2026-11-21T20:26:07.754332Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=1196.04 failed=0 skipped=0 total_stages=1
+INFO: gate_executed project=m6igj gate=markdown-format passed=True elapsed=1.761
+2026-11-21T20:26:08.320313Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=1760.99 failed=0 skipped=0 total_stages=1
+INFO: gate_executed project=m6igj gate=markdown passed=True elapsed=1.808
+2026-11-21T20:26:08.367432Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=1808.42 failed=0 skipped=0 total_stages=1
+INFO: gate_executed project=m6igj gate=conflict-markers passed=True elapsed=11.68
+INFO: gate_executed project=m6igj gate=markdown-code passed=True elapsed=12.54
+2026-11-21T20:26:19.099098Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=12539.03 failed=0 skipped=0 total_stages=1
+2026-11-21T20:26:19.099732Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=12540.06 failed=0 skipped=0 total_stages=1
+    [OK] format         0 errors  (1.20s)
+    [OK] markdown       0 errors  (1.81s)
+    [OK] markdown-format     0 errors  (1.76s)
+    [OK] markdown-code     0 errors  (12.54s)
+    [OK] conflict-markers     0 errors  (11.68s)
+  [OK] check    m6igj                    12.69s
+
+-- check summary --
+Total: 1  Success: 1  Failed: 0  Skipped: 0  (13.65s)
+INFO: Reports: /home/marlonsc/flext/flext-infra/worktrees/m6igj/.reports/gates/20261121T202601.843076Z-349159/check/715b727a-cbac-4489-9ad0-c1ce6e87b07f/check-report.md
+INFO:          /home/marlonsc/flext/flext-infra/worktrees/m6igj/.reports/gates/20261121T202601.843076Z-349159/check/715b727a-cbac-4489-9ad0-c1ce6e87b07f/check-report.sarif

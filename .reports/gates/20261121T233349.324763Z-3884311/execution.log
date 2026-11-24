@@ -1,0 +1,57 @@
+INFO: check: registry initialization start
+INFO: check: registry initialization complete
+INFO: check: selection start phase=complete
+INFO: check: selection complete projects=1 gates=20
+INFO: check: preparation start identity=True
+INFO: check: preparation complete projects=1
+INFO: check: prerequisite planning start projects=1
+INFO: check: prerequisite planning complete gates=2
+INFO: check: prerequisite wave start gate=lint jobs=1
+INFO: gate_executed project=m6igj gate=lint passed=True elapsed=0.622
+2026-11-21T23:33:54.986622Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=632.13 failed=0 skipped=0 total_stages=1
+INFO: check: prerequisite wave complete gate=lint
+    [OK] lint           0 errors  (0.62s)
+INFO: check: prerequisite wave start gate=pyrefly jobs=1
+INFO: gate_executed project=m6igj gate=pyrefly passed=True elapsed=31.255
+2026-11-21T23:34:26.632286Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=31255.21 failed=0 skipped=0 total_stages=1
+INFO: check: prerequisite wave complete gate=pyrefly
+    [OK] pyrefly        0 errors  (31.25s)
+[1/1] m6igj check ...
+INFO: rope: opening workspace at /home/marlonsc/flext/flext-infra/worktrees/m6igj
+INFO: gate_executed project=m6igj gate=markdown-format passed=True elapsed=5.045
+2026-11-21T23:34:34.737073Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=5066.3 failed=0 skipped=0 total_stages=1
+INFO: gate_executed project=m6igj gate=markdown passed=True elapsed=5.291
+2026-11-21T23:34:34.961360Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=5291.37 failed=0 skipped=0 total_stages=1
+INFO: fresh-import: running 4 probes with 3 workers
+INFO: fresh-import: probe 0 start flext_infra: console_scripts/flext-docs=flext_infra.cli:FlextInfraCli.docs_main
+INFO: fresh-import: probe 1 start flext_infra: console_scripts/flext-infra=flext_infra.cli:FlextInfraCli.infra_main
+INFO: fresh-import: probe 2 start flext_infra: pytest11/flext_infra._pytest_collection=flext_infra._pytest.collection:FlextInfraPytestCollection
+INFO: rope: workspace ready in 7.38s
+INFO: gate_executed project=m6igj gate=format passed=True elapsed=9.788
+2026-11-21T23:34:39.459940Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=9788.67 failed=0 skipped=0 total_stages=1
+INFO: fresh-import: probe 1 end success=True
+INFO: fresh-import: probe 3 start flext_infra
+INFO: fresh-import: probe 0 end success=True
+INFO: fresh-import: probe 2 end success=True
+INFO: gate_executed project=m6igj gate=index-declarations passed=True elapsed=0.95
+2026-11-21T23:34:40.499762Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=950.67 failed=0 skipped=0 total_stages=1
+INFO: gate_executed project=m6igj gate=loc-cap passed=False elapsed=11.37
+2026-11-21T23:34:41.053479Z [error    ] stage_failed                   [flext_cli.api.FlextCli] error='loc-cap failed for m6igj with 40 findings' stage_id=loc-cap
+2026-11-21T23:34:41.056066Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=11381.91 failed=1 skipped=0 total_stages=1
+INFO: gate_executed project=m6igj gate=layout passed=True elapsed=4.427
+2026-11-21T23:34:45.570565Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=4427.62 failed=0 skipped=0 total_stages=1
+INFO: gate_executed project=m6igj gate=direnv passed=True elapsed=1.328
+2026-11-21T23:34:47.137154Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=1410.71 failed=0 skipped=0 total_stages=1
+INFO: gate_executed project=m6igj gate=runtime-integrity passed=True elapsed=17.51
+2026-11-21T23:34:47.179419Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=17510.96 failed=0 skipped=0 total_stages=1
+INFO: gate_executed project=m6igj gate=enforcement-catalog passed=True elapsed=20.569
+2026-11-21T23:34:50.250218Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=20569.93 failed=0 skipped=0 total_stages=1
+INFO: gate_executed project=m6igj gate=markdown-code passed=True elapsed=27.989
+2026-11-21T23:34:57.666508Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=27994.38 failed=0 skipped=0 total_stages=1
+INFO: fresh-import: probe 3 end success=True
+INFO: gate_executed project=m6igj gate=fresh-import passed=True elapsed=23.988
+2026-11-21T23:34:58.744173Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=23989.09 failed=0 skipped=0 total_stages=1
+INFO: mod: producer start name=codemod_file_scopes project=m6igj
+INFO: mod: import graph start
+INFO: mod: import graph modules=0 file=src/flext_infra/__init__.py
+INFO: mod: import graph finish modules=778

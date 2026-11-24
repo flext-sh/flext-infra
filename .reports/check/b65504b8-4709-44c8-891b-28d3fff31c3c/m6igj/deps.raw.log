@@ -1,0 +1,14 @@
+cwd=/home/marlonsc/flext/flext-infra/worktrees/m6igj report=/home/marlonsc/flext/flext-infra/worktrees/m6igj/.reports/check/b65504b8-4709-44c8-891b-28d3fff31c3c/m6igj/m6igj-deps-bf0942d687144218ba631e72d6a3dcd3/deptry.json
+return-code=1
+stdout:
+
+stderr:
+Scanning 778 files...
+
+/home/marlonsc/flext/flext-infra/worktrees/m6igj/pyproject.toml: DEP002 'properdocs' defined as a dependency but not used in the codebase
+Found 1 dependency issue.
+
+For more information, see the documentation: https://deptry.com/
+
+retained-by-declared-usage=1
+report-sha256=ab7d6873b7c156c948b8bb2119c136464541ec0b11b19d2c4fd23d601626ad81

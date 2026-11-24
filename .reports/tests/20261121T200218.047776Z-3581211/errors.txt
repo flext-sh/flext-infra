@@ -1,0 +1,147 @@
+=== FAILURE: tests.unit.codemod.test_api_alias_cutover.TestsFlextInfraApiAliasCutover::test_service_retirement_preserves_kernel_context_and_shadowing[from sample_pkg import s-s-FlextSampleService] ===
+Failed: Timeout (>2.0s) from pytest-timeout.
+../../../../.local/share/mise/installs/python/3.13.18/lib/python3.13/pathlib/_abc.py:482: in is_file
+    return S_ISREG(self.stat(follow_symlinks=follow_symlinks).st_mode)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../.local/share/mise/installs/python/3.13.18/lib/python3.13/pathlib/_local.py:515: in stat
+    return os.stat(self, follow_symlinks=follow_symlinks)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/marlonsc/tmp/pytest-of-marlonsc/pytest-14914/popen-gw1/test_service_retirement_preser0/flext-test-project/src/flext_infra.py'
+
+During handling of the above exception, another exception occurred:
+tests/unit/codemod/test_api_alias_cutover.py:88: in test_service_retirement_preserves_kernel_context_and_shadowing
+    u.Infra.plan_semantic_cutover(
+src/flext_infra/_utilities/_semantic_cutover/base.py:78: in plan_semantic_cutover
+    attempt = r.safe(
+.venv/lib/python3.13/site-packages/flext_core/_result/composition.py:201: in wrapper
+    return cls._create_success(func(*args, **kwargs))
+                               ^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/base.py:142: in _plan_semantic_cutover_phase
+    return cls._plan_selected_phase_dispatch(
+src/flext_infra/_utilities/_semantic_cutover/base.py:340: in _plan_selected_phase_dispatch
+    return factory()
+           ^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/base.py:313: in <lambda>
+    c.Infra.SemanticCutoverPhase.COMPAT_ALIAS: lambda: cls._plan_alias_cutover(
+src/flext_infra/_utilities/_semantic_cutover/base.py:363: in _plan_alias_cutover
+    api = cls._plan_api_aliases(workspace, working, selected, import_normalizer)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/aliases.py:407: in _plan_api_aliases
+    service_aliases, service_graph = cls._service_aliases(workspace, sources)
+                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/aliases.py:150: in _service_aliases
+    if value is not None and cls._inherits_service_kernel(value, kernel):
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/aliases.py:271: in _inherits_service_kernel
+    pending = list(FlextInfraUtilitiesDeclarationPayload.direct_bases(value))
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/declaration_payload.py:218: in direct_bases
+    tuple(value.get_superclasses())
+          ^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:324: in get_superclasses
+    for base in self.get_bases()
+                ^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:309: in get_bases
+    bases = self._get_bases()
+            ^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:482: in _get_bases
+    evaluated = rope.base.evaluate.eval_node(scope, base_node)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/evaluate.py:216: in eval_node
+    return eval_node2(scope, node)[1]
+           ^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/evaluate.py:249: in eval_node2
+    evaluator.visit(node)
+.venv/lib/python3.13/site-packages/rope/base/ast.py:79: in visit
+    return visitor(node)
+           ^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/evaluate.py:536: in _Attribute
+    self.result = pyname.get_object()[node.attr]
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjects.py:33: in __getitem__
+    return self.get_attribute(key)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjects.py:466: in get_attribute
+    if name in self._get_concluded_attributes():
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/utils/__init__.py:56: in newfunc
+    return func(self, *args, **kwds)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjects.py:453: in _get_concluded_attributes
+    self.concluded_attributes.set(self._create_concluded_attributes())
+                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:441: in _create_concluded_attributes
+    mro = self.get_consistent_mro()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:343: in get_consistent_mro
+    return self._linearize(strict=False)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:349: in _linearize
+    bases = self.get_bases()
+            ^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:309: in get_bases
+    bases = self._get_bases()
+            ^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:505: in _get_bases
+    original = rope.base.builtins.get_tuple(
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:507: in <genexpr>
+    binding.get_object() if binding is not None else None
+    ^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/utils/__init__.py:56: in newfunc
+    return func(self, *args, **kwds)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pynames.py:189: in get_object
+    return self._get_imported_pyname().get_object()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/utils/__init__.py:56: in newfunc
+    return func(self, *args, **kwds)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pynames.py:189: in get_object
+    return self._get_imported_pyname().get_object()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pynames.py:180: in _get_imported_pyname
+    result = self.imported_module.get_object()[self.imported_name]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pynames.py:162: in get_object
+    if self._get_pymodule() is None:
+       ^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pynames.py:149: in _get_pymodule
+    pymodule = pycore.project.get_module(
+src/flext_infra/_utilities/_rope/native_project.py:105: in get_module
+    if self.find_module(name, folder) is None and (
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/native_project.py:154: in find_module
+    found = self.find_module_native(modname, folder)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/native_project.py:177: in find_module_native
+    found = native.find_module(modname, self._native_folder(folder))
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/project.py:233: in find_module
+    return _find_module_in_folders(folders(), modname)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/project.py:593: in _find_module_in_folders
+    if folder.has_child(name + ".py"):
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/resources.py:207: in has_child
+    self.get_child(name)
+.venv/lib/python3.13/site-packages/rope/base/resources.py:203: in get_child
+    return self.project.get_resource(self._get_child_path(name))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/native_project.py:219: in get_resource
+    found = native.get_resource(resource_name)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/project.py:59: in get_resource
+    if not self.fscommands.exists(path):
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/project.py:498: in exists
+    return self.isfile(path) or self.isdir(path)
+           ^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/project.py:517: in isfile
+    return resolved not in self._hidden and resolved.is_file()
+                                            ^^^^^^^^^^^^^^^^^^
+../../../../.local/share/mise/installs/python/3.13.18/lib/python3.13/pathlib/_abc.py:484: in is_file
+    if not _ignore_error(e):
+           ^^^^^^^^^^^^^^^^
+../../../../.local/share/mise/installs/python/3.13.18/lib/python3.13/pathlib/_abc.py:38: in _ignore_error
+    def _ignore_error(exception):
+E   Failed: Timeout (>2.0s) from pytest-timeout.

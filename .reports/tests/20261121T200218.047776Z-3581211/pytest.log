@@ -1,0 +1,860 @@
+============================= test session starts ==============================
+platform linux -- Python 3.13.18, pytest-9.2.0, pluggy-1.7.0 -- /home/marlonsc/flext/flext-infra/worktrees/m6igj/.venv/bin/python
+cachedir: .pytest_cache
+hypothesis profile 'default'
+benchmark: 5.3.1 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+Using --randomly-seed=1369895568
+testmon: selection deactivated, environment: toolchain-aef88471d8d4-8d09f562-5834a665
+rootdir: /home/marlonsc/flext/flext-infra/worktrees/m6igj
+configfile: pyproject.toml
+plugins: flext-tests-0.12.0, hypothesis-6.170.15, anyio-4.16.0, asyncio-1.4.1.post1, benchmark-5.3.1, cov-7.1.0, markdown-docs-0.9.2, randomly-5.1.0, reportlog-1.0.0, testmon-2.3.0, timeout-2.4.0, xdist-3.8.0, platformdirs-4.14.5, flext-infra-0.12.3
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
+timeout: 2.0s
+timeout method: signal
+timeout func_only: True
+created: 2/2 workers
+2 workers [6886 items]
+
+scheduling tests via LoadScopeScheduling
+
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-canonical] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[import pydantic as m-m.Field(discriminator='kind')-Payload | OtherPayload-model] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[import pydantic as m-m.Field(discriminator='kind')-Payload | OtherPayload-model] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[import pydantic as m-m.Field(discriminator='kind')-Payload | OtherPayload-function] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[import pydantic as m-m.Field(discriminator='kind')-Payload | OtherPayload-function] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[import pydantic-pydantic.Field(discriminator='kind')-Payload | OtherPayload-model] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[import pydantic-pydantic.Field(discriminator='kind')-Payload | OtherPayload-model] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[import pydantic-pydantic.Field(discriminator='kind')-Payload | OtherPayload-function] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[import pydantic-pydantic.Field(discriminator='kind')-Payload | OtherPayload-function] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[import pydantic as m-m.Discriminator('kind')-Payload | OtherPayload-model] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[import pydantic as m-m.Discriminator('kind')-Payload | OtherPayload-model] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[import pydantic as m-m.Discriminator('kind')-Payload | OtherPayload-function] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[import pydantic as m-m.Discriminator('kind')-Payload | OtherPayload-function] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[from pydantic import Field as Tag-Tag(discriminator='kind')-Payload | OtherPayload-model] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[from pydantic import Field as Tag-Tag(discriminator='kind')-Payload | OtherPayload-model] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[from pydantic import Field as Tag-Tag(discriminator='kind')-Payload | OtherPayload-function] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[from pydantic import Field as Tag-Tag(discriminator='kind')-Payload | OtherPayload-function] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[import pydantic as m-m.Field(discriminator='kind')-'Payload | OtherPayload'-model] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[import pydantic as m-m.Field(discriminator='kind')-'Payload | OtherPayload'-model] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[import pydantic as m-m.Field(discriminator='kind')-'Payload | OtherPayload'-function] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[import pydantic as m-m.Field(discriminator='kind')-'Payload | OtherPayload'-function] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[imports5-Tag(discriminator='kind')-Payload | OtherPayload-model] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[imports5-Tag(discriminator='kind')-Payload | OtherPayload-model] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[imports5-Tag(discriminator='kind')-Payload | OtherPayload-function] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[imports5-Tag(discriminator='kind')-Payload | OtherPayload-function] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_imported_type_and_metadata_aliases_protect_discriminator 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_imported_type_and_metadata_aliases_protect_discriminator 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[assert (retained := predicate(value)) is not None] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[assert (retained := predicate(value)) is not None] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[assert (retained := predicate(value)) is not None, diagnostic()] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[assert (retained := predicate(value)) is not None, diagnostic()] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[assert (retained := predicate(value)) is not None, ('one', 'two')] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[assert (retained := predicate(value)) is not None, ('one', 'two')] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[assert isinstance((retained := predicate(value)), str), diagnostic()] 
+[gw0] [  0%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-canonical] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-foreign] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[assert isinstance((retained := predicate(value)), str), diagnostic()] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[assert 0 < len((retained := predicate(value)) or '') < 100] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[assert 0 < len((retained := predicate(value)) or '') < 100] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[statement5] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[statement5] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[statement6] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[statement6] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[assert True; effect()\n] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[assert True; effect()\n] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[effect(); assert True\n] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[effect(); assert True\n] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[if True: assert True\n] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[if True: assert True\n] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[if True: assert True; effect()\n] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[if True: assert True; effect()\n] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[if True: \\\n    assert True\n] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[if True: \\\n    assert True\n] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[def check(): assert True\n] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[def check(): assert True\n] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[assert True  # retained trailing comment\n] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[assert True  # retained trailing comment\n] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[assert (  # outside predicate capture\n    True\n)\n] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[assert (  # outside predicate capture\n    True\n)\n] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[assert True, (  # outside message capture\n    'message'\n)\n] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[assert True, (  # outside message capture\n    'message'\n)\n] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[def check():\n    assert True, '''first\nsecond'''\n] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[def check():\n    assert True, '''first\nsecond'''\n] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[def check():\n    assert '''first\nsecond'''\n] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[def check():\n    assert '''first\nsecond'''\n] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[def check():\n    assert 'first\x0bsecond'\n] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[def check():\n    assert 'first\x0bsecond'\n] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[AssertionError = ValueError\nassert True\n] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[AssertionError = ValueError\nassert True\n] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[assert True\nAssertionError = ValueError\n] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[assert True\nAssertionError = ValueError\n] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[from builtins import AssertionError\nassert True\n] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[from builtins import AssertionError\nassert True\n] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[from builtins import ValueError as AssertionError\nassert True\n] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[from builtins import ValueError as AssertionError\nassert True\n] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[def check(AssertionError):\n    assert True\n] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[def check(AssertionError):\n    assert True\n] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[def check():\n    AssertionError = ValueError\n    assert True\n] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[def check():\n    AssertionError = ValueError\n    assert True\n] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[def outer(AssertionError):\n    def check():\n        assert True\n    return check\n] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[def outer(AssertionError):\n    def check():\n        assert True\n    return check\n] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source0-rope_contract_consumer0] 
+[gw0] [  0%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-foreign] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-renamed] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source0-rope_contract_consumer0] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source1-rope_contract_consumer0] 
+[gw0] [  0%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-renamed] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-duplicate] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source1-rope_contract_consumer0] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source2-rope_contract_consumer0] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source2-rope_contract_consumer0] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source3-rope_contract_consumer0] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source3-rope_contract_consumer0] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source4-rope_contract_consumer0] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source4-rope_contract_consumer0] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source5-rope_contract_consumer0] 
+[gw0] [  0%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-duplicate] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-annotation] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source5-rope_contract_consumer0] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source6-rope_contract_consumer0] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source6-rope_contract_consumer0] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[()-()-rope_contract_consumer0] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[()-()-rope_contract_consumer0] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default=()-()-rope_contract_consumer0] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default=()-()-rope_contract_consumer0] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default=None-None-rope_contract_consumer0] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default=None-None-rope_contract_consumer0] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default=Choice.READY-Choice.READY-rope_contract_consumer0] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default=Choice.READY-Choice.READY-rope_contract_consumer0] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default=make_default()-make_default()-rope_contract_consumer0] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default=make_default()-make_default()-rope_contract_consumer0] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default='ready'-'ready'-rope_contract_consumer0] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default='ready'-'ready'-rope_contract_consumer0] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[description='Required'-rope_contract_consumer0] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[description='Required'-rope_contract_consumer0] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[...-rope_contract_consumer0] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[...-rope_contract_consumer0] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default=...-rope_contract_consumer0] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default=...-rope_contract_consumer0] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default_factory=tuple-rope_contract_consumer0] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default_factory=tuple-rope_contract_consumer0] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default=(), default_factory=tuple-rope_contract_consumer0] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default=(), default_factory=tuple-rope_contract_consumer0] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default=()-rope_contract_consumer0] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default=()-rope_contract_consumer0] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default_factory=None-rope_contract_consumer0] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default_factory=None-rope_contract_consumer0] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), description=describe()-rope_contract_consumer0] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), description=describe()-rope_contract_consumer0] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[*defaults-rope_contract_consumer0] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[*defaults-rope_contract_consumer0] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[**metadata-rope_contract_consumer0] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[**metadata-rope_contract_consumer0] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Type()-rope_contract_consumer0] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Type()-rope_contract_consumer0] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Annotated[str, metadata(default_factory=str)]-rope_contract_consumer0] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Annotated[str, metadata(default_factory=str)]-rope_contract_consumer0] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Annotated[str, SDKField(default_factory=make_factory())]-rope_contract_consumer0] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Annotated[str, SDKField(default_factory=make_factory())]-rope_contract_consumer0] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Annotated[str, SDKField(description=metadata())]-rope_contract_consumer0] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Annotated[str, SDKField(description=metadata())]-rope_contract_consumer0] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Annotated[str, SDKField(default_factory=custom_factory)]-rope_contract_consumer0] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Annotated[str, SDKField(default_factory=custom_factory)]-rope_contract_consumer0] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[ForeignAnnotated[str, SDKField(default_factory=str)]-rope_contract_consumer0] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[ForeignAnnotated[str, SDKField(default_factory=str)]-rope_contract_consumer0] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source0-rope_contract_consumer1] 
+[gw0] [  1%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-annotation] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-canonical] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source0-rope_contract_consumer1] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source1-rope_contract_consumer1] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source1-rope_contract_consumer1] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source2-rope_contract_consumer1] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source2-rope_contract_consumer1] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source3-rope_contract_consumer1] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source3-rope_contract_consumer1] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source4-rope_contract_consumer1] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source4-rope_contract_consumer1] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source5-rope_contract_consumer1] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source5-rope_contract_consumer1] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source6-rope_contract_consumer1] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source6-rope_contract_consumer1] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[()-()-rope_contract_consumer1] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[()-()-rope_contract_consumer1] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default=()-()-rope_contract_consumer1] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default=()-()-rope_contract_consumer1] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default=None-None-rope_contract_consumer1] 
+[gw0] [  1%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-canonical] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-foreign] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default=None-None-rope_contract_consumer1] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default=Choice.READY-Choice.READY-rope_contract_consumer1] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default=Choice.READY-Choice.READY-rope_contract_consumer1] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default=make_default()-make_default()-rope_contract_consumer1] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default=make_default()-make_default()-rope_contract_consumer1] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default='ready'-'ready'-rope_contract_consumer1] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default='ready'-'ready'-rope_contract_consumer1] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[description='Required'-rope_contract_consumer1] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[description='Required'-rope_contract_consumer1] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[...-rope_contract_consumer1] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[...-rope_contract_consumer1] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default=...-rope_contract_consumer1] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default=...-rope_contract_consumer1] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default_factory=tuple-rope_contract_consumer1] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default_factory=tuple-rope_contract_consumer1] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default=(), default_factory=tuple-rope_contract_consumer1] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default=(), default_factory=tuple-rope_contract_consumer1] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default=()-rope_contract_consumer1] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default=()-rope_contract_consumer1] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default_factory=None-rope_contract_consumer1] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default_factory=None-rope_contract_consumer1] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), description=describe()-rope_contract_consumer1] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), description=describe()-rope_contract_consumer1] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[*defaults-rope_contract_consumer1] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[*defaults-rope_contract_consumer1] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[**metadata-rope_contract_consumer1] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[**metadata-rope_contract_consumer1] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Type()-rope_contract_consumer1] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Type()-rope_contract_consumer1] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Annotated[str, metadata(default_factory=str)]-rope_contract_consumer1] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Annotated[str, metadata(default_factory=str)]-rope_contract_consumer1] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Annotated[str, SDKField(default_factory=make_factory())]-rope_contract_consumer1] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Annotated[str, SDKField(default_factory=make_factory())]-rope_contract_consumer1] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Annotated[str, SDKField(description=metadata())]-rope_contract_consumer1] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Annotated[str, SDKField(description=metadata())]-rope_contract_consumer1] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Annotated[str, SDKField(default_factory=custom_factory)]-rope_contract_consumer1] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Annotated[str, SDKField(default_factory=custom_factory)]-rope_contract_consumer1] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[ForeignAnnotated[str, SDKField(default_factory=str)]-rope_contract_consumer1] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[ForeignAnnotated[str, SDKField(default_factory=str)]-rope_contract_consumer1] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source0-rope_contract_consumer2] 
+[gw0] [  1%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-foreign] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-renamed] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source0-rope_contract_consumer2] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source1-rope_contract_consumer2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source1-rope_contract_consumer2] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source2-rope_contract_consumer2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source2-rope_contract_consumer2] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source3-rope_contract_consumer2] 
+[gw0] [  1%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-renamed] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-duplicate] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source3-rope_contract_consumer2] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source4-rope_contract_consumer2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source4-rope_contract_consumer2] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source5-rope_contract_consumer2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source5-rope_contract_consumer2] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source6-rope_contract_consumer2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source6-rope_contract_consumer2] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[()-()-rope_contract_consumer2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[()-()-rope_contract_consumer2] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default=()-()-rope_contract_consumer2] 
+[gw0] [  1%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-duplicate] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-annotation] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default=()-()-rope_contract_consumer2] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default=None-None-rope_contract_consumer2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default=None-None-rope_contract_consumer2] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default=Choice.READY-Choice.READY-rope_contract_consumer2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default=Choice.READY-Choice.READY-rope_contract_consumer2] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default=make_default()-make_default()-rope_contract_consumer2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default=make_default()-make_default()-rope_contract_consumer2] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default='ready'-'ready'-rope_contract_consumer2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default='ready'-'ready'-rope_contract_consumer2] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[description='Required'-rope_contract_consumer2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[description='Required'-rope_contract_consumer2] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[...-rope_contract_consumer2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[...-rope_contract_consumer2] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default=...-rope_contract_consumer2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default=...-rope_contract_consumer2] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default_factory=tuple-rope_contract_consumer2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default_factory=tuple-rope_contract_consumer2] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default=(), default_factory=tuple-rope_contract_consumer2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default=(), default_factory=tuple-rope_contract_consumer2] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default=()-rope_contract_consumer2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default=()-rope_contract_consumer2] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default_factory=None-rope_contract_consumer2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default_factory=None-rope_contract_consumer2] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), description=describe()-rope_contract_consumer2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), description=describe()-rope_contract_consumer2] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[*defaults-rope_contract_consumer2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[*defaults-rope_contract_consumer2] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[**metadata-rope_contract_consumer2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[**metadata-rope_contract_consumer2] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Type()-rope_contract_consumer2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Type()-rope_contract_consumer2] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Annotated[str, metadata(default_factory=str)]-rope_contract_consumer2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Annotated[str, metadata(default_factory=str)]-rope_contract_consumer2] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Annotated[str, SDKField(default_factory=make_factory())]-rope_contract_consumer2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Annotated[str, SDKField(default_factory=make_factory())]-rope_contract_consumer2] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Annotated[str, SDKField(description=metadata())]-rope_contract_consumer2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Annotated[str, SDKField(description=metadata())]-rope_contract_consumer2] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Annotated[str, SDKField(default_factory=custom_factory)]-rope_contract_consumer2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Annotated[str, SDKField(default_factory=custom_factory)]-rope_contract_consumer2] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[ForeignAnnotated[str, SDKField(default_factory=str)]-rope_contract_consumer2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[ForeignAnnotated[str, SDKField(default_factory=str)]-rope_contract_consumer2] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source0-rope_contract_consumer3] 
+[gw0] [  1%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-annotation] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-canonical] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source0-rope_contract_consumer3] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source1-rope_contract_consumer3] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source1-rope_contract_consumer3] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source2-rope_contract_consumer3] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source2-rope_contract_consumer3] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source3-rope_contract_consumer3] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source3-rope_contract_consumer3] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source4-rope_contract_consumer3] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source4-rope_contract_consumer3] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source5-rope_contract_consumer3] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source5-rope_contract_consumer3] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source6-rope_contract_consumer3] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source6-rope_contract_consumer3] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[()-()-rope_contract_consumer3] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[()-()-rope_contract_consumer3] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default=()-()-rope_contract_consumer3] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default=()-()-rope_contract_consumer3] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default=None-None-rope_contract_consumer3] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default=None-None-rope_contract_consumer3] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default=Choice.READY-Choice.READY-rope_contract_consumer3] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default=Choice.READY-Choice.READY-rope_contract_consumer3] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default=make_default()-make_default()-rope_contract_consumer3] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default=make_default()-make_default()-rope_contract_consumer3] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default='ready'-'ready'-rope_contract_consumer3] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default='ready'-'ready'-rope_contract_consumer3] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[description='Required'-rope_contract_consumer3] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[description='Required'-rope_contract_consumer3] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[...-rope_contract_consumer3] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[...-rope_contract_consumer3] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default=...-rope_contract_consumer3] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default=...-rope_contract_consumer3] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default_factory=tuple-rope_contract_consumer3] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default_factory=tuple-rope_contract_consumer3] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default=(), default_factory=tuple-rope_contract_consumer3] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default=(), default_factory=tuple-rope_contract_consumer3] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default=()-rope_contract_consumer3] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default=()-rope_contract_consumer3] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default_factory=None-rope_contract_consumer3] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default_factory=None-rope_contract_consumer3] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), description=describe()-rope_contract_consumer3] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), description=describe()-rope_contract_consumer3] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[*defaults-rope_contract_consumer3] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[*defaults-rope_contract_consumer3] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[**metadata-rope_contract_consumer3] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[**metadata-rope_contract_consumer3] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Type()-rope_contract_consumer3] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Type()-rope_contract_consumer3] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Annotated[str, metadata(default_factory=str)]-rope_contract_consumer3] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Annotated[str, metadata(default_factory=str)]-rope_contract_consumer3] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Annotated[str, SDKField(default_factory=make_factory())]-rope_contract_consumer3] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Annotated[str, SDKField(default_factory=make_factory())]-rope_contract_consumer3] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Annotated[str, SDKField(description=metadata())]-rope_contract_consumer3] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Annotated[str, SDKField(description=metadata())]-rope_contract_consumer3] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Annotated[str, SDKField(default_factory=custom_factory)]-rope_contract_consumer3] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Annotated[str, SDKField(default_factory=custom_factory)]-rope_contract_consumer3] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[ForeignAnnotated[str, SDKField(default_factory=str)]-rope_contract_consumer3] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[ForeignAnnotated[str, SDKField(default_factory=str)]-rope_contract_consumer3] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_unset_private_annotation_preserves_native_descriptor_behavior 
+[gw0] [  2%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-canonical] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-foreign] 
+[gw0] [  2%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-foreign] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-renamed] 
+[gw0] [  2%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-renamed] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-duplicate] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_unset_private_annotation_preserves_native_descriptor_behavior 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_native_metadata_admission_preserves_nonfields_and_homonyms 
+[gw0] [  2%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-duplicate] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-annotation] 
+[gw0] [  2%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-annotation] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-canonical] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_native_metadata_admission_preserves_nonfields_and_homonyms 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_metadata_destination_cannot_capture_a_generic_parameter[rope_contract_consumer0] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_metadata_destination_cannot_capture_a_generic_parameter[rope_contract_consumer0] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_destination_binding_refuses_invalid_publication[module-shadow-rope_contract_consumer0] 
+[gw0] [  2%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-canonical] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-foreign] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_destination_binding_refuses_invalid_publication[module-shadow-rope_contract_consumer0] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_destination_binding_refuses_invalid_publication[parameter-shadow-rope_contract_consumer0] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_destination_binding_refuses_invalid_publication[parameter-shadow-rope_contract_consumer0] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_destination_binding_refuses_invalid_publication[late-import-rope_contract_consumer0] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_destination_binding_refuses_invalid_publication[late-import-rope_contract_consumer0] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_shadowed_dictionary_constructor_retains_its_own_contract 
+[gw0] [  2%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-foreign] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-renamed] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_shadowed_dictionary_constructor_retains_its_own_contract 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_rewrites_class_reexports_without_changing_identity[Base = Owner-False] 
+[gw0] [  2%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-renamed] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-duplicate] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_rewrites_class_reexports_without_changing_identity[Base = Owner-False] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_rewrites_class_reexports_without_changing_identity[Base = Owner-True] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_rewrites_class_reexports_without_changing_identity[Base = Owner-True] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_rewrites_class_reexports_without_changing_identity[Base: type[Owner] = Owner-False] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_rewrites_class_reexports_without_changing_identity[Base: type[Owner] = Owner-False] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_rewrites_class_reexports_without_changing_identity[Base: type[Owner] = Owner-True] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_rewrites_class_reexports_without_changing_identity[Base: type[Owner] = Owner-True] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_rejects_ambiguous_class_reexports 
+[gw1] [  2%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_rejects_ambiguous_class_reexports 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_rewires_unique_public_facade_binding 
+[gw1] [  2%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_rewires_unique_public_facade_binding 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_prefers_nested_facade_over_its_root_ancestor 
+[gw0] [  2%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-duplicate] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-annotation] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_prefers_nested_facade_over_its_root_ancestor 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_rewrites_only_the_imported_alias_binding 
+[gw1] [  2%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_rewrites_only_the_imported_alias_binding 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_rejects_shadowed_public_facade_alias[def select(u: str) -> str:\n    return FlextSampleUtilitiesManagers.ServiceManagers or u\n] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_rejects_shadowed_public_facade_alias[def select(u: str) -> str:\n    return FlextSampleUtilitiesManagers.ServiceManagers or u\n] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_rejects_shadowed_public_facade_alias[consumer1] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_rejects_shadowed_public_facade_alias[consumer1] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_rejects_shadowed_public_facade_alias[consumer2] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_rejects_shadowed_public_facade_alias[consumer2] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_rejects_shadowed_public_facade_alias[u = 'module'\nmanager = FlextSampleUtilitiesManagers.ServiceManagers\n] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_rejects_shadowed_public_facade_alias[u = 'module'\nmanager = FlextSampleUtilitiesManagers.ServiceManagers\n] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_rejects_shadowed_public_facade_alias[consumer4] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_rejects_shadowed_public_facade_alias[consumer4] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_rejects_shadowed_public_facade_alias[consumer5] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_rejects_shadowed_public_facade_alias[consumer5] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_rejects_shadowed_public_facade_alias[consumer6] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_rejects_shadowed_public_facade_alias[consumer6] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_rejects_shadowed_public_facade_alias[class Consumer:\n    u = 'attribute'\n    manager = FlextSampleUtilitiesManagers.ServiceManagers\n] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_rejects_shadowed_public_facade_alias[class Consumer:\n    u = 'attribute'\n    manager = FlextSampleUtilitiesManagers.ServiceManagers\n] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_rejects_shadowed_public_facade_alias[consumer8] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_rejects_shadowed_public_facade_alias[consumer8] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_preserves_class_attributes_named_like_public_facade[    u = 'attribute'\n] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_preserves_class_attributes_named_like_public_facade[    u = 'attribute'\n] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_preserves_class_attributes_named_like_public_facade[    @property\n    def u(self):\n        return 'attribute'\n] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_preserves_class_attributes_named_like_public_facade[    @property\n    def u(self):\n        return 'attribute'\n] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_preserves_class_attributes_named_like_public_facade[    class u:\n        pass\n] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_preserves_class_attributes_named_like_public_facade[    class u:\n        pass\n] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    select = staticmethod(lambda value=PrivateBinding.ServiceManagers: value)\n-Consumer.select()-scope0-mode0] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    select = staticmethod(lambda value=PrivateBinding.ServiceManagers: value)\n-Consumer.select()-scope0-mode0] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    select = staticmethod(lambda value=PrivateBinding.ServiceManagers: value)\n-Consumer.select()-scope0-mode1] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    select = staticmethod(lambda value=PrivateBinding.ServiceManagers: value)\n-Consumer.select()-scope0-mode1] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    select = staticmethod(lambda value=PrivateBinding.ServiceManagers: value)\n-Consumer.select()-scope0-mode2] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    select = staticmethod(lambda value=PrivateBinding.ServiceManagers: value)\n-Consumer.select()-scope0-mode2] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    select = staticmethod(lambda value=PrivateBinding.ServiceManagers: value)\n-Consumer.select()-scope0-mode3] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    select = staticmethod(lambda value=PrivateBinding.ServiceManagers: value)\n-Consumer.select()-scope0-mode3] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    select = staticmethod(lambda *, value=PrivateBinding.ServiceManagers: value)\n-Consumer.select()-scope1-mode0] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    select = staticmethod(lambda *, value=PrivateBinding.ServiceManagers: value)\n-Consumer.select()-scope1-mode0] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    select = staticmethod(lambda *, value=PrivateBinding.ServiceManagers: value)\n-Consumer.select()-scope1-mode1] 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    select = staticmethod(lambda *, value=PrivateBinding.ServiceManagers: value)\n-Consumer.select()-scope1-mode1] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    select = staticmethod(lambda *, value=PrivateBinding.ServiceManagers: value)\n-Consumer.select()-scope1-mode2] 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    select = staticmethod(lambda *, value=PrivateBinding.ServiceManagers: value)\n-Consumer.select()-scope1-mode2] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    select = staticmethod(lambda *, value=PrivateBinding.ServiceManagers: value)\n-Consumer.select()-scope1-mode3] 
+[gw0] [  3%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-annotation] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_initializer_retires_exports_moved_into_class_owners 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    select = staticmethod(lambda *, value=PrivateBinding.ServiceManagers: value)\n-Consumer.select()-scope1-mode3] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    class Nested(metaclass=PrivateBinding.ServiceManagers):\n        pass\n-type(Consumer.Nested)-scope2-mode0] 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    class Nested(metaclass=PrivateBinding.ServiceManagers):\n        pass\n-type(Consumer.Nested)-scope2-mode0] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    class Nested(metaclass=PrivateBinding.ServiceManagers):\n        pass\n-type(Consumer.Nested)-scope2-mode1] 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    class Nested(metaclass=PrivateBinding.ServiceManagers):\n        pass\n-type(Consumer.Nested)-scope2-mode1] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    class Nested(metaclass=PrivateBinding.ServiceManagers):\n        pass\n-type(Consumer.Nested)-scope2-mode2] 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    class Nested(metaclass=PrivateBinding.ServiceManagers):\n        pass\n-type(Consumer.Nested)-scope2-mode2] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    class Nested(metaclass=PrivateBinding.ServiceManagers):\n        pass\n-type(Consumer.Nested)-scope2-mode3] 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    class Nested(metaclass=PrivateBinding.ServiceManagers):\n        pass\n-type(Consumer.Nested)-scope2-mode3] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    class Nested(Base, selection=PrivateBinding.ServiceManagers):\n        pass\n-Consumer.Nested.selected-scope3-mode0] 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    class Nested(Base, selection=PrivateBinding.ServiceManagers):\n        pass\n-Consumer.Nested.selected-scope3-mode0] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    class Nested(Base, selection=PrivateBinding.ServiceManagers):\n        pass\n-Consumer.Nested.selected-scope3-mode1] 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    class Nested(Base, selection=PrivateBinding.ServiceManagers):\n        pass\n-Consumer.Nested.selected-scope3-mode1] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    class Nested(Base, selection=PrivateBinding.ServiceManagers):\n        pass\n-Consumer.Nested.selected-scope3-mode2] 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    class Nested(Base, selection=PrivateBinding.ServiceManagers):\n        pass\n-Consumer.Nested.selected-scope3-mode2] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    class Nested(Base, selection=PrivateBinding.ServiceManagers):\n        pass\n-Consumer.Nested.selected-scope3-mode3] 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    class Nested(Base, selection=PrivateBinding.ServiceManagers):\n        pass\n-Consumer.Nested.selected-scope3-mode3] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    select = staticmethod(lambda: PrivateBinding.ServiceManagers)\n-Consumer.select()-scope4-mode0] 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    select = staticmethod(lambda: PrivateBinding.ServiceManagers)\n-Consumer.select()-scope4-mode0] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    select = staticmethod(lambda: PrivateBinding.ServiceManagers)\n-Consumer.select()-scope4-mode1] 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    select = staticmethod(lambda: PrivateBinding.ServiceManagers)\n-Consumer.select()-scope4-mode1] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    select = staticmethod(lambda: PrivateBinding.ServiceManagers)\n-Consumer.select()-scope4-mode2] 
+[gw0] [  3%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_initializer_retires_exports_moved_into_class_owners 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    select = staticmethod(lambda: PrivateBinding.ServiceManagers)\n-Consumer.select()-scope4-mode2] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    select = staticmethod(lambda: PrivateBinding.ServiceManagers)\n-Consumer.select()-scope4-mode3] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-c] 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    select = staticmethod(lambda: PrivateBinding.ServiceManagers)\n-Consumer.select()-scope4-mode3] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    class Nested:\n        selected = PrivateBinding.ServiceManagers\n-Consumer.Nested.selected-scope5-mode0] 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    class Nested:\n        selected = PrivateBinding.ServiceManagers\n-Consumer.Nested.selected-scope5-mode0] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    class Nested:\n        selected = PrivateBinding.ServiceManagers\n-Consumer.Nested.selected-scope5-mode1] 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    class Nested:\n        selected = PrivateBinding.ServiceManagers\n-Consumer.Nested.selected-scope5-mode1] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    class Nested:\n        selected = PrivateBinding.ServiceManagers\n-Consumer.Nested.selected-scope5-mode2] 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    class Nested:\n        selected = PrivateBinding.ServiceManagers\n-Consumer.Nested.selected-scope5-mode2] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    class Nested:\n        selected = PrivateBinding.ServiceManagers\n-Consumer.Nested.selected-scope5-mode3] 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    class Nested:\n        selected = PrivateBinding.ServiceManagers\n-Consumer.Nested.selected-scope5-mode3] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, value: PrivateBinding.ServiceManagers, /):\n        pass\n-Consumer.select.__annotations__['value']-scope6-mode0] 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, value: PrivateBinding.ServiceManagers, /):\n        pass\n-Consumer.select.__annotations__['value']-scope6-mode0] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, value: PrivateBinding.ServiceManagers, /):\n        pass\n-Consumer.select.__annotations__['value']-scope6-mode1] 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, value: PrivateBinding.ServiceManagers, /):\n        pass\n-Consumer.select.__annotations__['value']-scope6-mode1] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, value: PrivateBinding.ServiceManagers, /):\n        pass\n-Consumer.select.__annotations__['value']-scope6-mode2] 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, value: PrivateBinding.ServiceManagers, /):\n        pass\n-Consumer.select.__annotations__['value']-scope6-mode2] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, value: PrivateBinding.ServiceManagers, /):\n        pass\n-Consumer.select.__annotations__['value']-scope6-mode3] 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, value: PrivateBinding.ServiceManagers, /):\n        pass\n-Consumer.select.__annotations__['value']-scope6-mode3] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope7-mode0] 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope7-mode0] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope7-mode1] 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope7-mode1] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope7-mode2] 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope7-mode2] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope7-mode3] 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope7-mode3] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, *, value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope8-mode0] 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, *, value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope8-mode0] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, *, value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope8-mode1] 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, *, value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope8-mode1] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, *, value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope8-mode2] 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, *, value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope8-mode2] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, *, value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope8-mode3] 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, *, value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope8-mode3] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, *value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope9-mode0] 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, *value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope9-mode0] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, *value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope9-mode1] 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, *value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope9-mode1] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, *value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope9-mode2] 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, *value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope9-mode2] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, *value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope9-mode3] 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, *value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope9-mode3] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, **value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope10-mode0] 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, **value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope10-mode0] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, **value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope10-mode1] 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, **value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope10-mode1] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, **value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope10-mode2] 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, **value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope10-mode2] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, **value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope10-mode3] 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self, **value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope10-mode3] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self) -> PrivateBinding.ServiceManagers:\n        pass\n-Consumer.select.__annotations__['return']-scope11-mode0] 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self) -> PrivateBinding.ServiceManagers:\n        pass\n-Consumer.select.__annotations__['return']-scope11-mode0] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self) -> PrivateBinding.ServiceManagers:\n        pass\n-Consumer.select.__annotations__['return']-scope11-mode1] 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self) -> PrivateBinding.ServiceManagers:\n        pass\n-Consumer.select.__annotations__['return']-scope11-mode1] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self) -> PrivateBinding.ServiceManagers:\n        pass\n-Consumer.select.__annotations__['return']-scope11-mode2] 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self) -> PrivateBinding.ServiceManagers:\n        pass\n-Consumer.select.__annotations__['return']-scope11-mode2] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self) -> PrivateBinding.ServiceManagers:\n        pass\n-Consumer.select.__annotations__['return']-scope11-mode3] 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select(self) -> PrivateBinding.ServiceManagers:\n        pass\n-Consumer.select.__annotations__['return']-scope11-mode3] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    value: PrivateBinding.ServiceManagers\n-Consumer.__annotations__['value']-scope12-mode0] 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    value: PrivateBinding.ServiceManagers\n-Consumer.__annotations__['value']-scope12-mode0] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    value: PrivateBinding.ServiceManagers\n-Consumer.__annotations__['value']-scope12-mode1] 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    value: PrivateBinding.ServiceManagers\n-Consumer.__annotations__['value']-scope12-mode1] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    value: PrivateBinding.ServiceManagers\n-Consumer.__annotations__['value']-scope12-mode2] 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    value: PrivateBinding.ServiceManagers\n-Consumer.__annotations__['value']-scope12-mode2] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    value: PrivateBinding.ServiceManagers\n-Consumer.__annotations__['value']-scope12-mode3] 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    value: PrivateBinding.ServiceManagers\n-Consumer.__annotations__['value']-scope12-mode3] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    async def select(self) -> PrivateBinding.ServiceManagers:\n        pass\n-Consumer.select.__annotations__['return']-scope13-mode0] 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    async def select(self) -> PrivateBinding.ServiceManagers:\n        pass\n-Consumer.select.__annotations__['return']-scope13-mode0] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    async def select(self) -> PrivateBinding.ServiceManagers:\n        pass\n-Consumer.select.__annotations__['return']-scope13-mode1] 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    async def select(self) -> PrivateBinding.ServiceManagers:\n        pass\n-Consumer.select.__annotations__['return']-scope13-mode1] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    async def select(self) -> PrivateBinding.ServiceManagers:\n        pass\n-Consumer.select.__annotations__['return']-scope13-mode2] 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    async def select(self) -> PrivateBinding.ServiceManagers:\n        pass\n-Consumer.select.__annotations__['return']-scope13-mode2] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    async def select(self) -> PrivateBinding.ServiceManagers:\n        pass\n-Consumer.select.__annotations__['return']-scope13-mode3] 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    async def select(self) -> PrivateBinding.ServiceManagers:\n        pass\n-Consumer.select.__annotations__['return']-scope13-mode3] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    @decorate(PrivateBinding.ServiceManagers)\n    def select(self):\n        pass\n-Consumer.select.selected-scope14-mode0] 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    @decorate(PrivateBinding.ServiceManagers)\n    def select(self):\n        pass\n-Consumer.select.selected-scope14-mode0] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    @decorate(PrivateBinding.ServiceManagers)\n    def select(self):\n        pass\n-Consumer.select.selected-scope14-mode1] 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    @decorate(PrivateBinding.ServiceManagers)\n    def select(self):\n        pass\n-Consumer.select.selected-scope14-mode1] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    @decorate(PrivateBinding.ServiceManagers)\n    def select(self):\n        pass\n-Consumer.select.selected-scope14-mode2] 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    @decorate(PrivateBinding.ServiceManagers)\n    def select(self):\n        pass\n-Consumer.select.selected-scope14-mode2] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    @decorate(PrivateBinding.ServiceManagers)\n    def select(self):\n        pass\n-Consumer.select.selected-scope14-mode3] 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    @decorate(PrivateBinding.ServiceManagers)\n    def select(self):\n        pass\n-Consumer.select.selected-scope14-mode3] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select[T: PrivateBinding.ServiceManagers]():\n        pass\n-Consumer.select.__type_params__[0].__bound__-scope15-mode0] 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select[T: PrivateBinding.ServiceManagers]():\n        pass\n-Consumer.select.__type_params__[0].__bound__-scope15-mode0] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select[T: PrivateBinding.ServiceManagers]():\n        pass\n-Consumer.select.__type_params__[0].__bound__-scope15-mode1] 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select[T: PrivateBinding.ServiceManagers]():\n        pass\n-Consumer.select.__type_params__[0].__bound__-scope15-mode1] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select[T: PrivateBinding.ServiceManagers]():\n        pass\n-Consumer.select.__type_params__[0].__bound__-scope15-mode2] 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select[T: PrivateBinding.ServiceManagers]():\n        pass\n-Consumer.select.__type_params__[0].__bound__-scope15-mode2] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select[T: PrivateBinding.ServiceManagers]():\n        pass\n-Consumer.select.__type_params__[0].__bound__-scope15-mode3] 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select[T: PrivateBinding.ServiceManagers]():\n        pass\n-Consumer.select.__type_params__[0].__bound__-scope15-mode3] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select[T: (PrivateBinding.ServiceManagers, int)]():\n        pass\n-Consumer.select.__type_params__[0].__constraints__[0]-scope16-mode0] 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select[T: (PrivateBinding.ServiceManagers, int)]():\n        pass\n-Consumer.select.__type_params__[0].__constraints__[0]-scope16-mode0] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select[T: (PrivateBinding.ServiceManagers, int)]():\n        pass\n-Consumer.select.__type_params__[0].__constraints__[0]-scope16-mode1] 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select[T: (PrivateBinding.ServiceManagers, int)]():\n        pass\n-Consumer.select.__type_params__[0].__constraints__[0]-scope16-mode1] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select[T: (PrivateBinding.ServiceManagers, int)]():\n        pass\n-Consumer.select.__type_params__[0].__constraints__[0]-scope16-mode2] 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select[T: (PrivateBinding.ServiceManagers, int)]():\n        pass\n-Consumer.select.__type_params__[0].__constraints__[0]-scope16-mode2] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select[T: (PrivateBinding.ServiceManagers, int)]():\n        pass\n-Consumer.select.__type_params__[0].__constraints__[0]-scope16-mode3] 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select[T: (PrivateBinding.ServiceManagers, int)]():\n        pass\n-Consumer.select.__type_params__[0].__constraints__[0]-scope16-mode3] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select[T = PrivateBinding.ServiceManagers]():\n        pass\n-Consumer.select.__type_params__[0].__default__-scope17-mode0] 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select[T = PrivateBinding.ServiceManagers]():\n        pass\n-Consumer.select.__type_params__[0].__default__-scope17-mode0] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select[T = PrivateBinding.ServiceManagers]():\n        pass\n-Consumer.select.__type_params__[0].__default__-scope17-mode1] 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select[T = PrivateBinding.ServiceManagers]():\n        pass\n-Consumer.select.__type_params__[0].__default__-scope17-mode1] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select[T = PrivateBinding.ServiceManagers]():\n        pass\n-Consumer.select.__type_params__[0].__default__-scope17-mode2] 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select[T = PrivateBinding.ServiceManagers]():\n        pass\n-Consumer.select.__type_params__[0].__default__-scope17-mode2] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select[T = PrivateBinding.ServiceManagers]():\n        pass\n-Consumer.select.__type_params__[0].__default__-scope17-mode3] 
+[gw1] [  3%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select[T = PrivateBinding.ServiceManagers]():\n        pass\n-Consumer.select.__type_params__[0].__default__-scope17-mode3] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    class Nested[T: PrivateBinding.ServiceManagers]:\n        pass\n-Consumer.Nested.__type_params__[0].__bound__-scope18-mode0] 
+[gw1] [  4%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    class Nested[T: PrivateBinding.ServiceManagers]:\n        pass\n-Consumer.Nested.__type_params__[0].__bound__-scope18-mode0] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    class Nested[T: PrivateBinding.ServiceManagers]:\n        pass\n-Consumer.Nested.__type_params__[0].__bound__-scope18-mode1] 
+[gw1] [  4%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    class Nested[T: PrivateBinding.ServiceManagers]:\n        pass\n-Consumer.Nested.__type_params__[0].__bound__-scope18-mode1] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    class Nested[T: PrivateBinding.ServiceManagers]:\n        pass\n-Consumer.Nested.__type_params__[0].__bound__-scope18-mode2] 
+[gw1] [  4%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    class Nested[T: PrivateBinding.ServiceManagers]:\n        pass\n-Consumer.Nested.__type_params__[0].__bound__-scope18-mode2] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    class Nested[T: PrivateBinding.ServiceManagers]:\n        pass\n-Consumer.Nested.__type_params__[0].__bound__-scope18-mode3] 
+[gw1] [  4%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    class Nested[T: PrivateBinding.ServiceManagers]:\n        pass\n-Consumer.Nested.__type_params__[0].__bound__-scope18-mode3] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select[T](self, value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope19-mode0] 
+[gw1] [  4%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select[T](self, value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope19-mode0] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select[T](self, value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope19-mode1] 
+[gw1] [  4%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select[T](self, value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope19-mode1] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select[T](self, value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope19-mode2] 
+[gw1] [  4%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select[T](self, value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope19-mode2] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select[T](self, value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope19-mode3] 
+[gw0] [  4%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-c] 
+[gw1] [  4%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    def select[T](self, value: PrivateBinding.ServiceManagers):\n        pass\n-Consumer.select.__annotations__['value']-scope19-mode3] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    type Alias = PrivateBinding.ServiceManagers\n-Consumer.Alias.__value__-scope20-mode0] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-t] 
+[gw1] [  4%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    type Alias = PrivateBinding.ServiceManagers\n-Consumer.Alias.__value__-scope20-mode0] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    type Alias = PrivateBinding.ServiceManagers\n-Consumer.Alias.__value__-scope20-mode1] 
+[gw1] [  4%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    type Alias = PrivateBinding.ServiceManagers\n-Consumer.Alias.__value__-scope20-mode1] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    type Alias = PrivateBinding.ServiceManagers\n-Consumer.Alias.__value__-scope20-mode2] 
+[gw1] [  4%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    type Alias = PrivateBinding.ServiceManagers\n-Consumer.Alias.__value__-scope20-mode2] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    type Alias = PrivateBinding.ServiceManagers\n-Consumer.Alias.__value__-scope20-mode3] 
+[gw1] [  4%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    type Alias = PrivateBinding.ServiceManagers\n-Consumer.Alias.__value__-scope20-mode3] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    @decorate(PrivateBinding.ServiceManagers)\n    class Nested:\n        pass\n-Consumer.Nested.selected-scope21-mode0] 
+[gw1] [  4%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    @decorate(PrivateBinding.ServiceManagers)\n    class Nested:\n        pass\n-Consumer.Nested.selected-scope21-mode0] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    @decorate(PrivateBinding.ServiceManagers)\n    class Nested:\n        pass\n-Consumer.Nested.selected-scope21-mode1] 
+[gw1] [  4%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    @decorate(PrivateBinding.ServiceManagers)\n    class Nested:\n        pass\n-Consumer.Nested.selected-scope21-mode1] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    @decorate(PrivateBinding.ServiceManagers)\n    class Nested:\n        pass\n-Consumer.Nested.selected-scope21-mode2] 
+[gw1] [  4%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    @decorate(PrivateBinding.ServiceManagers)\n    class Nested:\n        pass\n-Consumer.Nested.selected-scope21-mode2] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    @decorate(PrivateBinding.ServiceManagers)\n    class Nested:\n        pass\n-Consumer.Nested.selected-scope21-mode3] 
+[gw1] [  4%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    @decorate(PrivateBinding.ServiceManagers)\n    class Nested:\n        pass\n-Consumer.Nested.selected-scope21-mode3] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    @staticmethod\n    def select(value=PrivateBinding.ServiceManagers):\n        return value\n-Consumer.select()-scope22-mode0] 
+[gw1] [  4%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    @staticmethod\n    def select(value=PrivateBinding.ServiceManagers):\n        return value\n-Consumer.select()-scope22-mode0] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    @staticmethod\n    def select(value=PrivateBinding.ServiceManagers):\n        return value\n-Consumer.select()-scope22-mode1] 
+[gw1] [  4%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    @staticmethod\n    def select(value=PrivateBinding.ServiceManagers):\n        return value\n-Consumer.select()-scope22-mode1] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    @staticmethod\n    def select(value=PrivateBinding.ServiceManagers):\n        return value\n-Consumer.select()-scope22-mode2] 
+[gw1] [  4%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    @staticmethod\n    def select(value=PrivateBinding.ServiceManagers):\n        return value\n-Consumer.select()-scope22-mode2] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    @staticmethod\n    def select(value=PrivateBinding.ServiceManagers):\n        return value\n-Consumer.select()-scope22-mode3] 
+[gw1] [  4%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_class_cutover_respects_definition_evaluation_scope[    @staticmethod\n    def select(value=PrivateBinding.ServiceManagers):\n        return value\n-Consumer.select()-scope22-mode3] 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_accepts_alias_owned_by_removed_private_import 
+[gw1] [  4%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_accepts_alias_owned_by_removed_private_import 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_preserves_type_checking_boundary_for_public_facade 
+[gw1] [  4%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_preserves_type_checking_boundary_for_public_facade 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_preserves_multiple_type_only_facades_from_one_package 
+[gw1] [  4%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_preserves_multiple_type_only_facades_from_one_package 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_discovers_operational_facade_from_live_source 
+[gw1] [  4%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_discovers_operational_facade_from_live_source 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_replaces_public_long_alias_during_private_cutover 
+[gw1] [  4%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_replaces_public_long_alias_during_private_cutover 
+tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_preserves_valid_relative_private_import 
+[gw1] [  4%] PASSED tests/unit/codemod/test_private_import_cutover_rewrites.py::TestsFlextInfraPrivateImportCutoverRewrites::test_preserves_valid_relative_private_import 
+tests/unit/codemod/test_api_alias_cutover.py::TestsFlextInfraApiAliasCutover::test_service_retirement_preserves_kernel_context_and_shadowing[from sample_pkg import s-s-FlextSampleService] 
+[gw1] [  4%] FAILED tests/unit/codemod/test_api_alias_cutover.py::TestsFlextInfraApiAliasCutover::test_service_retirement_preserves_kernel_context_and_shadowing[from sample_pkg import s-s-FlextSampleService] 
+[gw0] [  4%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-t] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-p] 
+[gw0] [  4%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-p] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-m] 
+[gw0] [  4%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-m] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-u] 
+[gw0] [  4%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-u] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-True-c] 
+[gw0] [  4%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-True-c] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-True-t] 
+[gw0] [  4%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-True-t] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-True-p] 
+[gw0] [  4%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-True-p] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-True-m] 
+[gw0] [  4%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-True-m] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-True-u] 
+[gw0] [  4%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-True-u] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-False-c] 
+[gw0] [  4%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-False-c] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-False-t] 
+[gw0] [  4%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-False-t] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-False-p] 
+[gw0] [  4%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-False-p] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-False-m] 
+[gw0] [  4%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-False-m] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-False-u] 
+[gw0] [  4%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-False-u] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-True-c] 
+[gw0] [  4%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-True-c] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-True-t] 
+[gw0] [  4%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-True-t] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-True-p] 
+[gw0] [  4%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-True-p] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-True-m] 
+
+=================================== FAILURES ===================================
+_ TestsFlextInfraApiAliasCutover.test_service_retirement_preserves_kernel_context_and_shadowing[from sample_pkg import s-s-FlextSampleService] _
+[gw1] linux -- Python 3.13.18 /home/marlonsc/flext/flext-infra/worktrees/m6igj/.venv/bin/python
+../../../../.local/share/mise/installs/python/3.13.18/lib/python3.13/pathlib/_abc.py:482: in is_file
+    return S_ISREG(self.stat(follow_symlinks=follow_symlinks).st_mode)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../.local/share/mise/installs/python/3.13.18/lib/python3.13/pathlib/_local.py:515: in stat
+    return os.stat(self, follow_symlinks=follow_symlinks)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/marlonsc/tmp/pytest-of-marlonsc/pytest-14914/popen-gw1/test_service_retirement_preser0/flext-test-project/src/flext_infra.py'
+
+During handling of the above exception, another exception occurred:
+tests/unit/codemod/test_api_alias_cutover.py:88: in test_service_retirement_preserves_kernel_context_and_shadowing
+    u.Infra.plan_semantic_cutover(
+src/flext_infra/_utilities/_semantic_cutover/base.py:78: in plan_semantic_cutover
+    attempt = r.safe(
+.venv/lib/python3.13/site-packages/flext_core/_result/composition.py:201: in wrapper
+    return cls._create_success(func(*args, **kwargs))
+                               ^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/base.py:142: in _plan_semantic_cutover_phase
+    return cls._plan_selected_phase_dispatch(
+src/flext_infra/_utilities/_semantic_cutover/base.py:340: in _plan_selected_phase_dispatch
+    return factory()
+           ^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/base.py:313: in <lambda>
+    c.Infra.SemanticCutoverPhase.COMPAT_ALIAS: lambda: cls._plan_alias_cutover(
+src/flext_infra/_utilities/_semantic_cutover/base.py:363: in _plan_alias_cutover
+    api = cls._plan_api_aliases(workspace, working, selected, import_normalizer)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/aliases.py:407: in _plan_api_aliases
+    service_aliases, service_graph = cls._service_aliases(workspace, sources)
+                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/aliases.py:150: in _service_aliases
+    if value is not None and cls._inherits_service_kernel(value, kernel):
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/aliases.py:271: in _inherits_service_kernel
+    pending = list(FlextInfraUtilitiesDeclarationPayload.direct_bases(value))
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/declaration_payload.py:218: in direct_bases
+    tuple(value.get_superclasses())
+          ^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:324: in get_superclasses
+    for base in self.get_bases()
+                ^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:309: in get_bases
+    bases = self._get_bases()
+            ^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:482: in _get_bases
+    evaluated = rope.base.evaluate.eval_node(scope, base_node)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/evaluate.py:216: in eval_node
+    return eval_node2(scope, node)[1]
+           ^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/evaluate.py:249: in eval_node2
+    evaluator.visit(node)
+.venv/lib/python3.13/site-packages/rope/base/ast.py:79: in visit
+    return visitor(node)
+           ^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/evaluate.py:536: in _Attribute
+    self.result = pyname.get_object()[node.attr]
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjects.py:33: in __getitem__
+    return self.get_attribute(key)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjects.py:466: in get_attribute
+    if name in self._get_concluded_attributes():
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/utils/__init__.py:56: in newfunc
+    return func(self, *args, **kwds)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjects.py:453: in _get_concluded_attributes
+    self.concluded_attributes.set(self._create_concluded_attributes())
+                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:441: in _create_concluded_attributes
+    mro = self.get_consistent_mro()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:343: in get_consistent_mro
+    return self._linearize(strict=False)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:349: in _linearize
+    bases = self.get_bases()
+            ^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:309: in get_bases
+    bases = self._get_bases()
+            ^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:505: in _get_bases
+    original = rope.base.builtins.get_tuple(
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:507: in <genexpr>
+    binding.get_object() if binding is not None else None
+    ^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/utils/__init__.py:56: in newfunc
+    return func(self, *args, **kwds)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pynames.py:189: in get_object
+    return self._get_imported_pyname().get_object()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/utils/__init__.py:56: in newfunc
+    return func(self, *args, **kwds)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pynames.py:189: in get_object
+    return self._get_imported_pyname().get_object()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pynames.py:180: in _get_imported_pyname
+    result = self.imported_module.get_object()[self.imported_name]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pynames.py:162: in get_object
+    if self._get_pymodule() is None:
+       ^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pynames.py:149: in _get_pymodule
+    pymodule = pycore.project.get_module(
+src/flext_infra/_utilities/_rope/native_project.py:105: in get_module
+    if self.find_module(name, folder) is None and (
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/native_project.py:154: in find_module
+    found = self.find_module_native(modname, folder)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/native_project.py:177: in find_module_native
+    found = native.find_module(modname, self._native_folder(folder))
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/project.py:233: in find_module
+    return _find_module_in_folders(folders(), modname)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/project.py:593: in _find_module_in_folders
+    if folder.has_child(name + ".py"):
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/resources.py:207: in has_child
+    self.get_child(name)
+.venv/lib/python3.13/site-packages/rope/base/resources.py:203: in get_child
+    return self.project.get_resource(self._get_child_path(name))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/native_project.py:219: in get_resource
+    found = native.get_resource(resource_name)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/project.py:59: in get_resource
+    if not self.fscommands.exists(path):
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/project.py:498: in exists
+    return self.isfile(path) or self.isdir(path)
+           ^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/project.py:517: in isfile
+    return resolved not in self._hidden and resolved.is_file()
+                                            ^^^^^^^^^^^^^^^^^^
+../../../../.local/share/mise/installs/python/3.13.18/lib/python3.13/pathlib/_abc.py:484: in is_file
+    if not _ignore_error(e):
+           ^^^^^^^^^^^^^^^^
+../../../../.local/share/mise/installs/python/3.13.18/lib/python3.13/pathlib/_abc.py:38: in _ignore_error
+    def _ignore_error(exception):
+E   Failed: Timeout (>2.0s) from pytest-timeout.
+----------------------------- Captured stdout call -----------------------------
+INFO: rope: opening workspace at /home/marlonsc/tmp/pytest-of-marlonsc/pytest-14914/popen-gw1/test_service_retirement_preser0/flext-test-project
+INFO: rope: workspace ready in 0.01s
+~~~~~~~~~~~~~~~~~~~~~ Stack of <unknown> (139833286379200) ~~~~~~~~~~~~~~~~~~~~~
+  File "/home/marlonsc/flext/flext-infra/worktrees/m6igj/.venv/lib/python3.13/site-packages/execnet/gateway_base.py", line 411, in _perform_spawn
+    reply.run()
+  File "/home/marlonsc/flext/flext-infra/worktrees/m6igj/.venv/lib/python3.13/site-packages/execnet/gateway_base.py", line 341, in run
+    self._result = func(*args, **kwargs)
+  File "/home/marlonsc/flext/flext-infra/worktrees/m6igj/.venv/lib/python3.13/site-packages/execnet/gateway_base.py", line 1160, in _thread_receiver
+    msg = Message.from_io(io)
+  File "/home/marlonsc/flext/flext-infra/worktrees/m6igj/.venv/lib/python3.13/site-packages/execnet/gateway_base.py", line 567, in from_io
+    header = io.read(9)  # type 1, channel 4, payload 4
+  File "/home/marlonsc/flext/flext-infra/worktrees/m6igj/.venv/lib/python3.13/site-packages/execnet/gateway_base.py", line 534, in read
+    data = self._read(numbytes - len(buf))
+- generated xml file: /home/marlonsc/flext/flext-infra/worktrees/m6igj/.reports/tests/20261121T200218.047776Z-3581211/junit.xml -
+- generated report log file: /home/marlonsc/flext/flext-infra/worktrees/m6igj/.reports/tests/20261121T200218.047776Z-3581211/events.jsonl -
+------------------------------- flext slow tests -------------------------------
+no test near the ordinary or slow limit
+============================= slowest 25 durations =============================
+12.89s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-True-p]
+10.77s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-False-p]
+9.84s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-c]
+9.69s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-True-m]
+9.62s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-True-c]
+9.60s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-p]
+8.39s call     tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_unset_private_annotation_preserves_native_descriptor_behavior
+8.04s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-t]
+7.88s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-False-m]
+7.65s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-False-u]
+7.28s setup    tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[import pydantic as m-m.Field(discriminator='kind')-Payload | OtherPayload-model]
+6.91s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-m]
+6.77s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-canonical]
+6.61s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-canonical]
+6.60s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-False-t]
+6.56s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-True-c]
+6.27s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-True-t]
+6.06s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-True-t]
+5.58s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-False-c]
+5.37s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-True-p]
+5.30s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-u]
+5.12s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-True-u]
+4.75s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-canonical]
+4.25s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-canonical]
+3.89s call     tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_metadata_destination_cannot_capture_a_generic_parameter[rope_contract_consumer0]
+=========================== short test summary info ============================
+FAILED tests/unit/codemod/test_api_alias_cutover.py::TestsFlextInfraApiAliasCutover::test_service_retirement_preserves_kernel_context_and_shadowing[from sample_pkg import s-s-FlextSampleService]
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! KeyboardInterrupt !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+/home/marlonsc/flext/flext-infra/worktrees/m6igj/src/flext_infra/_utilities/pytest_suite_stop.py:97: KeyboardInterrupt
+(to show a full traceback on KeyboardInterrupt use --full-trace)
+================== 1 failed, 319 passed in 218.54s (0:03:38) ===================

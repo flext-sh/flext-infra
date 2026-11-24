@@ -1,0 +1,190 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "flext-infra-check",
+          "informationUri": "https://github.com/flext-sh/flext-infra",
+          "rules": []
+        }
+      },
+      "results": []
+    }
+  ],
+  "properties": {
+    "phase": "complete",
+    "requested_gates": [
+      "lint",
+      "format",
+      "markdown",
+      "markdown-format",
+      "markdown-code",
+      "conflict-markers"
+    ],
+    "pending_gates": [],
+    "targets": [
+      {
+        "name": "m6igj",
+        "path": "/home/marlonsc/flext/flext-infra/worktrees/m6igj",
+        "applicable_gates": [
+          "lint",
+          "format",
+          "markdown",
+          "markdown-format",
+          "markdown-code",
+          "conflict-markers"
+        ],
+        "source_identity": {
+          "repo_root": "/home/marlonsc/flext/flext-infra/worktrees/m6igj",
+          "primary_root": "/home/marlonsc/flext/flext-infra",
+          "head_oid": "8cff771670bbfdea5fe6c7b67a93e8373cf49904",
+          "porcelain": "M  src/flext_infra/_utilities/_semantic_cutover/contracts.py\nM  uv.lock",
+          "dirty": true,
+          "git_dir": "/home/marlonsc/flext/.git/modules/flext-infra/worktrees/m6igj",
+          "common_dir": "/home/marlonsc/flext/.git/modules/flext-infra",
+          "branch": "fix/flext-m6igj-test-cost",
+          "origin_remote": "https://github.com/flext-sh/flext-infra.git",
+          "upstream_remote": null,
+          "superproject_root": "/home/marlonsc/flext",
+          "requested_path": "/home/marlonsc/flext/flext-infra/worktrees/m6igj",
+          "is_worktree": true,
+          "is_submodule": true,
+          "is_attached_submodule": false,
+          "has_submodules": false,
+          "is_inside_work_tree": true
+        }
+      }
+    ],
+    "results": [
+      {
+        "project": "m6igj",
+        "gates": {
+          "lint": {
+            "result": {
+              "project": "m6igj",
+              "gate": "lint",
+              "passed": true,
+              "errors": [],
+              "duration": 0.688
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext/flext-infra/worktrees/m6igj/.reports/gates/20261121T202601.843076Z-349159/check/715b727a-cbac-4489-9ad0-c1ce6e87b07f/m6igj/lint.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          },
+          "format": {
+            "result": {
+              "project": "m6igj",
+              "gate": "format",
+              "passed": true,
+              "errors": [],
+              "duration": 1.196
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext/flext-infra/worktrees/m6igj/.reports/gates/20261121T202601.843076Z-349159/check/715b727a-cbac-4489-9ad0-c1ce6e87b07f/m6igj/format.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          },
+          "markdown": {
+            "result": {
+              "project": "m6igj",
+              "gate": "markdown",
+              "passed": true,
+              "errors": [],
+              "duration": 1.808
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext/flext-infra/worktrees/m6igj/.reports/gates/20261121T202601.843076Z-349159/check/715b727a-cbac-4489-9ad0-c1ce6e87b07f/m6igj/markdown.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          },
+          "markdown-format": {
+            "result": {
+              "project": "m6igj",
+              "gate": "markdown-format",
+              "passed": true,
+              "errors": [],
+              "duration": 1.761
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext/flext-infra/worktrees/m6igj/.reports/gates/20261121T202601.843076Z-349159/check/715b727a-cbac-4489-9ad0-c1ce6e87b07f/m6igj/markdown-format.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          },
+          "markdown-code": {
+            "result": {
+              "project": "m6igj",
+              "gate": "markdown-code",
+              "passed": true,
+              "errors": [],
+              "duration": 12.54
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext/flext-infra/worktrees/m6igj/.reports/gates/20261121T202601.843076Z-349159/check/715b727a-cbac-4489-9ad0-c1ce6e87b07f/m6igj/markdown-code.raw.log",
+            "outcome": "clean",
+            "process": null,
+            "components": {},
+            "requested_components": []
+          },
+          "conflict-markers": {
+            "result": {
+              "project": "m6igj",
+              "gate": "conflict-markers",
+              "passed": true,
+              "errors": [],
+              "duration": 11.68
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext/flext-infra/worktrees/m6igj/.reports/gates/20261121T202601.843076Z-349159/check/715b727a-cbac-4489-9ad0-c1ce6e87b07f/m6igj/conflict-markers.raw.log",
+            "outcome": "clean",
+            "process": null,
+            "components": {},
+            "requested_components": []
+          }
+        }
+      }
+    ],
+    "selected_files": [],
+    "global_targets": [
+      {
+        "name": "m6igj",
+        "path": "/home/marlonsc/flext/flext-infra/worktrees/m6igj",
+        "applicable_gates": [
+          "lint",
+          "format",
+          "markdown",
+          "markdown-format",
+          "markdown-code",
+          "conflict-markers"
+        ],
+        "source_identity": null
+      }
+    ]
+  }
+}

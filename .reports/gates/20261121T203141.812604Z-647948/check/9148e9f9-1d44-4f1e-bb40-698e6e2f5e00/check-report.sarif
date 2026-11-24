@@ -1,0 +1,110 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "flext-infra-check",
+          "informationUri": "https://github.com/flext-sh/flext-infra",
+          "rules": []
+        }
+      },
+      "results": []
+    }
+  ],
+  "properties": {
+    "phase": "primary",
+    "requested_gates": [
+      "lint",
+      "pyrefly"
+    ],
+    "pending_gates": [],
+    "targets": [
+      {
+        "name": "m6igj",
+        "path": "/home/marlonsc/flext/flext-infra/worktrees/m6igj",
+        "applicable_gates": [
+          "lint",
+          "pyrefly"
+        ],
+        "source_identity": {
+          "repo_root": "/home/marlonsc/flext/flext-infra/worktrees/m6igj",
+          "primary_root": "/home/marlonsc/flext/flext-infra",
+          "head_oid": "fd86d7376f8a973e24966d824dfffa7fb942ac4d",
+          "porcelain": " M .testmondata\n D .testmondata-shm\n D .testmondata-wal\n M src/flext_infra/_utilities/_semantic_cutover/aliases.py",
+          "dirty": true,
+          "git_dir": "/home/marlonsc/flext/.git/modules/flext-infra/worktrees/m6igj",
+          "common_dir": "/home/marlonsc/flext/.git/modules/flext-infra",
+          "branch": "fix/flext-m6igj-test-cost",
+          "origin_remote": "https://github.com/flext-sh/flext-infra.git",
+          "upstream_remote": null,
+          "superproject_root": "/home/marlonsc/flext",
+          "requested_path": "/home/marlonsc/flext/flext-infra/worktrees/m6igj",
+          "is_worktree": true,
+          "is_submodule": true,
+          "is_attached_submodule": false,
+          "has_submodules": false,
+          "is_inside_work_tree": true
+        }
+      }
+    ],
+    "results": [
+      {
+        "project": "m6igj",
+        "gates": {
+          "lint": {
+            "result": {
+              "project": "m6igj",
+              "gate": "lint",
+              "passed": true,
+              "errors": [],
+              "duration": 0.267
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext/flext-infra/worktrees/m6igj/.reports/gates/20261121T203141.812604Z-647948/check/9148e9f9-1d44-4f1e-bb40-698e6e2f5e00/m6igj/lint.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          },
+          "pyrefly": {
+            "result": {
+              "project": "m6igj",
+              "gate": "pyrefly",
+              "passed": true,
+              "errors": [],
+              "duration": 11.577
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext/flext-infra/worktrees/m6igj/.reports/gates/20261121T203141.812604Z-647948/check/9148e9f9-1d44-4f1e-bb40-698e6e2f5e00/m6igj/pyrefly.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          }
+        }
+      }
+    ],
+    "selected_files": [],
+    "global_targets": [
+      {
+        "name": "m6igj",
+        "path": "/home/marlonsc/flext/flext-infra/worktrees/m6igj",
+        "applicable_gates": [
+          "lint",
+          "pyrefly"
+        ],
+        "source_identity": null
+      }
+    ]
+  }
+}
