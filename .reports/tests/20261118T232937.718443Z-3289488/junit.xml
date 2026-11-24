@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="10.213" timestamp="2026-11-18T20:29:41.132255-03:00" hostname="tungs"><testcase classname="tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection" name="test_published_import_width_preserves_mro_and_lazy_exports[True-16]" time="6.306"><failure message="AssertionError: unsorted-imports: [*] Import block is un-sorted or un-formatted&#10;  --&gt; src/flext_test_project/__init__.py:8:1&#10;   |&#10; 6 |   &quot;&quot;&quot;&#10; 7 |&#10; 8 | / from __future__ import annotations&#10; 9 | | from typing import TYPE_CHECKING&#10;10 | |&#10;11 | | from flext_core.lazy import install_lazy_exports&#10;   | |________________________________________________^&#10;12 |&#10;13 |   if TYPE_CHECKING:&#10;   |&#10;help: Organize imports&#10;   |&#10;8  | from __future__ import annotations&#10;9  +&#10;10 | from typing import TYPE_CHECKING&#10;   |&#10;&#10;[+2 more lines; full report in element text]">tests/unit/codegen/_utility_facade_projection/owner_publication.py:816: in test_published_import_width_preserves_mro_and_lazy_exports
+    tm.that(
+../flext-tests/src/flext_tests/_utilities/_matchers/that.py:706: in that
+    raise AssertionError(
+E   AssertionError: unsorted-imports: [*] Import block is un-sorted or un-formatted
+E     --&gt; src/flext_test_project/__init__.py:8:1
+E      |
+E    6 |   """
+E    7 |
+E    8 | / from __future__ import annotations
+E    9 | | from typing import TYPE_CHECKING
+E   10 | |
+E   11 | | from flext_core.lazy import install_lazy_exports
+E      | |________________________________________________^
+E   12 |
+E   13 |   if TYPE_CHECKING:
+E      |
+E   help: Organize imports
+E      |
+E   8  | from __future__ import annotations
+E   9  +
+E   10 | from typing import TYPE_CHECKING
+E      |
+E   
+E   Found 1 error.
+E   [*] 1 fixable with `--fix`.</failure></testcase></testsuite></testsuites>

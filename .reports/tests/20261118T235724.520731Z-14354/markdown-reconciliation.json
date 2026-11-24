@@ -1,0 +1,53 @@
+{
+  "eligible": [],
+  "selected": [],
+  "deselected": [],
+  "diagnostics": {
+    "failed_count": 1,
+    "error_count": 0,
+    "warning_count": 0,
+    "skipped_count": 0,
+    "connectivity_skip_cases": [],
+    "collection_failed_count": 0,
+    "collection_skipped_count": 0,
+    "collection_failed_cases": [],
+    "collection_skip_cases": [],
+    "reported_node_ids": [
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_complete_type_owner_rejects_unknown_facade_contracts[str-'PublicTypes', 't']"
+    ],
+    "phase_outcomes": [
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_complete_type_owner_rejects_unknown_facade_contracts[str-'PublicTypes', 't']",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_complete_type_owner_rejects_unknown_facade_contracts[str-'PublicTypes', 't']",
+        "phase": "call",
+        "outcome": "failed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_complete_type_owner_rejects_unknown_facade_contracts[str-'PublicTypes', 't']",
+        "phase": "teardown",
+        "outcome": "passed"
+      }
+    ],
+    "markdown_attempts": [],
+    "markdown_items": [],
+    "failed_cases": [
+      "tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_complete_type_owner_rejects_unknown_facade_contracts[str-'PublicTypes', 't']"
+    ],
+    "error_traces": [
+      "=== FAILURE: tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_complete_type_owner_rejects_unknown_facade_contracts[str-'PublicTypes', 't'] ===\nFailed: DID NOT RAISE ValueError\ntests/unit/codegen/_utility_facade_projection/planning.py:1131: in test_complete_type_owner_rejects_unknown_facade_contracts\n    u.Tests.raises(\nE   Failed: DID NOT RAISE ValueError"
+    ],
+    "warning_lines": [],
+    "skip_cases": [],
+    "slow_entries": [
+      "1.571000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_complete_type_owner_rejects_unknown_facade_contracts[str-'PublicTypes', 't']"
+    ]
+  },
+  "cache_hit": false,
+  "violations": [
+    "selected node IDs differ from executed node IDs"
+  ]
+}

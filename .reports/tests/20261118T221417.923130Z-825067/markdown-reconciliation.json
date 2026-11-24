@@ -1,0 +1,53 @@
+{
+  "eligible": [],
+  "selected": [],
+  "deselected": [],
+  "diagnostics": {
+    "failed_count": 1,
+    "error_count": 0,
+    "warning_count": 0,
+    "skipped_count": 0,
+    "connectivity_skip_cases": [],
+    "collection_failed_count": 0,
+    "collection_skipped_count": 0,
+    "collection_failed_cases": [],
+    "collection_skip_cases": [],
+    "reported_node_ids": [
+      "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_runtime_self_import_still_fails_with_lazy_publication[False]"
+    ],
+    "phase_outcomes": [
+      {
+        "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_runtime_self_import_still_fails_with_lazy_publication[False]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_runtime_self_import_still_fails_with_lazy_publication[False]",
+        "phase": "call",
+        "outcome": "failed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_runtime_self_import_still_fails_with_lazy_publication[False]",
+        "phase": "teardown",
+        "outcome": "passed"
+      }
+    ],
+    "markdown_attempts": [],
+    "markdown_items": [],
+    "failed_cases": [
+      "tests.unit.codemod.test_facade_base_cutover.TestsFlextInfraFacadeBaseCutover::test_runtime_self_import_still_fails_with_lazy_publication[False]"
+    ],
+    "error_traces": [
+      "=== FAILURE: tests.unit.codemod.test_facade_base_cutover.TestsFlextInfraFacadeBaseCutover::test_runtime_self_import_still_fails_with_lazy_publication[False] ===\nAssertionError: Expected failure but got success: ()\ntests/unit/codemod/test_facade_base_cutover.py:199: in test_runtime_self_import_still_fails_with_lazy_publication\n    tm.fail(self._plan(tmp_path, sources, child), has=\"cyclic facade binding\")\n../flext-tests/src/flext_tests/_utilities/_matchers/result.py:67: in fail\n    err: str = FlextTestsUtilitiesResult.assert_failure(result)\n               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n../flext-tests/src/flext_tests/_utilities/result.py:34: in assert_failure\n    raise AssertionError(msg)\nE   AssertionError: Expected failure but got success: ()"
+    ],
+    "warning_lines": [],
+    "skip_cases": [],
+    "slow_entries": [
+      "1.327000s | tests.unit.codemod.test_facade_base_cutover.TestsFlextInfraFacadeBaseCutover::test_runtime_self_import_still_fails_with_lazy_publication[False]"
+    ]
+  },
+  "cache_hit": false,
+  "violations": [
+    "selected node IDs differ from executed node IDs"
+  ]
+}

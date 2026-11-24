@@ -1,0 +1,10 @@
+=== FAILURE: tests.unit.codemod.test_facade_base_cutover.TestsFlextInfraFacadeBaseCutover::test_runtime_self_import_still_fails_with_lazy_publication[False] ===
+AssertionError: Expected failure but got success: ()
+tests/unit/codemod/test_facade_base_cutover.py:199: in test_runtime_self_import_still_fails_with_lazy_publication
+    tm.fail(self._plan(tmp_path, sources, child), has="cyclic facade binding")
+../flext-tests/src/flext_tests/_utilities/_matchers/result.py:67: in fail
+    err: str = FlextTestsUtilitiesResult.assert_failure(result)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../flext-tests/src/flext_tests/_utilities/result.py:34: in assert_failure
+    raise AssertionError(msg)
+E   AssertionError: Expected failure but got success: ()

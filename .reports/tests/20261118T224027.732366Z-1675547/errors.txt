@@ -1,0 +1,72 @@
+=== FAILURE: tests.unit.codegen.test_facade_canonical_source.TestsFacadeCanonicalSource::test_flat_parts_move_under_the_domain_namespace ===
+Failed: Timeout (>2.0s) from pytest-timeout.
+tests/unit/codegen/test_facade_canonical_source.py:109: in test_flat_parts_move_under_the_domain_namespace
+    rendered = TestsFacadeCanonicalSource._rendered(
+tests/unit/codegen/test_facade_canonical_source.py:277: in _rendered
+    tm.not_none(u.Infra.render_utility_facade(package, family=family))
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/facade_components.py:635: in render_utility_facade
+    return cls.render_utility_facade(
+src/flext_infra/_utilities/facade_components.py:655: in render_utility_facade
+    return cls.facade_component_source(
+src/flext_infra/_utilities/facade_components.py:696: in facade_component_source
+    return cls.facade_component_source(
+src/flext_infra/_utilities/facade_components.py:703: in facade_component_source
+    planned = cls._facade_component_plan(
+src/flext_infra/_utilities/facade_components.py:1511: in _facade_component_plan
+    resolved = cls._facade_namespace_owner(
+src/flext_infra/_utilities/facade_components.py:1827: in _facade_namespace_owner
+    namespaces = cls._facade_inherited_namespaces(
+src/flext_infra/_utilities/facade_components.py:2112: in _facade_inherited_namespaces
+    FlextInfraUtilitiesFacadeMembers.class_kind(
+src/flext_infra/_utilities/facade_members.py:484: in class_kind
+    kind = FlextInfraUtilitiesFacadeMembers._class_kind_uncached(
+src/flext_infra/_utilities/facade_members.py:523: in _class_kind_uncached
+    return FlextInfraUtilitiesFacadeMembers._class_kind_classified(
+src/flext_infra/_utilities/facade_members.py:563: in _class_kind_classified
+    if FlextInfraUtilitiesFacadeMembers._model_class(
+src/flext_infra/_utilities/facade_members.py:602: in _model_class
+    model = resolver_factory()(
+src/flext_infra/_utilities/_rope/source_bases_runtime.py:143: in __call__
+    return self.source_member_binding(qualified)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/source_bases_runtime.py:198: in source_member_binding
+    for ancestor in self._linearize(identity):
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/source_bases_runtime.py:2212: in _linearize
+    parents = tuple(
+src/flext_infra/_utilities/_rope/source_bases_runtime.py:2215: in <genexpr>
+    if not any(
+src/flext_infra/_utilities/_rope/source_bases_runtime.py:2216: in <genexpr>
+    parent in self._linearize(previous)[1:]
+              ^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/source_bases_runtime.py:2205: in _linearize
+    parents = self._bases(identity)
+              ^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/source_bases_runtime.py:2136: in _bases
+    tuple(self._resolve(base) for base in declared)
+src/flext_infra/_utilities/_rope/source_bases_runtime.py:2136: in <genexpr>
+    tuple(self._resolve(base) for base in declared)
+          ^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/source_bases_runtime.py:1799: in _resolve
+    target, attributes = self._unresolved_target(
+src/flext_infra/_utilities/_rope/source_bases_runtime.py:1872: in _unresolved_target
+    resolved = self._external_reference(
+src/flext_infra/_utilities/_rope/source_bases_runtime.py:1746: in _external_reference
+    return self._provider_reference(
+src/flext_infra/_utilities/_rope/source_bases_runtime.py:1138: in _provider_reference
+    target = f"{self._provider_name(module)}.{name}"
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/source_bases_runtime.py:1400: in _provider_name
+    return module.get_name()
+           ^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:788: in get_name
+    return rope.base.libutils.modname(self.resource) if self.resource else ""
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/rope/base/libutils.py:121: in modname
+    while source_folder != source_folder.parent and source_folder.has_child(
+                           ^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/rope/base/resources.py:82: in parent
+    parent = "/".join(self.path.split("/")[0:-1])
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: Timeout (>2.0s) from pytest-timeout.

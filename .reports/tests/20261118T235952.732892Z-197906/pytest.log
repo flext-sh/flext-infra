@@ -1,0 +1,53 @@
+================================================= test session starts ==================================================
+platform linux -- Python 3.13.17, pytest-9.2.0, pluggy-1.7.0 -- /home/marlonsc/flext-wip-flext-0in0k.32/.venv/bin/python
+cachedir: .pytest_cache
+hypothesis profile 'default'
+benchmark: 5.3.1 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+Using --randomly-seed=1912148569
+rootdir: /home/marlonsc/flext-wip-flext-0in0k.32/flext-infra
+configfile: pyproject.toml
+plugins: flext-tests-0.12.0, flext-infra-0.12.1, hypothesis-6.170.14, anyio-4.16.0, platformdirs-4.14.5, singer-sdk-0.54.9, asyncio-1.4.1.post1, benchmark-5.3.1, cov-7.1.0, markdown-docs-0.9.2, randomly-5.0.0, reportlog-1.0.0, timeout-2.4.0, xdist-3.8.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
+timeout: 2.0s
+timeout method: signal
+timeout func_only: True
+created: 4/4 workers
+4 workers [13 items]
+
+scheduling tests via LoadScopeScheduling
+
+tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_lazy_published_letter_resolves_the_declared_class 
+[gw0] [  7%] PASSED tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_lazy_published_letter_resolves_the_declared_class 
+tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_class_name_alias_base_becomes_the_family_letter 
+[gw0] [ 15%] PASSED tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_class_name_alias_base_becomes_the_family_letter 
+tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_eager_reads_keep_the_letter_binding 
+[gw0] [ 23%] PASSED tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_eager_reads_keep_the_letter_binding 
+tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_facade_classes_read_a_declared_sibling_without_installation[member] 
+[gw0] [ 30%] PASSED tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_facade_classes_read_a_declared_sibling_without_installation[member] 
+tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_type_only_self_import_does_not_override_lazy_publication[from typing import TYPE_CHECKING-TYPE_CHECKING] 
+[gw0] [ 38%] PASSED tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_type_only_self_import_does_not_override_lazy_publication[from typing import TYPE_CHECKING-TYPE_CHECKING] 
+tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_facade_classes_read_a_declared_sibling_without_installation[workspace] 
+[gw0] [ 46%] PASSED tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_facade_classes_read_a_declared_sibling_without_installation[workspace] 
+tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_type_only_self_import_does_not_override_lazy_publication[import typing-typing.TYPE_CHECKING] 
+[gw0] [ 53%] PASSED tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_type_only_self_import_does_not_override_lazy_publication[import typing-typing.TYPE_CHECKING] 
+tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_annotation_without_value_keeps_the_letter_base 
+[gw0] [ 61%] PASSED tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_annotation_without_value_keeps_the_letter_base 
+tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_bare_letter_base_is_already_canonical 
+[gw0] [ 69%] PASSED tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_bare_letter_base_is_already_canonical 
+tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_undeclared_letter_owner_fails_the_plan 
+[gw0] [ 76%] PASSED tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_undeclared_letter_owner_fails_the_plan 
+tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_facade_classes_derive_every_published_letter 
+[gw0] [ 84%] PASSED tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_facade_classes_derive_every_published_letter 
+tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_type_only_self_import_does_not_override_lazy_publication[import typing_extensions-typing_extensions.TYPE_CHECKING] 
+[gw0] [ 92%] PASSED tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_type_only_self_import_does_not_override_lazy_publication[import typing_extensions-typing_extensions.TYPE_CHECKING] 
+tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_double_composition_keeps_the_secondary_parent 
+[gw0] [100%] PASSED tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_double_composition_keeps_the_secondary_parent 
+
+- generated xml file: /home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/.reports/tests/20261118T235952.732892Z-197906/junit.xml -
+- generated report log file: /home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/.reports/tests/20261118T235952.732892Z-197906/events.jsonl -
+--------------------------------------------------- flext slow tests ---------------------------------------------------
+no test near the ordinary or slow limit
+================================================= slowest 25 durations =================================================
+
+(25 durations < 2s hidden.)
+================================================== 13 passed in 6.48s ==================================================

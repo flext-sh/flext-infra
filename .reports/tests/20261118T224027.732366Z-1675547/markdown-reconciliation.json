@@ -1,0 +1,53 @@
+{
+  "eligible": [],
+  "selected": [],
+  "deselected": [],
+  "diagnostics": {
+    "failed_count": 1,
+    "error_count": 0,
+    "warning_count": 0,
+    "skipped_count": 0,
+    "connectivity_skip_cases": [],
+    "collection_failed_count": 0,
+    "collection_skipped_count": 0,
+    "collection_failed_cases": [],
+    "collection_skip_cases": [],
+    "reported_node_ids": [
+      "tests/unit/codegen/test_facade_canonical_source.py::TestsFacadeCanonicalSource::test_flat_parts_move_under_the_domain_namespace"
+    ],
+    "phase_outcomes": [
+      {
+        "node_id": "tests/unit/codegen/test_facade_canonical_source.py::TestsFacadeCanonicalSource::test_flat_parts_move_under_the_domain_namespace",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_facade_canonical_source.py::TestsFacadeCanonicalSource::test_flat_parts_move_under_the_domain_namespace",
+        "phase": "call",
+        "outcome": "failed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_facade_canonical_source.py::TestsFacadeCanonicalSource::test_flat_parts_move_under_the_domain_namespace",
+        "phase": "teardown",
+        "outcome": "passed"
+      }
+    ],
+    "markdown_attempts": [],
+    "markdown_items": [],
+    "failed_cases": [
+      "tests.unit.codegen.test_facade_canonical_source.TestsFacadeCanonicalSource::test_flat_parts_move_under_the_domain_namespace"
+    ],
+    "error_traces": [
+      "=== FAILURE: tests.unit.codegen.test_facade_canonical_source.TestsFacadeCanonicalSource::test_flat_parts_move_under_the_domain_namespace ===\nFailed: Timeout (>2.0s) from pytest-timeout.\ntests/unit/codegen/test_facade_canonical_source.py:109: in test_flat_parts_move_under_the_domain_namespace\n    rendered = TestsFacadeCanonicalSource._rendered(\ntests/unit/codegen/test_facade_canonical_source.py:277: in _rendered\n    tm.not_none(u.Infra.render_utility_facade(package, family=family))\n                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nsrc/flext_infra/_utilities/facade_components.py:635: in render_utility_facade\n    return cls.render_utility_facade(\nsrc/flext_infra/_utilities/facade_components.py:655: in render_utility_facade\n    return cls.facade_component_source(\nsrc/flext_infra/_utilities/facade_components.py:696: in facade_component_source\n    return cls.facade_component_source(\nsrc/flext_infra/_utilities/facade_components.py:703: in facade_component_source\n    planned = cls._facade_component_plan(\nsrc/flext_infra/_utilities/facade_components.py:1511: in _facade_component_plan\n    resolved = cls._facade_namespace_owner(\nsrc/flext_infra/_utilities/facade_components.py:1827: in _facade_namespace_owner\n    namespaces = cls._facade_inherited_namespaces(\nsrc/flext_infra/_utilities/facade_components.py:2112: in _facade_inherited_namespaces\n    FlextInfraUtilitiesFacadeMembers.class_kind(\nsrc/flext_infra/_utilities/facade_members.py:484: in class_kind\n    kind = FlextInfraUtilitiesFacadeMembers._class_kind_uncached(\nsrc/flext_infra/_utilities/facade_members.py:523: in _class_kind_uncached\n    return FlextInfraUtilitiesFacadeMembers._class_kind_classified(\nsrc/flext_infra/_utilities/facade_members.py:563: in _class_kind_classified\n    if FlextInfraUtilitiesFacadeMembers._model_class(\nsrc/flext_infra/_utilities/facade_members.py:602: in _model_class\n    model = resolver_factory()(\nsrc/flext_infra/_utilities/_rope/source_bases_runtime.py:143: in __call__\n    return self.source_member_binding(qualified)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nsrc/flext_infra/_utilities/_rope/source_bases_runtime.py:198: in source_member_binding\n    for ancestor in self._linearize(identity):\n                    ^^^^^^^^^^^^^^^^^^^^^^^^^\nsrc/flext_infra/_utilities/_rope/source_bases_runtime.py:2212: in _linearize\n    parents = tuple(\nsrc/flext_infra/_utilities/_rope/source_bases_runtime.py:2215: in <genexpr>\n    if not any(\nsrc/flext_infra/_utilities/_rope/source_bases_runtime.py:2216: in <genexpr>\n    parent in self._linearize(previous)[1:]\n              ^^^^^^^^^^^^^^^^^^^^^^^^^\nsrc/flext_infra/_utilities/_rope/source_bases_runtime.py:2205: in _linearize\n    parents = self._bases(identity)\n              ^^^^^^^^^^^^^^^^^^^^^\nsrc/flext_infra/_utilities/_rope/source_bases_runtime.py:2136: in _bases\n    tuple(self._resolve(base) for base in declared)\nsrc/flext_infra/_utilities/_rope/source_bases_runtime.py:2136: in <genexpr>\n    tuple(self._resolve(base) for base in declared)\n          ^^^^^^^^^^^^^^^^^^^\nsrc/flext_infra/_utilities/_rope/source_bases_runtime.py:1799: in _resolve\n    target, attributes = self._unresolved_target(\nsrc/flext_infra/_utilities/_rope/source_bases_runtime.py:1872: in _unresolved_target\n    resolved = self._external_reference(\nsrc/flext_infra/_utilities/_rope/source_bases_runtime.py:1746: in _external_reference\n    return self._provider_reference(\nsrc/flext_infra/_utilities/_rope/source_bases_runtime.py:1138: in _provider_reference\n    target = f\"{self._provider_name(module)}.{name}\"\n                ^^^^^^^^^^^^^^^^^^^^^^^^^^^\nsrc/flext_infra/_utilities/_rope/source_bases_runtime.py:1400: in _provider_name\n    return module.get_name()\n           ^^^^^^^^^^^^^^^^^\n../.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:788: in get_name\n    return rope.base.libutils.modname(self.resource) if self.resource else \"\"\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n../.venv/lib/python3.13/site-packages/rope/base/libutils.py:121: in modname\n    while source_folder != source_folder.parent and source_folder.has_child(\n                           ^^^^^^^^^^^^^^^^^^^^\n../.venv/lib/python3.13/site-packages/rope/base/resources.py:82: in parent\n    parent = \"/\".join(self.path.split(\"/\")[0:-1])\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   Failed: Timeout (>2.0s) from pytest-timeout."
+    ],
+    "warning_lines": [],
+    "skip_cases": [],
+    "slow_entries": [
+      "2.009000s | tests.unit.codegen.test_facade_canonical_source.TestsFacadeCanonicalSource::test_flat_parts_move_under_the_domain_namespace"
+    ]
+  },
+  "cache_hit": false,
+  "violations": [
+    "selected node IDs differ from executed node IDs"
+  ]
+}

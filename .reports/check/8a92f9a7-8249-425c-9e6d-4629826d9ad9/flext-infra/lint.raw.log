@@ -1,0 +1,59 @@
+[
+  {
+    "cell": null,
+    "code": "F811",
+    "end_location": {
+      "column": 26,
+      "row": 25
+    },
+    "filename": "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/src/flext_infra/_utilities/facade_components.py",
+    "fix": null,
+    "location": {
+      "column": 23,
+      "row": 25
+    },
+    "message": "Redefinition of unused `ast` from line 15: `ast` redefined here",
+    "name": "redefined-while-unused",
+    "noqa_row": 25,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/redefined-while-unused"
+  },
+  {
+    "cell": null,
+    "code": "C901",
+    "end_location": {
+      "column": 33,
+      "row": 786
+    },
+    "filename": "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/src/flext_infra/_utilities/facade_components.py",
+    "fix": null,
+    "location": {
+      "column": 9,
+      "row": 786
+    },
+    "message": "`_canonical_facade_source` is too complex (18 > 10)",
+    "name": "complex-structure",
+    "noqa_row": 786,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/complex-structure"
+  },
+  {
+    "cell": null,
+    "code": "PLR0912",
+    "end_location": {
+      "column": 33,
+      "row": 786
+    },
+    "filename": "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/src/flext_infra/_utilities/facade_components.py",
+    "fix": null,
+    "location": {
+      "column": 9,
+      "row": 786
+    },
+    "message": "Too many branches (18 > 12)",
+    "name": "too-many-branches",
+    "noqa_row": 786,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/too-many-branches"
+  }
+]

@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, TypeAlias
 
-from flext_cli import FlextCliModels
+from flext_cli import m
 
 from flext_infra._models import (
     FlextInfraModelsCensus,
@@ -48,7 +48,7 @@ from flext_infra._models._codegen import FlextInfraCodegen
 from flext_infra._models._config import FlextInfraModelsConfig
 
 
-class FlextInfraModels(FlextCliModels):
+class FlextInfraModels(m):
     """Merged model namespace for flext-infra domain objects."""
 
     class Infra(

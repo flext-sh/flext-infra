@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="7.163" timestamp="2026-11-18T19:34:23.819344-03:00" hostname="tungs"><testcase classname="tests.unit.codegen.test_facade_canonical_source.TestsFacadeCanonicalSource" name="test_flat_parts_add_the_secondary_upstream_facade" time="2.011"><failure message="Failed: Timeout (&gt;2.0s) from pytest-timeout.">tests/unit/codegen/test_facade_canonical_source.py:150: in test_flat_parts_add_the_secondary_upstream_facade
+    rendered = TestsFacadeCanonicalSource._rendered(
+tests/unit/codegen/test_facade_canonical_source.py:265: in _rendered
+    tm.not_none(u.Infra.render_utility_facade(package, family=family))
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/facade_components.py:635: in render_utility_facade
+    return cls.render_utility_facade(
+src/flext_infra/_utilities/facade_components.py:655: in render_utility_facade
+    return cls.facade_component_source(
+src/flext_infra/_utilities/facade_components.py:696: in facade_component_source
+    return cls.facade_component_source(
+src/flext_infra/_utilities/facade_components.py:713: in facade_component_source
+    return cls._facade_component_rendered(
+src/flext_infra/_utilities/facade_components.py:771: in _facade_component_rendered
+    return rendered.flat_map(
+../flext-core/src/flext_core/_result/transforms.py:97: in flat_map
+    return self.from_result(func(self._payload))
+                            ^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/facade_components.py:772: in &lt;lambda&gt;
+    lambda text: FlextInfraUtilitiesProtectedEditLinting.normalize_source(
+src/flext_infra/_utilities/protected_edit_linting.py:93: in normalize_source
+    remaining = cls._ruff_stdin_codes(
+src/flext_infra/_utilities/protected_edit_linting.py:749: in _ruff_stdin_codes
+    reported = cls._ruff_stdin_pass(
+src/flext_infra/_utilities/protected_edit_linting.py:890: in _ruff_stdin_pass
+    executed = u.Cli.run_raw(
+../flext-cli/src/flext_cli/_utilities/runtime.py:201: in run_raw
+    return cls._execute_streamed_process(
+../flext-cli/src/flext_cli/_utilities/_runtime/process_execution.py:66: in _execute_streamed_process
+    cls._execute_lifecycle(request, state, timing)
+../flext-cli/src/flext_cli/_utilities/_runtime/process_execution.py:173: in _execute_lifecycle
+    state.timed_out, state.final_deadline = cls._monitor_process(
+../flext-cli/src/flext_cli/_utilities/_runtime/process_monitor.py:49: in _monitor_process
+    cls._wait_next_boundary(state, phase, now)
+../flext-cli/src/flext_cli/_utilities/_runtime/process_monitor.py:113: in _wait_next_boundary
+    state.wake.wait(
+../../.local/share/mise/installs/python/3.13.17/lib/python3.13/threading.py:660: in wait
+    signaled = self._cond.wait(timeout)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/mise/installs/python/3.13.17/lib/python3.13/threading.py:363: in wait
+    gotit = waiter.acquire(True, timeout)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: Timeout (&gt;2.0s) from pytest-timeout.</failure></testcase></testsuite></testsuites>

@@ -1,0 +1,112 @@
+{
+  "failed_count": 1,
+  "error_count": 0,
+  "warning_count": 0,
+  "skipped_count": 0,
+  "connectivity_skip_cases": [],
+  "collection_failed_count": 0,
+  "collection_skipped_count": 0,
+  "collection_failed_cases": [],
+  "collection_skip_cases": [],
+  "reported_node_ids": [
+    "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_bare_letter_base_is_already_canonical",
+    "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_class_name_alias_base_becomes_the_family_letter",
+    "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_facade_classes_derive_every_published_letter",
+    "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_runtime_self_import_still_fails_with_lazy_publication[False]",
+    "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_type_only_self_import_does_not_override_lazy_publication[import typing_extensions-typing_extensions.TYPE_CHECKING]"
+  ],
+  "phase_outcomes": [
+    {
+      "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_bare_letter_base_is_already_canonical",
+      "phase": "setup",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_bare_letter_base_is_already_canonical",
+      "phase": "call",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_bare_letter_base_is_already_canonical",
+      "phase": "teardown",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_class_name_alias_base_becomes_the_family_letter",
+      "phase": "setup",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_class_name_alias_base_becomes_the_family_letter",
+      "phase": "call",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_class_name_alias_base_becomes_the_family_letter",
+      "phase": "teardown",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_facade_classes_derive_every_published_letter",
+      "phase": "setup",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_facade_classes_derive_every_published_letter",
+      "phase": "call",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_facade_classes_derive_every_published_letter",
+      "phase": "teardown",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_runtime_self_import_still_fails_with_lazy_publication[False]",
+      "phase": "setup",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_runtime_self_import_still_fails_with_lazy_publication[False]",
+      "phase": "call",
+      "outcome": "failed"
+    },
+    {
+      "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_runtime_self_import_still_fails_with_lazy_publication[False]",
+      "phase": "teardown",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_type_only_self_import_does_not_override_lazy_publication[import typing_extensions-typing_extensions.TYPE_CHECKING]",
+      "phase": "setup",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_type_only_self_import_does_not_override_lazy_publication[import typing_extensions-typing_extensions.TYPE_CHECKING]",
+      "phase": "call",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_type_only_self_import_does_not_override_lazy_publication[import typing_extensions-typing_extensions.TYPE_CHECKING]",
+      "phase": "teardown",
+      "outcome": "passed"
+    }
+  ],
+  "markdown_attempts": [],
+  "markdown_items": [],
+  "failed_cases": [
+    "tests.unit.codemod.test_facade_base_cutover.TestsFlextInfraFacadeBaseCutover::test_runtime_self_import_still_fails_with_lazy_publication[False]"
+  ],
+  "error_traces": [
+    "=== FAILURE: tests.unit.codemod.test_facade_base_cutover.TestsFlextInfraFacadeBaseCutover::test_runtime_self_import_still_fails_with_lazy_publication[False] ===\nAssertionError: Expected failure but got success: (SemanticMigrationEdit(file_path=PosixPath('/home/marlonsc/tmp/pytest-of-marlonsc/pytest-13918/popen-gw2/test_runtime_self_import_still0/child/src/child_pkg/models.py'), original_source='from parent_pkg import ParentDeclaredModelFacade as m\\n\\n\\nclass ChildModels(m):\\n    pass\\n\\n\\nm = ChildModels\\n', updated_source='from parent_pkg import m\\n\\n\\nclass ChildModels(m):\\n    pass\\n\\n\\nm = ChildModels\\n', retire_file=False, changes=('closed facade i...\n[truncated; full report in element text]\ntests/unit/codemod/test_facade_base_cutover.py:200: in test_runtime_self_import_still_fails_with_lazy_publication\n    tm.fail(self._plan(tmp_path, sources, child), has=\"cyclic facade binding\")\n../flext-tests/src/flext_tests/_utilities/_matchers/result.py:67: in fail\n    err: str = FlextTestsUtilitiesResult.assert_failure(result)\n               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n../flext-tests/src/flext_tests/_utilities/result.py:34: in assert_failure\n    raise AssertionError(msg)\nE   AssertionError: Expected failure but got success: (SemanticMigrationEdit(file_path=PosixPath('/home/marlonsc/tmp/pytest-of-marlonsc/pytest-13918/popen-gw2/test_runtime_self_import_still0/child/src/child_pkg/models.py'), original_source='from parent_pkg import ParentDeclaredModelFacade as m\\n\\n\\nclass ChildModels(m):\\n    pass\\n\\n\\nm = ChildModels\\n', updated_source='from parent_pkg import m\\n\\n\\nclass ChildModels(m):\\n    pass\\n\\n\\nm = ChildModels\\n', retire_file=False, changes=('closed facade import and composition laws',)),)"
+  ],
+  "warning_lines": [],
+  "skip_cases": [],
+  "slow_entries": [
+    "1.204000s | tests.unit.codemod.test_facade_base_cutover.TestsFlextInfraFacadeBaseCutover::test_class_name_alias_base_becomes_the_family_letter",
+    "0.176000s | tests.unit.codemod.test_facade_base_cutover.TestsFlextInfraFacadeBaseCutover::test_runtime_self_import_still_fails_with_lazy_publication[False]",
+    "0.167000s | tests.unit.codemod.test_facade_base_cutover.TestsFlextInfraFacadeBaseCutover::test_facade_classes_derive_every_published_letter",
+    "0.166000s | tests.unit.codemod.test_facade_base_cutover.TestsFlextInfraFacadeBaseCutover::test_bare_letter_base_is_already_canonical",
+    "0.049000s | tests.unit.codemod.test_facade_base_cutover.TestsFlextInfraFacadeBaseCutover::test_type_only_self_import_does_not_override_lazy_publication[import typing_extensions-typing_extensions.TYPE_CHECKING]"
+  ]
+}

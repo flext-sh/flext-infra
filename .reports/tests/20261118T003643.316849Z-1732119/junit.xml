@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="2" time="18.108" timestamp="2026-11-17T21:36:47.943832-03:00" hostname="tungs"><testcase classname="tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection" name="test_rejects_owners_without_a_public_facade[False]" time="0.931" /><testcase classname="tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection" name="test_explicit_owner_classes_preserve_publication_identity[publication8-True-c]" time="7.619"><failure message="AssertionError: Expected success but got failure: Facade composition declares 'value' in unrelated parts ['OwnerBase', 'OwnerVocabulary']; rename one of them or let one part extend the other">tests/unit/codegen/_utility_facade_projection/owner_publication.py:239: in test_explicit_owner_classes_preserve_publication_identity
+    repeated = tm.ok(
+../flext-tests/src/flext_tests/_utilities/_matchers/result.py:270: in ok
+    original = FlextTestsUtilitiesResult.assert_success(
+../flext-tests/src/flext_tests/_utilities/result.py:62: in assert_success
+    raise AssertionError(
+E   AssertionError: Expected success but got failure: Facade composition declares 'value' in unrelated parts ['OwnerBase', 'OwnerVocabulary']; rename one of them or let one part extend the other</failure></testcase></testsuite></testsuites>

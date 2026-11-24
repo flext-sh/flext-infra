@@ -1,0 +1,7 @@
+=== FAILURE: tests.unit.codemod.test_facade_base_cutover.TestsFlextInfraFacadeBaseCutover::test_facade_classes_derive_every_published_letter ===
+ValueError: facade package is not indexed for derivation: parent_pkg
+tests/unit/codemod/test_facade_base_cutover.py:234: in test_facade_classes_derive_every_published_letter
+    u.Infra.facade_classes(
+src/flext_infra/_utilities/_semantic_cutover/facade_owners.py:71: in facade_classes
+    raise ValueError(msg)
+E   ValueError: facade package is not indexed for derivation: parent_pkg

@@ -1,0 +1,53 @@
+{
+  "eligible": [],
+  "selected": [],
+  "deselected": [],
+  "diagnostics": {
+    "failed_count": 1,
+    "error_count": 0,
+    "warning_count": 0,
+    "skipped_count": 0,
+    "connectivity_skip_cases": [],
+    "collection_failed_count": 0,
+    "collection_skipped_count": 0,
+    "collection_failed_cases": [],
+    "collection_skip_cases": [],
+    "reported_node_ids": [
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication8-True-c]"
+    ],
+    "phase_outcomes": [
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication8-True-c]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication8-True-c]",
+        "phase": "call",
+        "outcome": "failed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication8-True-c]",
+        "phase": "teardown",
+        "outcome": "passed"
+      }
+    ],
+    "markdown_attempts": [],
+    "markdown_items": [],
+    "failed_cases": [
+      "tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication8-True-c]"
+    ],
+    "error_traces": [
+      "=== FAILURE: tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication8-True-c] ===\nAssertionError: Value '# AUTO-GENERATED FILE — Regenerate with: make gen\\n\"\"\"Explicit public class facade.\"\"\"\\n\\nfrom scripts._constants import OwnerBase, OwnerVocabulary\\nfrom scripts._constants import OwnerBase as LocalBase\\n\\n\\nclass PublicFacade(\\n    OwnerBase,\\n    OwnerVocabulary,\\n):\\n    class Sample:\\n        Base = LocalBase\\n        Vocabulary = OwnerVocabulary\\n\\n\\nc = PublicFacade\\n__all__ = [\"PublicFacade\", \"c\"]\\n' did not satisfy constraints\ntests/unit/codegen/_utility_facade_projection/owner_publication.py:248: in test_explicit_owner_classes_preserve_publication_identity\n    tm.that(repeated, eq=rendered)\n../flext-tests/src/flext_tests/_utilities/_matchers/that.py:706: in that\n    raise AssertionError(\nE   AssertionError: Value '# AUTO-GENERATED FILE — Regenerate with: make gen\\n\"\"\"Explicit public class facade.\"\"\"\\n\\nfrom scripts._constants import OwnerBase, OwnerVocabulary\\nfrom scripts._constants import OwnerBase as LocalBase\\n\\n\\nclass PublicFacade(\\n    OwnerBase,\\n    OwnerVocabulary,\\n):\\n    class Sample:\\n        Base = LocalBase\\n        Vocabulary = OwnerVocabulary\\n\\n\\nc = PublicFacade\\n__all__ = [\"PublicFacade\", \"c\"]\\n' did not satisfy constraints"
+    ],
+    "warning_lines": [],
+    "skip_cases": [],
+    "slow_entries": [
+      "7.186000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication8-True-c]"
+    ]
+  },
+  "cache_hit": false,
+  "violations": [
+    "selected node IDs differ from executed node IDs"
+  ]
+}

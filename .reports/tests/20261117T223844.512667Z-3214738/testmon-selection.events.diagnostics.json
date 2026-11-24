@@ -1,0 +1,20 @@
+{
+  "failed_count": 0,
+  "error_count": 0,
+  "warning_count": 0,
+  "skipped_count": 0,
+  "connectivity_skip_cases": [],
+  "collection_failed_count": 0,
+  "collection_skipped_count": 0,
+  "collection_failed_cases": [],
+  "collection_skip_cases": [],
+  "reported_node_ids": [],
+  "phase_outcomes": [],
+  "markdown_attempts": [],
+  "markdown_items": [],
+  "failed_cases": [],
+  "error_traces": [],
+  "warning_lines": [],
+  "skip_cases": [],
+  "slow_entries": []
+}

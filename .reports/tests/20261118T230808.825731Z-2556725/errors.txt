@@ -1,0 +1,29 @@
+=== FAILURE: tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_published_import_width_preserves_mro_and_lazy_exports[True-16] ===
+AssertionError: Traceback (most recent call last):
+  File "<string>", line 41, in <module>
+    tm.that(max(map(len, state.content.decode().splitlines())), lte=88)
+    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/marlonsc/flext-wip-flext-0in0k.32/flext-tests/src/flext_tests/_utilities/_matchers/that.py", line 737, in that
+    FlextTestsUtilitiesMatchersTypeguards.assert_scalar_match(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+[+9 more lines; full report in element text]
+tests/unit/codegen/_utility_facade_projection/owner_publication.py:758: in test_published_import_width_preserves_mro_and_lazy_exports
+    tm.that(u.Cli.process_succeeded(result.outcome), eq=True, msg=result.stderr)
+../flext-tests/src/flext_tests/_utilities/_matchers/that.py:706: in that
+    raise AssertionError(
+E   AssertionError: Traceback (most recent call last):
+E     File "<string>", line 41, in <module>
+E       tm.that(max(map(len, state.content.decode().splitlines())), lte=88)
+E       ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E     File "/home/marlonsc/flext-wip-flext-0in0k.32/flext-tests/src/flext_tests/_utilities/_matchers/that.py", line 737, in that
+E       FlextTestsUtilitiesMatchersTypeguards.assert_scalar_match(
+E       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+E           subject_payload,
+E           ^^^^^^^^^^^^^^^^
+E           params,
+E           ^^^^^^^
+E       )
+E       ^
+E     File "/home/marlonsc/flext-wip-flext-0in0k.32/flext-tests/src/flext_tests/_utilities/_matchers/typeguards.py", line 115, in assert_scalar_match
+E       raise AssertionError(message)
+E   AssertionError: Value 92 did not satisfy constraints

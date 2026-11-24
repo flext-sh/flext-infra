@@ -1,0 +1,53 @@
+{
+  "eligible": [],
+  "selected": [],
+  "deselected": [],
+  "diagnostics": {
+    "failed_count": 1,
+    "error_count": 0,
+    "warning_count": 0,
+    "skipped_count": 0,
+    "connectivity_skip_cases": [],
+    "collection_failed_count": 0,
+    "collection_skipped_count": 0,
+    "collection_failed_cases": [],
+    "collection_skip_cases": [],
+    "reported_node_ids": [
+      "tests/unit/codegen/test_facade_canonical_source.py::TestsFacadeCanonicalSource::test_single_upstream_class_name_base_becomes_the_letter"
+    ],
+    "phase_outcomes": [
+      {
+        "node_id": "tests/unit/codegen/test_facade_canonical_source.py::TestsFacadeCanonicalSource::test_single_upstream_class_name_base_becomes_the_letter",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_facade_canonical_source.py::TestsFacadeCanonicalSource::test_single_upstream_class_name_base_becomes_the_letter",
+        "phase": "call",
+        "outcome": "failed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_facade_canonical_source.py::TestsFacadeCanonicalSource::test_single_upstream_class_name_base_becomes_the_letter",
+        "phase": "teardown",
+        "outcome": "passed"
+      }
+    ],
+    "markdown_attempts": [],
+    "markdown_items": [],
+    "failed_cases": [
+      "tests.unit.codegen.test_facade_canonical_source.TestsFacadeCanonicalSource::test_single_upstream_class_name_base_becomes_the_letter"
+    ],
+    "error_traces": [
+      "=== FAILURE: tests.unit.codegen.test_facade_canonical_source.TestsFacadeCanonicalSource::test_single_upstream_class_name_base_becomes_the_letter ===\nFailed: Timeout (>2.0s) from pytest-timeout.\ntests/unit/codegen/test_facade_canonical_source.py:53: in test_single_upstream_class_name_base_becomes_the_letter\n    rendered = TestsFacadeCanonicalSource._rendered(\ntests/unit/codegen/test_facade_canonical_source.py:273: in _rendered\n    tm.not_none(u.Infra.render_utility_facade(package, family=family))\n                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nsrc/flext_infra/_utilities/facade_components.py:635: in render_utility_facade\n    return cls.render_utility_facade(\nsrc/flext_infra/_utilities/facade_components.py:655: in render_utility_facade\n    return cls.facade_component_source(\nsrc/flext_infra/_utilities/facade_components.py:696: in facade_component_source\n    return cls.facade_component_source(\nsrc/flext_infra/_utilities/facade_components.py:703: in facade_component_source\n    planned = cls._facade_component_plan(\nsrc/flext_infra/_utilities/facade_components.py:1511: in _facade_component_plan\n    resolved = cls._facade_namespace_owner(\nsrc/flext_infra/_utilities/facade_components.py:1827: in _facade_namespace_owner\n    namespaces = cls._facade_inherited_namespaces(\nsrc/flext_infra/_utilities/facade_components.py:2112: in _facade_inherited_namespaces\n    FlextInfraUtilitiesFacadeMembers.class_kind(\nsrc/flext_infra/_utilities/facade_members.py:484: in class_kind\n    kind = FlextInfraUtilitiesFacadeMembers._class_kind_uncached(\nsrc/flext_infra/_utilities/facade_members.py:523: in _class_kind_uncached\n    return FlextInfraUtilitiesFacadeMembers._class_kind_classified(\nsrc/flext_infra/_utilities/facade_members.py:563: in _class_kind_classified\n    if FlextInfraUtilitiesFacadeMembers._model_class(\nsrc/flext_infra/_utilities/facade_members.py:602: in _model_class\n    model = resolver_factory()(\nsrc/flext_infra/_utilities/_rope/source_bases_runtime.py:143: in __call__\n    return self.source_member_binding(qualified)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nsrc/flext_infra/_utilities/_rope/source_bases_runtime.py:198: in source_member_binding\n    for ancestor in self._linearize(identity):\n                    ^^^^^^^^^^^^^^^^^^^^^^^^^\nsrc/flext_infra/_utilities/_rope/source_bases_runtime.py:2205: in _linearize\n    parents = self._bases(identity)\n              ^^^^^^^^^^^^^^^^^^^^^\nsrc/flext_infra/_utilities/_rope/source_bases_runtime.py:2136: in _bases\n    tuple(self._resolve(base) for base in declared)\nsrc/flext_infra/_utilities/_rope/source_bases_runtime.py:2136: in <genexpr>\n    tuple(self._resolve(base) for base in declared)\n          ^^^^^^^^^^^^^^^^^^^\nsrc/flext_infra/_utilities/_rope/source_bases_runtime.py:1799: in _resolve\n    target, attributes = self._unresolved_target(\nsrc/flext_infra/_utilities/_rope/source_bases_runtime.py:1872: in _unresolved_target\n    resolved = self._external_reference(\nsrc/flext_infra/_utilities/_rope/source_bases_runtime.py:1746: in _external_reference\n    return self._provider_reference(\nsrc/flext_infra/_utilities/_rope/source_bases_runtime.py:1148: in _provider_reference\n    if self._function_object_identity(binding.get_object()) is not None:\n                                      ^^^^^^^^^^^^^^^^^^^^\n../.venv/lib/python3.13/site-packages/rope/base/utils/__init__.py:56: in newfunc\n    return func(self, *args, **kwds)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^\n../.venv/lib/python3.13/site-packages/rope/base/pynames.py:189: in get_object\n    return self._get_imported_pyname().get_object()\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^\n../.venv/lib/python3.13/site-packages/rope/base/pynames.py:180: in _get_imported_pyname\n    result = self.imported_module.get_object()[self.imported_name]\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n../.venv/lib/python3.13/site-packages/rope/base/pynames.py:162: in get_object\n    if self._get_pymodule() is None:\n       ^^^^^^^^^^^^^^^^^^^^\n../.venv/lib/python3.13/site-packages/rope/base/pynames.py:149: in _get_pymodule\n    pymodule = pycore.project.get_module(\nsrc/flext_infra/_utilities/_rope/native_project.py:117: in get_module\n    return native.get_module(name, self._native_folder(folder))\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n../.venv/lib/python3.13/site-packages/rope/base/project.py:75: in get_module\n    return self.pycore.resource_to_pyobject(module)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n../.venv/lib/python3.13/site-packages/rope/base/pycore.py:135: in resource_to_pyobject\n    return self.module_cache.get_pymodule(resource, force_errors)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n../.venv/lib/python3.13/site-packages/rope/base/pycore.py:257: in get_pymodule\n    result = pyobjectsdef.PyModule(\n../.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:610: in __init__\n    source, node = self._init_source(pycore, source, resource)\n                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n../.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:637: in _init_source\n    ast_node = ast.parse(source_bytes, filename=filename)\n               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n../.venv/lib/python3.13/site-packages/rope/base/ast.py:46: in parse\n    return ast.parse(source, filename=filename, *args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n../../.local/share/mise/installs/python/3.13.17/lib/python3.13/ast.py:50: in parse\n    return compile(source, filename, mode, flags,\nE   Failed: Timeout (>2.0s) from pytest-timeout."
+    ],
+    "warning_lines": [],
+    "skip_cases": [],
+    "slow_entries": [
+      "2.014000s | tests.unit.codegen.test_facade_canonical_source.TestsFacadeCanonicalSource::test_single_upstream_class_name_base_becomes_the_letter"
+    ]
+  },
+  "cache_hit": false,
+  "violations": [
+    "selected node IDs differ from executed node IDs"
+  ]
+}

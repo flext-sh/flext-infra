@@ -1,0 +1,20 @@
+=== FAILURE: tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_published_import_width_preserves_mro_and_lazy_exports[True-16] ===
+Failed: Timeout (>2.0s) from pytest-timeout.
+tests/unit/codegen/_utility_facade_projection/owner_publication.py:749: in test_published_import_width_preserves_mro_and_lazy_exports
+    u.Cli.run_raw(
+../flext-cli/src/flext_cli/_utilities/runtime.py:201: in run_raw
+    return cls._execute_streamed_process(
+../flext-cli/src/flext_cli/_utilities/_runtime/process_execution.py:66: in _execute_streamed_process
+    cls._execute_lifecycle(request, state, timing)
+../flext-cli/src/flext_cli/_utilities/_runtime/process_execution.py:173: in _execute_lifecycle
+    state.timed_out, state.final_deadline = cls._monitor_process(
+../flext-cli/src/flext_cli/_utilities/_runtime/process_monitor.py:49: in _monitor_process
+    cls._wait_next_boundary(state, phase, now)
+../flext-cli/src/flext_cli/_utilities/_runtime/process_monitor.py:113: in _wait_next_boundary
+    state.wake.wait(
+../../.local/share/mise/installs/python/3.13.17/lib/python3.13/threading.py:660: in wait
+    signaled = self._cond.wait(timeout)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/mise/installs/python/3.13.17/lib/python3.13/threading.py:359: in wait
+    waiter.acquire()
+E   Failed: Timeout (>2.0s) from pytest-timeout.

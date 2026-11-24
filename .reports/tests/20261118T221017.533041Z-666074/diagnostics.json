@@ -1,0 +1,44 @@
+{
+  "failed_count": 1,
+  "error_count": 0,
+  "warning_count": 0,
+  "skipped_count": 0,
+  "connectivity_skip_cases": [],
+  "collection_failed_count": 0,
+  "collection_skipped_count": 0,
+  "collection_failed_cases": [],
+  "collection_skip_cases": [],
+  "reported_node_ids": [
+    "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_rebound_letter_base_extends_the_declared_class[from parent_pkg import ParentDeclaredModelFacade as m-m-m: type[ChildModels] = ChildModels]"
+  ],
+  "phase_outcomes": [
+    {
+      "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_rebound_letter_base_extends_the_declared_class[from parent_pkg import ParentDeclaredModelFacade as m-m-m: type[ChildModels] = ChildModels]",
+      "phase": "setup",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_rebound_letter_base_extends_the_declared_class[from parent_pkg import ParentDeclaredModelFacade as m-m-m: type[ChildModels] = ChildModels]",
+      "phase": "call",
+      "outcome": "failed"
+    },
+    {
+      "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_rebound_letter_base_extends_the_declared_class[from parent_pkg import ParentDeclaredModelFacade as m-m-m: type[ChildModels] = ChildModels]",
+      "phase": "teardown",
+      "outcome": "passed"
+    }
+  ],
+  "markdown_attempts": [],
+  "markdown_items": [],
+  "failed_cases": [
+    "tests.unit.codemod.test_facade_base_cutover.TestsFlextInfraFacadeBaseCutover::test_rebound_letter_base_extends_the_declared_class[from parent_pkg import ParentDeclaredModelFacade as m-m-m: type[ChildModels] = ChildModels]"
+  ],
+  "error_traces": [
+    "=== FAILURE: tests.unit.codemod.test_facade_base_cutover.TestsFlextInfraFacadeBaseCutover::test_rebound_letter_base_extends_the_declared_class[from parent_pkg import ParentDeclaredModelFacade as m-m-m: type[ChildModels] = ChildModels] ===\nAssertionError: Expected 'from parent_pkg import m\\n\\n\\nclass ChildModels(m):\\n    pass\\n\\n\\nm = ChildModels\\n' to contain 'from parent_pkg import ParentDeclaredModelFacade\\n'\ntests/unit/codemod/test_facade_base_cutover.py:88: in test_rebound_letter_base_extends_the_declared_class\n    tm.that(updated, has=f\"from parent_pkg import {self.PARENT_CLASS}\\n\")\n../flext-tests/src/flext_tests/_utilities/_matchers/that.py:741: in that\n    cls._validate_common(subject_payload, params, effective_has=params.has)\n../flext-tests/src/flext_tests/_utilities/_matchers/that.py:224: in _validate_common\n    FlextTestsUtilitiesMatchersContainment.check_has_lacks(\n../flext-tests/src/flext_tests/_utilities/_matchers/containment.py:75: in check_has_lacks\n    FlextTestsUtilitiesMatchersAssertions.raise_match_assertion(\n../flext-tests/src/flext_tests/_utilities/_matchers/assertions.py:45: in raise_match_assertion\n    raise AssertionError(msg or template.format(container=container, item=item))\nE   AssertionError: Expected 'from parent_pkg import m\\n\\n\\nclass ChildModels(m):\\n    pass\\n\\n\\nm = ChildModels\\n' to contain 'from parent_pkg import ParentDeclaredModelFacade\\n'"
+  ],
+  "warning_lines": [],
+  "skip_cases": [],
+  "slow_entries": [
+    "1.554000s | tests.unit.codemod.test_facade_base_cutover.TestsFlextInfraFacadeBaseCutover::test_rebound_letter_base_extends_the_declared_class[from parent_pkg import ParentDeclaredModelFacade as m-m-m: type[ChildModels] = ChildModels]"
+  ]
+}

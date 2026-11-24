@@ -1,0 +1,121 @@
+{
+  "eligible": [],
+  "selected": [],
+  "deselected": [],
+  "diagnostics": {
+    "failed_count": 1,
+    "error_count": 0,
+    "warning_count": 0,
+    "skipped_count": 0,
+    "connectivity_skip_cases": [],
+    "collection_failed_count": 0,
+    "collection_skipped_count": 0,
+    "collection_failed_cases": [],
+    "collection_skip_cases": [],
+    "reported_node_ids": [
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication8-True-c]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-foreign]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_publication_rejects_ambiguous_bindings[Base = Owner\\n    Base = Owner-u]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_process_options_is_usable_through_the_inherited_public_model",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_published_import_width_preserves_mro_and_lazy_exports[True-16]"
+    ],
+    "phase_outcomes": [
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication8-True-c]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication8-True-c]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication8-True-c]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-foreign]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-foreign]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-foreign]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_publication_rejects_ambiguous_bindings[Base = Owner\\n    Base = Owner-u]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_publication_rejects_ambiguous_bindings[Base = Owner\\n    Base = Owner-u]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_publication_rejects_ambiguous_bindings[Base = Owner\\n    Base = Owner-u]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_process_options_is_usable_through_the_inherited_public_model",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_process_options_is_usable_through_the_inherited_public_model",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_process_options_is_usable_through_the_inherited_public_model",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_published_import_width_preserves_mro_and_lazy_exports[True-16]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_published_import_width_preserves_mro_and_lazy_exports[True-16]",
+        "phase": "call",
+        "outcome": "failed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_published_import_width_preserves_mro_and_lazy_exports[True-16]",
+        "phase": "teardown",
+        "outcome": "passed"
+      }
+    ],
+    "markdown_attempts": [],
+    "markdown_items": [],
+    "failed_cases": [
+      "tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_published_import_width_preserves_mro_and_lazy_exports[True-16]"
+    ],
+    "error_traces": [
+      "=== FAILURE: tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_published_import_width_preserves_mro_and_lazy_exports[True-16] ===\nFailed: Timeout (>2.0s) from pytest-timeout.\ntests/unit/codegen/_utility_facade_projection/owner_publication.py:749: in test_published_import_width_preserves_mro_and_lazy_exports\n    u.Cli.run_raw(\n../flext-cli/src/flext_cli/_utilities/runtime.py:201: in run_raw\n    return cls._execute_streamed_process(\n../flext-cli/src/flext_cli/_utilities/_runtime/process_execution.py:66: in _execute_streamed_process\n    cls._execute_lifecycle(request, state, timing)\n../flext-cli/src/flext_cli/_utilities/_runtime/process_execution.py:173: in _execute_lifecycle\n    state.timed_out, state.final_deadline = cls._monitor_process(\n../flext-cli/src/flext_cli/_utilities/_runtime/process_monitor.py:49: in _monitor_process\n    cls._wait_next_boundary(state, phase, now)\n../flext-cli/src/flext_cli/_utilities/_runtime/process_monitor.py:113: in _wait_next_boundary\n    state.wake.wait(\n../../.local/share/mise/installs/python/3.13.17/lib/python3.13/threading.py:660: in wait\n    signaled = self._cond.wait(timeout)\n               ^^^^^^^^^^^^^^^^^^^^^^^^\n../../.local/share/mise/installs/python/3.13.17/lib/python3.13/threading.py:359: in wait\n    waiter.acquire()\nE   Failed: Timeout (>2.0s) from pytest-timeout."
+    ],
+    "warning_lines": [],
+    "skip_cases": [],
+    "slow_entries": [
+      "7.277000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication8-True-c]",
+      "2.016000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_published_import_width_preserves_mro_and_lazy_exports[True-16]",
+      "1.268000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-foreign]",
+      "0.174000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_publication_rejects_ambiguous_bindings[Base = Owner\\n    Base = Owner-u]",
+      "0.003000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_process_options_is_usable_through_the_inherited_public_model"
+    ]
+  },
+  "cache_hit": false,
+  "violations": [
+    "selected node IDs differ from executed node IDs"
+  ]
+}

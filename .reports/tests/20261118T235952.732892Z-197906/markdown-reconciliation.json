@@ -1,0 +1,251 @@
+{
+  "eligible": [],
+  "selected": [],
+  "deselected": [],
+  "diagnostics": {
+    "failed_count": 0,
+    "error_count": 0,
+    "warning_count": 0,
+    "skipped_count": 0,
+    "connectivity_skip_cases": [],
+    "collection_failed_count": 0,
+    "collection_skipped_count": 0,
+    "collection_failed_cases": [],
+    "collection_skip_cases": [],
+    "reported_node_ids": [
+      "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_annotation_without_value_keeps_the_letter_base",
+      "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_bare_letter_base_is_already_canonical",
+      "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_class_name_alias_base_becomes_the_family_letter",
+      "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_double_composition_keeps_the_secondary_parent",
+      "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_eager_reads_keep_the_letter_binding",
+      "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_facade_classes_derive_every_published_letter",
+      "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_facade_classes_read_a_declared_sibling_without_installation[member]",
+      "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_facade_classes_read_a_declared_sibling_without_installation[workspace]",
+      "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_lazy_published_letter_resolves_the_declared_class",
+      "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_type_only_self_import_does_not_override_lazy_publication[from typing import TYPE_CHECKING-TYPE_CHECKING]",
+      "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_type_only_self_import_does_not_override_lazy_publication[import typing-typing.TYPE_CHECKING]",
+      "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_type_only_self_import_does_not_override_lazy_publication[import typing_extensions-typing_extensions.TYPE_CHECKING]",
+      "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_undeclared_letter_owner_fails_the_plan"
+    ],
+    "phase_outcomes": [
+      {
+        "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_annotation_without_value_keeps_the_letter_base",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_annotation_without_value_keeps_the_letter_base",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_annotation_without_value_keeps_the_letter_base",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_bare_letter_base_is_already_canonical",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_bare_letter_base_is_already_canonical",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_bare_letter_base_is_already_canonical",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_class_name_alias_base_becomes_the_family_letter",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_class_name_alias_base_becomes_the_family_letter",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_class_name_alias_base_becomes_the_family_letter",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_double_composition_keeps_the_secondary_parent",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_double_composition_keeps_the_secondary_parent",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_double_composition_keeps_the_secondary_parent",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_eager_reads_keep_the_letter_binding",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_eager_reads_keep_the_letter_binding",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_eager_reads_keep_the_letter_binding",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_facade_classes_derive_every_published_letter",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_facade_classes_derive_every_published_letter",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_facade_classes_derive_every_published_letter",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_facade_classes_read_a_declared_sibling_without_installation[member]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_facade_classes_read_a_declared_sibling_without_installation[member]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_facade_classes_read_a_declared_sibling_without_installation[member]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_facade_classes_read_a_declared_sibling_without_installation[workspace]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_facade_classes_read_a_declared_sibling_without_installation[workspace]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_facade_classes_read_a_declared_sibling_without_installation[workspace]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_lazy_published_letter_resolves_the_declared_class",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_lazy_published_letter_resolves_the_declared_class",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_lazy_published_letter_resolves_the_declared_class",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_type_only_self_import_does_not_override_lazy_publication[from typing import TYPE_CHECKING-TYPE_CHECKING]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_type_only_self_import_does_not_override_lazy_publication[from typing import TYPE_CHECKING-TYPE_CHECKING]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_type_only_self_import_does_not_override_lazy_publication[from typing import TYPE_CHECKING-TYPE_CHECKING]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_type_only_self_import_does_not_override_lazy_publication[import typing-typing.TYPE_CHECKING]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_type_only_self_import_does_not_override_lazy_publication[import typing-typing.TYPE_CHECKING]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_type_only_self_import_does_not_override_lazy_publication[import typing-typing.TYPE_CHECKING]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_type_only_self_import_does_not_override_lazy_publication[import typing_extensions-typing_extensions.TYPE_CHECKING]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_type_only_self_import_does_not_override_lazy_publication[import typing_extensions-typing_extensions.TYPE_CHECKING]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_type_only_self_import_does_not_override_lazy_publication[import typing_extensions-typing_extensions.TYPE_CHECKING]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_undeclared_letter_owner_fails_the_plan",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_undeclared_letter_owner_fails_the_plan",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_undeclared_letter_owner_fails_the_plan",
+        "phase": "teardown",
+        "outcome": "passed"
+      }
+    ],
+    "markdown_attempts": [],
+    "markdown_items": [],
+    "failed_cases": [],
+    "error_traces": [],
+    "warning_lines": [],
+    "skip_cases": [],
+    "slow_entries": [
+      "1.333000s | tests.unit.codemod.test_facade_base_cutover.TestsFlextInfraFacadeBaseCutover::test_lazy_published_letter_resolves_the_declared_class",
+      "0.378000s | tests.unit.codemod.test_facade_base_cutover.TestsFlextInfraFacadeBaseCutover::test_double_composition_keeps_the_secondary_parent",
+      "0.325000s | tests.unit.codemod.test_facade_base_cutover.TestsFlextInfraFacadeBaseCutover::test_class_name_alias_base_becomes_the_family_letter",
+      "0.236000s | tests.unit.codemod.test_facade_base_cutover.TestsFlextInfraFacadeBaseCutover::test_annotation_without_value_keeps_the_letter_base",
+      "0.215000s | tests.unit.codemod.test_facade_base_cutover.TestsFlextInfraFacadeBaseCutover::test_eager_reads_keep_the_letter_binding",
+      "0.179000s | tests.unit.codemod.test_facade_base_cutover.TestsFlextInfraFacadeBaseCutover::test_bare_letter_base_is_already_canonical",
+      "0.076000s | tests.unit.codemod.test_facade_base_cutover.TestsFlextInfraFacadeBaseCutover::test_undeclared_letter_owner_fails_the_plan",
+      "0.053000s | tests.unit.codemod.test_facade_base_cutover.TestsFlextInfraFacadeBaseCutover::test_type_only_self_import_does_not_override_lazy_publication[import typing-typing.TYPE_CHECKING]",
+      "0.036000s | tests.unit.codemod.test_facade_base_cutover.TestsFlextInfraFacadeBaseCutover::test_type_only_self_import_does_not_override_lazy_publication[from typing import TYPE_CHECKING-TYPE_CHECKING]",
+      "0.035000s | tests.unit.codemod.test_facade_base_cutover.TestsFlextInfraFacadeBaseCutover::test_facade_classes_derive_every_published_letter",
+      "0.031000s | tests.unit.codemod.test_facade_base_cutover.TestsFlextInfraFacadeBaseCutover::test_type_only_self_import_does_not_override_lazy_publication[import typing_extensions-typing_extensions.TYPE_CHECKING]",
+      "0.018000s | tests.unit.codemod.test_facade_base_cutover.TestsFlextInfraFacadeBaseCutover::test_facade_classes_read_a_declared_sibling_without_installation[member]",
+      "0.014000s | tests.unit.codemod.test_facade_base_cutover.TestsFlextInfraFacadeBaseCutover::test_facade_classes_read_a_declared_sibling_without_installation[workspace]"
+    ]
+  },
+  "cache_hit": false,
+  "violations": []
+}

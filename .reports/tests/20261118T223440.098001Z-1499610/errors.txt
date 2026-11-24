@@ -1,0 +1,149 @@
+=== FAILURE: tests.unit.codegen.test_facade_canonical_source.TestsFacadeCanonicalSource::test_flat_parts_add_the_secondary_upstream_facade ===
+Failed: Timeout (>2.0s) from pytest-timeout.
+../../.local/share/mise/installs/python/3.13.17/lib/python3.13/pathlib/_local.py:231: in __str__
+    return self._str
+           ^^^^^^^^^
+E   AttributeError: 'pathlib._local.PosixPath' object has no attribute '_str'
+
+During handling of the above exception, another exception occurred:
+../../.local/share/mise/installs/python/3.13.17/lib/python3.13/pathlib/_local.py:293: in drive
+    return self._drv
+           ^^^^^^^^^
+E   AttributeError: 'pathlib._local.PosixPath' object has no attribute '_drv'
+
+During handling of the above exception, another exception occurred:
+tests/unit/codegen/test_facade_canonical_source.py:150: in test_flat_parts_add_the_secondary_upstream_facade
+    rendered = TestsFacadeCanonicalSource._rendered(
+tests/unit/codegen/test_facade_canonical_source.py:269: in _rendered
+    tm.not_none(u.Infra.render_utility_facade(package, family=family)),
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/facade_components.py:635: in render_utility_facade
+    return cls.render_utility_facade(
+src/flext_infra/_utilities/facade_components.py:655: in render_utility_facade
+    return cls.facade_component_source(
+src/flext_infra/_utilities/facade_components.py:703: in facade_component_source
+    planned = cls._facade_component_plan(
+src/flext_infra/_utilities/facade_components.py:1511: in _facade_component_plan
+    resolved = cls._facade_namespace_owner(
+src/flext_infra/_utilities/facade_components.py:1814: in _facade_namespace_owner
+    proven = cls._facade_class_bases(
+src/flext_infra/_utilities/facade_components.py:1972: in _facade_class_bases
+    deferred = cls._facade_class_deferred(
+src/flext_infra/_utilities/facade_components.py:2014: in _facade_class_deferred
+    layout = module.get_source_binding_index().class_layout(holder.get_scope())
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/rope/base/sourcebindings.py:1277: in class_layout
+    base_bindings=tuple(
+../.venv/lib/python3.13/site-packages/rope/base/sourcebindings.py:1280: in <genexpr>
+    evaluate.eval_node(self.node_contexts[id(base)].environment, base),
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/rope/base/evaluate.py:216: in eval_node
+    return eval_node2(scope, node)[1]
+           ^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/rope/base/evaluate.py:249: in eval_node2
+    evaluator.visit(node)
+../.venv/lib/python3.13/site-packages/rope/base/ast.py:79: in visit
+    return visitor(node)
+           ^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/rope/base/evaluate.py:500: in _Name
+    self.result = self.scope.lookup(node.id)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/rope/base/pyscopes.py:50: in lookup
+    if name in self.get_names():
+               ^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/rope/base/pyscopes.py:12: in get_names
+    return self.pyobject.get_attributes()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/rope/base/pyobjects.py:458: in get_attributes
+    result = dict(self._get_concluded_attributes())
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/rope/base/utils/__init__.py:56: in newfunc
+    return func(self, *args, **kwds)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/rope/base/pyobjects.py:453: in _get_concluded_attributes
+    self.concluded_attributes.set(self._create_concluded_attributes())
+                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:441: in _create_concluded_attributes
+    mro = self.get_consistent_mro()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:343: in get_consistent_mro
+    return self._linearize(strict=False)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:358: in _linearize
+    mro = pyobjects.linearize(self, bases, strict=strict)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/rope/base/pyobjects.py:315: in linearize
+    sequences = [base.get_consistent_mro() for base in bases]
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:343: in get_consistent_mro
+    return self._linearize(strict=False)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:358: in _linearize
+    mro = pyobjects.linearize(self, bases, strict=strict)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/rope/base/pyobjects.py:315: in linearize
+    sequences = [base.get_consistent_mro() for base in bases]
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:343: in get_consistent_mro
+    return self._linearize(strict=False)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:349: in _linearize
+    bases = self.get_bases()
+            ^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:309: in get_bases
+    bases = self._get_bases()
+            ^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:505: in _get_bases
+    original = rope.base.builtins.get_tuple(
+../.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:507: in <genexpr>
+    binding.get_object() if binding is not None else None
+    ^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/rope/base/utils/__init__.py:56: in newfunc
+    return func(self, *args, **kwds)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/rope/base/pynames.py:189: in get_object
+    return self._get_imported_pyname().get_object()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/rope/base/pynames.py:180: in _get_imported_pyname
+    result = self.imported_module.get_object()[self.imported_name]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/rope/base/pyobjects.py:33: in __getitem__
+    return self.get_attribute(key)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/rope/base/pyobjects.py:464: in get_attribute
+    if name in self._get_structural_attributes():
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/rope/base/utils/__init__.py:56: in newfunc
+    return func(self, *args, **kwds)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/rope/base/pyobjects.py:431: in _get_structural_attributes
+    self.structural_attributes = self._create_structural_attributes()
+                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:732: in _create_structural_attributes
+    for name, resource in self._get_child_resources().items():
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:746: in _get_child_resources
+    for child in self.resource.get_children():
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/rope/base/resources.py:177: in get_children
+    child = self.get_child(name)
+            ^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/rope/base/resources.py:203: in get_child
+    return self.project.get_resource(self._get_child_path(name))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/rope/base/project.py:422: in get_resource
+    universal_name = self.fscommands.realpath(name).replace(os.path.sep, "/")
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/project.py:465: in realpath
+    return str(self._resolved(path))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/mise/installs/python/3.13.17/lib/python3.13/pathlib/_local.py:233: in __str__
+    self._str = self._format_parsed_parts(self.drive, self.root,
+                                          ^^^^^^^^^^
+../../.local/share/mise/installs/python/3.13.17/lib/python3.13/pathlib/_local.py:295: in drive
+    self._drv, self._root, self._tail_cached = self._parse_path(self._raw_path)
+                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/mise/installs/python/3.13.17/lib/python3.13/pathlib/_local.py:274: in _parse_path
+    parsed = [sys.intern(str(x)) for x in rel.split(sep) if x and x != '.']
+              ^^^^^^^^^^^^^^^^^^
+E   Failed: Timeout (>2.0s) from pytest-timeout.

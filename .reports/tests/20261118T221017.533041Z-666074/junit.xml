@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="7.085" timestamp="2026-11-18T19:10:21.892929-03:00" hostname="tungs"><testcase classname="tests.unit.codemod.test_facade_base_cutover.TestsFlextInfraFacadeBaseCutover" name="test_rebound_letter_base_extends_the_declared_class[from parent_pkg import ParentDeclaredModelFacade as m-m-m: type[ChildModels] = ChildModels]" time="1.554"><failure message="AssertionError: Expected 'from parent_pkg import m\n\n\nclass ChildModels(m):\n    pass\n\n\nm = ChildModels\n' to contain 'from parent_pkg import ParentDeclaredModelFacade\n'">tests/unit/codemod/test_facade_base_cutover.py:88: in test_rebound_letter_base_extends_the_declared_class
+    tm.that(updated, has=f"from parent_pkg import {self.PARENT_CLASS}\n")
+../flext-tests/src/flext_tests/_utilities/_matchers/that.py:741: in that
+    cls._validate_common(subject_payload, params, effective_has=params.has)
+../flext-tests/src/flext_tests/_utilities/_matchers/that.py:224: in _validate_common
+    FlextTestsUtilitiesMatchersContainment.check_has_lacks(
+../flext-tests/src/flext_tests/_utilities/_matchers/containment.py:75: in check_has_lacks
+    FlextTestsUtilitiesMatchersAssertions.raise_match_assertion(
+../flext-tests/src/flext_tests/_utilities/_matchers/assertions.py:45: in raise_match_assertion
+    raise AssertionError(msg or template.format(container=container, item=item))
+E   AssertionError: Expected 'from parent_pkg import m\n\n\nclass ChildModels(m):\n    pass\n\n\nm = ChildModels\n' to contain 'from parent_pkg import ParentDeclaredModelFacade\n'</failure></testcase></testsuite></testsuites>

@@ -1,0 +1,161 @@
+================================================= test session starts ==================================================
+platform linux -- Python 3.13.17, pytest-9.2.0, pluggy-1.7.0 -- /home/marlonsc/flext-wip-flext-0in0k.32/.venv/bin/python
+cachedir: .pytest_cache
+hypothesis profile 'default'
+benchmark: 5.3.1 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+Using --randomly-seed=3166736248
+rootdir: /home/marlonsc/flext-wip-flext-0in0k.32/flext-infra
+configfile: pyproject.toml
+plugins: flext-tests-0.12.0, flext-infra-0.12.1, hypothesis-6.170.14, anyio-4.16.0, platformdirs-4.14.5, singer-sdk-0.54.9, asyncio-1.4.1.post1, benchmark-5.3.1, cov-7.1.0, markdown-docs-0.9.2, randomly-5.0.0, reportlog-1.0.0, timeout-2.4.0, xdist-3.8.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
+timeout: 2.0s
+timeout method: signal
+timeout func_only: True
+created: 4/4 workers
+4 workers [5 items]
+
+scheduling tests via LoadScopeScheduling
+
+tests/unit/codegen/test_facade_canonical_source.py::TestsFacadeCanonicalSource::test_flat_parts_add_the_secondary_upstream_facade 
+[gw2] [ 20%] PASSED tests/unit/codegen/test_facade_canonical_source.py::TestsFacadeCanonicalSource::test_flat_parts_add_the_secondary_upstream_facade 
+tests/unit/codegen/test_facade_canonical_source.py::TestsFacadeCanonicalSource::test_single_upstream_class_name_base_becomes_the_letter 
+[gw2] [ 40%] PASSED tests/unit/codegen/test_facade_canonical_source.py::TestsFacadeCanonicalSource::test_single_upstream_class_name_base_becomes_the_letter 
+tests/unit/codegen/test_facade_canonical_source.py::TestsFacadeCanonicalSource::test_unbound_facade_base_fails_loud_without_builtins 
+[gw2] [ 60%] PASSED tests/unit/codegen/test_facade_canonical_source.py::TestsFacadeCanonicalSource::test_unbound_facade_base_fails_loud_without_builtins 
+tests/unit/codegen/test_facade_canonical_source.py::TestsFacadeCanonicalSource::test_flat_parts_move_under_the_domain_namespace 
+[gw2] [ 80%] PASSED tests/unit/codegen/test_facade_canonical_source.py::TestsFacadeCanonicalSource::test_flat_parts_move_under_the_domain_namespace 
+tests/unit/codegen/test_facade_canonical_source.py::TestsFacadeCanonicalSource::test_double_upstream_composition_keeps_the_secondary_facade 
+[gw2] [100%] FAILED tests/unit/codegen/test_facade_canonical_source.py::TestsFacadeCanonicalSource::test_double_upstream_composition_keeps_the_secondary_facade 
+
+======================================================= FAILURES =======================================================
+________________ TestsFacadeCanonicalSource.test_double_upstream_composition_keeps_the_secondary_facade ________________
+[gw2] linux -- Python 3.13.17 /home/marlonsc/flext-wip-flext-0in0k.32/.venv/bin/python
+tests/unit/codegen/test_facade_canonical_source.py:206: in test_double_upstream_composition_keeps_the_secondary_facade
+    rendered = TestsFacadeCanonicalSource._rendered(
+tests/unit/codegen/test_facade_canonical_source.py:273: in _rendered
+    tm.not_none(u.Infra.render_utility_facade(package, family=family)),
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/facade_components.py:635: in render_utility_facade
+    return cls.render_utility_facade(
+src/flext_infra/_utilities/facade_components.py:655: in render_utility_facade
+    return cls.facade_component_source(
+src/flext_infra/_utilities/facade_components.py:703: in facade_component_source
+    planned = cls._facade_component_plan(
+src/flext_infra/_utilities/facade_components.py:1511: in _facade_component_plan
+    resolved = cls._facade_namespace_owner(
+src/flext_infra/_utilities/facade_components.py:1814: in _facade_namespace_owner
+    proven = cls._facade_class_bases(
+src/flext_infra/_utilities/facade_components.py:1981: in _facade_class_bases
+    return result_type.create_from_callable(
+../flext-core/src/flext_core/_result/construction.py:239: in create_from_callable
+    value = func()
+            ^^^^^^
+src/flext_infra/_utilities/_rope/source_bases_runtime.py:2349: in source_class_orders
+    return tuple(resolver.class_order(group) for group in groups)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/source_bases_runtime.py:2349: in <genexpr>
+    return tuple(resolver.class_order(group) for group in groups)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/source_bases_runtime.py:341: in class_order
+    lineages = tuple(self._linearize(identity) for identity in identities)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/source_bases_runtime.py:341: in <genexpr>
+    lineages = tuple(self._linearize(identity) for identity in identities)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/source_bases_runtime.py:2205: in _linearize
+    parents = self._bases(identity)
+              ^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/source_bases_runtime.py:2136: in _bases
+    tuple(self._resolve(base) for base in declared)
+src/flext_infra/_utilities/_rope/source_bases_runtime.py:2136: in <genexpr>
+    tuple(self._resolve(base) for base in declared)
+          ^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/source_bases_runtime.py:1799: in _resolve
+    target, attributes = self._unresolved_target(
+src/flext_infra/_utilities/_rope/source_bases_runtime.py:1872: in _unresolved_target
+    resolved = self._external_reference(
+src/flext_infra/_utilities/_rope/source_bases_runtime.py:1723: in _external_reference
+    module = self._project.get_module(target)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/native_project.py:105: in get_module
+    if self.find_module(name, folder) is None and (
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/native_project.py:154: in find_module
+    found = self.find_module_native(modname, folder)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/native_project.py:177: in find_module_native
+    found = native.find_module(modname, self._native_folder(folder))
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/rope/base/project.py:217: in find_module
+    return _find_module_in_folders(folders(), modname)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/rope/base/project.py:550: in _find_module_in_folders
+    if folder.has_child(name + ".py"):
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/rope/base/resources.py:207: in has_child
+    self.get_child(name)
+../.venv/lib/python3.13/site-packages/rope/base/resources.py:203: in get_child
+    return self.project.get_resource(self._get_child_path(name))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/rope/base/project.py:423: in get_resource
+    return super().get_resource(universal_name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/rope/base/project.py:52: in get_resource
+    if not self.fscommands.exists(path):
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/project.py:498: in exists
+    return self.isfile(path) or self.isdir(path)
+                                ^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/project.py:537: in isdir
+    return resolved.is_dir()
+           ^^^^^^^^^^^^^^^^^
+../../.local/share/mise/installs/python/3.13.17/lib/python3.13/pathlib/_abc.py:465: in is_dir
+    return S_ISDIR(self.stat(follow_symlinks=follow_symlinks).st_mode)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/mise/installs/python/3.13.17/lib/python3.13/pathlib/_local.py:515: in stat
+    return os.stat(self, follow_symlinks=follow_symlinks)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/mise/installs/python/3.13.17/lib/python3.13/pathlib/_local.py:166: in __fspath__
+    def __fspath__(self):
+E   Failed: Timeout (>2.0s) from pytest-timeout.
+------------------------------------------------- Captured stdout call -------------------------------------------------
++++++++++++++++++++++++++++++++++++++++++++++++++++++++ Timeout ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Stack of flext-async-log-writer (139800797501120) ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.17/lib/python3.13/threading.py", line 1015, in _bootstrap
+    self._bootstrap_inner()
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.17/lib/python3.13/threading.py", line 1044, in _bootstrap_inner
+    self.run()
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.17/lib/python3.13/threading.py", line 995, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/marlonsc/flext-wip-flext-0in0k.32/flext-core/src/flext_core/_utilities/_logging/async_writer.py", line 138, in _worker
+    job = self.queue.get(
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.17/lib/python3.13/queue.py", line 210, in get
+    self.not_empty.wait(remaining)
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.17/lib/python3.13/threading.py", line 363, in wait
+    gotit = waiter.acquire(True, timeout)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Stack of <unknown> (139800989189824) ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  File "/home/marlonsc/flext-wip-flext-0in0k.32/.venv/lib/python3.13/site-packages/execnet/gateway_base.py", line 411, in _perform_spawn
+    reply.run()
+  File "/home/marlonsc/flext-wip-flext-0in0k.32/.venv/lib/python3.13/site-packages/execnet/gateway_base.py", line 341, in run
+    self._result = func(*args, **kwargs)
+  File "/home/marlonsc/flext-wip-flext-0in0k.32/.venv/lib/python3.13/site-packages/execnet/gateway_base.py", line 1160, in _thread_receiver
+    msg = Message.from_io(io)
+  File "/home/marlonsc/flext-wip-flext-0in0k.32/.venv/lib/python3.13/site-packages/execnet/gateway_base.py", line 567, in from_io
+    header = io.read(9)  # type 1, channel 4, payload 4
+  File "/home/marlonsc/flext-wip-flext-0in0k.32/.venv/lib/python3.13/site-packages/execnet/gateway_base.py", line 534, in read
+    data = self._read(numbytes - len(buf))
++++++++++++++++++++++++++++++++++++++++++++++++++++++++ Timeout ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+- generated xml file: /home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/.reports/tests/20261118T223510.605566Z-1515957/junit.xml -
+- generated report log file: /home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/.reports/tests/20261118T223510.605566Z-1515957/events.jsonl -
+--------------------------------------------------- flext slow tests ---------------------------------------------------
+no test near the ordinary or slow limit
+================================================= slowest 25 durations =================================================
+2.78s call     tests/unit/codegen/test_facade_canonical_source.py::TestsFacadeCanonicalSource::test_flat_parts_add_the_secondary_upstream_facade
+2.00s call     tests/unit/codegen/test_facade_canonical_source.py::TestsFacadeCanonicalSource::test_double_upstream_composition_keeps_the_secondary_facade
+
+(13 durations < 2s hidden.)
+=============================================== short test summary info ================================================
+FAILED tests/unit/codegen/test_facade_canonical_source.py::TestsFacadeCanonicalSource::test_double_upstream_composition_keeps_the_secondary_facade
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! xdist.dsession.Interrupted: stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+============================================= 1 failed, 4 passed in 16.31s =============================================

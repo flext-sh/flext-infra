@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="11.840" timestamp="2026-11-18T20:12:51.774038-03:00" hostname="tungs"><testcase classname="tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection" name="test_published_import_width_preserves_mro_and_lazy_exports[True-16]" time="6.790"><failure message="AssertionError: Traceback (most recent call last):&#10;  File &quot;&lt;string&gt;&quot;, line 41, in &lt;module&gt;&#10;    tm.that(max(map(len, state.content.decode().splitlines())), lte=88)&#10;    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^&#10;  File &quot;/home/marlonsc/flext-wip-flext-0in0k.32/flext-tests/src/flext_tests/_utilities/_matchers/that.py&quot;, line 737, in that&#10;    FlextTestsUtilitiesMatchersTypeguards.assert_scalar_match(&#10;    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^&#10;[+9 more lines; full report in element text]">tests/unit/codegen/_utility_facade_projection/owner_publication.py:758: in test_published_import_width_preserves_mro_and_lazy_exports
+    tm.that(u.Cli.process_succeeded(result.outcome), eq=True, msg=result.stderr)
+../flext-tests/src/flext_tests/_utilities/_matchers/that.py:706: in that
+    raise AssertionError(
+E   AssertionError: Traceback (most recent call last):
+E     File "&lt;string&gt;", line 41, in &lt;module&gt;
+E       tm.that(max(map(len, state.content.decode().splitlines())), lte=88)
+E       ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E     File "/home/marlonsc/flext-wip-flext-0in0k.32/flext-tests/src/flext_tests/_utilities/_matchers/that.py", line 737, in that
+E       FlextTestsUtilitiesMatchersTypeguards.assert_scalar_match(
+E       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+E           subject_payload,
+E           ^^^^^^^^^^^^^^^^
+E           params,
+E           ^^^^^^^
+E       )
+E       ^
+E     File "/home/marlonsc/flext-wip-flext-0in0k.32/flext-tests/src/flext_tests/_utilities/_matchers/typeguards.py", line 115, in assert_scalar_match
+E       raise AssertionError(message)
+E   AssertionError: Value 92 did not satisfy constraints</failure></testcase></testsuite></testsuites>

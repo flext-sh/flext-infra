@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="10.643" timestamp="2026-11-18T20:01:25.218835-03:00" hostname="tungs"><testcase classname="tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection" name="test_published_import_width_preserves_mro_and_lazy_exports[True-16]" time="5.480"><failure message="AssertionError: Traceback (most recent call last):&#10;  File &quot;&lt;string&gt;&quot;, line 18, in &lt;module&gt;&#10;    projected = run_path(str(facade))['u']&#10;                ~~~~~~~~^^^^^^^^^^^^^&#10;  File &quot;&lt;frozen runpy&gt;&quot;, line 294, in run_path&#10;  File &quot;&lt;frozen runpy&gt;&quot;, line 98, in _run_module_code&#10;  File &quot;&lt;frozen runpy&gt;&quot;, line 88, in _run_code&#10;  File &quot;/home/marlonsc/tmp/pytest-of-marlonsc/pytest-13982/popen-gw1/test_published_import_width_pr0/flext-test-project/src/flext_test_project/utilities.py&quot;, line 8, in &lt;module&gt;&#10;[+4 more lines; full report in element text]">tests/unit/codegen/_utility_facade_projection/owner_publication.py:757: in test_published_import_width_preserves_mro_and_lazy_exports
+    tm.that(u.Cli.process_succeeded(result.outcome), eq=True, msg=result.stderr)
+../flext-tests/src/flext_tests/_utilities/_matchers/that.py:706: in that
+    raise AssertionError(
+E   AssertionError: Traceback (most recent call last):
+E     File "&lt;string&gt;", line 18, in &lt;module&gt;
+E       projected = run_path(str(facade))['u']
+E                   ~~~~~~~~^^^^^^^^^^^^^
+E     File "&lt;frozen runpy&gt;", line 294, in run_path
+E     File "&lt;frozen runpy&gt;", line 98, in _run_module_code
+E     File "&lt;frozen runpy&gt;", line 88, in _run_code
+E     File "/home/marlonsc/tmp/pytest-of-marlonsc/pytest-13982/popen-gw1/test_published_import_width_pr0/flext-test-project/src/flext_test_project/utilities.py", line 8, in &lt;module&gt;
+E       from flext_test_project._utilities import (
+E           OwnerXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX,
+E       )
+E   ImportError: cannot import name 'OwnerXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX' from 'flext_test_project._utilities' (/home/marlonsc/tmp/pytest-of-marlonsc/pytest-13982/popen-gw1/test_published_import_width_pr0/flext-test-project/src/flext_test_project/_utilities/__init__.py)</failure></testcase></testsuite></testsuites>

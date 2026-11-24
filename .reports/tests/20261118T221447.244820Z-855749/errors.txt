@@ -1,0 +1,34 @@
+=== FAILURE: tests.unit.codemod.test_facade_base_cutover.TestsFlextInfraFacadeBaseCutover::test_undeclared_letter_owner_fails_the_plan ===
+ValueError: parent_pkg.m is not declared with its facade class in the __all__ of the module that binds it
+tests/unit/codemod/test_facade_base_cutover.py:161: in test_undeclared_letter_owner_fails_the_plan
+    tm.fail(self._plan(tmp_path, sources, child), has="is not declared")
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/unit/codemod/test_facade_base_cutover.py:368: in _plan
+    return u.Infra.plan_semantic_cutover(
+src/flext_infra/_utilities/_semantic_cutover/base.py:80: in plan_semantic_cutover
+    attempt = r.safe(
+../flext-core/src/flext_core/_result/composition.py:201: in wrapper
+    return cls._create_success(func(*args, **kwargs))
+                               ^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/base.py:144: in _plan_semantic_cutover_phase
+    return cls._plan_selected_phase_dispatch(
+src/flext_infra/_utilities/_semantic_cutover/base.py:342: in _plan_selected_phase_dispatch
+    return factory()
+           ^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/base.py:331: in <lambda>
+    c.Infra.SemanticCutoverPhase.FACADE_BASE: lambda: cls._plan_facade_bases(
+src/flext_infra/_utilities/_semantic_cutover/facade_bases.py:1375: in _plan_facade_bases
+    imported = cls._plan_facade_import_bases(
+src/flext_infra/_utilities/_semantic_cutover/facade_bases.py:1415: in _plan_facade_import_bases
+    return cls.facade_import_base_edits(
+src/flext_infra/_utilities/_semantic_cutover/facade_bases.py:1500: in facade_import_base_edits
+    return cls._semantic_edits(
+src/flext_infra/_utilities/_semantic_cutover/edits.py:65: in _semantic_edits
+    updated, changes = rewrite(path, source)
+                       ^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/facade_bases.py:1466: in rewrite
+    owner = cls._facade_declared_owner(shape[0], shape[1], project=project)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/facade_owners.py:150: in _facade_declared_owner
+    raise ValueError(msg)
+E   ValueError: parent_pkg.m is not declared with its facade class in the __all__ of the module that binds it

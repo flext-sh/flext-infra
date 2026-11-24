@@ -1,0 +1,75 @@
+================================================= test session starts ==================================================
+platform linux -- Python 3.13.17, pytest-9.2.0, pluggy-1.7.0 -- /home/marlonsc/flext-wip-flext-0in0k.32/.venv/bin/python
+cachedir: .pytest_cache
+hypothesis profile 'default'
+benchmark: 5.3.1 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+Using --randomly-seed=4039262539
+rootdir: /home/marlonsc/flext-wip-flext-0in0k.32/flext-infra
+configfile: pyproject.toml
+plugins: flext-tests-0.12.0, flext-infra-0.12.1, hypothesis-6.170.14, anyio-4.16.0, platformdirs-4.14.5, singer-sdk-0.54.9, asyncio-1.4.1.post1, benchmark-5.3.1, cov-7.1.0, markdown-docs-0.9.2, randomly-5.0.0, reportlog-1.0.0, timeout-2.4.0, xdist-3.8.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
+timeout: 2.0s
+timeout method: signal
+timeout func_only: True
+created: 4/4 workers
+4 workers [14 items]
+
+scheduling tests via LoadScopeScheduling
+
+tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_bare_letter_base_is_already_canonical 
+[gw1] [  7%] PASSED tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_bare_letter_base_is_already_canonical 
+tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_double_composition_keeps_the_secondary_parent 
+[gw1] [ 14%] PASSED tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_double_composition_keeps_the_secondary_parent 
+tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_undeclared_letter_owner_fails_the_plan 
+[gw1] [ 21%] FAILED tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_undeclared_letter_owner_fails_the_plan 
+
+======================================================= FAILURES =======================================================
+_____________________ TestsFlextInfraFacadeBaseCutover.test_undeclared_letter_owner_fails_the_plan _____________________
+[gw1] linux -- Python 3.13.17 /home/marlonsc/flext-wip-flext-0in0k.32/.venv/bin/python
+tests/unit/codemod/test_facade_base_cutover.py:161: in test_undeclared_letter_owner_fails_the_plan
+    tm.fail(self._plan(tmp_path, sources, child), has="is not declared")
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/unit/codemod/test_facade_base_cutover.py:368: in _plan
+    return u.Infra.plan_semantic_cutover(
+src/flext_infra/_utilities/_semantic_cutover/base.py:80: in plan_semantic_cutover
+    attempt = r.safe(
+../flext-core/src/flext_core/_result/composition.py:201: in wrapper
+    return cls._create_success(func(*args, **kwargs))
+                               ^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/base.py:144: in _plan_semantic_cutover_phase
+    return cls._plan_selected_phase_dispatch(
+src/flext_infra/_utilities/_semantic_cutover/base.py:342: in _plan_selected_phase_dispatch
+    return factory()
+           ^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/base.py:331: in <lambda>
+    c.Infra.SemanticCutoverPhase.FACADE_BASE: lambda: cls._plan_facade_bases(
+src/flext_infra/_utilities/_semantic_cutover/facade_bases.py:1375: in _plan_facade_bases
+    imported = cls._plan_facade_import_bases(
+src/flext_infra/_utilities/_semantic_cutover/facade_bases.py:1415: in _plan_facade_import_bases
+    return cls.facade_import_base_edits(
+src/flext_infra/_utilities/_semantic_cutover/facade_bases.py:1500: in facade_import_base_edits
+    return cls._semantic_edits(
+src/flext_infra/_utilities/_semantic_cutover/edits.py:65: in _semantic_edits
+    updated, changes = rewrite(path, source)
+                       ^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/facade_bases.py:1466: in rewrite
+    owner = cls._facade_declared_owner(shape[0], shape[1], project=project)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/facade_owners.py:150: in _facade_declared_owner
+    raise ValueError(msg)
+E   ValueError: parent_pkg.m is not declared with its facade class in the __all__ of the module that binds it
+------------------------------------------------- Captured stdout call -------------------------------------------------
+INFO: rope: opening workspace at /home/marlonsc/tmp/pytest-of-marlonsc/pytest-13920/popen-gw1/test_undeclared_letter_owner_f0
+INFO: rope: workspace ready in 0.01s
+- generated xml file: /home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/.reports/tests/20261118T221447.244820Z-855749/junit.xml -
+- generated report log file: /home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/.reports/tests/20261118T221447.244820Z-855749/events.jsonl -
+--------------------------------------------------- flext slow tests ---------------------------------------------------
+no test near the ordinary or slow limit
+================================================= slowest 25 durations =================================================
+
+(9 durations < 2s hidden.)
+=============================================== short test summary info ================================================
+FAILED tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_undeclared_letter_owner_fails_the_plan
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! xdist.dsession.Interrupted: stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+============================================= 1 failed, 2 passed in 6.65s ==============================================

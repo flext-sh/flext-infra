@@ -1,0 +1,99 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "flext-infra-check",
+          "informationUri": "https://github.com/flext-sh/flext-infra",
+          "rules": []
+        }
+      },
+      "results": []
+    }
+  ],
+  "properties": {
+    "phase": "complete",
+    "requested_gates": [
+      "lint",
+      "markdown",
+      "deps"
+    ],
+    "pending_gates": [],
+    "targets": [
+      {
+        "name": "flext-infra",
+        "path": "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra",
+        "applicable_gates": [
+          "lint",
+          "markdown",
+          "deps"
+        ],
+        "source_identity": null
+      }
+    ],
+    "results": [
+      {
+        "project": "flext-infra",
+        "gates": {
+          "lint": {
+            "result": {
+              "project": "flext-infra",
+              "gate": "lint",
+              "passed": true,
+              "errors": [],
+              "duration": 0.591
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/.reports/check/e44d803d-0bbd-49a8-91ef-e68d707d4187/flext-infra/lint.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          },
+          "markdown": {
+            "result": {
+              "project": "flext-infra",
+              "gate": "markdown",
+              "passed": true,
+              "errors": [],
+              "duration": 0.762
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/.reports/check/e44d803d-0bbd-49a8-91ef-e68d707d4187/flext-infra/markdown.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          },
+          "deps": {
+            "result": {
+              "project": "flext-infra",
+              "gate": "deps",
+              "passed": true,
+              "errors": [],
+              "duration": 9.744
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/.reports/check/e44d803d-0bbd-49a8-91ef-e68d707d4187/flext-infra/deps.raw.log",
+            "outcome": "clean",
+            "process": null,
+            "components": {},
+            "requested_components": []
+          }
+        }
+      }
+    ],
+    "selected_files": [],
+    "global_targets": null
+  }
+}

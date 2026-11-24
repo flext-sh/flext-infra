@@ -1,0 +1,52 @@
+=== FAILURE: tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-canonical] ===
+AttributeError: type object 'Infra' has no attribute '_canonical_facade_source'
+tests/unit/codegen/_utility_facade_projection/owner_publication.py:82: in test_explicit_owner_config_requires_canonical_metadata
+    rendered = tm.ok(tm.not_none(u.Infra.render_utility_facade(package)))
+                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/facade_components.py:634: in render_utility_facade
+    return cls.render_utility_facade(
+src/flext_infra/_utilities/facade_components.py:654: in render_utility_facade
+    return cls.facade_component_source(
+src/flext_infra/_utilities/facade_components.py:680: in facade_component_source
+    rewrites = cls._facade_source_rewrites(
+src/flext_infra/_utilities/facade_components.py:768: in _facade_source_rewrites
+    canonical = cls._canonical_facade_source(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: type object 'Infra' has no attribute '_canonical_facade_source'
+
+=== FAILURE: tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source0-rope_contract_consumer0] ===
+RuntimeError: Python source discovery requires a Git checkout: /home/marlonsc/tmp/pytest-of-marlonsc/pytest-13567/popen-gw0/test_field_metadata_preserves_0/flext-grpc/.git/flext-source-preview-r_6m6za4
+tests/unit/codemod/test_rope_contract_bindings.py:445: in test_field_metadata_preserves_native_validation_and_schema
+    edits = tm.ok(u.Infra.plan_contract_rules(workspace, {path: source}, rules))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/contracts.py:328: in plan_contract_rules
+    return cls._plan_contract_rules_in_view(
+src/flext_infra/_utilities/_semantic_cutover/contracts.py:347: in _plan_contract_rules_in_view
+    return cls._plan_bound_contract_rules(workspace, sources, rules, options)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/contracts.py:380: in _plan_bound_contract_rules
+    working, applied, owned_modules = cls._apply_contract_rules(
+src/flext_infra/_utilities/_semantic_cutover/contracts.py:510: in _apply_contract_rules
+    cls._contract_rule_members(
+src/flext_infra/_utilities/_semantic_cutover/contracts.py:793: in _contract_rule_members
+    checker(context[1]),
+    ^^^^^^^^^^^^^^^^^^^
+src/flext_infra/services/mod.py:93: in model_envelope_diagnostics
+    .preview_sources(
+src/flext_infra/codegen/staged_package.py:112: in preview_sources
+    validator(
+src/flext_infra/services/mod.py:69: in inspect
+    result = FlextInfraGatesPyrefly(repository_root=root).check(
+src/flext_infra/gates/base_gate.py:136: in check
+    check_dirs = self._get_check_dirs(project_dir, ctx)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/gates/pyrefly.py:79: in _get_check_dirs
+    return self._python_targets(project_dir)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/gates/base_gate.py:75: in _python_targets
+    return u.Infra.discover_python_targets(
+src/flext_infra/_utilities/project_discovery.py:384: in discover_python_targets
+    *cls.discover_python_dirs(
+src/flext_infra/_utilities/project_discovery.py:313: in discover_python_dirs
+    raise RuntimeError(msg)
+E   RuntimeError: Python source discovery requires a Git checkout: /home/marlonsc/tmp/pytest-of-marlonsc/pytest-13567/popen-gw0/test_field_metadata_preserves_0/flext-grpc/.git/flext-source-preview-r_6m6za4

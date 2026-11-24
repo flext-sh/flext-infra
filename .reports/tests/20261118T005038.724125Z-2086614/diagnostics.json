@@ -1,0 +1,44 @@
+{
+  "failed_count": 1,
+  "error_count": 0,
+  "warning_count": 0,
+  "skipped_count": 0,
+  "connectivity_skip_cases": [],
+  "collection_failed_count": 0,
+  "collection_skipped_count": 0,
+  "collection_failed_cases": [],
+  "collection_skip_cases": [],
+  "reported_node_ids": [
+    "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication8-True-c]"
+  ],
+  "phase_outcomes": [
+    {
+      "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication8-True-c]",
+      "phase": "setup",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication8-True-c]",
+      "phase": "call",
+      "outcome": "failed"
+    },
+    {
+      "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication8-True-c]",
+      "phase": "teardown",
+      "outcome": "passed"
+    }
+  ],
+  "markdown_attempts": [],
+  "markdown_items": [],
+  "failed_cases": [
+    "tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication8-True-c]"
+  ],
+  "error_traces": [
+    "=== FAILURE: tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication8-True-c] ===\nAssertionError: Traceback (most recent call last):\n  File \"<string>\", line 2, in <module>\n    facade = import_module('scripts.constants').PublicFacade\n             ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/marlonsc/.local/share/mise/installs/python/3.13.17/lib/python3.13/importlib/__init__.py\", line 88, in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n[+9 more lines; full report in element text]\ntests/unit/codegen/_utility_facade_projection/owner_publication.py:277: in test_explicit_owner_classes_preserve_publication_identity\n    tm.that(u.Cli.process_succeeded(result.outcome), eq=True, msg=result.stderr)\n../flext-tests/src/flext_tests/_utilities/_matchers/that.py:706: in that\n    raise AssertionError(\nE   AssertionError: Traceback (most recent call last):\nE     File \"<string>\", line 2, in <module>\nE       facade = import_module('scripts.constants').PublicFacade\nE                ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^\nE     File \"/home/marlonsc/.local/share/mise/installs/python/3.13.17/lib/python3.13/importlib/__init__.py\", line 88, in import_module\nE       return _bootstrap._gcd_import(name[level:], package, level)\nE              ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE     File \"<frozen importlib._bootstrap>\", line 1404, in _gcd_import\nE     File \"<frozen importlib._bootstrap>\", line 1369, in _find_and_load\nE     File \"<frozen importlib._bootstrap>\", line 1340, in _find_and_load_unlocked\nE     File \"<frozen importlib._bootstrap>\", line 935, in _load_unlocked\nE     File \"<frozen importlib._bootstrap_external>\", line 1027, in exec_module\nE     File \"<frozen importlib._bootstrap>\", line 488, in _call_with_frames_removed\nE     File \"/home/marlonsc/tmp/pytest-of-marlonsc/pytest-13652/popen-gw2/test_explicit_owner_classes_pr0/flext-test-project/scripts/constants.py\", line 4, in <module>\nE       from scripts._constants import OwnerBase as LocalBase\nE   ImportError: cannot import name 'OwnerBase' from 'scripts._constants' (/home/marlonsc/tmp/pytest-of-marlonsc/pytest-13652/popen-gw2/test_explicit_owner_classes_pr0/flext-test-project/scripts/_constants/__init__.py)"
+  ],
+  "warning_lines": [],
+  "skip_cases": [],
+  "slow_entries": [
+    "4.747000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication8-True-c]"
+  ]
+}

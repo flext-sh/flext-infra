@@ -1,0 +1,19 @@
+=== FAILURE: tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_class_bindings_preserve_authored_upstream_contract[True-p] ===
+ValueError: Project-owned provider has no declared identity: /home/marlonsc/tmp/pytest-of-marlonsc/pytest-14039/popen-gw0/test_explicit_class_bindings_p0/flext-test-project/src/upstream.py
+tests/unit/codegen/_utility_facade_projection/owner_publication.py:332: in test_explicit_class_bindings_preserve_authored_upstream_contract
+    tm.not_none(u.Infra.render_utility_facade(package, family=family)),
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/facade_components.py:635: in render_utility_facade
+    return cls.render_utility_facade(
+src/flext_infra/_utilities/facade_components.py:655: in render_utility_facade
+    return cls.facade_component_source(
+src/flext_infra/_utilities/facade_components.py:703: in facade_component_source
+    planned = cls._facade_component_plan(
+src/flext_infra/_utilities/facade_components.py:1568: in _facade_component_plan
+    and not cls._facade_foreign_class(project, module, directory, base)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/facade_components.py:1321: in _facade_foreign_class
+    origin = FlextInfraUtilitiesProjectDiscovery.module_name_for_provider(
+src/flext_infra/_utilities/project_discovery.py:496: in module_name_for_provider
+    raise ValueError(message)
+E   ValueError: Project-owned provider has no declared identity: /home/marlonsc/tmp/pytest-of-marlonsc/pytest-14039/popen-gw0/test_explicit_class_bindings_p0/flext-test-project/src/upstream.py

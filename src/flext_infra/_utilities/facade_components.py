@@ -678,7 +678,9 @@ class FlextInfraUtilitiesFacadeComponents:
         selected = c.Infra.FacadeFamily(
             family.letter if isinstance(family, m.Infra.FacadeFamily) else family
         )
-        rewrites = cls._facade_source_rewrites(project, path, directory)
+        rewrites = cls._facade_source_rewrites(
+            project, path, directory, family=selected
+        )
         if rewrites.failure:
             return r[str].from_failure(rewrites)
         if rewrites.value:
@@ -704,9 +706,50 @@ class FlextInfraUtilitiesFacadeComponents:
         if planned.failure:
             return r[str].from_failure(planned)
         module, owner, namespace = planned.value[:3]
+        if not owner.get_name().startswith("Flext") and module.source_code.startswith(
+            c.Infra.AUTOGEN_HEADER
+        ):
+            return r[str].ok(module.source_code)
+        return cls._facade_component_rendered(
+            project,
+            (path, directory),
+            resource,
+            (
+                module,
+                owner,
+                namespace,
+                (planned.value[4], planned.value[6]),
+                planned.value[5],
+            ),
+            owner_name,
+        )
+
+    @classmethod
+    def _facade_component_rendered(
+        cls,
+        project: p.Infra.RopeProject,
+        location: tuple[Path, Path],
+        resource: p.Infra.RopeFile,
+        render_context: tuple[
+            p.Infra.RopeSourceModule,
+            p.Infra.RopeSourceClass,
+            p.Infra.RopeSourceClass,
+            tuple[Sequence[tuple[str, p.Infra.RopePyObject]], Mapping[str, str]],
+            Sequence[t.Infra.RopeFromImport],
+        ],
+        owner_name: str | None,
+    ) -> p.Result[str]:
+        """Render the planned facade composition into its source candidate.
+
+        Returns:
+            The rendered source or the projection/linearization failure.
+
+        """
+        path, directory = location
+        module, owner, namespace, composition, added_imports = render_context
         step = cls._facade_indent_step(project)
         source = cls._facade_sorted_imports(
-            project, path, resource, module.source_code, planned.value[5]
+            project, path, resource, module.source_code, added_imports
         )
         declared = FlextInfraUtilitiesWorkspaceSnapshot.workspace_declared_sources(
             Path(project.root.real_path), (), {path: source}, source_project=project
@@ -722,7 +765,7 @@ class FlextInfraUtilitiesFacadeComponents:
             rendered = cls._facade_rendered_class(
                 projected.value,
                 source,
-                (planned.value[4], planned.value[6]),
+                composition,
                 step,
             )
         return rendered.flat_map(
@@ -744,19 +787,32 @@ class FlextInfraUtilitiesFacadeComponents:
 
     @classmethod
     def _facade_source_rewrites(
-        cls, project: p.Infra.RopeProject, path: Path, directory: Path
+        cls,
+        project: p.Infra.RopeProject,
+        path: Path,
+        directory: Path,
+        *,
+        family: c.Infra.FacadeFamily,
     ) -> p.Result[Mapping[Path, str]]:
-        """Plan the facade source edits that precede composition.
+        """Project the canonical facade base and domain nested class first.
+
+        The canonical facade extends the upstream letter (``from flext_cli
+        import m``; ``class FlextXModels(m)``) and nests the local composition
+        under the project domain (``DbOracle``), never the parent's declared
+        class name. Returns the retired foreign publications when the source
+        already conforms.
 
         Returns:
-            The upstream facade-base import edits, else the retired foreign
-            publications, else no edit.
+            The canonical source edit, the retired foreign publications, or no edit.
 
         """
+        source = project.source_text(path)
         headers = (
-            FlextInfraUtilitiesSemanticCutoverFacadeBases.facade_import_base_edits(
+            r[tuple[p.Infra.SemanticMigrationEdit, ...]].ok(())
+            if family.value == "u"
+            else FlextInfraUtilitiesSemanticCutoverFacadeBases.facade_import_base_edits(
                 Path(project.root.real_path),
-                {path: project.source_text(path)},
+                {path: source},
                 (path,),
                 source_project=project,
             )
@@ -764,9 +820,16 @@ class FlextInfraUtilitiesFacadeComponents:
         if headers.failure:
             return r[Mapping[Path, str]].from_failure(headers)
         if headers.value:
-            return r[Mapping[Path, str]].ok({
-                edit.file_path: edit.updated_source for edit in headers.value
-            })
+            source = headers.value[0].updated_source
+        canonical = FlextInfraUtilitiesFacadeComponents._canonical_facade_source(
+            source,
+            family,
+            own_package=path.parent.name,
+            project=project,
+            directory=directory,
+        )
+        if canonical != project.source_text(path):
+            return r[Mapping[Path, str]].ok({path: canonical})
         unpublished = cls._facade_foreign_publications(
             project,
             FlextInfraUtilitiesRopeRuntimeModules.file_resource_at(project, path),
@@ -775,6 +838,405 @@ class FlextInfraUtilitiesFacadeComponents:
         return r[Mapping[Path, str]].ok(
             {} if unpublished is None else {path: unpublished}
         )
+
+    @classmethod
+    def _canonical_facade_source(
+        cls,
+        source: str,
+        family: c.Infra.FacadeFamily,
+        *,
+        own_package: str,
+        project: p.Infra.RopeProject,
+        directory: Path,
+    ) -> str:
+        """Project the upstream letter base and the domain nested class.
+
+        Returns:
+            The canonical facade source, unchanged when it already conforms.
+
+        """
+        tree = ast.parse(source)
+        upstream = FlextInfraUtilitiesFacadeComponents._canonical_upstream_modules(
+            tree, own_package
+        )
+        changed = FlextInfraUtilitiesFacadeComponents._canonicalize_facade_classes(
+            tree, family, upstream
+        )
+        if source.startswith(c.Infra.AUTOGEN_HEADER):
+            changed = (
+                FlextInfraUtilitiesFacadeComponents._canonicalize_nested_domain(
+                    tree,
+                    family,
+                    own_package=own_package,
+                    project=project,
+                    directory=directory,
+                )
+                or changed
+            )
+        if not changed:
+            return source
+        return FlextInfraUtilitiesFacadeComponents._canonical_facade_with_header(
+            source, tree
+        )
+
+    @classmethod
+    def _canonicalize_nested_domain(
+        cls,
+        tree: ast.Module,
+        family: c.Infra.FacadeFamily,
+        *,
+        own_package: str,
+        project: p.Infra.RopeProject,
+        directory: Path,
+    ) -> bool:
+        """Move the family parts under the owner's canonical domain namespace.
+
+        Returns:
+            Whether the generated facade was rewritten to the nested shape.
+
+        """
+        if family.value not in {"t", "m"}:
+            return False
+        suffix = FlextInfraUtilitiesCodegenNamespace.facade_families()[
+            family.value
+        ].suffix
+        owner = next(
+            (
+                node
+                for node in tree.body
+                if isinstance(node, ast.ClassDef)
+                and node.name.startswith("Flext")
+                and node.name.endswith(suffix)
+            ),
+            None,
+        )
+        if owner is None:
+            return False
+        domain = owner.name.removeprefix("Flext").removesuffix(suffix)
+        if not domain or any(
+            isinstance(child, ast.ClassDef) and child.name == domain
+            for child in owner.body
+        ):
+            return False
+        letter_module, secondary, parts = (
+            FlextInfraUtilitiesFacadeComponents._canonical_facade_upstreams(
+                project,
+                directory,
+                family=family,
+                own_package=own_package,
+            )
+        )
+        if not parts:
+            return False
+        own = frozenset(parts)
+        if not any(
+            isinstance(base, ast.Name) and base.id in own for base in owner.bases
+        ) and (letter_module is None and not secondary):
+            return False
+        nested = ast.ClassDef(
+            name=domain,
+            bases=[ast.Name(id=part, ctx=ast.Load()) for part in parts],
+            keywords=[],
+            body=[ast.Expr(value=ast.Constant(value=f"{domain} namespace."))],
+            decorator_list=[],
+            type_params=[],
+        )
+        body = owner.body
+        index = (
+            1
+            if body
+            and isinstance(body[0], ast.Expr)
+            and isinstance(body[0].value, ast.Constant)
+            and isinstance(body[0].value.value, str)
+            else 0
+        )
+        owner.body = [*body[:index], nested, *body[index:]]
+        canonical_bases: list[ast.expr] = []
+        if letter_module is not None:
+            canonical_bases.append(ast.Name(id=family.value, ctx=ast.Load()))
+        canonical_bases.extend(
+            ast.Name(id=name, ctx=ast.Load()) for _module, name in secondary
+        )
+        if not canonical_bases:
+            canonical_bases = [
+                base
+                for base in owner.bases
+                if not (isinstance(base, ast.Name) and base.id in own)
+            ]
+        owner.bases = canonical_bases
+        if letter_module is not None:
+            FlextInfraUtilitiesFacadeComponents._add_canonical_import(
+                tree, letter_module, family.value
+            )
+        for module, name in secondary:
+            FlextInfraUtilitiesFacadeComponents._add_canonical_import(
+                tree, module, name
+            )
+        return True
+
+    @classmethod
+    def _canonical_facade_upstreams(
+        cls,
+        project: p.Infra.RopeProject,
+        directory: Path,
+        *,
+        family: c.Infra.FacadeFamily,
+        own_package: str,
+    ) -> tuple[str | None, tuple[tuple[str, str], ...], tuple[str, ...]]:
+        """Read the upstream letter and secondary facades from the family parts.
+
+        Returns:
+            The primary upstream package, the secondary upstream facade classes
+            and the family part names, in declaration order.
+
+        """
+        suffix = FlextInfraUtilitiesCodegenNamespace.facade_families()[
+            family.value
+        ].suffix
+        providers = cls.facade_component_declarations(project, directory)
+        parts = tuple(
+            dict.fromkeys(provider.get_name() for _path, provider in providers)
+        )
+        letter_module: str | None = None
+        classes: list[tuple[str, str]] = []
+        for _path, provider in providers:
+            module = provider.get_module()
+            if module is not None and letter_module is None:
+                letter_module = cls._canonical_letter_import(
+                    module.source_code, family=family, own_package=own_package
+                )
+            classes.extend(
+                cls._canonical_upstream_classes(
+                    provider, suffix=suffix, own_package=own_package
+                )
+            )
+        if letter_module is None and classes:
+            letter_module = classes[0][0]
+        secondary = tuple(
+            dict.fromkeys(
+                (module, name) for module, name in classes if module != letter_module
+            )
+        )
+        return letter_module, secondary, parts
+
+    @staticmethod
+    def _canonical_letter_import(
+        source: str,
+        *,
+        family: c.Infra.FacadeFamily,
+        own_package: str,
+    ) -> str | None:
+        """Find the upstream package that imports the family letter.
+
+        Returns:
+            The upstream package providing the letter, or no explicit binding.
+
+        """
+        for node in ast.parse(source).body:
+            if not (
+                isinstance(node, ast.ImportFrom)
+                and node.module is not None
+                and node.module.startswith("flext_")
+                and node.module.partition(".")[0] != own_package
+            ):
+                continue
+            for alias in node.names:
+                if alias.name == family.value:
+                    return node.module.partition(".")[0]
+        return None
+
+    @classmethod
+    def _canonical_upstream_classes(
+        cls,
+        provider: p.Infra.RopeSourceClass,
+        *,
+        suffix: str,
+        own_package: str,
+    ) -> tuple[tuple[str, str], ...]:
+        """Read the upstream facade classes one family part extends.
+
+        Returns:
+            The upstream package and class name pairs, in base order.
+
+        """
+        types = FlextInfraUtilitiesRopeRuntimeTypes
+        found: list[tuple[str, str]] = []
+        for base in provider.get_bases():
+            if not types.py_class(base):
+                continue
+            base_module = base.get_module()
+            if base_module is None:
+                continue
+            package = base_module.get_name().partition(".")[0]
+            name = base.get_name()
+            if (
+                package.startswith("flext_")
+                and package != own_package
+                and name.endswith(suffix)
+            ):
+                found.append((package, name))
+        return tuple(found)
+
+    @staticmethod
+    def _add_canonical_import(tree: ast.Module, module: str, name: str) -> None:
+        """Add one upstream import binding after the module docstring."""
+        for node in tree.body:
+            if isinstance(node, ast.ImportFrom) and node.module == module:
+                if any((alias.asname or alias.name) == name for alias in node.names):
+                    return
+                node.names.append(ast.alias(name=name, asname=None))
+                return
+        insertion = (
+            1
+            if tree.body
+            and isinstance(tree.body[0], ast.Expr)
+            and isinstance(tree.body[0].value, ast.Constant)
+            and isinstance(tree.body[0].value.value, str)
+            else 0
+        )
+        for index, node in enumerate(tree.body):
+            if isinstance(node, ast.ImportFrom) and node.module == "__future__":
+                insertion = max(insertion, index + 1)
+        tree.body.insert(
+            insertion,
+            ast.ImportFrom(
+                module=module,
+                names=[ast.alias(name=name, asname=None)],
+                level=0,
+            ),
+        )
+
+    @staticmethod
+    def _canonical_upstream_modules(
+        tree: ast.Module,
+        own_package: str,
+    ) -> dict[str, str]:
+        """Map the upstream family bindings to their source modules.
+
+        Returns:
+            The ``flext_*`` imports of other packages, keyed by binding name.
+
+        """
+        upstream: dict[str, str] = {}
+        for node in tree.body:
+            if (
+                isinstance(node, ast.ImportFrom)
+                and node.module is not None
+                and node.module.startswith("flext_")
+                and node.module.partition(".")[0] != own_package
+            ):
+                for alias in node.names:
+                    upstream[alias.asname or alias.name] = node.module
+        return upstream
+
+    @staticmethod
+    def _canonicalize_facade_classes(
+        tree: ast.Module,
+        family: c.Infra.FacadeFamily,
+        upstream: Mapping[str, str],
+    ) -> bool:
+        """Canonicalize every top-level facade class in place.
+
+        Returns:
+            Whether any class source was rewritten.
+
+        """
+        changed = False
+        for node in tree.body:
+            if not isinstance(node, ast.ClassDef):
+                continue
+            changed = (
+                FlextInfraUtilitiesFacadeComponents._strip_nested_flext_prefixes(node)
+                or changed
+            )
+            changed = (
+                FlextInfraUtilitiesFacadeComponents._canonicalize_outer_base(
+                    tree, node, family, upstream
+                )
+                or changed
+            )
+        return changed
+
+    @staticmethod
+    def _strip_nested_flext_prefixes(class_node: ast.ClassDef) -> bool:
+        """Rename only nested ``Flext*`` classes to the short namespace.
+
+        Returns:
+            Whether a nested class was renamed.
+
+        """
+        changed = False
+        for child in class_node.body:
+            if isinstance(child, ast.ClassDef) and child.name.startswith("Flext"):
+                child.name = child.name.removeprefix("Flext")
+                changed = True
+        return changed
+
+    @staticmethod
+    def _canonicalize_outer_base(
+        tree: ast.Module,
+        class_node: ast.ClassDef,
+        family: c.Infra.FacadeFamily,
+        upstream: Mapping[str, str],
+    ) -> bool:
+        """Replace an upstream class-name base with its family letter.
+
+        A private base that no upstream import binds is never touched, and a
+        class already based on the family letter keeps its base.
+
+        Returns:
+            Whether the class base and its import binding were rewritten.
+
+        """
+        for base in class_node.bases:
+            if not isinstance(base, ast.Name) or base.id not in upstream:
+                continue
+            if base.id == family.value:
+                return False
+            FlextInfraUtilitiesFacadeComponents._rebind_import_alias(
+                tree, upstream[base.id], base.id, family.value
+            )
+            base.id = family.value
+            return True
+        return False
+
+    @staticmethod
+    def _rebind_import_alias(
+        tree: ast.Module,
+        module: str,
+        old: str,
+        new: str,
+    ) -> None:
+        """Rewrite the upstream import binding ``old`` to the family letter."""
+        for import_node in tree.body:
+            if not (
+                isinstance(import_node, ast.ImportFrom) and import_node.module == module
+            ):
+                continue
+            for alias in import_node.names:
+                if (alias.asname or alias.name) == old:
+                    alias.name = new
+                    alias.asname = None
+                    return
+
+    @staticmethod
+    def _canonical_facade_with_header(source: str, tree: ast.Module) -> str:
+        """Render the rewritten tree preserving the leading comment header.
+
+        Returns:
+            The canonical source with its license and comment prefix.
+
+        """
+        lines = source.splitlines()
+        prefix_end = 0
+        for index, line in enumerate(lines):
+            if line.startswith("#") or not line.strip():
+                prefix_end = index + 1
+            else:
+                break
+        prefix = "\n".join(lines[:prefix_end]).rstrip()
+        rendered = ast.unparse(tree)
+        return f"{prefix}\n{rendered}" if prefix else rendered
 
     @classmethod
     def _facade_foreign_publications(
@@ -1099,18 +1561,19 @@ class FlextInfraUtilitiesFacadeComponents:
             and provider.get_attributes()[namespace.get_name()].get_object()
             in namespace.get_mro()[1:]
         )
+        aliases = cls._facade_namespace_aliases(index, namespace)
         bases = [
             (expression, base)
             for expression, base in bases
             if base not in wrappers
             and not cls._facade_foreign_class(project, module, directory, base)
+            and not cls._facade_alias_published(base, aliases)
             and not any(
                 base in provider.get_mro()[1:]
                 for _origin, provider in resolved.value[2]
                 if provider is not base
             )
         ]
-        aliases = cls._facade_namespace_aliases(index, namespace)
         providers = cls._facade_admitted_providers(
             project,
             (
@@ -1693,6 +2156,17 @@ class FlextInfraUtilitiesFacadeComponents:
                     and Path(base_resource.real_path).is_relative_to(directory)
                     for base in child.get_superclasses()
                 )
+                or any(
+                    types.py_class(value)
+                    and (value_resource := value.get_module().get_resource())
+                    is not None
+                    and Path(value_resource.real_path).is_relative_to(directory)
+                    for value in (
+                        FlextInfraUtilitiesFacadeComponents._facade_namespace_aliases(
+                            child.get_module().get_source_binding_index(), child
+                        ).values()
+                    )
+                )
                 or child in storage
             )
         )
@@ -1737,17 +2211,24 @@ class FlextInfraUtilitiesFacadeComponents:
                     ]
                 ].fail(message)
             base = binding.get_object()
+            if isinstance(base, p.Infra.RopeBuiltinClass):
+                message = f"facade base origin is not a declared owner: {path}"
+                return r[
+                    tuple[
+                        p.Infra.RopeSourceClassLayout,
+                        list[tuple[str, p.Infra.RopePyObject]],
+                    ]
+                ].fail(message)
             if rendered:
-                if not FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(base):
-                    continue
                 base_module = base.get_module()
                 resource = None if base_module is None else base_module.get_resource()
-                if (
-                    resource is not None
-                    and Path(resource.real_path).is_relative_to(directory)
-                    and base.get_name() in declared_names
+                if resource is not None and Path(resource.real_path).is_relative_to(
+                    directory
                 ):
-                    continue
+                    if base.get_name() in declared_names:
+                        continue
+                    if not FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(base):
+                        continue
             bases.append((source[start:end], base))
         return FlextInfraUtilitiesFacadeComponents._facade_namespace_bindings(
             module, index, namespace, path
@@ -1841,6 +2322,27 @@ class FlextInfraUtilitiesFacadeComponents:
                 return r[bool].fail(f"Non-class binding: {identity}.{names} = {value}")
         return r[bool].ok(value=True)
 
+    @staticmethod
+    def _facade_alias_published(
+        provider: p.Infra.RopeSourceClass,
+        aliases: Mapping[str, p.Infra.RopePyObject],
+    ) -> bool:
+        """Whether a namespace alias already publishes the provider declaration.
+
+        Native objects resolved through distinct bindings are not necessarily
+        the same Python instance, so the comparison uses the declaring module
+        and complete scope path, not object identity.
+
+        Returns:
+            True when one alias binds the same native declaration as ``provider``.
+
+        """
+        identity = FlextInfraUtilitiesRopeRuntimeModules.native_object_identity
+        target = identity(provider)
+        return bool(target) and any(
+            identity(alias) == target for alias in aliases.values()
+        )
+
     @classmethod
     def _facade_namespace_aliases(
         cls,
@@ -1887,7 +2389,7 @@ class FlextInfraUtilitiesFacadeComponents:
             first utility provider without a resolved namespace storage role.
 
         """
-        _owner, namespace, declarations, resolver_factory = elected
+        owner, namespace, declarations, resolver_factory = elected
         payload = FlextInfraUtilitiesDeclarationPayload
         admitted: list[tuple[Path, p.Infra.RopeSourceClass]] = []
         nominal: list[p.Infra.RopeSourceClass] = []
@@ -1895,6 +2397,12 @@ class FlextInfraUtilitiesFacadeComponents:
             # A declaration that already descends from the namespace extends
             # it; composing it back would make the namespace its own ancestor.
             if provider is namespace or namespace in provider.get_mro()[1:]:
+                continue
+            if (
+                namespace is not owner
+                and not cls._facade_alias_published(provider, aliases)
+                and not any(provider is base for _expression, base in bases)
+            ):
                 continue
             kind = FlextInfraUtilitiesFacadeMembers.class_kind(
                 provider, resolver_factory=resolver_factory, source_project=project
@@ -1925,7 +2433,9 @@ class FlextInfraUtilitiesFacadeComponents:
                 continue
             # A provider a namespace alias already publishes is never also
             # composed: the alias is its publication (``Base = Owner``).
-            if family is not c.Infra.FacadeFamily.U and provider in aliases.values():
+            if FlextInfraUtilitiesFacadeComponents._facade_alias_published(
+                provider, aliases
+            ):
                 continue
             if family is c.Infra.FacadeFamily.U:
                 if cls._utility_provider_nominal(project, provider, bases):
@@ -2278,7 +2788,9 @@ class FlextInfraUtilitiesFacadeComponents:
         aliases, retained = bound
         loose: list[str] = []
         for provider in nominal:
-            if provider in aliases.values() or any(
+            if FlextInfraUtilitiesFacadeComponents._facade_alias_published(
+                provider, aliases
+            ) or any(
                 base is provider
                 or (
                     FlextInfraUtilitiesRopeRuntimeTypes.py_class(base)
@@ -2667,6 +3179,12 @@ class FlextInfraUtilitiesFacadeComponents:
                 current.lines.get_line_start(scope.get_start()) : layout.region[0]
             ]
             return f"\n{class_indent}{' ' * step}pass"
+        public_name = actual.get_name()
+        private_name = public_name.removeprefix("Tests")
+        if private_name != public_name:
+            body_source = re.sub(
+                rf"\b{re.escape(private_name)}\b", public_name, body_source
+            )
         return body_source
 
     @staticmethod

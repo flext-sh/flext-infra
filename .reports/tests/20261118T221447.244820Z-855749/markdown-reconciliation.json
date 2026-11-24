@@ -1,0 +1,87 @@
+{
+  "eligible": [],
+  "selected": [],
+  "deselected": [],
+  "diagnostics": {
+    "failed_count": 1,
+    "error_count": 0,
+    "warning_count": 0,
+    "skipped_count": 0,
+    "connectivity_skip_cases": [],
+    "collection_failed_count": 0,
+    "collection_skipped_count": 0,
+    "collection_failed_cases": [],
+    "collection_skip_cases": [],
+    "reported_node_ids": [
+      "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_bare_letter_base_is_already_canonical",
+      "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_double_composition_keeps_the_secondary_parent",
+      "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_undeclared_letter_owner_fails_the_plan"
+    ],
+    "phase_outcomes": [
+      {
+        "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_bare_letter_base_is_already_canonical",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_bare_letter_base_is_already_canonical",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_bare_letter_base_is_already_canonical",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_double_composition_keeps_the_secondary_parent",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_double_composition_keeps_the_secondary_parent",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_double_composition_keeps_the_secondary_parent",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_undeclared_letter_owner_fails_the_plan",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_undeclared_letter_owner_fails_the_plan",
+        "phase": "call",
+        "outcome": "failed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_undeclared_letter_owner_fails_the_plan",
+        "phase": "teardown",
+        "outcome": "passed"
+      }
+    ],
+    "markdown_attempts": [],
+    "markdown_items": [],
+    "failed_cases": [
+      "tests.unit.codemod.test_facade_base_cutover.TestsFlextInfraFacadeBaseCutover::test_undeclared_letter_owner_fails_the_plan"
+    ],
+    "error_traces": [
+      "=== FAILURE: tests.unit.codemod.test_facade_base_cutover.TestsFlextInfraFacadeBaseCutover::test_undeclared_letter_owner_fails_the_plan ===\nValueError: parent_pkg.m is not declared with its facade class in the __all__ of the module that binds it\ntests/unit/codemod/test_facade_base_cutover.py:161: in test_undeclared_letter_owner_fails_the_plan\n    tm.fail(self._plan(tmp_path, sources, child), has=\"is not declared\")\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\ntests/unit/codemod/test_facade_base_cutover.py:368: in _plan\n    return u.Infra.plan_semantic_cutover(\nsrc/flext_infra/_utilities/_semantic_cutover/base.py:80: in plan_semantic_cutover\n    attempt = r.safe(\n../flext-core/src/flext_core/_result/composition.py:201: in wrapper\n    return cls._create_success(func(*args, **kwargs))\n                               ^^^^^^^^^^^^^^^^^^^^^\nsrc/flext_infra/_utilities/_semantic_cutover/base.py:144: in _plan_semantic_cutover_phase\n    return cls._plan_selected_phase_dispatch(\nsrc/flext_infra/_utilities/_semantic_cutover/base.py:342: in _plan_selected_phase_dispatch\n    return factory()\n           ^^^^^^^^^\nsrc/flext_infra/_utilities/_semantic_cutover/base.py:331: in <lambda>\n    c.Infra.SemanticCutoverPhase.FACADE_BASE: lambda: cls._plan_facade_bases(\nsrc/flext_infra/_utilities/_semantic_cutover/facade_bases.py:1375: in _plan_facade_bases\n    imported = cls._plan_facade_import_bases(\nsrc/flext_infra/_utilities/_semantic_cutover/facade_bases.py:1415: in _plan_facade_import_bases\n    return cls.facade_import_base_edits(\nsrc/flext_infra/_utilities/_semantic_cutover/facade_bases.py:1500: in facade_import_base_edits\n    return cls._semantic_edits(\nsrc/flext_infra/_utilities/_semantic_cutover/edits.py:65: in _semantic_edits\n    updated, changes = rewrite(path, source)\n                       ^^^^^^^^^^^^^^^^^^^^^\nsrc/flext_infra/_utilities/_semantic_cutover/facade_bases.py:1466: in rewrite\n    owner = cls._facade_declared_owner(shape[0], shape[1], project=project)\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nsrc/flext_infra/_utilities/_semantic_cutover/facade_owners.py:150: in _facade_declared_owner\n    raise ValueError(msg)\nE   ValueError: parent_pkg.m is not declared with its facade class in the __all__ of the module that binds it"
+    ],
+    "warning_lines": [],
+    "skip_cases": [],
+    "slow_entries": [
+      "1.415000s | tests.unit.codemod.test_facade_base_cutover.TestsFlextInfraFacadeBaseCutover::test_bare_letter_base_is_already_canonical",
+      "0.430000s | tests.unit.codemod.test_facade_base_cutover.TestsFlextInfraFacadeBaseCutover::test_double_composition_keeps_the_secondary_parent",
+      "0.087000s | tests.unit.codemod.test_facade_base_cutover.TestsFlextInfraFacadeBaseCutover::test_undeclared_letter_owner_fails_the_plan"
+    ]
+  },
+  "cache_hit": false,
+  "violations": [
+    "selected node IDs differ from executed node IDs"
+  ]
+}

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="2" time="12.146" timestamp="2026-11-18T20:33:01.085773-03:00" hostname="tungs"><testcase classname="tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection" name="test_published_import_width_preserves_mro_and_lazy_exports[True-16]" time="6.018" /><testcase classname="tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection" name="test_explicit_class_bindings_preserve_authored_upstream_contract[True-p]" time="1.742"><failure message="ValueError: Project-owned provider has no declared identity: /home/marlonsc/tmp/pytest-of-marlonsc/pytest-14039/popen-gw0/test_explicit_class_bindings_p0/flext-test-project/src/upstream.py">tests/unit/codegen/_utility_facade_projection/owner_publication.py:332: in test_explicit_class_bindings_preserve_authored_upstream_contract
+    tm.not_none(u.Infra.render_utility_facade(package, family=family)),
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/facade_components.py:635: in render_utility_facade
+    return cls.render_utility_facade(
+src/flext_infra/_utilities/facade_components.py:655: in render_utility_facade
+    return cls.facade_component_source(
+src/flext_infra/_utilities/facade_components.py:703: in facade_component_source
+    planned = cls._facade_component_plan(
+src/flext_infra/_utilities/facade_components.py:1568: in _facade_component_plan
+    and not cls._facade_foreign_class(project, module, directory, base)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/facade_components.py:1321: in _facade_foreign_class
+    origin = FlextInfraUtilitiesProjectDiscovery.module_name_for_provider(
+src/flext_infra/_utilities/project_discovery.py:496: in module_name_for_provider
+    raise ValueError(message)
+E   ValueError: Project-owned provider has no declared identity: /home/marlonsc/tmp/pytest-of-marlonsc/pytest-14039/popen-gw0/test_explicit_class_bindings_p0/flext-test-project/src/upstream.py</failure></testcase></testsuite></testsuites>

@@ -1,0 +1,26 @@
+=== FAILURE: tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_published_import_width_preserves_mro_and_lazy_exports[True-16] ===
+AssertionError: Traceback (most recent call last):
+  File "<string>", line 18, in <module>
+    projected = run_path(str(facade))['u']
+                ~~~~~~~~^^^^^^^^^^^^^
+  File "<frozen runpy>", line 294, in run_path
+  File "<frozen runpy>", line 98, in _run_module_code
+  File "<frozen runpy>", line 88, in _run_code
+  File "/home/marlonsc/tmp/pytest-of-marlonsc/pytest-13982/popen-gw1/test_published_import_width_pr0/flext-test-project/src/flext_test_project/utilities.py", line 8, in <module>
+[+4 more lines; full report in element text]
+tests/unit/codegen/_utility_facade_projection/owner_publication.py:757: in test_published_import_width_preserves_mro_and_lazy_exports
+    tm.that(u.Cli.process_succeeded(result.outcome), eq=True, msg=result.stderr)
+../flext-tests/src/flext_tests/_utilities/_matchers/that.py:706: in that
+    raise AssertionError(
+E   AssertionError: Traceback (most recent call last):
+E     File "<string>", line 18, in <module>
+E       projected = run_path(str(facade))['u']
+E                   ~~~~~~~~^^^^^^^^^^^^^
+E     File "<frozen runpy>", line 294, in run_path
+E     File "<frozen runpy>", line 98, in _run_module_code
+E     File "<frozen runpy>", line 88, in _run_code
+E     File "/home/marlonsc/tmp/pytest-of-marlonsc/pytest-13982/popen-gw1/test_published_import_width_pr0/flext-test-project/src/flext_test_project/utilities.py", line 8, in <module>
+E       from flext_test_project._utilities import (
+E           OwnerXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX,
+E       )
+E   ImportError: cannot import name 'OwnerXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX' from 'flext_test_project._utilities' (/home/marlonsc/tmp/pytest-of-marlonsc/pytest-13982/popen-gw1/test_published_import_width_pr0/flext-test-project/src/flext_test_project/_utilities/__init__.py)

@@ -1,0 +1,1 @@
+tests.unit.codemod.test_facade_base_cutover.TestsFlextInfraFacadeBaseCutover::test_rebound_letter_base_extends_the_declared_class[from parent_pkg import ParentDeclaredModelFacade as m-m-m: type[ChildModels] = ChildModels]

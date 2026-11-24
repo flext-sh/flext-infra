@@ -1,0 +1,48 @@
+=== FAILURE: tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_published_import_width_preserves_mro_and_lazy_exports[True-16] ===
+AssertionError: unsorted-imports: [*] Import block is un-sorted or un-formatted
+  --> src/flext_test_project/__init__.py:8:1
+   |
+ 6 |   """
+ 7 |
+ 8 | / from __future__ import annotations
+ 9 | | from typing import TYPE_CHECKING
+10 | |
+11 | | from flext_core.lazy import install_lazy_exports
+   | |________________________________________________^
+12 |
+13 |   if TYPE_CHECKING:
+   |
+help: Organize imports
+   |
+8  | from __future__ import annotations
+9  +
+10 | from typing import TYPE_CHECKING
+   |
+
+[+2 more lines; full report in element text]
+tests/unit/codegen/_utility_facade_projection/owner_publication.py:816: in test_published_import_width_preserves_mro_and_lazy_exports
+    tm.that(
+../flext-tests/src/flext_tests/_utilities/_matchers/that.py:706: in that
+    raise AssertionError(
+E   AssertionError: unsorted-imports: [*] Import block is un-sorted or un-formatted
+E     --> src/flext_test_project/__init__.py:8:1
+E      |
+E    6 |   """
+E    7 |
+E    8 | / from __future__ import annotations
+E    9 | | from typing import TYPE_CHECKING
+E   10 | |
+E   11 | | from flext_core.lazy import install_lazy_exports
+E      | |________________________________________________^
+E   12 |
+E   13 |   if TYPE_CHECKING:
+E      |
+E   help: Organize imports
+E      |
+E   8  | from __future__ import annotations
+E   9  +
+E   10 | from typing import TYPE_CHECKING
+E      |
+E   
+E   Found 1 error.
+E   [*] 1 fixable with `--fix`.

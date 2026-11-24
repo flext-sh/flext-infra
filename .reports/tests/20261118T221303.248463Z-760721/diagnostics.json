@@ -1,0 +1,78 @@
+{
+  "failed_count": 1,
+  "error_count": 0,
+  "warning_count": 0,
+  "skipped_count": 0,
+  "connectivity_skip_cases": [],
+  "collection_failed_count": 0,
+  "collection_skipped_count": 0,
+  "collection_failed_cases": [],
+  "collection_skip_cases": [],
+  "reported_node_ids": [
+    "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_facade_classes_derive_every_published_letter",
+    "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_facade_classes_read_a_declared_sibling_without_installation[member]",
+    "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_lazy_published_letter_resolves_the_declared_class"
+  ],
+  "phase_outcomes": [
+    {
+      "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_facade_classes_derive_every_published_letter",
+      "phase": "setup",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_facade_classes_derive_every_published_letter",
+      "phase": "call",
+      "outcome": "failed"
+    },
+    {
+      "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_facade_classes_derive_every_published_letter",
+      "phase": "teardown",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_facade_classes_read_a_declared_sibling_without_installation[member]",
+      "phase": "setup",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_facade_classes_read_a_declared_sibling_without_installation[member]",
+      "phase": "call",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_facade_classes_read_a_declared_sibling_without_installation[member]",
+      "phase": "teardown",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_lazy_published_letter_resolves_the_declared_class",
+      "phase": "setup",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_lazy_published_letter_resolves_the_declared_class",
+      "phase": "call",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_lazy_published_letter_resolves_the_declared_class",
+      "phase": "teardown",
+      "outcome": "passed"
+    }
+  ],
+  "markdown_attempts": [],
+  "markdown_items": [],
+  "failed_cases": [
+    "tests.unit.codemod.test_facade_base_cutover.TestsFlextInfraFacadeBaseCutover::test_facade_classes_derive_every_published_letter"
+  ],
+  "error_traces": [
+    "=== FAILURE: tests.unit.codemod.test_facade_base_cutover.TestsFlextInfraFacadeBaseCutover::test_facade_classes_derive_every_published_letter ===\nValueError: facade package is not indexed for derivation: parent_pkg\ntests/unit/codemod/test_facade_base_cutover.py:234: in test_facade_classes_derive_every_published_letter\n    u.Infra.facade_classes(\nsrc/flext_infra/_utilities/_semantic_cutover/facade_owners.py:71: in facade_classes\n    raise ValueError(msg)\nE   ValueError: facade package is not indexed for derivation: parent_pkg"
+  ],
+  "warning_lines": [],
+  "skip_cases": [],
+  "slow_entries": [
+    "1.254000s | tests.unit.codemod.test_facade_base_cutover.TestsFlextInfraFacadeBaseCutover::test_lazy_published_letter_resolves_the_declared_class",
+    "0.369000s | tests.unit.codemod.test_facade_base_cutover.TestsFlextInfraFacadeBaseCutover::test_facade_classes_read_a_declared_sibling_without_installation[member]",
+    "0.008000s | tests.unit.codemod.test_facade_base_cutover.TestsFlextInfraFacadeBaseCutover::test_facade_classes_derive_every_published_letter"
+  ]
+}

@@ -1,0 +1,29 @@
+=== FAILURE: tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication8-True-c] ===
+AssertionError: Traceback (most recent call last):
+  File "<string>", line 2, in <module>
+    facade = import_module('scripts.constants').PublicFacade
+             ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.17/lib/python3.13/importlib/__init__.py", line 88, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[+9 more lines; full report in element text]
+tests/unit/codegen/_utility_facade_projection/owner_publication.py:277: in test_explicit_owner_classes_preserve_publication_identity
+    tm.that(u.Cli.process_succeeded(result.outcome), eq=True, msg=result.stderr)
+../flext-tests/src/flext_tests/_utilities/_matchers/that.py:706: in that
+    raise AssertionError(
+E   AssertionError: Traceback (most recent call last):
+E     File "<string>", line 2, in <module>
+E       facade = import_module('scripts.constants').PublicFacade
+E                ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+E     File "/home/marlonsc/.local/share/mise/installs/python/3.13.17/lib/python3.13/importlib/__init__.py", line 88, in import_module
+E       return _bootstrap._gcd_import(name[level:], package, level)
+E              ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E     File "<frozen importlib._bootstrap>", line 1404, in _gcd_import
+E     File "<frozen importlib._bootstrap>", line 1369, in _find_and_load
+E     File "<frozen importlib._bootstrap>", line 1340, in _find_and_load_unlocked
+E     File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+E     File "<frozen importlib._bootstrap_external>", line 1027, in exec_module
+E     File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+E     File "/home/marlonsc/tmp/pytest-of-marlonsc/pytest-13652/popen-gw2/test_explicit_owner_classes_pr0/flext-test-project/scripts/constants.py", line 4, in <module>
+E       from scripts._constants import OwnerBase as LocalBase
+E   ImportError: cannot import name 'OwnerBase' from 'scripts._constants' (/home/marlonsc/tmp/pytest-of-marlonsc/pytest-13652/popen-gw2/test_explicit_owner_classes_pr0/flext-test-project/scripts/_constants/__init__.py)

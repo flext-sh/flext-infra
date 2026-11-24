@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="2" failures="0" skipped="0" tests="2" time="17.579" timestamp="2026-11-17T21:14:37.319659-03:00" hostname="tungs"><testcase classname="pytest" name="internal" time="0.000"><error message="internal error">def worker_internal_error(
+        self, node: WorkerController, formatted_error: str
+    ) -&gt; None:
+        """
+        pytest_internalerror() was called on the worker.
+    
+        pytest_internalerror() arguments are an excinfo and an excrepr, which can't
+        be serialized, so we go with a poor man's solution of raising an exception
+        here ourselves using the formatted message.
+        """
+        self._active_nodes.remove(node)
+        try:
+&gt;           assert False, formatted_error
+E           AssertionError: Traceback (most recent call last):
+E               File "/home/marlonsc/flext-wip-flext-0in0k.32/.venv/lib/python3.13/site-packages/_pytest/main.py", line 333, in wrap_session
+E                 session.exitstatus = doit(config, session) or 0
+E                                      ~~~~^^^^^^^^^^^^^^^^^
+E               File "/home/marlonsc/flext-wip-flext-0in0k.32/.venv/lib/python3.13/site-packages/_pytest/main.py", line 386, in _main
+E                 config.hook.pytest_collection(session=session)
+E                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+E               File "/home/marlonsc/flext-wip-flext-0in0k.32/.venv/lib/python3.13/site-packages/pluggy/_caller.py", line 197, in __call__
+E                 return self._hookexec(
+E                        ~~~~~~~~~~~~~~^
+E                     self.name, self._hookimpls.copy(), call_kwargs, firstresult
+E                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E                 )
+E                 ^
+E               File "/home/marlonsc/flext-wip-flext-0in0k.32/.venv/lib/python3.13/site-packages/pluggy/_manager.py", line 183, in _hookexec
+E                 return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+E                        ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E               File "/home/marlonsc/flext-wip-flext-0in0k.32/.venv/lib/python3.13/site-packages/pluggy/_execution.py", line 195, in _multicall
+E                 raise exception
+E               File "/home/marlonsc/flext-wip-flext-0in0k.32/.venv/lib/python3.13/site-packages/pluggy/_execution.py", line 167, in _multicall
+E                 teardown.throw(exception)
+E                 ~~~~~~~~~~~~~~^^^^^^^^^^^
+E               File "/home/marlonsc/flext-wip-flext-0in0k.32/.venv/lib/python3.13/site-packages/_pytest/logging.py", line 816, in pytest_collection
+E                 return (yield)
+E                         ^^^^^
+E               File "/home/marlonsc/flext-wip-flext-0in0k.32/.venv/lib/python3.13/site-packages/pluggy/_execution.py", line 167, in _multicall
+E                 teardown.throw(exception)
+E                 ~~~~~~~~~~~~~~^^^^^^^^^^^
+E               File "/home/marlonsc/flext-wip-flext-0in0k.32/.venv/lib/python3.13/site-packages/_pytest/warnings.py", line 84, in pytest_collection
+E                 return (yield)
+E                         ^^^^^
+E               File "/home/marlonsc/flext-wip-flext-0in0k.32/.venv/lib/python3.13/site-packages/pluggy/_execution.py", line 167, in _multicall
+E                 teardown.throw(exception)
+E                 ~~~~~~~~~~~~~~^^^^^^^^^^^
+E               File "/home/marlonsc/flext-wip-flext-0in0k.32/.venv/lib/python3.13/site-packages/_pytest/config/__init__.py", line 1617, in pytest_collection
+E                 return (yield)
+E                         ^^^^^
+E               File "/home/marlonsc/flext-wip-flext-0in0k.32/.venv/lib/python3.13/site-packages/pluggy/_execution.py", line 147, in _multicall
+E                 res = hook_impl.function(*args)
+E               File "/home/marlonsc/flext-wip-flext-0in0k.32/.venv/lib/python3.13/site-packages/_pytest/main.py", line 397, in pytest_collection
+E                 session.perform_collect()
+E                 ~~~~~~~~~~~~~~~~~~~~~~~^^
+E               File "/home/marlonsc/flext-wip-flext-0in0k.32/.venv/lib/python3.13/site-packages/_pytest/main.py", line 882, in perform_collect
+E                 hook.pytest_collection_finish(session=self)
+E                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+E               File "/home/marlonsc/flext-wip-flext-0in0k.32/.venv/lib/python3.13/site-packages/pluggy/_caller.py", line 197, in __call__
+E                 return self._hookexec(
+E                        ~~~~~~~~~~~~~~^
+E                     self.name, self._hookimpls.copy(), call_kwargs, firstresult
+E                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E                 )
+E                 ^
+E               File "/home/marlonsc/flext-wip-flext-0in0k.32/.venv/lib/python3.13/site-packages/pluggy/_manager.py", line 183, in _hookexec
+E                 return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+E                        ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E               File "/home/marlonsc/flext-wip-flext-0in0k.32/.venv/lib/python3.13/site-packages/pluggy/_execution.py", line 195, in _multicall
+E                 raise exception
+E               File "/home/marlonsc/flext-wip-flext-0in0k.32/.venv/lib/python3.13/site-packages/pluggy/_execution.py", line 141, in _multicall
+E                 next(function_gen)  # first yield
+E                 ~~~~^^^^^^^^^^^^^^
+E               File "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/src/flext_infra/_pytest/collection.py", line 118, in pytest_collection_finish
+E                 yield from u.Infra.collection_finish(session)
+E               File "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/src/flext_infra/_utilities/pytest_collection.py", line 569, in collection_finish
+E                 raise ValueError(msg)
+E             ValueError: Runner collection differs from selection: missing=[], unexpected=['tests/unit/codegen/test_facade_canonical_source.py::TestsFacadeCanonicalSource::test_flat_parts_add_the_secondary_upstream_facade', 'tests/unit/codegen/test_facade_canonical_source.py::TestsFacadeCanonicalSource::test_flat_parts_move_under_the_domain_namespace']
+E           assert False
+
+../.venv/lib/python3.13/site-packages/xdist/dsession.py:232: AssertionError</error><error message="internal error">Traceback (most recent call last):
+  File "/home/marlonsc/flext-wip-flext-0in0k.32/.venv/lib/python3.13/site-packages/_pytest/main.py", line 333, in wrap_session
+    session.exitstatus = doit(config, session) or 0
+                         ~~~~^^^^^^^^^^^^^^^^^
+  File "/home/marlonsc/flext-wip-flext-0in0k.32/.venv/lib/python3.13/site-packages/_pytest/main.py", line 387, in _main
+    config.hook.pytest_runtestloop(session=session)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/home/marlonsc/flext-wip-flext-0in0k.32/.venv/lib/python3.13/site-packages/pluggy/_caller.py", line 197, in __call__
+    return self._hookexec(
+           ~~~~~~~~~~~~~~^
+        self.name, self._hookimpls.copy(), call_kwargs, firstresult
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/marlonsc/flext-wip-flext-0in0k.32/.venv/lib/python3.13/site-packages/pluggy/_manager.py", line 183, in _hookexec
+    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/marlonsc/flext-wip-flext-0in0k.32/.venv/lib/python3.13/site-packages/pluggy/_execution.py", line 195, in _multicall
+    raise exception
+  File "/home/marlonsc/flext-wip-flext-0in0k.32/.venv/lib/python3.13/site-packages/pluggy/_execution.py", line 167, in _multicall
+    teardown.throw(exception)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "/home/marlonsc/flext-wip-flext-0in0k.32/.venv/lib/python3.13/site-packages/_pytest/logging.py", line 829, in pytest_runtestloop
+    return (yield)  # Run all the tests.
+            ^^^^^
+  File "/home/marlonsc/flext-wip-flext-0in0k.32/.venv/lib/python3.13/site-packages/pluggy/_execution.py", line 167, in _multicall
+    teardown.throw(exception)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "/home/marlonsc/flext-wip-flext-0in0k.32/.venv/lib/python3.13/site-packages/_pytest/terminal.py", line 723, in pytest_runtestloop
+    result = yield
+             ^^^^^
+  File "/home/marlonsc/flext-wip-flext-0in0k.32/.venv/lib/python3.13/site-packages/pluggy/_execution.py", line 147, in _multicall
+    res = hook_impl.function(*args)
+  File "/home/marlonsc/flext-wip-flext-0in0k.32/.venv/lib/python3.13/site-packages/xdist/dsession.py", line 138, in pytest_runtestloop
+    self.loop_once()
+    ~~~~~~~~~~~~~~^^
+  File "/home/marlonsc/flext-wip-flext-0in0k.32/.venv/lib/python3.13/site-packages/xdist/dsession.py", line 163, in loop_once
+    call(**kwargs)
+    ~~~~^^^^^^^^^^
+  File "/home/marlonsc/flext-wip-flext-0in0k.32/.venv/lib/python3.13/site-packages/xdist/dsession.py", line 218, in worker_workerfinished
+    self._active_nodes.remove(node)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+KeyError: &lt;WorkerController gw1&gt;</error></testcase></testsuite></testsuites>

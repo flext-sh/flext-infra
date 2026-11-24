@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="8.850" timestamp="2026-11-18T20:44:49.036773-03:00" hostname="tungs"><testcase classname="tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection" name="test_explicit_class_bindings_preserve_authored_upstream_contract[True-p]" time="3.774"><failure message="AssertionError: Traceback (most recent call last):&#10;  File &quot;&lt;string&gt;&quot;, line 6, in &lt;module&gt;&#10;    assert facade.Sample.__bases__ == (Framework.Sample,)&#10;           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^&#10;AssertionError">tests/unit/codegen/_utility_facade_projection/owner_publication.py:363: in test_explicit_class_bindings_preserve_authored_upstream_contract
+    tm.that(u.Cli.process_succeeded(result.outcome), eq=True, msg=result.stderr)
+../flext-tests/src/flext_tests/_utilities/_matchers/that.py:706: in that
+    raise AssertionError(
+E   AssertionError: Traceback (most recent call last):
+E     File "&lt;string&gt;", line 6, in &lt;module&gt;
+E       assert facade.Sample.__bases__ == (Framework.Sample,)
+E              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AssertionError</failure></testcase></testsuite></testsuites>

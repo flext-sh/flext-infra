@@ -1,0 +1,142 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "flext-infra-check",
+          "informationUri": "https://github.com/flext-sh/flext-infra",
+          "rules": [
+            {
+              "id": "too-many-return-statements",
+              "shortDescription": {
+                "text": "Ruff Linter (lint) issue"
+              },
+              "helpUri": "https://docs.astral.sh/ruff/"
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "too-many-return-statements",
+          "level": "error",
+          "message": {
+            "text": "Too many return statements (7 > 6)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/src/flext_infra/_utilities/facade_components.py",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 660,
+                  "startColumn": 9
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "properties": {
+    "phase": "complete",
+    "requested_gates": [
+      "lint",
+      "markdown",
+      "deps"
+    ],
+    "pending_gates": [],
+    "targets": [
+      {
+        "name": "flext-infra",
+        "path": "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra",
+        "applicable_gates": [
+          "lint",
+          "markdown",
+          "deps"
+        ],
+        "source_identity": null
+      }
+    ],
+    "results": [
+      {
+        "project": "flext-infra",
+        "gates": {
+          "lint": {
+            "result": {
+              "project": "flext-infra",
+              "gate": "lint",
+              "passed": false,
+              "errors": [
+                "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/src/flext_infra/_utilities/facade_components.py:660:9 [too-many-return-statements] Too many return statements (7 > 6)"
+              ],
+              "duration": 0.468
+            },
+            "issues": [
+              {
+                "file": "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/src/flext_infra/_utilities/facade_components.py",
+                "line": 660,
+                "column": 9,
+                "code": "too-many-return-statements",
+                "message": "Too many return statements (7 > 6)",
+                "severity": "error",
+                "locations": [],
+                "related_locations": []
+              }
+            ],
+            "raw_receipt": "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/.reports/check/0fec659a-05b5-4951-8f76-0c6971eeecce/flext-infra/lint.raw.log",
+            "outcome": "findings",
+            "process": {
+              "raw_return_code": 1,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          },
+          "markdown": {
+            "result": {
+              "project": "flext-infra",
+              "gate": "markdown",
+              "passed": true,
+              "errors": [],
+              "duration": 1.203
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/.reports/check/0fec659a-05b5-4951-8f76-0c6971eeecce/flext-infra/markdown.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          },
+          "deps": {
+            "result": {
+              "project": "flext-infra",
+              "gate": "deps",
+              "passed": true,
+              "errors": [],
+              "duration": 10.357
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/.reports/check/0fec659a-05b5-4951-8f76-0c6971eeecce/flext-infra/deps.raw.log",
+            "outcome": "clean",
+            "process": null,
+            "components": {},
+            "requested_components": []
+          }
+        }
+      }
+    ],
+    "selected_files": [],
+    "global_targets": null
+  }
+}

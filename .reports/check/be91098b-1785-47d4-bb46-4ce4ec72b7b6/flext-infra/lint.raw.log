@@ -1,0 +1,40 @@
+[
+  {
+    "cell": null,
+    "code": "PLR0913",
+    "end_location": {
+      "column": 35,
+      "row": 728
+    },
+    "filename": "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/src/flext_infra/_utilities/facade_components.py",
+    "fix": null,
+    "location": {
+      "column": 9,
+      "row": 728
+    },
+    "message": "Too many arguments in function definition (10 > 5)",
+    "name": "too-many-arguments",
+    "noqa_row": 728,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/too-many-arguments"
+  },
+  {
+    "cell": null,
+    "code": "PLR0917",
+    "end_location": {
+      "column": 35,
+      "row": 728
+    },
+    "filename": "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/src/flext_infra/_utilities/facade_components.py",
+    "fix": null,
+    "location": {
+      "column": 9,
+      "row": 728
+    },
+    "message": "Too many positional arguments (10 > 5)",
+    "name": "too-many-positional-arguments",
+    "noqa_row": 728,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/too-many-positional-arguments"
+  }
+]

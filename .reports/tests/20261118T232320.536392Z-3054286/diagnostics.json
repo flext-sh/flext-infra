@@ -1,0 +1,44 @@
+{
+  "failed_count": 1,
+  "error_count": 0,
+  "warning_count": 0,
+  "skipped_count": 0,
+  "connectivity_skip_cases": [],
+  "collection_failed_count": 0,
+  "collection_skipped_count": 0,
+  "collection_failed_cases": [],
+  "collection_skip_cases": [],
+  "reported_node_ids": [
+    "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_published_import_width_preserves_mro_and_lazy_exports[True-16]"
+  ],
+  "phase_outcomes": [
+    {
+      "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_published_import_width_preserves_mro_and_lazy_exports[True-16]",
+      "phase": "setup",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_published_import_width_preserves_mro_and_lazy_exports[True-16]",
+      "phase": "call",
+      "outcome": "failed"
+    },
+    {
+      "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_published_import_width_preserves_mro_and_lazy_exports[True-16]",
+      "phase": "teardown",
+      "outcome": "passed"
+    }
+  ],
+  "markdown_attempts": [],
+  "markdown_items": [],
+  "failed_cases": [
+    "tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_published_import_width_preserves_mro_and_lazy_exports[True-16]"
+  ],
+  "error_traces": [
+    "=== FAILURE: tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_published_import_width_preserves_mro_and_lazy_exports[True-16] ===\nAssertionError: consumer stderr:\nTraceback (most recent call last):\n  File \"<string>\", line 6, in <module>\n    tm.that(barrel.OwnerXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX is leaf.OwnerXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX, eq=True)\n    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n[+66 more lines; full report in element text]\ntests/unit/codegen/_utility_facade_projection/owner_publication.py:783: in test_published_import_width_preserves_mro_and_lazy_exports\n    tm.that(\n../flext-tests/src/flext_tests/_utilities/_matchers/that.py:706: in that\n    raise AssertionError(\nE   AssertionError: consumer stderr:\nE   Traceback (most recent call last):\nE     File \"<string>\", line 6, in <module>\nE       tm.that(barrel.OwnerXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX is leaf.OwnerXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX, eq=True)\nE       ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE     File \"/home/marlonsc/flext-wip-flext-0in0k.32/flext-tests/src/flext_tests/_utilities/_matchers/that.py\", line 706, in that\nE       raise AssertionError(\nE           params.msg or c.Tests.ERR_CONSTRAINTS_FAILED.format(value=value),\nE       )\nE   AssertionError: Value False did not satisfy constraints\nE   \nE   consumer stdout:\nE   \nE   publisher stdout:\nE   INFO: stage=lazy-init state=start root=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-14027/popen-gw2/test_published_import_width_pr0/flext-test-project\nE   INFO: stage=lazy-init state=end root=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-14027/popen-gw2/test_published_import_width_pr0/flext-test-project elapsed=0.675s files=2 effects=2\nE   DEBUG: file_changes: verify pid=3188944 observed=2 lock=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-14027/popen-gw2/test_published_import_width_pr0/flext-test-project/.git/flext-infra.lock\nE   DEBUG: file_changes: publish pid=3188944 path=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-14027/popen-gw2/test_published_import_width_pr0/flext-test-project/src/flext_test_project/__init__.py before_inode=1355298223 before_bytes=0 desired_bytes=547\nE   DEBUG: file_changes: publish pid=3188944 path=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-14027/popen-gw2/test_published_import_width_pr0/flext-test-project/src/flext_test_project/_utilities/__init__.py before_inode=1355298226 before_bytes=0 desired_bytes=965\nE   INFO: stage=lazy-init state=start root=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-14027/popen-gw2/test_published_import_width_pr0/flext-test-project\nE   INFO: stage=lazy-init state=end root=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-14027/popen-gw2/test_published_import_width_pr0/flext-test-project elapsed=0.093s files=2 effects=0\nE   INFO: stage=lazy-init state=start root=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-14027/popen-gw2/test_published_import_width_pr0/flext-test-project\nE   INFO: stage=lazy-init state=end root=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-14027/popen-gw2/test_published_import_width_pr0/flext-test-project elapsed=0.113s files=2 effects=0\nE   ('Utilities', 'OwnerXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX', 'object')\nE   \nE   published __init__.py:\nE   # AUTO-GENERATED FILE — Regenerate with: make gen\nE   \"\"\"Flext Test Project package.\nE   \nE   Copyright (c) 2026 FLEXT Team. All rights reserved.\nE   SPDX-License-Identifier: MIT\nE   \"\"\"\nE   \nE   from __future__ import annotations\nE   from typing import TYPE_CHECKING\nE   \nE   from flext_core.lazy import install_lazy_exports\nE   \nE   if TYPE_CHECKING:\nE       from flext_test_project.utilities import Utilities, u\nE   \nE   \nE   __all__: tuple[str, ...] = (\"Utilities\", \"u\")\nE   \nE   install_lazy_exports(\nE       __name__,\nE       globals(),\nE       {\"Utilities\": \".utilities\", \"u\": \".utilities\"},\nE       public_exports=__all__,\nE   )\nE   \nE   published utilities.py:\nE   # AUTO-GENERATED FILE — Regenerate with: make gen\nE   \"\"\"Public utility facade.\nE   \nE   Copyright (c) 2026 FLEXT Team. All rights reserved.\nE   SPDX-License-Identifier: MIT\nE   \"\"\"\nE   \nE   from flext_test_project._utilities import (\nE       OwnerXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX,\nE   )\nE   \nE   \nE   class Utilities(OwnerXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX):\nE       \"\"\"Compose the canonical owner.\"\"\"\nE   \nE   \nE   u = Utilities\nE   \nE   __all__ = [\"Utilities\", \"u\"]"
+  ],
+  "warning_lines": [],
+  "skip_cases": [],
+  "slow_entries": [
+    "7.170000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_published_import_width_preserves_mro_and_lazy_exports[True-16]"
+  ]
+}

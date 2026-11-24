@@ -1,0 +1,53 @@
+{
+  "eligible": [],
+  "selected": [],
+  "deselected": [],
+  "diagnostics": {
+    "failed_count": 1,
+    "error_count": 0,
+    "warning_count": 0,
+    "skipped_count": 0,
+    "connectivity_skip_cases": [],
+    "collection_failed_count": 0,
+    "collection_skipped_count": 0,
+    "collection_failed_cases": [],
+    "collection_skip_cases": [],
+    "reported_node_ids": [
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_rejects_owners_without_a_public_facade[False]"
+    ],
+    "phase_outcomes": [
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_rejects_owners_without_a_public_facade[False]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_rejects_owners_without_a_public_facade[False]",
+        "phase": "call",
+        "outcome": "failed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_rejects_owners_without_a_public_facade[False]",
+        "phase": "teardown",
+        "outcome": "passed"
+      }
+    ],
+    "markdown_attempts": [],
+    "markdown_items": [],
+    "failed_cases": [
+      "tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_rejects_owners_without_a_public_facade[False]"
+    ],
+    "error_traces": [
+      "=== FAILURE: tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_rejects_owners_without_a_public_facade[False] ===\nFailed: Timeout (>2.0s) from pytest-timeout.\ntests/unit/codegen/_utility_facade_projection/planning.py:779: in test_rejects_owners_without_a_public_facade\n    with u.Infra.facade_source_project(\n../../.local/share/mise/installs/python/3.13.17/lib/python3.13/contextlib.py:141: in __enter__\n    return next(self.gen)\n           ^^^^^^^^^^^^^^\nsrc/flext_infra/_utilities/workspace_snapshot.py:208: in facade_source_project\n    project = bindings.enter_context(project_context)\n              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n../../.local/share/mise/installs/python/3.13.17/lib/python3.13/contextlib.py:530: in enter_context\n    result = _enter(cm)\n             ^^^^^^^^^^\n../../.local/share/mise/installs/python/3.13.17/lib/python3.13/contextlib.py:141: in __enter__\n    return next(self.gen)\n           ^^^^^^^^^^^^^^\nsrc/flext_infra/_utilities/_rope/core.py:237: in workspace_overlay_project\n    with FlextInfraUtilitiesRopeCore.open_project(\n../../.local/share/mise/installs/python/3.13.17/lib/python3.13/contextlib.py:141: in __enter__\n    return next(self.gen)\n           ^^^^^^^^^^^^^^\nsrc/flext_infra/_utilities/_rope/core.py:341: in open_project\n    rope_project = FlextInfraUtilitiesRopeCore._new_project(\nsrc/flext_infra/_utilities/_rope/core.py:106: in _new_project\n    project = FlextInfraUtilitiesRopeRuntime.new_project(\nsrc/flext_infra/_utilities/_rope/runtime_module_queries.py:199: in new_project\n    project = project_factory(\nsrc/flext_infra/_utilities/_rope/project.py:1151: in __init__\n    *FlextInfraRopeProject._distribution_extension_modules(\nsrc/flext_infra/_utilities/_rope/project.py:1078: in _distribution_extension_modules\n    record = distribution.read_text(\"RECORD\")\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n../../.local/share/mise/installs/python/3.13.17/lib/python3.13/importlib/metadata/__init__.py:915: in read_text\n    return self._path.joinpath(filename).read_text(encoding='utf-8')\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n../../.local/share/mise/installs/python/3.13.17/lib/python3.13/pathlib/_local.py:546: in read_text\n    return PathBase.read_text(self, encoding, errors, newline)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n../../.local/share/mise/installs/python/3.13.17/lib/python3.13/pathlib/_abc.py:633: in read_text\n    return f.read()\n           ^^^^^^^^\n<frozen codecs>:322: in decode\n    ???\nE   Failed: Timeout (>2.0s) from pytest-timeout."
+    ],
+    "warning_lines": [],
+    "skip_cases": [],
+    "slow_entries": [
+      "2.007000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_rejects_owners_without_a_public_facade[False]"
+    ]
+  },
+  "cache_hit": false,
+  "violations": [
+    "selected node IDs differ from executed node IDs"
+  ]
+}

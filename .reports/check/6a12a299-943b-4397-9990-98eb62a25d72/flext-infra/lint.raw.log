@@ -1,0 +1,211 @@
+[
+  {
+    "cell": null,
+    "code": "F821",
+    "end_location": {
+      "column": 33,
+      "row": 143
+    },
+    "filename": "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/tests/constants.py",
+    "fix": null,
+    "location": {
+      "column": 14,
+      "row": 143
+    },
+    "message": "Undefined name `FlextInfraConstants`",
+    "name": "undefined-name",
+    "noqa_row": 143,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/undefined-name"
+  },
+  {
+    "cell": null,
+    "code": "F821",
+    "end_location": {
+      "column": 32,
+      "row": 144
+    },
+    "filename": "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/tests/constants.py",
+    "fix": null,
+    "location": {
+      "column": 13,
+      "row": 144
+    },
+    "message": "Undefined name `FlextInfraConstants`",
+    "name": "undefined-name",
+    "noqa_row": 144,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/undefined-name"
+  },
+  {
+    "cell": null,
+    "code": "F821",
+    "end_location": {
+      "column": 32,
+      "row": 145
+    },
+    "filename": "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/tests/constants.py",
+    "fix": null,
+    "location": {
+      "column": 13,
+      "row": 145
+    },
+    "message": "Undefined name `FlextInfraConstants`",
+    "name": "undefined-name",
+    "noqa_row": 145,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/undefined-name"
+  },
+  {
+    "cell": null,
+    "code": "F821",
+    "end_location": {
+      "column": 32,
+      "row": 153
+    },
+    "filename": "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/tests/constants.py",
+    "fix": null,
+    "location": {
+      "column": 13,
+      "row": 153
+    },
+    "message": "Undefined name `FlextInfraConstants`",
+    "name": "undefined-name",
+    "noqa_row": 153,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/undefined-name"
+  },
+  {
+    "cell": null,
+    "code": "F821",
+    "end_location": {
+      "column": 32,
+      "row": 154
+    },
+    "filename": "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/tests/constants.py",
+    "fix": null,
+    "location": {
+      "column": 13,
+      "row": 154
+    },
+    "message": "Undefined name `FlextInfraConstants`",
+    "name": "undefined-name",
+    "noqa_row": 154,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/undefined-name"
+  },
+  {
+    "cell": null,
+    "code": "F821",
+    "end_location": {
+      "column": 33,
+      "row": 155
+    },
+    "filename": "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/tests/constants.py",
+    "fix": null,
+    "location": {
+      "column": 14,
+      "row": 155
+    },
+    "message": "Undefined name `FlextInfraConstants`",
+    "name": "undefined-name",
+    "noqa_row": 155,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/undefined-name"
+  },
+  {
+    "cell": null,
+    "code": "F821",
+    "end_location": {
+      "column": 64,
+      "row": 176
+    },
+    "filename": "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/tests/constants.py",
+    "fix": null,
+    "location": {
+      "column": 45,
+      "row": 176
+    },
+    "message": "Undefined name `FlextInfraConstants`",
+    "name": "undefined-name",
+    "noqa_row": 176,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/undefined-name"
+  },
+  {
+    "cell": null,
+    "code": "F821",
+    "end_location": {
+      "column": 32,
+      "row": 178
+    },
+    "filename": "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/tests/constants.py",
+    "fix": null,
+    "location": {
+      "column": 13,
+      "row": 178
+    },
+    "message": "Undefined name `FlextInfraConstants`",
+    "name": "undefined-name",
+    "noqa_row": 178,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/undefined-name"
+  },
+  {
+    "cell": null,
+    "code": "F821",
+    "end_location": {
+      "column": 63,
+      "row": 180
+    },
+    "filename": "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/tests/constants.py",
+    "fix": null,
+    "location": {
+      "column": 44,
+      "row": 180
+    },
+    "message": "Undefined name `FlextInfraConstants`",
+    "name": "undefined-name",
+    "noqa_row": 180,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/undefined-name"
+  },
+  {
+    "cell": null,
+    "code": "F821",
+    "end_location": {
+      "column": 32,
+      "row": 182
+    },
+    "filename": "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/tests/constants.py",
+    "fix": null,
+    "location": {
+      "column": 13,
+      "row": 182
+    },
+    "message": "Undefined name `FlextInfraConstants`",
+    "name": "undefined-name",
+    "noqa_row": 182,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/undefined-name"
+  },
+  {
+    "cell": null,
+    "code": "F821",
+    "end_location": {
+      "column": 32,
+      "row": 185
+    },
+    "filename": "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/tests/constants.py",
+    "fix": null,
+    "location": {
+      "column": 13,
+      "row": 185
+    },
+    "message": "Undefined name `FlextInfraConstants`",
+    "name": "undefined-name",
+    "noqa_row": 185,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/undefined-name"
+  }
+]

@@ -1,0 +1,90 @@
+=== FAILURE: tests.unit.codegen.test_facade_canonical_source.TestsFacadeCanonicalSource::test_double_upstream_composition_keeps_the_secondary_facade ===
+Failed: Timeout (>2.0s) from pytest-timeout.
+tests/unit/codegen/test_facade_canonical_source.py:206: in test_double_upstream_composition_keeps_the_secondary_facade
+    rendered = TestsFacadeCanonicalSource._rendered(
+tests/unit/codegen/test_facade_canonical_source.py:273: in _rendered
+    tm.not_none(u.Infra.render_utility_facade(package, family=family)),
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/facade_components.py:635: in render_utility_facade
+    return cls.render_utility_facade(
+src/flext_infra/_utilities/facade_components.py:655: in render_utility_facade
+    return cls.facade_component_source(
+src/flext_infra/_utilities/facade_components.py:703: in facade_component_source
+    planned = cls._facade_component_plan(
+src/flext_infra/_utilities/facade_components.py:1511: in _facade_component_plan
+    resolved = cls._facade_namespace_owner(
+src/flext_infra/_utilities/facade_components.py:1814: in _facade_namespace_owner
+    proven = cls._facade_class_bases(
+src/flext_infra/_utilities/facade_components.py:1981: in _facade_class_bases
+    return result_type.create_from_callable(
+../flext-core/src/flext_core/_result/construction.py:239: in create_from_callable
+    value = func()
+            ^^^^^^
+src/flext_infra/_utilities/_rope/source_bases_runtime.py:2349: in source_class_orders
+    return tuple(resolver.class_order(group) for group in groups)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/source_bases_runtime.py:2349: in <genexpr>
+    return tuple(resolver.class_order(group) for group in groups)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/source_bases_runtime.py:341: in class_order
+    lineages = tuple(self._linearize(identity) for identity in identities)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/source_bases_runtime.py:341: in <genexpr>
+    lineages = tuple(self._linearize(identity) for identity in identities)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/source_bases_runtime.py:2205: in _linearize
+    parents = self._bases(identity)
+              ^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/source_bases_runtime.py:2136: in _bases
+    tuple(self._resolve(base) for base in declared)
+src/flext_infra/_utilities/_rope/source_bases_runtime.py:2136: in <genexpr>
+    tuple(self._resolve(base) for base in declared)
+          ^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/source_bases_runtime.py:1799: in _resolve
+    target, attributes = self._unresolved_target(
+src/flext_infra/_utilities/_rope/source_bases_runtime.py:1872: in _unresolved_target
+    resolved = self._external_reference(
+src/flext_infra/_utilities/_rope/source_bases_runtime.py:1723: in _external_reference
+    module = self._project.get_module(target)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/native_project.py:105: in get_module
+    if self.find_module(name, folder) is None and (
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/native_project.py:154: in find_module
+    found = self.find_module_native(modname, folder)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/native_project.py:177: in find_module_native
+    found = native.find_module(modname, self._native_folder(folder))
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/rope/base/project.py:217: in find_module
+    return _find_module_in_folders(folders(), modname)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/rope/base/project.py:550: in _find_module_in_folders
+    if folder.has_child(name + ".py"):
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/rope/base/resources.py:207: in has_child
+    self.get_child(name)
+../.venv/lib/python3.13/site-packages/rope/base/resources.py:203: in get_child
+    return self.project.get_resource(self._get_child_path(name))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/rope/base/project.py:423: in get_resource
+    return super().get_resource(universal_name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/rope/base/project.py:52: in get_resource
+    if not self.fscommands.exists(path):
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/project.py:498: in exists
+    return self.isfile(path) or self.isdir(path)
+                                ^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/project.py:537: in isdir
+    return resolved.is_dir()
+           ^^^^^^^^^^^^^^^^^
+../../.local/share/mise/installs/python/3.13.17/lib/python3.13/pathlib/_abc.py:465: in is_dir
+    return S_ISDIR(self.stat(follow_symlinks=follow_symlinks).st_mode)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/mise/installs/python/3.13.17/lib/python3.13/pathlib/_local.py:515: in stat
+    return os.stat(self, follow_symlinks=follow_symlinks)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/mise/installs/python/3.13.17/lib/python3.13/pathlib/_local.py:166: in __fspath__
+    def __fspath__(self):
+E   Failed: Timeout (>2.0s) from pytest-timeout.

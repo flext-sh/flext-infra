@@ -1,0 +1,70 @@
+{
+  "eligible": [],
+  "selected": [],
+  "deselected": [],
+  "diagnostics": {
+    "failed_count": 1,
+    "error_count": 0,
+    "warning_count": 0,
+    "skipped_count": 0,
+    "connectivity_skip_cases": [],
+    "collection_failed_count": 0,
+    "collection_skipped_count": 0,
+    "collection_failed_cases": [],
+    "collection_skip_cases": [],
+    "reported_node_ids": [
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_class_bindings_preserve_authored_upstream_contract[True-p]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_published_import_width_preserves_mro_and_lazy_exports[True-16]"
+    ],
+    "phase_outcomes": [
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_class_bindings_preserve_authored_upstream_contract[True-p]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_class_bindings_preserve_authored_upstream_contract[True-p]",
+        "phase": "call",
+        "outcome": "failed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_class_bindings_preserve_authored_upstream_contract[True-p]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_published_import_width_preserves_mro_and_lazy_exports[True-16]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_published_import_width_preserves_mro_and_lazy_exports[True-16]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_published_import_width_preserves_mro_and_lazy_exports[True-16]",
+        "phase": "teardown",
+        "outcome": "passed"
+      }
+    ],
+    "markdown_attempts": [],
+    "markdown_items": [],
+    "failed_cases": [
+      "tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_class_bindings_preserve_authored_upstream_contract[True-p]"
+    ],
+    "error_traces": [
+      "=== FAILURE: tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_class_bindings_preserve_authored_upstream_contract[True-p] ===\nValueError: Project-owned provider has no declared identity: /home/marlonsc/tmp/pytest-of-marlonsc/pytest-14039/popen-gw0/test_explicit_class_bindings_p0/flext-test-project/src/upstream.py\ntests/unit/codegen/_utility_facade_projection/owner_publication.py:332: in test_explicit_class_bindings_preserve_authored_upstream_contract\n    tm.not_none(u.Infra.render_utility_facade(package, family=family)),\n                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nsrc/flext_infra/_utilities/facade_components.py:635: in render_utility_facade\n    return cls.render_utility_facade(\nsrc/flext_infra/_utilities/facade_components.py:655: in render_utility_facade\n    return cls.facade_component_source(\nsrc/flext_infra/_utilities/facade_components.py:703: in facade_component_source\n    planned = cls._facade_component_plan(\nsrc/flext_infra/_utilities/facade_components.py:1568: in _facade_component_plan\n    and not cls._facade_foreign_class(project, module, directory, base)\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nsrc/flext_infra/_utilities/facade_components.py:1321: in _facade_foreign_class\n    origin = FlextInfraUtilitiesProjectDiscovery.module_name_for_provider(\nsrc/flext_infra/_utilities/project_discovery.py:496: in module_name_for_provider\n    raise ValueError(message)\nE   ValueError: Project-owned provider has no declared identity: /home/marlonsc/tmp/pytest-of-marlonsc/pytest-14039/popen-gw0/test_explicit_class_bindings_p0/flext-test-project/src/upstream.py"
+    ],
+    "warning_lines": [],
+    "skip_cases": [],
+    "slow_entries": [
+      "6.018000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_published_import_width_preserves_mro_and_lazy_exports[True-16]",
+      "1.742000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_class_bindings_preserve_authored_upstream_contract[True-p]"
+    ]
+  },
+  "cache_hit": false,
+  "violations": [
+    "selected node IDs differ from executed node IDs"
+  ]
+}

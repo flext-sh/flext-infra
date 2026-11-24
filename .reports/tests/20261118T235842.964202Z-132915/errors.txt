@@ -1,0 +1,5 @@
+=== FAILURE: tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_complete_type_owner_rejects_unknown_facade_contracts[str-'PublicTypes', 't'] ===
+Failed: DID NOT RAISE ValueError
+tests/unit/codegen/_utility_facade_projection/planning.py:1131: in test_complete_type_owner_rejects_unknown_facade_contracts
+    u.Tests.raises(
+E   Failed: DID NOT RAISE ValueError

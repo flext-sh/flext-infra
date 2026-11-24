@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="5.870" timestamp="2026-11-18T19:14:21.425699-03:00" hostname="tungs"><testcase classname="tests.unit.codemod.test_facade_base_cutover.TestsFlextInfraFacadeBaseCutover" name="test_runtime_self_import_still_fails_with_lazy_publication[False]" time="1.327"><failure message="AssertionError: Expected failure but got success: ()">tests/unit/codemod/test_facade_base_cutover.py:199: in test_runtime_self_import_still_fails_with_lazy_publication
+    tm.fail(self._plan(tmp_path, sources, child), has="cyclic facade binding")
+../flext-tests/src/flext_tests/_utilities/_matchers/result.py:67: in fail
+    err: str = FlextTestsUtilitiesResult.assert_failure(result)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../flext-tests/src/flext_tests/_utilities/result.py:34: in assert_failure
+    raise AssertionError(msg)
+E   AssertionError: Expected failure but got success: ()</failure></testcase></testsuite></testsuites>

@@ -238,6 +238,12 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
         proposed = tuple(
             plan.path for plan in declared_files if plan.desired_content is not None
         )
+        planned_roots = tuple(
+            parent
+            for path in proposed
+            for parent in path.parents
+            if parent.name in config.Infra.source_scan.roots
+        )
         return tuple(
             sorted({
                 ""
@@ -246,6 +252,7 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
                 for folder in (
                     root,
                     *project_roots,
+                    *planned_roots,
                     *(
                         project / name
                         for project in (root, *project_roots)

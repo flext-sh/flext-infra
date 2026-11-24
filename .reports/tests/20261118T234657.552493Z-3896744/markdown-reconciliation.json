@@ -1,0 +1,53 @@
+{
+  "eligible": [],
+  "selected": [],
+  "deselected": [],
+  "diagnostics": {
+    "failed_count": 1,
+    "error_count": 0,
+    "warning_count": 0,
+    "skipped_count": 0,
+    "connectivity_skip_cases": [],
+    "collection_failed_count": 0,
+    "collection_skipped_count": 0,
+    "collection_failed_cases": [],
+    "collection_skip_cases": [],
+    "reported_node_ids": [
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_class_bindings_preserve_authored_upstream_contract[True-p]"
+    ],
+    "phase_outcomes": [
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_class_bindings_preserve_authored_upstream_contract[True-p]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_class_bindings_preserve_authored_upstream_contract[True-p]",
+        "phase": "call",
+        "outcome": "failed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_class_bindings_preserve_authored_upstream_contract[True-p]",
+        "phase": "teardown",
+        "outcome": "passed"
+      }
+    ],
+    "markdown_attempts": [],
+    "markdown_items": [],
+    "failed_cases": [
+      "tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_class_bindings_preserve_authored_upstream_contract[True-p]"
+    ],
+    "error_traces": [
+      "=== FAILURE: tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_class_bindings_preserve_authored_upstream_contract[True-p] ===\nAssertionError: Traceback (most recent call last):\n  File \"<string>\", line 6, in <module>\n    assert facade.Sample.__bases__ == (Framework.Sample,)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError\ntests/unit/codegen/_utility_facade_projection/owner_publication.py:363: in test_explicit_class_bindings_preserve_authored_upstream_contract\n    tm.that(u.Cli.process_succeeded(result.outcome), eq=True, msg=result.stderr)\n../flext-tests/src/flext_tests/_utilities/_matchers/that.py:706: in that\n    raise AssertionError(\nE   AssertionError: Traceback (most recent call last):\nE     File \"<string>\", line 6, in <module>\nE       assert facade.Sample.__bases__ == (Framework.Sample,)\nE              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   AssertionError"
+    ],
+    "warning_lines": [],
+    "skip_cases": [],
+    "slow_entries": [
+      "2.690000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_class_bindings_preserve_authored_upstream_contract[True-p]"
+    ]
+  },
+  "cache_hit": false,
+  "violations": [
+    "selected node IDs differ from executed node IDs"
+  ]
+}

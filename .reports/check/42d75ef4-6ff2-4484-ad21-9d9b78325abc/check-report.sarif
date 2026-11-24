@@ -1,0 +1,462 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "flext-infra-check",
+          "informationUri": "https://github.com/flext-sh/flext-infra",
+          "rules": [
+            {
+              "id": "undefined-name",
+              "shortDescription": {
+                "text": "Ruff Linter (lint) issue"
+              },
+              "helpUri": "https://docs.astral.sh/ruff/"
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "undefined-name",
+          "level": "error",
+          "message": {
+            "text": "Undefined name `FlextInfraConstants`"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/tests/constants.py",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 143,
+                  "startColumn": 14
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "undefined-name",
+          "level": "error",
+          "message": {
+            "text": "Undefined name `FlextInfraConstants`"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/tests/constants.py",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 144,
+                  "startColumn": 13
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "undefined-name",
+          "level": "error",
+          "message": {
+            "text": "Undefined name `FlextInfraConstants`"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/tests/constants.py",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 145,
+                  "startColumn": 13
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "undefined-name",
+          "level": "error",
+          "message": {
+            "text": "Undefined name `FlextInfraConstants`"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/tests/constants.py",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 153,
+                  "startColumn": 13
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "undefined-name",
+          "level": "error",
+          "message": {
+            "text": "Undefined name `FlextInfraConstants`"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/tests/constants.py",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 154,
+                  "startColumn": 13
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "undefined-name",
+          "level": "error",
+          "message": {
+            "text": "Undefined name `FlextInfraConstants`"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/tests/constants.py",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 155,
+                  "startColumn": 14
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "undefined-name",
+          "level": "error",
+          "message": {
+            "text": "Undefined name `FlextInfraConstants`"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/tests/constants.py",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 176,
+                  "startColumn": 45
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "undefined-name",
+          "level": "error",
+          "message": {
+            "text": "Undefined name `FlextInfraConstants`"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/tests/constants.py",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 178,
+                  "startColumn": 13
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "undefined-name",
+          "level": "error",
+          "message": {
+            "text": "Undefined name `FlextInfraConstants`"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/tests/constants.py",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 180,
+                  "startColumn": 44
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "undefined-name",
+          "level": "error",
+          "message": {
+            "text": "Undefined name `FlextInfraConstants`"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/tests/constants.py",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 182,
+                  "startColumn": 13
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "undefined-name",
+          "level": "error",
+          "message": {
+            "text": "Undefined name `FlextInfraConstants`"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/tests/constants.py",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 185,
+                  "startColumn": 13
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "properties": {
+    "phase": "complete",
+    "requested_gates": [
+      "lint",
+      "markdown",
+      "deps"
+    ],
+    "pending_gates": [],
+    "targets": [
+      {
+        "name": "flext-infra",
+        "path": "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra",
+        "applicable_gates": [
+          "lint",
+          "markdown",
+          "deps"
+        ],
+        "source_identity": null
+      }
+    ],
+    "results": [
+      {
+        "project": "flext-infra",
+        "gates": {
+          "lint": {
+            "result": {
+              "project": "flext-infra",
+              "gate": "lint",
+              "passed": false,
+              "errors": [
+                "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/tests/constants.py:143:14 [undefined-name] Undefined name `FlextInfraConstants`",
+                "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/tests/constants.py:144:13 [undefined-name] Undefined name `FlextInfraConstants`",
+                "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/tests/constants.py:145:13 [undefined-name] Undefined name `FlextInfraConstants`",
+                "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/tests/constants.py:153:13 [undefined-name] Undefined name `FlextInfraConstants`",
+                "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/tests/constants.py:154:13 [undefined-name] Undefined name `FlextInfraConstants`",
+                "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/tests/constants.py:155:14 [undefined-name] Undefined name `FlextInfraConstants`",
+                "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/tests/constants.py:176:45 [undefined-name] Undefined name `FlextInfraConstants`",
+                "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/tests/constants.py:178:13 [undefined-name] Undefined name `FlextInfraConstants`",
+                "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/tests/constants.py:180:44 [undefined-name] Undefined name `FlextInfraConstants`",
+                "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/tests/constants.py:182:13 [undefined-name] Undefined name `FlextInfraConstants`",
+                "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/tests/constants.py:185:13 [undefined-name] Undefined name `FlextInfraConstants`"
+              ],
+              "duration": 121.15
+            },
+            "issues": [
+              {
+                "file": "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/tests/constants.py",
+                "line": 143,
+                "column": 14,
+                "code": "undefined-name",
+                "message": "Undefined name `FlextInfraConstants`",
+                "severity": "error",
+                "locations": [],
+                "related_locations": []
+              },
+              {
+                "file": "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/tests/constants.py",
+                "line": 144,
+                "column": 13,
+                "code": "undefined-name",
+                "message": "Undefined name `FlextInfraConstants`",
+                "severity": "error",
+                "locations": [],
+                "related_locations": []
+              },
+              {
+                "file": "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/tests/constants.py",
+                "line": 145,
+                "column": 13,
+                "code": "undefined-name",
+                "message": "Undefined name `FlextInfraConstants`",
+                "severity": "error",
+                "locations": [],
+                "related_locations": []
+              },
+              {
+                "file": "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/tests/constants.py",
+                "line": 153,
+                "column": 13,
+                "code": "undefined-name",
+                "message": "Undefined name `FlextInfraConstants`",
+                "severity": "error",
+                "locations": [],
+                "related_locations": []
+              },
+              {
+                "file": "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/tests/constants.py",
+                "line": 154,
+                "column": 13,
+                "code": "undefined-name",
+                "message": "Undefined name `FlextInfraConstants`",
+                "severity": "error",
+                "locations": [],
+                "related_locations": []
+              },
+              {
+                "file": "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/tests/constants.py",
+                "line": 155,
+                "column": 14,
+                "code": "undefined-name",
+                "message": "Undefined name `FlextInfraConstants`",
+                "severity": "error",
+                "locations": [],
+                "related_locations": []
+              },
+              {
+                "file": "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/tests/constants.py",
+                "line": 176,
+                "column": 45,
+                "code": "undefined-name",
+                "message": "Undefined name `FlextInfraConstants`",
+                "severity": "error",
+                "locations": [],
+                "related_locations": []
+              },
+              {
+                "file": "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/tests/constants.py",
+                "line": 178,
+                "column": 13,
+                "code": "undefined-name",
+                "message": "Undefined name `FlextInfraConstants`",
+                "severity": "error",
+                "locations": [],
+                "related_locations": []
+              },
+              {
+                "file": "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/tests/constants.py",
+                "line": 180,
+                "column": 44,
+                "code": "undefined-name",
+                "message": "Undefined name `FlextInfraConstants`",
+                "severity": "error",
+                "locations": [],
+                "related_locations": []
+              },
+              {
+                "file": "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/tests/constants.py",
+                "line": 182,
+                "column": 13,
+                "code": "undefined-name",
+                "message": "Undefined name `FlextInfraConstants`",
+                "severity": "error",
+                "locations": [],
+                "related_locations": []
+              },
+              {
+                "file": "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/tests/constants.py",
+                "line": 185,
+                "column": 13,
+                "code": "undefined-name",
+                "message": "Undefined name `FlextInfraConstants`",
+                "severity": "error",
+                "locations": [],
+                "related_locations": []
+              }
+            ],
+            "raw_receipt": "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/.reports/check/42d75ef4-6ff2-4484-ad21-9d9b78325abc/flext-infra/lint.raw.log",
+            "outcome": "findings",
+            "process": {
+              "raw_return_code": 1,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          },
+          "markdown": {
+            "result": {
+              "project": "flext-infra",
+              "gate": "markdown",
+              "passed": true,
+              "errors": [],
+              "duration": 1.515
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/.reports/check/42d75ef4-6ff2-4484-ad21-9d9b78325abc/flext-infra/markdown.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          },
+          "deps": {
+            "result": {
+              "project": "flext-infra",
+              "gate": "deps",
+              "passed": true,
+              "errors": [],
+              "duration": 11.02
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/.reports/check/42d75ef4-6ff2-4484-ad21-9d9b78325abc/flext-infra/deps.raw.log",
+            "outcome": "clean",
+            "process": null,
+            "components": {},
+            "requested_components": []
+          }
+        }
+      }
+    ],
+    "selected_files": [],
+    "global_targets": null
+  }
+}

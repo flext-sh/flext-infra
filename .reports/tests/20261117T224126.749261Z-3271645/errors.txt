@@ -1,0 +1,63 @@
+=== FAILURE: tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source0-rope_contract_consumer0] ===
+RuntimeError: Python source discovery requires a Git checkout: /home/marlonsc/tmp/pytest-of-marlonsc/pytest-13569/popen-gw0/test_field_metadata_preserves_0/flext-grpc/.git/flext-source-preview-kvxfoll_
+tests/unit/codemod/test_rope_contract_bindings.py:445: in test_field_metadata_preserves_native_validation_and_schema
+    edits = tm.ok(u.Infra.plan_contract_rules(workspace, {path: source}, rules))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/contracts.py:328: in plan_contract_rules
+    return cls._plan_contract_rules_in_view(
+src/flext_infra/_utilities/_semantic_cutover/contracts.py:347: in _plan_contract_rules_in_view
+    return cls._plan_bound_contract_rules(workspace, sources, rules, options)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/contracts.py:380: in _plan_bound_contract_rules
+    working, applied, owned_modules = cls._apply_contract_rules(
+src/flext_infra/_utilities/_semantic_cutover/contracts.py:510: in _apply_contract_rules
+    cls._contract_rule_members(
+src/flext_infra/_utilities/_semantic_cutover/contracts.py:793: in _contract_rule_members
+    checker(context[1]),
+    ^^^^^^^^^^^^^^^^^^^
+src/flext_infra/services/mod.py:93: in model_envelope_diagnostics
+    .preview_sources(
+src/flext_infra/codegen/staged_package.py:112: in preview_sources
+    validator(
+src/flext_infra/services/mod.py:69: in inspect
+    result = FlextInfraGatesPyrefly(repository_root=root).check(
+src/flext_infra/gates/base_gate.py:136: in check
+    check_dirs = self._get_check_dirs(project_dir, ctx)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/gates/pyrefly.py:79: in _get_check_dirs
+    return self._python_targets(project_dir)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/gates/base_gate.py:75: in _python_targets
+    return u.Infra.discover_python_targets(
+src/flext_infra/_utilities/project_discovery.py:384: in discover_python_targets
+    *cls.discover_python_dirs(
+src/flext_infra/_utilities/project_discovery.py:313: in discover_python_dirs
+    raise RuntimeError(msg)
+E   RuntimeError: Python source discovery requires a Git checkout: /home/marlonsc/tmp/pytest-of-marlonsc/pytest-13569/popen-gw0/test_field_metadata_preserves_0/flext-grpc/.git/flext-source-preview-kvxfoll_
+
+=== FAILURE: tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_initializer_retires_exports_moved_into_class_owners ===
+Failed: Timeout (>2.0s) from pytest-timeout.
+tests/unit/codegen/_utility_facade_projection/owner_publication.py:124: in test_initializer_retires_exports_moved_into_class_owners
+    native_consumer(
+tests/fixtures/infra.py:72: in consume
+    u.Tests.run_lazy_init_probe(
+tests/utilities_codegen.py:381: in run_lazy_init_probe
+    u.Cli.run(
+../flext-cli/src/flext_cli/_utilities/_runtime/commands.py:79: in run
+    return cls.run_raw(
+../flext-cli/src/flext_cli/_utilities/runtime.py:201: in run_raw
+    return cls._execute_streamed_process(
+../flext-cli/src/flext_cli/_utilities/_runtime/process_execution.py:66: in _execute_streamed_process
+    cls._execute_lifecycle(request, state, timing)
+../flext-cli/src/flext_cli/_utilities/_runtime/process_execution.py:173: in _execute_lifecycle
+    state.timed_out, state.final_deadline = cls._monitor_process(
+../flext-cli/src/flext_cli/_utilities/_runtime/process_monitor.py:49: in _monitor_process
+    cls._wait_next_boundary(state, phase, now)
+../flext-cli/src/flext_cli/_utilities/_runtime/process_monitor.py:113: in _wait_next_boundary
+    state.wake.wait(
+../../.local/share/mise/installs/python/3.13.17/lib/python3.13/threading.py:660: in wait
+    signaled = self._cond.wait(timeout)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/mise/installs/python/3.13.17/lib/python3.13/threading.py:359: in wait
+    waiter.acquire()
+E   Failed: Timeout (>2.0s) from pytest-timeout.

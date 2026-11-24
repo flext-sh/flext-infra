@@ -1,0 +1,44 @@
+{
+  "failed_count": 1,
+  "error_count": 0,
+  "warning_count": 0,
+  "skipped_count": 0,
+  "connectivity_skip_cases": [],
+  "collection_failed_count": 0,
+  "collection_skipped_count": 0,
+  "collection_failed_cases": [],
+  "collection_skip_cases": [],
+  "reported_node_ids": [
+    "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_published_import_width_preserves_mro_and_lazy_exports[True-16]"
+  ],
+  "phase_outcomes": [
+    {
+      "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_published_import_width_preserves_mro_and_lazy_exports[True-16]",
+      "phase": "setup",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_published_import_width_preserves_mro_and_lazy_exports[True-16]",
+      "phase": "call",
+      "outcome": "failed"
+    },
+    {
+      "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_published_import_width_preserves_mro_and_lazy_exports[True-16]",
+      "phase": "teardown",
+      "outcome": "passed"
+    }
+  ],
+  "markdown_attempts": [],
+  "markdown_items": [],
+  "failed_cases": [
+    "tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_published_import_width_preserves_mro_and_lazy_exports[True-16]"
+  ],
+  "error_traces": [
+    "=== FAILURE: tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_published_import_width_preserves_mro_and_lazy_exports[True-16] ===\nAssertionError: Traceback (most recent call last):\n  File \"<string>\", line 8, in <module>\n    service = u.Tests.create_lazy_init_service(root)\n              ^^^^^^^\nAttributeError: type object 'FlextInfraUtilities' has no attribute 'Tests'\ntests/unit/codegen/_utility_facade_projection/owner_publication.py:759: in test_published_import_width_preserves_mro_and_lazy_exports\n    tm.that(u.Cli.process_succeeded(result.outcome), eq=True, msg=result.stderr)\n../flext-tests/src/flext_tests/_utilities/_matchers/that.py:706: in that\n    raise AssertionError(\nE   AssertionError: Traceback (most recent call last):\nE     File \"<string>\", line 8, in <module>\nE       service = u.Tests.create_lazy_init_service(root)\nE                 ^^^^^^^\nE   AttributeError: type object 'FlextInfraUtilities' has no attribute 'Tests'"
+  ],
+  "warning_lines": [],
+  "skip_cases": [],
+  "slow_entries": [
+    "2.161000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_published_import_width_preserves_mro_and_lazy_exports[True-16]"
+  ]
+}

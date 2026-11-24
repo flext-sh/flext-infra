@@ -1,0 +1,112 @@
+================================================= test session starts ==================================================
+platform linux -- Python 3.13.17, pytest-9.2.0, pluggy-1.7.0 -- /home/marlonsc/flext-wip-flext-0in0k.32/.venv/bin/python
+cachedir: .pytest_cache
+hypothesis profile 'default'
+benchmark: 5.3.1 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+Using --randomly-seed=3480942765
+rootdir: /home/marlonsc/flext-wip-flext-0in0k.32/flext-infra
+configfile: pyproject.toml
+plugins: flext-tests-0.12.0, flext-infra-0.12.1, hypothesis-6.170.14, anyio-4.16.0, platformdirs-4.14.5, singer-sdk-0.54.9, asyncio-1.4.1.post1, benchmark-5.3.1, cov-7.1.0, markdown-docs-0.9.2, randomly-5.0.0, reportlog-1.0.0, timeout-2.4.0, xdist-3.8.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
+timeout: 2.0s
+timeout method: signal
+timeout func_only: True
+created: 4/4 workers
+4 workers [239 items]
+
+scheduling tests via LoadScopeScheduling
+
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_published_import_width_preserves_mro_and_lazy_exports[True-16] 
+[gw2] [  0%] FAILED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_published_import_width_preserves_mro_and_lazy_exports[True-16] 
+
+======================================================= FAILURES =======================================================
+______ TestsFlextInfraUtilityFacadeProjection.test_published_import_width_preserves_mro_and_lazy_exports[True-16] ______
+[gw2] linux -- Python 3.13.17 /home/marlonsc/flext-wip-flext-0in0k.32/.venv/bin/python
+tests/unit/codegen/_utility_facade_projection/owner_publication.py:783: in test_published_import_width_preserves_mro_and_lazy_exports
+    tm.that(
+../flext-tests/src/flext_tests/_utilities/_matchers/that.py:706: in that
+    raise AssertionError(
+E   AssertionError: consumer stderr:
+E   Traceback (most recent call last):
+E     File "<string>", line 6, in <module>
+E       tm.that(barrel.OwnerXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX is leaf.OwnerXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX, eq=True)
+E       ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E     File "/home/marlonsc/flext-wip-flext-0in0k.32/flext-tests/src/flext_tests/_utilities/_matchers/that.py", line 706, in that
+E       raise AssertionError(
+E           params.msg or c.Tests.ERR_CONSTRAINTS_FAILED.format(value=value),
+E       )
+E   AssertionError: Value False did not satisfy constraints
+E   
+E   consumer stdout:
+E   
+E   publisher stdout:
+E   INFO: stage=lazy-init state=start root=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-14027/popen-gw2/test_published_import_width_pr0/flext-test-project
+E   INFO: stage=lazy-init state=end root=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-14027/popen-gw2/test_published_import_width_pr0/flext-test-project elapsed=0.675s files=2 effects=2
+E   DEBUG: file_changes: verify pid=3188944 observed=2 lock=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-14027/popen-gw2/test_published_import_width_pr0/flext-test-project/.git/flext-infra.lock
+E   DEBUG: file_changes: publish pid=3188944 path=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-14027/popen-gw2/test_published_import_width_pr0/flext-test-project/src/flext_test_project/__init__.py before_inode=1355298223 before_bytes=0 desired_bytes=547
+E   DEBUG: file_changes: publish pid=3188944 path=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-14027/popen-gw2/test_published_import_width_pr0/flext-test-project/src/flext_test_project/_utilities/__init__.py before_inode=1355298226 before_bytes=0 desired_bytes=965
+E   INFO: stage=lazy-init state=start root=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-14027/popen-gw2/test_published_import_width_pr0/flext-test-project
+E   INFO: stage=lazy-init state=end root=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-14027/popen-gw2/test_published_import_width_pr0/flext-test-project elapsed=0.093s files=2 effects=0
+E   INFO: stage=lazy-init state=start root=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-14027/popen-gw2/test_published_import_width_pr0/flext-test-project
+E   INFO: stage=lazy-init state=end root=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-14027/popen-gw2/test_published_import_width_pr0/flext-test-project elapsed=0.113s files=2 effects=0
+E   ('Utilities', 'OwnerXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX', 'object')
+E   
+E   published __init__.py:
+E   # AUTO-GENERATED FILE — Regenerate with: make gen
+E   """Flext Test Project package.
+E   
+E   Copyright (c) 2026 FLEXT Team. All rights reserved.
+E   SPDX-License-Identifier: MIT
+E   """
+E   
+E   from __future__ import annotations
+E   from typing import TYPE_CHECKING
+E   
+E   from flext_core.lazy import install_lazy_exports
+E   
+E   if TYPE_CHECKING:
+E       from flext_test_project.utilities import Utilities, u
+E   
+E   
+E   __all__: tuple[str, ...] = ("Utilities", "u")
+E   
+E   install_lazy_exports(
+E       __name__,
+E       globals(),
+E       {"Utilities": ".utilities", "u": ".utilities"},
+E       public_exports=__all__,
+E   )
+E   
+E   published utilities.py:
+E   # AUTO-GENERATED FILE — Regenerate with: make gen
+E   """Public utility facade.
+E   
+E   Copyright (c) 2026 FLEXT Team. All rights reserved.
+E   SPDX-License-Identifier: MIT
+E   """
+E   
+E   from flext_test_project._utilities import (
+E       OwnerXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX,
+E   )
+E   
+E   
+E   class Utilities(OwnerXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX):
+E       """Compose the canonical owner."""
+E   
+E   
+E   u = Utilities
+E   
+E   __all__ = ["Utilities", "u"]
+- generated xml file: /home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/.reports/tests/20261118T232320.536392Z-3054286/junit.xml -
+- generated report log file: /home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/.reports/tests/20261118T232320.536392Z-3054286/events.jsonl -
+--------------------------------------------------- flext slow tests ---------------------------------------------------
+no test near the ordinary or slow limit
+================================================= slowest 25 durations =================================================
+7.16s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_published_import_width_preserves_mro_and_lazy_exports[True-16]
+
+(2 durations < 2s hidden.)
+=============================================== short test summary info ================================================
+FAILED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_published_import_width_preserves_mro_and_lazy_exports[True-16]
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! xdist.dsession.Interrupted: stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+================================================== 1 failed in 11.69s ==================================================

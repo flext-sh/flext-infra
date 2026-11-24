@@ -1,0 +1,1 @@
+2.014000s | tests.unit.codegen.test_facade_canonical_source.TestsFacadeCanonicalSource::test_single_upstream_class_name_base_becomes_the_letter

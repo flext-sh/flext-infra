@@ -1,0 +1,6 @@
+=== FAILURE: tests.unit.codemod.test_facade_base_cutover.TestsFlextInfraFacadeBaseCutover::test_type_only_publication_without_runtime_owner_fails ===
+Failed: DID NOT RAISE ValueError
+tests/unit/codemod/test_facade_base_cutover.py:182: in test_type_only_publication_without_runtime_owner_fails
+    with pytest.raises(ValueError, match="is not declared"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE ValueError

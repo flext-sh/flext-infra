@@ -1,0 +1,287 @@
+================================================= test session starts ==================================================
+platform linux -- Python 3.13.17, pytest-9.2.0, pluggy-1.7.0 -- /home/marlonsc/flext-wip-flext-0in0k.32/.venv/bin/python
+cachedir: .pytest_cache
+hypothesis profile 'default'
+benchmark: 5.3.1 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+Using --randomly-seed=4152586307
+testmon: selection deactivated, environment: toolchain-24179a752a3c-4a7e7920-5834a665
+rootdir: /home/marlonsc/flext-wip-flext-0in0k.32/flext-infra
+configfile: pyproject.toml
+plugins: flext-tests-0.12.0, flext-infra-0.12.1, hypothesis-6.170.14, anyio-4.16.0, platformdirs-4.14.5, singer-sdk-0.54.9, asyncio-1.4.1.post1, benchmark-5.3.1, cov-7.1.0, markdown-docs-0.9.2, randomly-5.0.0, reportlog-1.0.0, testmon-2.3.0, timeout-2.4.0, xdist-3.8.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
+timeout: 2.0s
+timeout method: signal
+timeout func_only: True
+created: 2/2 workers
+2 workers [6912 items]
+
+scheduling tests via LoadScopeScheduling
+
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-canonical] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-import pydantic as m-m.Field(discriminator='kind')-Payload | OtherPayload-model] 
+[gw1] [  0%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-canonical] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-foreign] 
+[gw0] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-import pydantic as m-m.Field(discriminator='kind')-Payload | OtherPayload-model] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-import pydantic as m-m.Field(discriminator='kind')-Payload | OtherPayload-function] 
+[gw0] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-import pydantic as m-m.Field(discriminator='kind')-Payload | OtherPayload-function] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-import pydantic-pydantic.Field(discriminator='kind')-Payload | OtherPayload-model] 
+[gw1] [  0%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-foreign] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-renamed] 
+[gw0] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-import pydantic-pydantic.Field(discriminator='kind')-Payload | OtherPayload-model] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-import pydantic-pydantic.Field(discriminator='kind')-Payload | OtherPayload-function] 
+[gw0] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-import pydantic-pydantic.Field(discriminator='kind')-Payload | OtherPayload-function] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-import pydantic as m-m.Discriminator('kind')-Payload | OtherPayload-model] 
+[gw0] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-import pydantic as m-m.Discriminator('kind')-Payload | OtherPayload-model] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-import pydantic as m-m.Discriminator('kind')-Payload | OtherPayload-function] 
+[gw0] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-import pydantic as m-m.Discriminator('kind')-Payload | OtherPayload-function] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-from pydantic import Field as Tag-Tag(discriminator='kind')-Payload | OtherPayload-model] 
+[gw1] [  0%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-renamed] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-duplicate] 
+[gw0] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-from pydantic import Field as Tag-Tag(discriminator='kind')-Payload | OtherPayload-model] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-from pydantic import Field as Tag-Tag(discriminator='kind')-Payload | OtherPayload-function] 
+[gw0] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-from pydantic import Field as Tag-Tag(discriminator='kind')-Payload | OtherPayload-function] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-import pydantic as m-m.Field(discriminator='kind')-'Payload | OtherPayload'-model] 
+[gw0] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-import pydantic as m-m.Field(discriminator='kind')-'Payload | OtherPayload'-model] 
+[gw1] [  0%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-duplicate] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-import pydantic as m-m.Field(discriminator='kind')-'Payload | OtherPayload'-function] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-annotation] 
+[gw0] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-import pydantic as m-m.Field(discriminator='kind')-'Payload | OtherPayload'-function] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-imports5-Tag(discriminator='kind')-Payload | OtherPayload-model] 
+[gw0] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-imports5-Tag(discriminator='kind')-Payload | OtherPayload-model] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-imports5-Tag(discriminator='kind')-Payload | OtherPayload-function] 
+[gw0] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-imports5-Tag(discriminator='kind')-Payload | OtherPayload-function] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_imported_type_and_metadata_aliases_protect_discriminator[None] 
+[gw1] [  0%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-annotation] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-canonical] 
+[gw0] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_imported_type_and_metadata_aliases_protect_discriminator[None] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[None-assert (retained := predicate(value)) is not None] 
+[gw0] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[None-assert (retained := predicate(value)) is not None] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[None-assert (retained := predicate(value)) is not None, diagnostic()] 
+[gw0] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[None-assert (retained := predicate(value)) is not None, diagnostic()] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[None-assert (retained := predicate(value)) is not None, ('one', 'two')] 
+[gw0] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[None-assert (retained := predicate(value)) is not None, ('one', 'two')] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[None-assert isinstance((retained := predicate(value)), str), diagnostic()] 
+[gw0] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[None-assert isinstance((retained := predicate(value)), str), diagnostic()] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[None-assert 0 < len((retained := predicate(value)) or '') < 100] 
+[gw0] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[None-assert 0 < len((retained := predicate(value)) or '') < 100] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[None-statement5] 
+[gw0] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[None-statement5] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[None-statement6] 
+[gw0] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[None-statement6] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-assert True; effect()\n] 
+[gw0] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-assert True; effect()\n] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-effect(); assert True\n] 
+[gw0] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-effect(); assert True\n] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-if True: assert True\n] 
+[gw0] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-if True: assert True\n] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-if True: assert True; effect()\n] 
+[gw1] [  0%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-canonical] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-foreign] 
+[gw0] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-if True: assert True; effect()\n] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-if True: \\\n    assert True\n] 
+[gw0] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-if True: \\\n    assert True\n] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-def check(): assert True\n] 
+[gw0] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-def check(): assert True\n] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-assert True  # retained trailing comment\n] 
+[gw0] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-assert True  # retained trailing comment\n] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-assert (  # outside predicate capture\n    True\n)\n] 
+[gw1] [  0%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-foreign] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-renamed] 
+[gw0] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-assert (  # outside predicate capture\n    True\n)\n] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-assert True, (  # outside message capture\n    'message'\n)\n] 
+[gw0] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-assert True, (  # outside message capture\n    'message'\n)\n] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-def check():\n    assert True, '''first\nsecond'''\n] 
+[gw0] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-def check():\n    assert True, '''first\nsecond'''\n] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-def check():\n    assert '''first\nsecond'''\n] 
+[gw0] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-def check():\n    assert '''first\nsecond'''\n] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-def check():\n    assert 'first\x0bsecond'\n] 
+[gw0] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-def check():\n    assert 'first\x0bsecond'\n] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[None-AssertionError = ValueError\nassert True\n] 
+[gw0] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[None-AssertionError = ValueError\nassert True\n] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[None-assert True\nAssertionError = ValueError\n] 
+[gw0] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[None-assert True\nAssertionError = ValueError\n] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[None-from builtins import AssertionError\nassert True\n] 
+[gw0] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[None-from builtins import AssertionError\nassert True\n] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[None-from builtins import ValueError as AssertionError\nassert True\n] 
+[gw1] [  0%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-renamed] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-duplicate] 
+[gw0] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[None-from builtins import ValueError as AssertionError\nassert True\n] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[None-def check(AssertionError):\n    assert True\n] 
+[gw0] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[None-def check(AssertionError):\n    assert True\n] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[None-def check():\n    AssertionError = ValueError\n    assert True\n] 
+[gw0] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[None-def check():\n    AssertionError = ValueError\n    assert True\n] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[None-def outer(AssertionError):\n    def check():\n        assert True\n    return check\n] 
+[gw0] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[None-def outer(AssertionError):\n    def check():\n        assert True\n    return check\n] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source0-rope_contract_consumer0] 
+[gw1] [  0%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-duplicate] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-annotation] 
+[gw0] [  0%] FAILED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source0-rope_contract_consumer0] 
+[gw1] [  0%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-annotation] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-canonical] 
+[gw1] [  0%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-canonical] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-foreign] 
+[gw1] [  0%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-foreign] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-renamed] 
+[gw1] [  0%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-renamed] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-duplicate] 
+[gw1] [  0%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-duplicate] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-annotation] 
+[gw1] [  0%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-annotation] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-canonical] 
+[gw1] [  0%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-canonical] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-foreign] 
+[gw1] [  0%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-foreign] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-renamed] 
+[gw1] [  0%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-renamed] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-duplicate] 
+[gw1] [  0%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-duplicate] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-annotation] 
+[gw1] [  0%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-annotation] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_initializer_retires_exports_moved_into_class_owners 
+[gw1] [  0%] FAILED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_initializer_retires_exports_moved_into_class_owners 
+
+======================================================= FAILURES =======================================================
+_ TestsFlextInfraRopeContractBindings.test_field_metadata_preserves_native_validation_and_schema[source0-rope_contract_consumer0] _
+[gw0] linux -- Python 3.13.17 /home/marlonsc/flext-wip-flext-0in0k.32/.venv/bin/python
+tests/unit/codemod/test_rope_contract_bindings.py:445: in test_field_metadata_preserves_native_validation_and_schema
+    edits = tm.ok(u.Infra.plan_contract_rules(workspace, {path: source}, rules))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/contracts.py:328: in plan_contract_rules
+    return cls._plan_contract_rules_in_view(
+src/flext_infra/_utilities/_semantic_cutover/contracts.py:347: in _plan_contract_rules_in_view
+    return cls._plan_bound_contract_rules(workspace, sources, rules, options)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/contracts.py:380: in _plan_bound_contract_rules
+    working, applied, owned_modules = cls._apply_contract_rules(
+src/flext_infra/_utilities/_semantic_cutover/contracts.py:510: in _apply_contract_rules
+    cls._contract_rule_members(
+src/flext_infra/_utilities/_semantic_cutover/contracts.py:793: in _contract_rule_members
+    checker(context[1]),
+    ^^^^^^^^^^^^^^^^^^^
+src/flext_infra/services/mod.py:93: in model_envelope_diagnostics
+    .preview_sources(
+src/flext_infra/codegen/staged_package.py:112: in preview_sources
+    validator(
+src/flext_infra/services/mod.py:79: in inspect
+    raise RuntimeError(message or result.raw_output)
+E   RuntimeError: pyrefly exited with code 1: /home/marlonsc/tmp/pytest-of-marlonsc/pytest-13625/popen-gw0/test_field_metadata_preserves_0/flext-grpc/.venv/bin/python: No module named pyrefly
+------------------------------------------------ Captured stdout setup -------------------------------------------------
+INFO: rope: opening workspace at /home/marlonsc/tmp/pytest-of-marlonsc/pytest-13625/popen-gw0/test_field_metadata_preserves_0/flext-grpc
+INFO: rope: workspace ready in 0.02s
+------------------------------------------------- Captured stdout call -------------------------------------------------
+INFO: mod: model-envelope checker root=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-13625/popen-gw0/test_field_metadata_preserves_0/flext-grpc workspace=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-13625/popen-gw0/test_field_metadata_preserves_0/flext-grpc projects=('flext-grpc',)
+INFO: stage=source-preview-plan state=start
+INFO: stage=source-preview-plan state=end inputs=9
+INFO: stage=source-preview-materialize state=start
+INFO: stage=source-preview-materialize state=end
+___________ TestsFlextInfraUtilityFacadeProjection.test_initializer_retires_exports_moved_into_class_owners ____________
+[gw1] linux -- Python 3.13.17 /home/marlonsc/flext-wip-flext-0in0k.32/.venv/bin/python
+tests/unit/codegen/_utility_facade_projection/owner_publication.py:119: in test_initializer_retires_exports_moved_into_class_owners
+    tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/utilities_codegen.py:462: in materialize_lazy_init
+    service.plan_files(),
+    ^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/codegen/lazy_init.py:242: in plan_files
+    root: FlextInfraUtilitiesRopeAnalysisWorkspace.index_rope_workspace(
+src/flext_infra/_utilities/_rope/_analysis/rope_analysis_workspace.py:482: in index_rope_workspace
+    listing = tuple(
+src/flext_infra/_utilities/_rope/_analysis/rope_analysis_workspace.py:497: in <genexpr>
+    for path in FlextInfraUtilitiesWorkspaceSnapshot.workspace_python_files(
+src/flext_infra/_utilities/workspace_snapshot.py:446: in workspace_python_files
+    for path in FlextInfraUtilitiesProjectDiscovery.discover_python_files(
+src/flext_infra/_utilities/project_discovery.py:655: in discover_python_files
+    for path in cls._walk_python_files(
+src/flext_infra/_utilities/project_discovery.py:728: in _walk_python_files
+    source_paths = FlextInfraUtilitiesGit.git_source_scope_paths(directory)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_git/scope.py:321: in git_source_scope_paths
+    root = cls.git_repo_root(str(scope_root))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_git/scope.py:98: in git_repo_root
+    opened = cls._open_repo(resolved_scope)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_git/repo.py:285: in _open_repo
+    repo = Repo(resolved, search_parent_directories=True)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/git/repo/base.py:388: in __init__
+    self._bare = self.config_reader("repository").getboolean("core", "bare")
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/git/config.py:111: in assure_data_present
+    return func(self, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/mise/installs/python/3.13.17/lib/python3.13/configparser.py:868: in getboolean
+    return self._get_conv(section, option, self._convert_to_boolean,
+../../.local/share/mise/installs/python/3.13.17/lib/python3.13/configparser.py:848: in _get_conv
+    return self._get(section, conv, option, raw=raw, vars=vars,
+../../.local/share/mise/installs/python/3.13.17/lib/python3.13/configparser.py:843: in _get
+    return conv(self.get(section, option, **kwargs))
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/git/config.py:111: in assure_data_present
+    return func(self, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/mise/installs/python/3.13.17/lib/python3.13/configparser.py:821: in get
+    d = self._unify_values(section, vars)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/mise/installs/python/3.13.17/lib/python3.13/configparser.py:1194: in _unify_values
+    sectiondict = self._sections[section]
+                  ^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/git/config.py:243: in __getitem__
+    return super().__getitem__(self._key(key))[-1]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: Timeout (>2.0s) from pytest-timeout.
+------------------------------------------------- Captured stdout call -------------------------------------------------
+INFO: stage=lazy-init state=start root=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-13625/popen-gw1/test_initializer_retires_expor0/flext-test-project
+INFO: stage=lazy-init state=end root=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-13625/popen-gw1/test_initializer_retires_expor0/flext-test-project elapsed=1.300s files=2 effects=2
+DEBUG: file_changes: verify pid=1100057 observed=2 lock=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-13625/popen-gw1/test_initializer_retires_expor0/flext-test-project/.git/flext-infra.lock
+DEBUG: file_changes: publish pid=1100057 path=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-13625/popen-gw1/test_initializer_retires_expor0/flext-test-project/src/flext_test_project/__init__.py before_inode=1330355933 before_bytes=0 desired_bytes=376
+DEBUG: file_changes: publish pid=1100057 path=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-13625/popen-gw1/test_initializer_retires_expor0/flext-test-project/src/flext_test_project/services/__init__.py before_inode=1330355937 before_bytes=0 desired_bytes=536
+INFO: stage=lazy-init state=start root=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-13625/popen-gw1/test_initializer_retires_expor0/flext-test-project
++++++++++++++++++++++++++++++++++++++++++++++++++++++++ Timeout ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Stack of flext-async-log-writer (140164437370560) ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.17/lib/python3.13/threading.py", line 1015, in _bootstrap
+    self._bootstrap_inner()
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.17/lib/python3.13/threading.py", line 1044, in _bootstrap_inner
+    self.run()
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.17/lib/python3.13/threading.py", line 995, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/marlonsc/flext-wip-flext-0in0k.32/flext-core/src/flext_core/_utilities/_logging/async_writer.py", line 138, in _worker
+    job = self.queue.get(
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.17/lib/python3.13/queue.py", line 210, in get
+    self.not_empty.wait(remaining)
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.17/lib/python3.13/threading.py", line 363, in wait
+    gotit = waiter.acquire(True, timeout)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Stack of <unknown> (140164791793344) ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  File "/home/marlonsc/flext-wip-flext-0in0k.32/.venv/lib/python3.13/site-packages/execnet/gateway_base.py", line 411, in _perform_spawn
+    reply.run()
+  File "/home/marlonsc/flext-wip-flext-0in0k.32/.venv/lib/python3.13/site-packages/execnet/gateway_base.py", line 341, in run
+    self._result = func(*args, **kwargs)
+  File "/home/marlonsc/flext-wip-flext-0in0k.32/.venv/lib/python3.13/site-packages/execnet/gateway_base.py", line 1160, in _thread_receiver
+    msg = Message.from_io(io)
+  File "/home/marlonsc/flext-wip-flext-0in0k.32/.venv/lib/python3.13/site-packages/execnet/gateway_base.py", line 567, in from_io
+    header = io.read(9)  # type 1, channel 4, payload 4
+  File "/home/marlonsc/flext-wip-flext-0in0k.32/.venv/lib/python3.13/site-packages/execnet/gateway_base.py", line 534, in read
+    data = self._read(numbytes - len(buf))
++++++++++++++++++++++++++++++++++++++++++++++++++++++++ Timeout ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+- generated xml file: /home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/.reports/tests/20261118T001809.285503Z-1086625/junit.xml -
+- generated report log file: /home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/.reports/tests/20261118T001809.285503Z-1086625/events.jsonl -
+--------------------------------------------------- flext slow tests ---------------------------------------------------
+no test near the ordinary or slow limit
+================================================= slowest 25 durations =================================================
+4.88s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-canonical]
+4.53s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-canonical]
+3.81s setup    tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-import pydantic as m-m.Field(discriminator='kind')-Payload | OtherPayload-model]
+3.61s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-renamed]
+3.54s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-canonical]
+3.18s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-renamed]
+3.15s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-canonical]
+2.32s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-duplicate]
+2.01s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_initializer_retires_exports_moved_into_class_owners
+
+(16 durations < 2s hidden.)
+=============================================== short test summary info ================================================
+FAILED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source0-rope_contract_consumer0]
+FAILED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_initializer_retires_exports_moved_into_class_owners
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 2 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! xdist.dsession.Interrupted: stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+======================================= 2 failed, 59 passed in 71.28s (0:01:11) ========================================

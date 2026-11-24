@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="8.138" timestamp="2026-11-18T20:36:21.218418-03:00" hostname="tungs"><testcase classname="tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection" name="test_explicit_class_bindings_preserve_authored_upstream_contract[True-p]" time="2.502"><failure message="AssertionError: Traceback (most recent call last):&#10;  File &quot;&lt;string&gt;&quot;, line 1, in &lt;module&gt;&#10;    from flext_test_project.protocols import p as facade&#10;  File &quot;/home/marlonsc/tmp/pytest-of-marlonsc/pytest-14044/popen-gw1/test_explicit_class_bindings_p0/flext-test-project/src/flext_test_project/protocols.py&quot;, line 4, in &lt;module&gt;&#10;    from flext_test_project._protocols import SampleFacadeSchema&#10;[+1 more line; full report in element text]">tests/unit/codegen/_utility_facade_projection/owner_publication.py:362: in test_explicit_class_bindings_preserve_authored_upstream_contract
+    tm.that(u.Cli.process_succeeded(result.outcome), eq=True, msg=result.stderr)
+../flext-tests/src/flext_tests/_utilities/_matchers/that.py:706: in that
+    raise AssertionError(
+E   AssertionError: Traceback (most recent call last):
+E     File "&lt;string&gt;", line 1, in &lt;module&gt;
+E       from flext_test_project.protocols import p as facade
+E     File "/home/marlonsc/tmp/pytest-of-marlonsc/pytest-14044/popen-gw1/test_explicit_class_bindings_p0/flext-test-project/src/flext_test_project/protocols.py", line 4, in &lt;module&gt;
+E       from flext_test_project._protocols import SampleFacadeSchema
+E   ImportError: cannot import name 'SampleFacadeSchema' from 'flext_test_project._protocols' (/home/marlonsc/tmp/pytest-of-marlonsc/pytest-14044/popen-gw1/test_explicit_class_bindings_p0/flext-test-project/src/flext_test_project/_protocols/__init__.py)</failure></testcase></testsuite></testsuites>

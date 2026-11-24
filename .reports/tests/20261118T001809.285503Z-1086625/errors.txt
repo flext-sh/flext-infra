@@ -1,0 +1,81 @@
+=== FAILURE: tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source0-rope_contract_consumer0] ===
+RuntimeError: pyrefly exited with code 1: /home/marlonsc/tmp/pytest-of-marlonsc/pytest-13625/popen-gw0/test_field_metadata_preserves_0/flext-grpc/.venv/bin/python: No module named pyrefly
+tests/unit/codemod/test_rope_contract_bindings.py:445: in test_field_metadata_preserves_native_validation_and_schema
+    edits = tm.ok(u.Infra.plan_contract_rules(workspace, {path: source}, rules))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/contracts.py:328: in plan_contract_rules
+    return cls._plan_contract_rules_in_view(
+src/flext_infra/_utilities/_semantic_cutover/contracts.py:347: in _plan_contract_rules_in_view
+    return cls._plan_bound_contract_rules(workspace, sources, rules, options)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/contracts.py:380: in _plan_bound_contract_rules
+    working, applied, owned_modules = cls._apply_contract_rules(
+src/flext_infra/_utilities/_semantic_cutover/contracts.py:510: in _apply_contract_rules
+    cls._contract_rule_members(
+src/flext_infra/_utilities/_semantic_cutover/contracts.py:793: in _contract_rule_members
+    checker(context[1]),
+    ^^^^^^^^^^^^^^^^^^^
+src/flext_infra/services/mod.py:93: in model_envelope_diagnostics
+    .preview_sources(
+src/flext_infra/codegen/staged_package.py:112: in preview_sources
+    validator(
+src/flext_infra/services/mod.py:79: in inspect
+    raise RuntimeError(message or result.raw_output)
+E   RuntimeError: pyrefly exited with code 1: /home/marlonsc/tmp/pytest-of-marlonsc/pytest-13625/popen-gw0/test_field_metadata_preserves_0/flext-grpc/.venv/bin/python: No module named pyrefly
+
+=== FAILURE: tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_initializer_retires_exports_moved_into_class_owners ===
+Failed: Timeout (>2.0s) from pytest-timeout.
+tests/unit/codegen/_utility_facade_projection/owner_publication.py:119: in test_initializer_retires_exports_moved_into_class_owners
+    tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/utilities_codegen.py:462: in materialize_lazy_init
+    service.plan_files(),
+    ^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/codegen/lazy_init.py:242: in plan_files
+    root: FlextInfraUtilitiesRopeAnalysisWorkspace.index_rope_workspace(
+src/flext_infra/_utilities/_rope/_analysis/rope_analysis_workspace.py:482: in index_rope_workspace
+    listing = tuple(
+src/flext_infra/_utilities/_rope/_analysis/rope_analysis_workspace.py:497: in <genexpr>
+    for path in FlextInfraUtilitiesWorkspaceSnapshot.workspace_python_files(
+src/flext_infra/_utilities/workspace_snapshot.py:446: in workspace_python_files
+    for path in FlextInfraUtilitiesProjectDiscovery.discover_python_files(
+src/flext_infra/_utilities/project_discovery.py:655: in discover_python_files
+    for path in cls._walk_python_files(
+src/flext_infra/_utilities/project_discovery.py:728: in _walk_python_files
+    source_paths = FlextInfraUtilitiesGit.git_source_scope_paths(directory)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_git/scope.py:321: in git_source_scope_paths
+    root = cls.git_repo_root(str(scope_root))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_git/scope.py:98: in git_repo_root
+    opened = cls._open_repo(resolved_scope)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_git/repo.py:285: in _open_repo
+    repo = Repo(resolved, search_parent_directories=True)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/git/repo/base.py:388: in __init__
+    self._bare = self.config_reader("repository").getboolean("core", "bare")
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/git/config.py:111: in assure_data_present
+    return func(self, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/mise/installs/python/3.13.17/lib/python3.13/configparser.py:868: in getboolean
+    return self._get_conv(section, option, self._convert_to_boolean,
+../../.local/share/mise/installs/python/3.13.17/lib/python3.13/configparser.py:848: in _get_conv
+    return self._get(section, conv, option, raw=raw, vars=vars,
+../../.local/share/mise/installs/python/3.13.17/lib/python3.13/configparser.py:843: in _get
+    return conv(self.get(section, option, **kwargs))
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/git/config.py:111: in assure_data_present
+    return func(self, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/mise/installs/python/3.13.17/lib/python3.13/configparser.py:821: in get
+    d = self._unify_values(section, vars)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/mise/installs/python/3.13.17/lib/python3.13/configparser.py:1194: in _unify_values
+    sectiondict = self._sections[section]
+                  ^^^^^^^^^^^^^^^^^^^^^^^
+../.venv/lib/python3.13/site-packages/git/config.py:243: in __getitem__
+    return super().__getitem__(self._key(key))[-1]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: Timeout (>2.0s) from pytest-timeout.

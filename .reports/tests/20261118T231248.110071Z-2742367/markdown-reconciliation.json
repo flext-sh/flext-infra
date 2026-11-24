@@ -1,0 +1,53 @@
+{
+  "eligible": [],
+  "selected": [],
+  "deselected": [],
+  "diagnostics": {
+    "failed_count": 1,
+    "error_count": 0,
+    "warning_count": 0,
+    "skipped_count": 0,
+    "connectivity_skip_cases": [],
+    "collection_failed_count": 0,
+    "collection_skipped_count": 0,
+    "collection_failed_cases": [],
+    "collection_skip_cases": [],
+    "reported_node_ids": [
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_published_import_width_preserves_mro_and_lazy_exports[True-16]"
+    ],
+    "phase_outcomes": [
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_published_import_width_preserves_mro_and_lazy_exports[True-16]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_published_import_width_preserves_mro_and_lazy_exports[True-16]",
+        "phase": "call",
+        "outcome": "failed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_published_import_width_preserves_mro_and_lazy_exports[True-16]",
+        "phase": "teardown",
+        "outcome": "passed"
+      }
+    ],
+    "markdown_attempts": [],
+    "markdown_items": [],
+    "failed_cases": [
+      "tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_published_import_width_preserves_mro_and_lazy_exports[True-16]"
+    ],
+    "error_traces": [
+      "=== FAILURE: tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_published_import_width_preserves_mro_and_lazy_exports[True-16] ===\nAssertionError: Traceback (most recent call last):\n  File \"<string>\", line 41, in <module>\n    tm.that(max(map(len, state.content.decode().splitlines())), lte=88)\n    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/marlonsc/flext-wip-flext-0in0k.32/flext-tests/src/flext_tests/_utilities/_matchers/that.py\", line 737, in that\n    FlextTestsUtilitiesMatchersTypeguards.assert_scalar_match(\n    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^\n[+9 more lines; full report in element text]\ntests/unit/codegen/_utility_facade_projection/owner_publication.py:758: in test_published_import_width_preserves_mro_and_lazy_exports\n    tm.that(u.Cli.process_succeeded(result.outcome), eq=True, msg=result.stderr)\n../flext-tests/src/flext_tests/_utilities/_matchers/that.py:706: in that\n    raise AssertionError(\nE   AssertionError: Traceback (most recent call last):\nE     File \"<string>\", line 41, in <module>\nE       tm.that(max(map(len, state.content.decode().splitlines())), lte=88)\nE       ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE     File \"/home/marlonsc/flext-wip-flext-0in0k.32/flext-tests/src/flext_tests/_utilities/_matchers/that.py\", line 737, in that\nE       FlextTestsUtilitiesMatchersTypeguards.assert_scalar_match(\nE       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^\nE           subject_payload,\nE           ^^^^^^^^^^^^^^^^\nE           params,\nE           ^^^^^^^\nE       )\nE       ^\nE     File \"/home/marlonsc/flext-wip-flext-0in0k.32/flext-tests/src/flext_tests/_utilities/_matchers/typeguards.py\", line 115, in assert_scalar_match\nE       raise AssertionError(message)\nE   AssertionError: Value 92 did not satisfy constraints"
+    ],
+    "warning_lines": [],
+    "skip_cases": [],
+    "slow_entries": [
+      "6.790000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_published_import_width_preserves_mro_and_lazy_exports[True-16]"
+    ]
+  },
+  "cache_hit": false,
+  "violations": [
+    "selected node IDs differ from executed node IDs"
+  ]
+}

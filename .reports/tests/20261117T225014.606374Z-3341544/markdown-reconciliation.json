@@ -1,0 +1,1177 @@
+{
+  "eligible": [],
+  "selected": [],
+  "deselected": [],
+  "diagnostics": {
+    "failed_count": 2,
+    "error_count": 0,
+    "warning_count": 0,
+    "skipped_count": 0,
+    "connectivity_skip_cases": [],
+    "collection_failed_count": 0,
+    "collection_skipped_count": 0,
+    "collection_failed_cases": [],
+    "collection_skip_cases": [],
+    "reported_node_ids": [
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-c]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-m]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-p]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-t]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-u]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-True-c]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-annotation]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-canonical]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-duplicate]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-foreign]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-renamed]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-annotation]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-canonical]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-duplicate]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-foreign]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-renamed]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-annotation]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-canonical]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-duplicate]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-foreign]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-renamed]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-annotation]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-canonical]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-duplicate]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-foreign]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-renamed]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_initializer_retires_exports_moved_into_class_owners",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[None-assert (retained := predicate(value)) is not None, ('one', 'two')]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[None-assert (retained := predicate(value)) is not None, diagnostic()]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[None-assert (retained := predicate(value)) is not None]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[None-assert 0 < len((retained := predicate(value)) or '') < 100]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[None-assert isinstance((retained := predicate(value)), str), diagnostic()]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[None-statement5]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[None-statement6]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-assert (  # outside predicate capture\\n    True\\n)\\n]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-assert True  # retained trailing comment\\n]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-assert True, (  # outside message capture\\n    'message'\\n)\\n]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-assert True; effect()\\n]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-def check(): assert True\\n]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-def check():\\n    assert '''first\\nsecond'''\\n]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-def check():\\n    assert 'first\\x0bsecond'\\n]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-def check():\\n    assert True, '''first\\nsecond'''\\n]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-effect(); assert True\\n]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-if True: \\\\\\n    assert True\\n]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-if True: assert True; effect()\\n]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-if True: assert True\\n]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[None-AssertionError = ValueError\\nassert True\\n]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[None-assert True\\nAssertionError = ValueError\\n]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[None-def check():\\n    AssertionError = ValueError\\n    assert True\\n]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[None-def check(AssertionError):\\n    assert True\\n]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[None-def outer(AssertionError):\\n    def check():\\n        assert True\\n    return check\\n]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[None-from builtins import AssertionError\\nassert True\\n]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[None-from builtins import ValueError as AssertionError\\nassert True\\n]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source0-rope_contract_consumer0]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_imported_type_and_metadata_aliases_protect_discriminator[None]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-from pydantic import Field as Tag-Tag(discriminator='kind')-Payload | OtherPayload-function]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-from pydantic import Field as Tag-Tag(discriminator='kind')-Payload | OtherPayload-model]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-import pydantic as m-m.Discriminator('kind')-Payload | OtherPayload-function]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-import pydantic as m-m.Discriminator('kind')-Payload | OtherPayload-model]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-import pydantic as m-m.Field(discriminator='kind')-'Payload | OtherPayload'-function]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-import pydantic as m-m.Field(discriminator='kind')-'Payload | OtherPayload'-model]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-import pydantic as m-m.Field(discriminator='kind')-Payload | OtherPayload-function]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-import pydantic as m-m.Field(discriminator='kind')-Payload | OtherPayload-model]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-import pydantic-pydantic.Field(discriminator='kind')-Payload | OtherPayload-function]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-import pydantic-pydantic.Field(discriminator='kind')-Payload | OtherPayload-model]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-imports5-Tag(discriminator='kind')-Payload | OtherPayload-function]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-imports5-Tag(discriminator='kind')-Payload | OtherPayload-model]"
+    ],
+    "phase_outcomes": [
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-c]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-c]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-c]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-m]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-m]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-m]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-p]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-p]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-p]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-t]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-t]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-t]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-u]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-u]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-u]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-True-c]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-True-c]",
+        "phase": "call",
+        "outcome": "failed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-True-c]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-annotation]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-annotation]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-annotation]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-canonical]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-canonical]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-canonical]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-duplicate]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-duplicate]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-duplicate]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-foreign]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-foreign]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-foreign]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-renamed]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-renamed]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-renamed]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-annotation]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-annotation]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-annotation]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-canonical]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-canonical]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-canonical]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-duplicate]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-duplicate]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-duplicate]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-foreign]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-foreign]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-foreign]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-renamed]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-renamed]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-renamed]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-annotation]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-annotation]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-annotation]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-canonical]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-canonical]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-canonical]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-duplicate]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-duplicate]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-duplicate]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-foreign]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-foreign]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-foreign]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-renamed]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-renamed]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-renamed]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-annotation]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-annotation]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-annotation]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-canonical]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-canonical]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-canonical]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-duplicate]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-duplicate]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-duplicate]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-foreign]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-foreign]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-foreign]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-renamed]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-renamed]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-renamed]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_initializer_retires_exports_moved_into_class_owners",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_initializer_retires_exports_moved_into_class_owners",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_initializer_retires_exports_moved_into_class_owners",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[None-assert (retained := predicate(value)) is not None, ('one', 'two')]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[None-assert (retained := predicate(value)) is not None, ('one', 'two')]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[None-assert (retained := predicate(value)) is not None, ('one', 'two')]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[None-assert (retained := predicate(value)) is not None, diagnostic()]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[None-assert (retained := predicate(value)) is not None, diagnostic()]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[None-assert (retained := predicate(value)) is not None, diagnostic()]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[None-assert (retained := predicate(value)) is not None]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[None-assert (retained := predicate(value)) is not None]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[None-assert (retained := predicate(value)) is not None]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[None-assert 0 < len((retained := predicate(value)) or '') < 100]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[None-assert 0 < len((retained := predicate(value)) or '') < 100]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[None-assert 0 < len((retained := predicate(value)) or '') < 100]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[None-assert isinstance((retained := predicate(value)), str), diagnostic()]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[None-assert isinstance((retained := predicate(value)), str), diagnostic()]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[None-assert isinstance((retained := predicate(value)), str), diagnostic()]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[None-statement5]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[None-statement5]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[None-statement5]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[None-statement6]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[None-statement6]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[None-statement6]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-assert (  # outside predicate capture\\n    True\\n)\\n]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-assert (  # outside predicate capture\\n    True\\n)\\n]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-assert (  # outside predicate capture\\n    True\\n)\\n]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-assert True  # retained trailing comment\\n]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-assert True  # retained trailing comment\\n]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-assert True  # retained trailing comment\\n]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-assert True, (  # outside message capture\\n    'message'\\n)\\n]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-assert True, (  # outside message capture\\n    'message'\\n)\\n]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-assert True, (  # outside message capture\\n    'message'\\n)\\n]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-assert True; effect()\\n]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-assert True; effect()\\n]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-assert True; effect()\\n]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-def check(): assert True\\n]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-def check(): assert True\\n]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-def check(): assert True\\n]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-def check():\\n    assert '''first\\nsecond'''\\n]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-def check():\\n    assert '''first\\nsecond'''\\n]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-def check():\\n    assert '''first\\nsecond'''\\n]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-def check():\\n    assert 'first\\x0bsecond'\\n]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-def check():\\n    assert 'first\\x0bsecond'\\n]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-def check():\\n    assert 'first\\x0bsecond'\\n]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-def check():\\n    assert True, '''first\\nsecond'''\\n]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-def check():\\n    assert True, '''first\\nsecond'''\\n]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-def check():\\n    assert True, '''first\\nsecond'''\\n]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-effect(); assert True\\n]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-effect(); assert True\\n]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-effect(); assert True\\n]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-if True: \\\\\\n    assert True\\n]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-if True: \\\\\\n    assert True\\n]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-if True: \\\\\\n    assert True\\n]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-if True: assert True; effect()\\n]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-if True: assert True; effect()\\n]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-if True: assert True; effect()\\n]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-if True: assert True\\n]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-if True: assert True\\n]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-if True: assert True\\n]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[None-AssertionError = ValueError\\nassert True\\n]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[None-AssertionError = ValueError\\nassert True\\n]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[None-AssertionError = ValueError\\nassert True\\n]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[None-assert True\\nAssertionError = ValueError\\n]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[None-assert True\\nAssertionError = ValueError\\n]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[None-assert True\\nAssertionError = ValueError\\n]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[None-def check():\\n    AssertionError = ValueError\\n    assert True\\n]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[None-def check():\\n    AssertionError = ValueError\\n    assert True\\n]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[None-def check():\\n    AssertionError = ValueError\\n    assert True\\n]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[None-def check(AssertionError):\\n    assert True\\n]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[None-def check(AssertionError):\\n    assert True\\n]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[None-def check(AssertionError):\\n    assert True\\n]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[None-def outer(AssertionError):\\n    def check():\\n        assert True\\n    return check\\n]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[None-def outer(AssertionError):\\n    def check():\\n        assert True\\n    return check\\n]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[None-def outer(AssertionError):\\n    def check():\\n        assert True\\n    return check\\n]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[None-from builtins import AssertionError\\nassert True\\n]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[None-from builtins import AssertionError\\nassert True\\n]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[None-from builtins import AssertionError\\nassert True\\n]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[None-from builtins import ValueError as AssertionError\\nassert True\\n]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[None-from builtins import ValueError as AssertionError\\nassert True\\n]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[None-from builtins import ValueError as AssertionError\\nassert True\\n]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source0-rope_contract_consumer0]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source0-rope_contract_consumer0]",
+        "phase": "call",
+        "outcome": "failed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source0-rope_contract_consumer0]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_imported_type_and_metadata_aliases_protect_discriminator[None]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_imported_type_and_metadata_aliases_protect_discriminator[None]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_imported_type_and_metadata_aliases_protect_discriminator[None]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-from pydantic import Field as Tag-Tag(discriminator='kind')-Payload | OtherPayload-function]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-from pydantic import Field as Tag-Tag(discriminator='kind')-Payload | OtherPayload-function]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-from pydantic import Field as Tag-Tag(discriminator='kind')-Payload | OtherPayload-function]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-from pydantic import Field as Tag-Tag(discriminator='kind')-Payload | OtherPayload-model]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-from pydantic import Field as Tag-Tag(discriminator='kind')-Payload | OtherPayload-model]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-from pydantic import Field as Tag-Tag(discriminator='kind')-Payload | OtherPayload-model]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-import pydantic as m-m.Discriminator('kind')-Payload | OtherPayload-function]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-import pydantic as m-m.Discriminator('kind')-Payload | OtherPayload-function]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-import pydantic as m-m.Discriminator('kind')-Payload | OtherPayload-function]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-import pydantic as m-m.Discriminator('kind')-Payload | OtherPayload-model]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-import pydantic as m-m.Discriminator('kind')-Payload | OtherPayload-model]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-import pydantic as m-m.Discriminator('kind')-Payload | OtherPayload-model]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-import pydantic as m-m.Field(discriminator='kind')-'Payload | OtherPayload'-function]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-import pydantic as m-m.Field(discriminator='kind')-'Payload | OtherPayload'-function]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-import pydantic as m-m.Field(discriminator='kind')-'Payload | OtherPayload'-function]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-import pydantic as m-m.Field(discriminator='kind')-'Payload | OtherPayload'-model]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-import pydantic as m-m.Field(discriminator='kind')-'Payload | OtherPayload'-model]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-import pydantic as m-m.Field(discriminator='kind')-'Payload | OtherPayload'-model]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-import pydantic as m-m.Field(discriminator='kind')-Payload | OtherPayload-function]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-import pydantic as m-m.Field(discriminator='kind')-Payload | OtherPayload-function]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-import pydantic as m-m.Field(discriminator='kind')-Payload | OtherPayload-function]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-import pydantic as m-m.Field(discriminator='kind')-Payload | OtherPayload-model]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-import pydantic as m-m.Field(discriminator='kind')-Payload | OtherPayload-model]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-import pydantic as m-m.Field(discriminator='kind')-Payload | OtherPayload-model]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-import pydantic-pydantic.Field(discriminator='kind')-Payload | OtherPayload-function]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-import pydantic-pydantic.Field(discriminator='kind')-Payload | OtherPayload-function]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-import pydantic-pydantic.Field(discriminator='kind')-Payload | OtherPayload-function]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-import pydantic-pydantic.Field(discriminator='kind')-Payload | OtherPayload-model]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-import pydantic-pydantic.Field(discriminator='kind')-Payload | OtherPayload-model]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-import pydantic-pydantic.Field(discriminator='kind')-Payload | OtherPayload-model]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-imports5-Tag(discriminator='kind')-Payload | OtherPayload-function]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-imports5-Tag(discriminator='kind')-Payload | OtherPayload-function]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-imports5-Tag(discriminator='kind')-Payload | OtherPayload-function]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-imports5-Tag(discriminator='kind')-Payload | OtherPayload-model]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-imports5-Tag(discriminator='kind')-Payload | OtherPayload-model]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-imports5-Tag(discriminator='kind')-Payload | OtherPayload-model]",
+        "phase": "teardown",
+        "outcome": "passed"
+      }
+    ],
+    "markdown_attempts": [],
+    "markdown_items": [],
+    "failed_cases": [
+      "tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source0-rope_contract_consumer0]",
+      "tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-True-c]"
+    ],
+    "error_traces": [
+      "=== FAILURE: tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source0-rope_contract_consumer0] ===\nRuntimeError: Python source discovery requires a Git checkout: /home/marlonsc/tmp/pytest-of-marlonsc/pytest-13570/popen-gw0/test_field_metadata_preserves_0/flext-grpc/.git/flext-source-preview-1ggbjisn\ntests/unit/codemod/test_rope_contract_bindings.py:445: in test_field_metadata_preserves_native_validation_and_schema\n    edits = tm.ok(u.Infra.plan_contract_rules(workspace, {path: source}, rules))\n                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nsrc/flext_infra/_utilities/_semantic_cutover/contracts.py:328: in plan_contract_rules\n    return cls._plan_contract_rules_in_view(\nsrc/flext_infra/_utilities/_semantic_cutover/contracts.py:347: in _plan_contract_rules_in_view\n    return cls._plan_bound_contract_rules(workspace, sources, rules, options)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nsrc/flext_infra/_utilities/_semantic_cutover/contracts.py:380: in _plan_bound_contract_rules\n    working, applied, owned_modules = cls._apply_contract_rules(\nsrc/flext_infra/_utilities/_semantic_cutover/contracts.py:510: in _apply_contract_rules\n    cls._contract_rule_members(\nsrc/flext_infra/_utilities/_semantic_cutover/contracts.py:793: in _contract_rule_members\n    checker(context[1]),\n    ^^^^^^^^^^^^^^^^^^^\nsrc/flext_infra/services/mod.py:93: in model_envelope_diagnostics\n    .preview_sources(\nsrc/flext_infra/codegen/staged_package.py:112: in preview_sources\n    validator(\nsrc/flext_infra/services/mod.py:69: in inspect\n    result = FlextInfraGatesPyrefly(repository_root=root).check(\nsrc/flext_infra/gates/base_gate.py:136: in check\n    check_dirs = self._get_check_dirs(project_dir, ctx)\n                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nsrc/flext_infra/gates/pyrefly.py:79: in _get_check_dirs\n    return self._python_targets(project_dir)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nsrc/flext_infra/gates/base_gate.py:75: in _python_targets\n    return u.Infra.discover_python_targets(\nsrc/flext_infra/_utilities/project_discovery.py:384: in discover_python_targets\n    *cls.discover_python_dirs(\nsrc/flext_infra/_utilities/project_discovery.py:313: in discover_python_dirs\n    raise RuntimeError(msg)\nE   RuntimeError: Python source discovery requires a Git checkout: /home/marlonsc/tmp/pytest-of-marlonsc/pytest-13570/popen-gw0/test_field_metadata_preserves_0/flext-grpc/.git/flext-source-preview-1ggbjisn",
+      "=== FAILURE: tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-True-c] ===\nAssertionError: Expected success but got failure: Facade composition declares 'value' in unrelated parts ['OwnerBase', 'OwnerVocabulary']; rename one of them or let one part extend the other\ntests/unit/codegen/_utility_facade_projection/owner_publication.py:208: in test_explicit_owner_classes_preserve_publication_identity\n    rendered = tm.ok(\n../flext-tests/src/flext_tests/_utilities/_matchers/result.py:270: in ok\n    original = FlextTestsUtilitiesResult.assert_success(\n../flext-tests/src/flext_tests/_utilities/result.py:62: in assert_success\n    raise AssertionError(\nE   AssertionError: Expected success but got failure: Facade composition declares 'value' in unrelated parts ['OwnerBase', 'OwnerVocabulary']; rename one of them or let one part extend the other"
+    ],
+    "warning_lines": [],
+    "skip_cases": [],
+    "slow_entries": [
+      "9.546000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-c]",
+      "9.246000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-p]",
+      "5.667000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-t]",
+      "5.504000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-m]",
+      "5.381000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-u]",
+      "4.537000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-canonical]",
+      "4.015000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-canonical]",
+      "4.008000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-renamed]",
+      "3.801000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-canonical]",
+      "3.504000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-canonical]",
+      "3.244000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-import pydantic as m-m.Field(discriminator='kind')-Payload | OtherPayload-model]",
+      "2.695000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-True-c]",
+      "2.576000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-foreign]",
+      "2.558000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-duplicate]",
+      "2.210000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-renamed]",
+      "2.054000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-annotation]",
+      "1.895000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_initializer_retires_exports_moved_into_class_owners",
+      "1.837000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-annotation]",
+      "1.589000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-annotation]",
+      "1.587000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-renamed]",
+      "1.480000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-annotation]",
+      "1.395000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[None-assert True\\nAssertionError = ValueError\\n]",
+      "1.338000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-duplicate]",
+      "1.284000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-renamed]",
+      "1.242000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source0-rope_contract_consumer0]",
+      "1.194000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-foreign]",
+      "1.177000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-duplicate]",
+      "1.063000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-foreign]",
+      "1.056000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-duplicate]",
+      "0.893000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-foreign]",
+      "0.685000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_imported_type_and_metadata_aliases_protect_discriminator[None]",
+      "0.621000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[None-statement5]",
+      "0.523000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[None-assert (retained := predicate(value)) is not None]",
+      "0.420000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[None-assert (retained := predicate(value)) is not None, diagnostic()]",
+      "0.411000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[None-statement6]",
+      "0.409000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-import pydantic as m-m.Field(discriminator='kind')-'Payload | OtherPayload'-model]",
+      "0.403000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-import pydantic as m-m.Field(discriminator='kind')-Payload | OtherPayload-function]",
+      "0.395000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-imports5-Tag(discriminator='kind')-Payload | OtherPayload-function]",
+      "0.395000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-import pydantic-pydantic.Field(discriminator='kind')-Payload | OtherPayload-model]",
+      "0.386000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[None-assert isinstance((retained := predicate(value)), str), diagnostic()]",
+      "0.384000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[None-assert 0 < len((retained := predicate(value)) or '') < 100]",
+      "0.382000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-imports5-Tag(discriminator='kind')-Payload | OtherPayload-model]",
+      "0.373000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-import pydantic as m-m.Field(discriminator='kind')-'Payload | OtherPayload'-function]",
+      "0.369000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-from pydantic import Field as Tag-Tag(discriminator='kind')-Payload | OtherPayload-function]",
+      "0.367000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[None-assert (retained := predicate(value)) is not None, ('one', 'two')]",
+      "0.353000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-import pydantic as m-m.Discriminator('kind')-Payload | OtherPayload-function]",
+      "0.352000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-import pydantic-pydantic.Field(discriminator='kind')-Payload | OtherPayload-function]",
+      "0.346000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-from pydantic import Field as Tag-Tag(discriminator='kind')-Payload | OtherPayload-model]",
+      "0.344000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[None-import pydantic as m-m.Discriminator('kind')-Payload | OtherPayload-model]",
+      "0.311000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[None-from builtins import AssertionError\\nassert True\\n]",
+      "0.296000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[None-from builtins import ValueError as AssertionError\\nassert True\\n]",
+      "0.296000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-def check(): assert True\\n]",
+      "0.293000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-if True: \\\\\\n    assert True\\n]",
+      "0.285000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-effect(); assert True\\n]",
+      "0.283000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[None-AssertionError = ValueError\\nassert True\\n]",
+      "0.283000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-assert True, (  # outside message capture\\n    'message'\\n)\\n]",
+      "0.281000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-if True: assert True; effect()\\n]",
+      "0.280000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-def check():\\n    assert 'first\\x0bsecond'\\n]",
+      "0.278000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-if True: assert True\\n]",
+      "0.275000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[None-def outer(AssertionError):\\n    def check():\\n        assert True\\n    return check\\n]",
+      "0.273000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[None-def check():\\n    AssertionError = ValueError\\n    assert True\\n]",
+      "0.272000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-assert True  # retained trailing comment\\n]",
+      "0.269000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[None-def check(AssertionError):\\n    assert True\\n]",
+      "0.266000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-assert True; effect()\\n]",
+      "0.260000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-assert (  # outside predicate capture\\n    True\\n)\\n]",
+      "0.255000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-def check():\\n    assert '''first\\nsecond'''\\n]",
+      "0.253000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[None-def check():\\n    assert True, '''first\\nsecond'''\\n]"
+    ]
+  },
+  "cache_hit": false,
+  "violations": [
+    "selected node IDs differ from executed node IDs"
+  ]
+}

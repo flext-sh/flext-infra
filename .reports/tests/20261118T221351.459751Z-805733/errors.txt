@@ -1,0 +1,11 @@
+=== FAILURE: tests.unit.codemod.test_facade_base_cutover.TestsFlextInfraFacadeBaseCutover::test_runtime_self_import_still_fails_with_lazy_publication[False] ===
+AssertionError: Expected failure but got success: (SemanticMigrationEdit(file_path=PosixPath('/home/marlonsc/tmp/pytest-of-marlonsc/pytest-13918/popen-gw2/test_runtime_self_import_still0/child/src/child_pkg/models.py'), original_source='from parent_pkg import ParentDeclaredModelFacade as m\n\n\nclass ChildModels(m):\n    pass\n\n\nm = ChildModels\n', updated_source='from parent_pkg import m\n\n\nclass ChildModels(m):\n    pass\n\n\nm = ChildModels\n', retire_file=False, changes=('closed facade i...
+[truncated; full report in element text]
+tests/unit/codemod/test_facade_base_cutover.py:200: in test_runtime_self_import_still_fails_with_lazy_publication
+    tm.fail(self._plan(tmp_path, sources, child), has="cyclic facade binding")
+../flext-tests/src/flext_tests/_utilities/_matchers/result.py:67: in fail
+    err: str = FlextTestsUtilitiesResult.assert_failure(result)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../flext-tests/src/flext_tests/_utilities/result.py:34: in assert_failure
+    raise AssertionError(msg)
+E   AssertionError: Expected failure but got success: (SemanticMigrationEdit(file_path=PosixPath('/home/marlonsc/tmp/pytest-of-marlonsc/pytest-13918/popen-gw2/test_runtime_self_import_still0/child/src/child_pkg/models.py'), original_source='from parent_pkg import ParentDeclaredModelFacade as m\n\n\nclass ChildModels(m):\n    pass\n\n\nm = ChildModels\n', updated_source='from parent_pkg import m\n\n\nclass ChildModels(m):\n    pass\n\n\nm = ChildModels\n', retire_file=False, changes=('closed facade import and composition laws',)),)

@@ -1,0 +1,14 @@
+=== FAILURE: tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_rejects_owners_without_a_public_facade[False] ===
+RuntimeError: Python source discovery requires a Git checkout: /home/marlonsc/tmp/pytest-of-marlonsc/pytest-13635/popen-gw0/test_rejects_owners_without_a_0
+tests/unit/codegen/_utility_facade_projection/planning.py:778: in test_rejects_owners_without_a_public_facade
+    with u.Infra.facade_source_project(
+../../.local/share/mise/installs/python/3.13.17/lib/python3.13/contextlib.py:141: in __enter__
+    return next(self.gen)
+           ^^^^^^^^^^^^^^
+src/flext_infra/_utilities/workspace_snapshot.py:215: in facade_source_project
+    FlextInfraUtilitiesProjectDiscovery.discover_python_files(
+src/flext_infra/_utilities/project_discovery.py:655: in discover_python_files
+    for path in cls._walk_python_files(
+src/flext_infra/_utilities/project_discovery.py:738: in _walk_python_files
+    raise RuntimeError(msg)
+E   RuntimeError: Python source discovery requires a Git checkout: /home/marlonsc/tmp/pytest-of-marlonsc/pytest-13635/popen-gw0/test_rejects_owners_without_a_0

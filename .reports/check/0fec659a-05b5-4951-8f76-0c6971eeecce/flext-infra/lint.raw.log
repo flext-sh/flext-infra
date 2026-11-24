@@ -1,0 +1,21 @@
+[
+  {
+    "cell": null,
+    "code": "PLR0911",
+    "end_location": {
+      "column": 32,
+      "row": 660
+    },
+    "filename": "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/src/flext_infra/_utilities/facade_components.py",
+    "fix": null,
+    "location": {
+      "column": 9,
+      "row": 660
+    },
+    "message": "Too many return statements (7 > 6)",
+    "name": "too-many-return-statements",
+    "noqa_row": 660,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/too-many-return-statements"
+  }
+]

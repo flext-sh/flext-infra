@@ -1,0 +1,115 @@
+{
+  "eligible": [],
+  "selected": [],
+  "deselected": [],
+  "diagnostics": {
+    "failed_count": 0,
+    "error_count": 0,
+    "warning_count": 0,
+    "skipped_count": 0,
+    "connectivity_skip_cases": [],
+    "collection_failed_count": 0,
+    "collection_skipped_count": 0,
+    "collection_failed_cases": [],
+    "collection_skip_cases": [],
+    "reported_node_ids": [
+      "tests/unit/codegen/test_facade_canonical_source.py::TestsFacadeCanonicalSource::test_double_upstream_composition_keeps_the_secondary_facade",
+      "tests/unit/codegen/test_facade_canonical_source.py::TestsFacadeCanonicalSource::test_flat_parts_add_the_secondary_upstream_facade",
+      "tests/unit/codegen/test_facade_canonical_source.py::TestsFacadeCanonicalSource::test_flat_parts_move_under_the_domain_namespace",
+      "tests/unit/codegen/test_facade_canonical_source.py::TestsFacadeCanonicalSource::test_single_upstream_class_name_base_becomes_the_letter",
+      "tests/unit/codegen/test_facade_canonical_source.py::TestsFacadeCanonicalSource::test_unbound_facade_base_fails_loud_without_builtins"
+    ],
+    "phase_outcomes": [
+      {
+        "node_id": "tests/unit/codegen/test_facade_canonical_source.py::TestsFacadeCanonicalSource::test_double_upstream_composition_keeps_the_secondary_facade",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_facade_canonical_source.py::TestsFacadeCanonicalSource::test_double_upstream_composition_keeps_the_secondary_facade",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_facade_canonical_source.py::TestsFacadeCanonicalSource::test_double_upstream_composition_keeps_the_secondary_facade",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_facade_canonical_source.py::TestsFacadeCanonicalSource::test_flat_parts_add_the_secondary_upstream_facade",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_facade_canonical_source.py::TestsFacadeCanonicalSource::test_flat_parts_add_the_secondary_upstream_facade",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_facade_canonical_source.py::TestsFacadeCanonicalSource::test_flat_parts_add_the_secondary_upstream_facade",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_facade_canonical_source.py::TestsFacadeCanonicalSource::test_flat_parts_move_under_the_domain_namespace",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_facade_canonical_source.py::TestsFacadeCanonicalSource::test_flat_parts_move_under_the_domain_namespace",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_facade_canonical_source.py::TestsFacadeCanonicalSource::test_flat_parts_move_under_the_domain_namespace",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_facade_canonical_source.py::TestsFacadeCanonicalSource::test_single_upstream_class_name_base_becomes_the_letter",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_facade_canonical_source.py::TestsFacadeCanonicalSource::test_single_upstream_class_name_base_becomes_the_letter",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_facade_canonical_source.py::TestsFacadeCanonicalSource::test_single_upstream_class_name_base_becomes_the_letter",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_facade_canonical_source.py::TestsFacadeCanonicalSource::test_unbound_facade_base_fails_loud_without_builtins",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_facade_canonical_source.py::TestsFacadeCanonicalSource::test_unbound_facade_base_fails_loud_without_builtins",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_facade_canonical_source.py::TestsFacadeCanonicalSource::test_unbound_facade_base_fails_loud_without_builtins",
+        "phase": "teardown",
+        "outcome": "passed"
+      }
+    ],
+    "markdown_attempts": [],
+    "markdown_items": [],
+    "failed_cases": [],
+    "error_traces": [],
+    "warning_lines": [],
+    "skip_cases": [],
+    "slow_entries": [
+      "2.691000s | tests.unit.codegen.test_facade_canonical_source.TestsFacadeCanonicalSource::test_single_upstream_class_name_base_becomes_the_letter",
+      "2.027000s | tests.unit.codegen.test_facade_canonical_source.TestsFacadeCanonicalSource::test_flat_parts_add_the_secondary_upstream_facade",
+      "2.008000s | tests.unit.codegen.test_facade_canonical_source.TestsFacadeCanonicalSource::test_double_upstream_composition_keeps_the_secondary_facade",
+      "1.561000s | tests.unit.codegen.test_facade_canonical_source.TestsFacadeCanonicalSource::test_flat_parts_move_under_the_domain_namespace",
+      "0.072000s | tests.unit.codegen.test_facade_canonical_source.TestsFacadeCanonicalSource::test_unbound_facade_base_fails_loud_without_builtins"
+    ]
+  },
+  "cache_hit": false,
+  "violations": []
+}

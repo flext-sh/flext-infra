@@ -762,6 +762,7 @@ class UtilityFacadePlanning(UtilityFacadePublication):
             cwd=root,
         )
 
+    @c.Tests.MARK.slow
     @c.Tests.MARK.parametrize("virtual", [False, True])
     def test_rejects_owners_without_a_public_facade(
         self, tmp_path: Path, *, virtual: bool
@@ -769,6 +770,7 @@ class UtilityFacadePlanning(UtilityFacadePublication):
         """Utility owners without a facade have no public surface at all."""
         package = tmp_path / "src" / "flext_sample"
         package.mkdir(parents=True)
+        u.Tests.standalone_workspace(tmp_path, "flext-sample")
         family = u.Infra.facade_family_declared_by(c.Infra.UTILITIES_PY)
         owner = package / family.directory / "owner.py"
         source = "class Owner:\n    pass\n__all__ = ['Owner']\n"
@@ -788,6 +790,7 @@ class UtilityFacadePlanning(UtilityFacadePublication):
             )
 
     @staticmethod
+    @c.Tests.MARK.slow
     @c.Tests.MARK.parametrize("present", [False, True])
     def test_empty_owner_directory_needs_no_facade(
         tmp_path: Path, *, present: bool
@@ -795,6 +798,7 @@ class UtilityFacadePlanning(UtilityFacadePublication):
         """An absent or preflight-created empty family needs no public surface."""
         package = tmp_path / "src" / "flext_sample"
         package.mkdir(parents=True)
+        u.Tests.standalone_workspace(tmp_path, "flext-sample")
         if present:
             family = u.Infra.facade_family_declared_by(c.Infra.UTILITIES_PY)
             (package / family.directory).mkdir()

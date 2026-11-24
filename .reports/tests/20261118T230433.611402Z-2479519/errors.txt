@@ -1,0 +1,15 @@
+=== FAILURE: tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_published_import_width_preserves_mro_and_lazy_exports[True-16] ===
+AssertionError: Traceback (most recent call last):
+  File "<string>", line 8, in <module>
+    service = u.Tests.create_lazy_init_service(root)
+              ^^^^^^^
+AttributeError: type object 'FlextInfraUtilities' has no attribute 'Tests'
+tests/unit/codegen/_utility_facade_projection/owner_publication.py:759: in test_published_import_width_preserves_mro_and_lazy_exports
+    tm.that(u.Cli.process_succeeded(result.outcome), eq=True, msg=result.stderr)
+../flext-tests/src/flext_tests/_utilities/_matchers/that.py:706: in that
+    raise AssertionError(
+E   AssertionError: Traceback (most recent call last):
+E     File "<string>", line 8, in <module>
+E       service = u.Tests.create_lazy_init_service(root)
+E                 ^^^^^^^
+E   AttributeError: type object 'FlextInfraUtilities' has no attribute 'Tests'

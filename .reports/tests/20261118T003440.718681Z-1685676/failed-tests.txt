@@ -1,0 +1,1 @@
+tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_rejects_owners_without_a_public_facade[False]

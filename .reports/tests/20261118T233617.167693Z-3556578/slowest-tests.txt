@@ -1,0 +1,1 @@
+2.502000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_class_bindings_preserve_authored_upstream_contract[True-p]

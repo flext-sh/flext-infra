@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="9.914" timestamp="2026-11-17T21:34:45.393255-03:00" hostname="tungs"><testcase classname="tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection" name="test_rejects_owners_without_a_public_facade[False]" time="2.007"><failure message="Failed: Timeout (&gt;2.0s) from pytest-timeout.">tests/unit/codegen/_utility_facade_projection/planning.py:779: in test_rejects_owners_without_a_public_facade
+    with u.Infra.facade_source_project(
+../../.local/share/mise/installs/python/3.13.17/lib/python3.13/contextlib.py:141: in __enter__
+    return next(self.gen)
+           ^^^^^^^^^^^^^^
+src/flext_infra/_utilities/workspace_snapshot.py:208: in facade_source_project
+    project = bindings.enter_context(project_context)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/mise/installs/python/3.13.17/lib/python3.13/contextlib.py:530: in enter_context
+    result = _enter(cm)
+             ^^^^^^^^^^
+../../.local/share/mise/installs/python/3.13.17/lib/python3.13/contextlib.py:141: in __enter__
+    return next(self.gen)
+           ^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/core.py:237: in workspace_overlay_project
+    with FlextInfraUtilitiesRopeCore.open_project(
+../../.local/share/mise/installs/python/3.13.17/lib/python3.13/contextlib.py:141: in __enter__
+    return next(self.gen)
+           ^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/core.py:341: in open_project
+    rope_project = FlextInfraUtilitiesRopeCore._new_project(
+src/flext_infra/_utilities/_rope/core.py:106: in _new_project
+    project = FlextInfraUtilitiesRopeRuntime.new_project(
+src/flext_infra/_utilities/_rope/runtime_module_queries.py:199: in new_project
+    project = project_factory(
+src/flext_infra/_utilities/_rope/project.py:1151: in __init__
+    *FlextInfraRopeProject._distribution_extension_modules(
+src/flext_infra/_utilities/_rope/project.py:1078: in _distribution_extension_modules
+    record = distribution.read_text("RECORD")
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/mise/installs/python/3.13.17/lib/python3.13/importlib/metadata/__init__.py:915: in read_text
+    return self._path.joinpath(filename).read_text(encoding='utf-8')
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/mise/installs/python/3.13.17/lib/python3.13/pathlib/_local.py:546: in read_text
+    return PathBase.read_text(self, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/mise/installs/python/3.13.17/lib/python3.13/pathlib/_abc.py:633: in read_text
+    return f.read()
+           ^^^^^^^^
+&lt;frozen codecs&gt;:322: in decode
+    ???
+E   Failed: Timeout (&gt;2.0s) from pytest-timeout.</failure></testcase></testsuite></testsuites>

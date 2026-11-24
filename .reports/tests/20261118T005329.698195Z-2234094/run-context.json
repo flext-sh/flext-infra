@@ -1,0 +1,8 @@
+{
+  "execution_mode": "full",
+  "testmon_db": null,
+  "testmon_lease_acquired": null,
+  "deadline_monotonic": 1240869.769800269,
+  "report_directory": "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/.reports/tests/20261118T005329.698195Z-2234094",
+  "profile_sha256": null
+}

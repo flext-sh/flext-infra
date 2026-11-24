@@ -1,0 +1,15 @@
+=== FAILURE: tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_class_bindings_preserve_authored_upstream_contract[True-p] ===
+AssertionError: Traceback (most recent call last):
+  File "<string>", line 6, in <module>
+    assert facade.Sample.__bases__ == (Framework.Sample,)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError
+tests/unit/codegen/_utility_facade_projection/owner_publication.py:363: in test_explicit_class_bindings_preserve_authored_upstream_contract
+    tm.that(u.Cli.process_succeeded(result.outcome), eq=True, msg=result.stderr)
+../flext-tests/src/flext_tests/_utilities/_matchers/that.py:706: in that
+    raise AssertionError(
+E   AssertionError: Traceback (most recent call last):
+E     File "<string>", line 6, in <module>
+E       assert facade.Sample.__bases__ == (Framework.Sample,)
+E              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AssertionError

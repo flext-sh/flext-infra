@@ -1,0 +1,7 @@
+=== FAILURE: tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication8-True-c] ===
+AssertionError: Value '# AUTO-GENERATED FILE — Regenerate with: make gen\n"""Explicit public class facade."""\n\nfrom scripts._constants import OwnerBase, OwnerVocabulary\nfrom scripts._constants import OwnerBase as LocalBase\n\n\nclass PublicFacade(\n    OwnerBase,\n    OwnerVocabulary,\n):\n    class Sample:\n        Base = LocalBase\n        Vocabulary = OwnerVocabulary\n\n\nc = PublicFacade\n__all__ = ["PublicFacade", "c"]\n' did not satisfy constraints
+tests/unit/codegen/_utility_facade_projection/owner_publication.py:248: in test_explicit_owner_classes_preserve_publication_identity
+    tm.that(repeated, eq=rendered)
+../flext-tests/src/flext_tests/_utilities/_matchers/that.py:706: in that
+    raise AssertionError(
+E   AssertionError: Value '# AUTO-GENERATED FILE — Regenerate with: make gen\n"""Explicit public class facade."""\n\nfrom scripts._constants import OwnerBase, OwnerVocabulary\nfrom scripts._constants import OwnerBase as LocalBase\n\n\nclass PublicFacade(\n    OwnerBase,\n    OwnerVocabulary,\n):\n    class Sample:\n        Base = LocalBase\n        Vocabulary = OwnerVocabulary\n\n\nc = PublicFacade\n__all__ = ["PublicFacade", "c"]\n' did not satisfy constraints

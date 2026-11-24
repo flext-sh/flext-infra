@@ -1,0 +1,53 @@
+{
+  "eligible": [],
+  "selected": [],
+  "deselected": [],
+  "diagnostics": {
+    "failed_count": 1,
+    "error_count": 0,
+    "warning_count": 0,
+    "skipped_count": 0,
+    "connectivity_skip_cases": [],
+    "collection_failed_count": 0,
+    "collection_skipped_count": 0,
+    "collection_failed_cases": [],
+    "collection_skip_cases": [],
+    "reported_node_ids": [
+      "tests/unit/codegen/test_facade_canonical_source.py::TestsFacadeCanonicalSource::test_flat_parts_add_the_secondary_upstream_facade"
+    ],
+    "phase_outcomes": [
+      {
+        "node_id": "tests/unit/codegen/test_facade_canonical_source.py::TestsFacadeCanonicalSource::test_flat_parts_add_the_secondary_upstream_facade",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_facade_canonical_source.py::TestsFacadeCanonicalSource::test_flat_parts_add_the_secondary_upstream_facade",
+        "phase": "call",
+        "outcome": "failed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_facade_canonical_source.py::TestsFacadeCanonicalSource::test_flat_parts_add_the_secondary_upstream_facade",
+        "phase": "teardown",
+        "outcome": "passed"
+      }
+    ],
+    "markdown_attempts": [],
+    "markdown_items": [],
+    "failed_cases": [
+      "tests.unit.codegen.test_facade_canonical_source.TestsFacadeCanonicalSource::test_flat_parts_add_the_secondary_upstream_facade"
+    ],
+    "error_traces": [
+      "=== FAILURE: tests.unit.codegen.test_facade_canonical_source.TestsFacadeCanonicalSource::test_flat_parts_add_the_secondary_upstream_facade ===\nFailed: Timeout (>2.0s) from pytest-timeout.\ntests/unit/codegen/test_facade_canonical_source.py:150: in test_flat_parts_add_the_secondary_upstream_facade\n    rendered = TestsFacadeCanonicalSource._rendered(\ntests/unit/codegen/test_facade_canonical_source.py:265: in _rendered\n    tm.not_none(u.Infra.render_utility_facade(package, family=family))\n                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nsrc/flext_infra/_utilities/facade_components.py:635: in render_utility_facade\n    return cls.render_utility_facade(\nsrc/flext_infra/_utilities/facade_components.py:655: in render_utility_facade\n    return cls.facade_component_source(\nsrc/flext_infra/_utilities/facade_components.py:696: in facade_component_source\n    return cls.facade_component_source(\nsrc/flext_infra/_utilities/facade_components.py:713: in facade_component_source\n    return cls._facade_component_rendered(\nsrc/flext_infra/_utilities/facade_components.py:771: in _facade_component_rendered\n    return rendered.flat_map(\n../flext-core/src/flext_core/_result/transforms.py:97: in flat_map\n    return self.from_result(func(self._payload))\n                            ^^^^^^^^^^^^^^^^^^^\nsrc/flext_infra/_utilities/facade_components.py:772: in <lambda>\n    lambda text: FlextInfraUtilitiesProtectedEditLinting.normalize_source(\nsrc/flext_infra/_utilities/protected_edit_linting.py:93: in normalize_source\n    remaining = cls._ruff_stdin_codes(\nsrc/flext_infra/_utilities/protected_edit_linting.py:749: in _ruff_stdin_codes\n    reported = cls._ruff_stdin_pass(\nsrc/flext_infra/_utilities/protected_edit_linting.py:890: in _ruff_stdin_pass\n    executed = u.Cli.run_raw(\n../flext-cli/src/flext_cli/_utilities/runtime.py:201: in run_raw\n    return cls._execute_streamed_process(\n../flext-cli/src/flext_cli/_utilities/_runtime/process_execution.py:66: in _execute_streamed_process\n    cls._execute_lifecycle(request, state, timing)\n../flext-cli/src/flext_cli/_utilities/_runtime/process_execution.py:173: in _execute_lifecycle\n    state.timed_out, state.final_deadline = cls._monitor_process(\n../flext-cli/src/flext_cli/_utilities/_runtime/process_monitor.py:49: in _monitor_process\n    cls._wait_next_boundary(state, phase, now)\n../flext-cli/src/flext_cli/_utilities/_runtime/process_monitor.py:113: in _wait_next_boundary\n    state.wake.wait(\n../../.local/share/mise/installs/python/3.13.17/lib/python3.13/threading.py:660: in wait\n    signaled = self._cond.wait(timeout)\n               ^^^^^^^^^^^^^^^^^^^^^^^^\n../../.local/share/mise/installs/python/3.13.17/lib/python3.13/threading.py:363: in wait\n    gotit = waiter.acquire(True, timeout)\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   Failed: Timeout (>2.0s) from pytest-timeout."
+    ],
+    "warning_lines": [],
+    "skip_cases": [],
+    "slow_entries": [
+      "2.011000s | tests.unit.codegen.test_facade_canonical_source.TestsFacadeCanonicalSource::test_flat_parts_add_the_secondary_upstream_facade"
+    ]
+  },
+  "cache_hit": false,
+  "violations": [
+    "selected node IDs differ from executed node IDs"
+  ]
+}

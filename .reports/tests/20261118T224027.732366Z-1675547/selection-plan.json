@@ -1,0 +1,13 @@
+{
+  "manifest_path": "/home/marlonsc/flext-wip-flext-0in0k.32/flext-infra/.reports/tests/20261118T224027.732366Z-1675547/testmon-inventory.json",
+  "node_ids": [
+    "tests/unit/codegen/test_facade_canonical_source.py::TestsFacadeCanonicalSource::test_flat_parts_move_under_the_domain_namespace",
+    "tests/unit/codegen/test_facade_canonical_source.py::TestsFacadeCanonicalSource::test_single_upstream_class_name_base_becomes_the_letter",
+    "tests/unit/codegen/test_facade_canonical_source.py::TestsFacadeCanonicalSource::test_flat_parts_add_the_secondary_upstream_facade",
+    "tests/unit/codegen/test_facade_canonical_source.py::TestsFacadeCanonicalSource::test_unbound_facade_base_fails_loud_without_builtins",
+    "tests/unit/codegen/test_facade_canonical_source.py::TestsFacadeCanonicalSource::test_double_upstream_composition_keeps_the_secondary_facade"
+  ],
+  "whole_target": true,
+  "inventory_collected": true,
+  "owns_no_tests": false
+}

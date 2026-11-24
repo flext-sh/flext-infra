@@ -1,0 +1,53 @@
+{
+  "eligible": [],
+  "selected": [],
+  "deselected": [],
+  "diagnostics": {
+    "failed_count": 1,
+    "error_count": 0,
+    "warning_count": 0,
+    "skipped_count": 0,
+    "connectivity_skip_cases": [],
+    "collection_failed_count": 0,
+    "collection_skipped_count": 0,
+    "collection_failed_cases": [],
+    "collection_skip_cases": [],
+    "reported_node_ids": [
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_rejects_owners_without_a_public_facade[False]"
+    ],
+    "phase_outcomes": [
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_rejects_owners_without_a_public_facade[False]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_rejects_owners_without_a_public_facade[False]",
+        "phase": "call",
+        "outcome": "failed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_rejects_owners_without_a_public_facade[False]",
+        "phase": "teardown",
+        "outcome": "passed"
+      }
+    ],
+    "markdown_attempts": [],
+    "markdown_items": [],
+    "failed_cases": [
+      "tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_rejects_owners_without_a_public_facade[False]"
+    ],
+    "error_traces": [
+      "=== FAILURE: tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_rejects_owners_without_a_public_facade[False] ===\nRuntimeError: Python source discovery requires a Git checkout: /home/marlonsc/tmp/pytest-of-marlonsc/pytest-13635/popen-gw0/test_rejects_owners_without_a_0\ntests/unit/codegen/_utility_facade_projection/planning.py:778: in test_rejects_owners_without_a_public_facade\n    with u.Infra.facade_source_project(\n../../.local/share/mise/installs/python/3.13.17/lib/python3.13/contextlib.py:141: in __enter__\n    return next(self.gen)\n           ^^^^^^^^^^^^^^\nsrc/flext_infra/_utilities/workspace_snapshot.py:215: in facade_source_project\n    FlextInfraUtilitiesProjectDiscovery.discover_python_files(\nsrc/flext_infra/_utilities/project_discovery.py:655: in discover_python_files\n    for path in cls._walk_python_files(\nsrc/flext_infra/_utilities/project_discovery.py:738: in _walk_python_files\n    raise RuntimeError(msg)\nE   RuntimeError: Python source discovery requires a Git checkout: /home/marlonsc/tmp/pytest-of-marlonsc/pytest-13635/popen-gw0/test_rejects_owners_without_a_0"
+    ],
+    "warning_lines": [],
+    "skip_cases": [],
+    "slow_entries": [
+      "0.631000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_rejects_owners_without_a_public_facade[False]"
+    ]
+  },
+  "cache_hit": false,
+  "violations": [
+    "selected node IDs differ from executed node IDs"
+  ]
+}

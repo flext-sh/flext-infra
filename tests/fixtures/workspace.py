@@ -70,6 +70,7 @@ def rope_contract_consumer(
             session_runtime=session_runtime,
         )
     )
+    u.Tests.provision_checkout(root)
     with infra.rope_workspace(root) as workspace:
         yield workspace, path
 
