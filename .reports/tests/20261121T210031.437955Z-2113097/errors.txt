@@ -1,0 +1,46 @@
+=== FAILURE: tests.unit.codemod.test_api_alias_cutover.TestsFlextInfraApiAliasCutover::test_service_retirement_preserves_kernel_context_and_shadowing[from sample_pkg import s-s-FlextSampleService] ===
+Failed: Timeout (>2.0s) from pytest-timeout.
+tests/unit/codemod/test_api_alias_cutover.py:86: in test_service_retirement_preserves_kernel_context_and_shadowing
+    with infra.rope_workspace(root) as workspace:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/api.py:107: in rope_workspace
+    session = workspace.FlextInfraRopeWorkspace.open_workspace(
+src/flext_infra/workspace/rope.py:565: in open_workspace
+    _ = workspace.rope_project
+        ^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/workspace/_rope/query.py:151: in rope_project
+    rope_project = self.snapshot.engine
+                   ^^^^^^^^^^^^^
+src/flext_infra/workspace/_rope/query.py:117: in snapshot
+    source_project = scope.enter_context(
+../../../../.local/share/mise/installs/python/3.13.18/lib/python3.13/contextlib.py:530: in enter_context
+    result = _enter(cm)
+             ^^^^^^^^^^
+../../../../.local/share/mise/installs/python/3.13.18/lib/python3.13/contextlib.py:141: in __enter__
+    return next(self.gen)
+           ^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/core.py:261: in workspace_overlay_project
+    FlextInfraRopeProject.from_atomic_reads(
+src/flext_infra/_utilities/_rope/project.py:1490: in from_atomic_reads
+    return snapshot.bind_atomic_reads(
+src/flext_infra/_utilities/_rope/project.py:1573: in bind_atomic_reads
+    self._set_source_view(declared_files, ())
+src/flext_infra/_utilities/_rope/project.py:968: in _set_source_view
+    self._elect_shared_names(files)
+src/flext_infra/_utilities/_rope/project.py:804: in _elect_shared_names
+    self._shared_names = self._shared_module_names(
+src/flext_infra/_utilities/_rope/project.py:1282: in _shared_module_names
+    graph = FlextInfraRopeProject._distribution_graph(state)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/project.py:1239: in _distribution_graph
+    located = Path(str(distribution.locate_file(file)))
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../.local/share/mise/installs/python/3.13.18/lib/python3.13/importlib/metadata/__init__.py:922: in locate_file
+    return self._path.parent / path
+           ^^^^^^^^^^^^^^^^^
+../../../../.local/share/mise/installs/python/3.13.18/lib/python3.13/pathlib/_local.py:334: in parent
+    tail = self._tail
+           ^^^^^^^^^^
+../../../../.local/share/mise/installs/python/3.13.18/lib/python3.13/pathlib/_local.py:307: in _tail
+    @property
+E   Failed: Timeout (>2.0s) from pytest-timeout.

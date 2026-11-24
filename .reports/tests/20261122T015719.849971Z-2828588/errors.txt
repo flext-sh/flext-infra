@@ -1,0 +1,68 @@
+=== FAILURE: tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_long_protocol_owner_bases_are_canonical_before_publication[plain] ===
+Failed: Timeout (>2.0s) from pytest-timeout.
+tests/unit/codegen/_utility_facade_projection/owner_publication.py:564: in test_long_protocol_owner_bases_are_canonical_before_publication
+    tm.not_none(u.Infra.render_utility_facade(package, family="p"))
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/facade_components.py:639: in render_utility_facade
+    return cls.render_utility_facade(
+src/flext_infra/_utilities/facade_components.py:659: in render_utility_facade
+    return cls.facade_component_source(
+src/flext_infra/_utilities/facade_components.py:705: in facade_component_source
+    planned = cls._facade_component_plan(
+src/flext_infra/_utilities/facade_components.py:1059: in _facade_component_plan
+    resolved = cls._facade_namespace_owner(
+src/flext_infra/_utilities/facade_components.py:1383: in _facade_namespace_owner
+    namespaces = cls._facade_inherited_namespaces(
+src/flext_infra/_utilities/facade_components.py:1674: in _facade_inherited_namespaces
+    FlextInfraUtilitiesFacadeMembers.class_kind(
+src/flext_infra/_utilities/facade_members.py:484: in class_kind
+    kind = FlextInfraUtilitiesFacadeMembers._class_kind_uncached(
+src/flext_infra/_utilities/facade_members.py:523: in _class_kind_uncached
+    return FlextInfraUtilitiesFacadeMembers._class_kind_classified(
+src/flext_infra/_utilities/facade_members.py:563: in _class_kind_classified
+    if FlextInfraUtilitiesFacadeMembers._model_class(
+src/flext_infra/_utilities/facade_members.py:602: in _model_class
+    model = resolver_factory()(
+src/flext_infra/_utilities/_rope/source_bases_runtime.py:143: in __call__
+    return self.source_member_binding(qualified)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/source_bases_runtime.py:199: in source_member_binding
+    binding = self._declared_member_binding(ancestor, member)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/source_bases_runtime.py:226: in _declared_member_binding
+    return scope.get_defined_names().get(member)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyscopes.py:16: in get_defined_names
+    return self.pyobject._get_structural_attributes()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:416: in _get_structural_attributes
+    attributes = super()._get_structural_attributes()
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/utils/__init__.py:56: in newfunc
+    return func(self, *args, **kwds)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjects.py:431: in _get_structural_attributes
+    self.structural_attributes = self._create_structural_attributes()
+                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:294: in _create_structural_attributes
+    attributes = externaldata.add_class_data(self, attributes)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/externaldata.py:745: in add_class_data
+    for name, plan in _plans_for(module, pyclass.get_name()).items():
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/externaldata.py:738: in _plans_for
+    return _resolve_owner(_plan_state(module), owner)
+                          ^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/externaldata.py:557: in _plan_state
+    _plan_context(module)
+.venv/lib/python3.13/site-packages/rope/base/externaldata.py:198: in _plan_context
+    scoped = list(_scope_nodes(scope.body))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/externaldata.py:45: in _scope_nodes
+    pending.extend(ast.iter_child_nodes(node))
+../../../../.local/share/mise/installs/python/3.13.18/lib/python3.13/ast.py:289: in iter_child_nodes
+    for name, field in iter_fields(node):
+                       ^^^^^^^^^^^^^^^^^
+../../../../.local/share/mise/installs/python/3.13.18/lib/python3.13/ast.py:272: in iter_fields
+    def iter_fields(node):
+E   Failed: Timeout (>2.0s) from pytest-timeout.

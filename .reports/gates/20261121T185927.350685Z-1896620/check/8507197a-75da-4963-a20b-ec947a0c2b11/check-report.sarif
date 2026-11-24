@@ -1,0 +1,110 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "flext-infra-check",
+          "informationUri": "https://github.com/flext-sh/flext-infra",
+          "rules": []
+        }
+      },
+      "results": []
+    }
+  ],
+  "properties": {
+    "phase": "primary",
+    "requested_gates": [
+      "lint",
+      "pyrefly"
+    ],
+    "pending_gates": [],
+    "targets": [
+      {
+        "name": "flext-ezljc",
+        "path": "/home/marlonsc/flext/flext-infra/worktrees/flext-ezljc",
+        "applicable_gates": [
+          "lint",
+          "pyrefly"
+        ],
+        "source_identity": {
+          "repo_root": "/home/marlonsc/flext/flext-infra/worktrees/flext-ezljc",
+          "primary_root": "/home/marlonsc/flext/flext-infra",
+          "head_oid": "f8888ea1df27034d9adb692ea27631bca4162fc8",
+          "porcelain": " M .envrc\n M .gitignore\n M src/flext_infra/codegen/consolidator.py\n M src/flext_infra/config/codegen.yaml",
+          "dirty": true,
+          "git_dir": "/home/marlonsc/flext/.git/modules/flext-infra/worktrees/flext-ezljc",
+          "common_dir": "/home/marlonsc/flext/.git/modules/flext-infra",
+          "branch": "fix/flext-ezljc-rope-consolidator",
+          "origin_remote": "https://github.com/flext-sh/flext-infra.git",
+          "upstream_remote": null,
+          "superproject_root": "/home/marlonsc/flext",
+          "requested_path": "/home/marlonsc/flext/flext-infra/worktrees/flext-ezljc",
+          "is_worktree": true,
+          "is_submodule": true,
+          "is_attached_submodule": false,
+          "has_submodules": false,
+          "is_inside_work_tree": true
+        }
+      }
+    ],
+    "results": [
+      {
+        "project": "flext-ezljc",
+        "gates": {
+          "lint": {
+            "result": {
+              "project": "flext-ezljc",
+              "gate": "lint",
+              "passed": true,
+              "errors": [],
+              "duration": 3.891
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext/flext-infra/worktrees/flext-ezljc/.reports/gates/20261121T185927.350685Z-1896620/check/8507197a-75da-4963-a20b-ec947a0c2b11/flext-ezljc/lint.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          },
+          "pyrefly": {
+            "result": {
+              "project": "flext-ezljc",
+              "gate": "pyrefly",
+              "passed": true,
+              "errors": [],
+              "duration": 17.253
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext/flext-infra/worktrees/flext-ezljc/.reports/gates/20261121T185927.350685Z-1896620/check/8507197a-75da-4963-a20b-ec947a0c2b11/flext-ezljc/pyrefly.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          }
+        }
+      }
+    ],
+    "selected_files": [],
+    "global_targets": [
+      {
+        "name": "flext-ezljc",
+        "path": "/home/marlonsc/flext/flext-infra/worktrees/flext-ezljc",
+        "applicable_gates": [
+          "lint",
+          "pyrefly"
+        ],
+        "source_identity": null
+      }
+    ]
+  }
+}

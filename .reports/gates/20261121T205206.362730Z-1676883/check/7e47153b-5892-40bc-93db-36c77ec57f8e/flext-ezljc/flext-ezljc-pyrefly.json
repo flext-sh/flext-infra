@@ -1,0 +1,28 @@
+{
+  "errors": [
+    {
+      "line": 696,
+      "column": 20,
+      "stop_line": 696,
+      "stop_column": 88,
+      "path": "src/flext_infra/_utilities/_rope/project.py",
+      "code": -2,
+      "name": "bad-return",
+      "description": "Returned type `AbstractModule | BuiltinModule` is not assignable to declared return type `BuiltinModule | PyModule | PyPackage`",
+      "concise_description": "Returned type `AbstractModule | BuiltinModule` is not assignable to declared return type `BuiltinModule | PyModule | PyPackage`",
+      "severity": "error"
+    },
+    {
+      "line": 719,
+      "column": 9,
+      "stop_line": 719,
+      "stop_column": 15,
+      "path": "src/flext_infra/_utilities/_rope/project.py",
+      "code": -2,
+      "name": "missing-override-decorator",
+      "description": "Class member `FlextInfraRopeProject.pycore` overrides a member in a parent class but is missing an `@override` decorator",
+      "concise_description": "Class member `FlextInfraRopeProject.pycore` overrides a member in a parent class but is missing an `@override` decorator",
+      "severity": "error"
+    }
+  ]
+}

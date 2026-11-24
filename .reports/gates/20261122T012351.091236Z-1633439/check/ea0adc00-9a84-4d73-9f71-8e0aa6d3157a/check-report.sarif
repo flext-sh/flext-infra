@@ -1,0 +1,153 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "flext-infra-check",
+          "informationUri": "https://github.com/flext-sh/flext-infra",
+          "rules": [
+            {
+              "id": "docstring-extraneous-exception",
+              "shortDescription": {
+                "text": "Ruff Linter (lint) issue"
+              },
+              "helpUri": "https://docs.astral.sh/ruff/"
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "docstring-extraneous-exception",
+          "level": "error",
+          "message": {
+            "text": "Raised exception is not explicitly raised: `ValueError`"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/home/marlonsc/flext/flext-infra/worktrees/flext-ezljc/src/flext_infra/validate/_pytest_runner/base.py",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 146,
+                  "startColumn": 9
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "properties": {
+    "phase": "primary",
+    "requested_gates": [
+      "lint",
+      "pyrefly"
+    ],
+    "pending_gates": [],
+    "targets": [
+      {
+        "name": "flext-ezljc",
+        "path": "/home/marlonsc/flext/flext-infra/worktrees/flext-ezljc",
+        "applicable_gates": [
+          "lint",
+          "pyrefly"
+        ],
+        "source_identity": {
+          "repo_root": "/home/marlonsc/flext/flext-infra/worktrees/flext-ezljc",
+          "primary_root": "/home/marlonsc/flext/flext-infra",
+          "head_oid": "2e93f34434a5d7411da49bdf4da40792af764834",
+          "porcelain": "M  docs/guides/execution-context.md\nM  docs/guides/onboarding.md\nM  docs/guides/testing.md\nM  src/flext_infra/_models/_config/contexts.py\nM  src/flext_infra/_models/_config/make.py\nM  src/flext_infra/_models/testmon.py\nM  src/flext_infra/_models/validate.py\nM  src/flext_infra/_protocols/_config/contexts.py\nM  src/flext_infra/_protocols/_config/make.py\nM  src/flext_infra/_protocols/testmon.py\nM  src/flext_infra/_protocols/validate.py\nM  src/flext_infra/_utilities/_import_law/ast.py\nM  src/flext_infra/codegen/_conform/artifact_render.py\nM  src/flext_infra/config/codegen.yaml\nM  src/flext_infra/templates/docs/make_contract.md.j2\nUU src/flext_infra/templates/project/base/Makefile.j2\nM  src/flext_infra/validate/_pytest_runner/base.py\nM  src/flext_infra/validate/_pytest_runner/execution.py\nM  src/flext_infra/validate/_pytest_runner/reports.py\nM  src/flext_infra/validate/cprofile_report.py\nM  src/flext_infra/validate/testmon_db.py\nM  tests/unit/codegen/project_verb_admission_tests.py\nM  tests/unit/codegen/test_codegen_artifact_ssot.py\nM  tests/unit/codegen/test_codegen_make_environment.py\nM  tests/unit/codegen/test_codegen_script_dispatch.py\nM  tests/unit/codegen/test_make_gen_root_contract.py\nM  tests/unit/refactor/test_infra_refactor_import_normalization_runtime_reads.py\nM  tests/unit/test_config_local_overrides.py\nM  tests/unit/validate/cprofile_report_tests.py\nM  tests/unit/validate/pytest_profile_suite_tests.py\nM  tests/unit/validate/pytest_runner_cleanup_outcome_tests.py\nM  tests/unit/validate/pytest_runner_public_tests.py\nM  tests/unit/validate/pytest_runner_zero_test_tests.py\nM  tests/unit/validate/test_pytest_full_inventory.py\nM  tests/unit/validate/testmon_db_tests.py\nM  uv.lock",
+          "dirty": true,
+          "git_dir": "/home/marlonsc/flext/.git/modules/flext-infra/worktrees/flext-ezljc",
+          "common_dir": "/home/marlonsc/flext/.git/modules/flext-infra",
+          "branch": "fix/flext-4wa0l-setup-trust-first",
+          "origin_remote": "https://github.com/flext-sh/flext-infra.git",
+          "upstream_remote": null,
+          "superproject_root": "/home/marlonsc/flext",
+          "requested_path": "/home/marlonsc/flext/flext-infra/worktrees/flext-ezljc",
+          "is_worktree": true,
+          "is_submodule": true,
+          "is_attached_submodule": false,
+          "has_submodules": false,
+          "is_inside_work_tree": true
+        }
+      }
+    ],
+    "results": [
+      {
+        "project": "flext-ezljc",
+        "gates": {
+          "lint": {
+            "result": {
+              "project": "flext-ezljc",
+              "gate": "lint",
+              "passed": false,
+              "errors": [
+                "/home/marlonsc/flext/flext-infra/worktrees/flext-ezljc/src/flext_infra/validate/_pytest_runner/base.py:146:9 [docstring-extraneous-exception] Raised exception is not explicitly raised: `ValueError`"
+              ],
+              "duration": 0.297
+            },
+            "issues": [
+              {
+                "file": "/home/marlonsc/flext/flext-infra/worktrees/flext-ezljc/src/flext_infra/validate/_pytest_runner/base.py",
+                "line": 146,
+                "column": 9,
+                "code": "docstring-extraneous-exception",
+                "message": "Raised exception is not explicitly raised: `ValueError`",
+                "severity": "error",
+                "locations": [],
+                "related_locations": []
+              }
+            ],
+            "raw_receipt": "/home/marlonsc/flext/flext-infra/worktrees/flext-ezljc/.reports/gates/20261122T012351.091236Z-1633439/check/ea0adc00-9a84-4d73-9f71-8e0aa6d3157a/flext-ezljc/lint.raw.log",
+            "outcome": "findings",
+            "process": {
+              "raw_return_code": 1,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          },
+          "pyrefly": {
+            "result": {
+              "project": "flext-ezljc",
+              "gate": "pyrefly",
+              "passed": true,
+              "errors": [],
+              "duration": 19.418
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext/flext-infra/worktrees/flext-ezljc/.reports/gates/20261122T012351.091236Z-1633439/check/ea0adc00-9a84-4d73-9f71-8e0aa6d3157a/flext-ezljc/pyrefly.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          }
+        }
+      }
+    ],
+    "selected_files": [],
+    "global_targets": [
+      {
+        "name": "flext-ezljc",
+        "path": "/home/marlonsc/flext/flext-infra/worktrees/flext-ezljc",
+        "applicable_gates": [
+          "lint",
+          "pyrefly"
+        ],
+        "source_identity": null
+      }
+    ]
+  }
+}

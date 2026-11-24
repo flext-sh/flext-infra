@@ -1,0 +1,16 @@
+{
+  "errors": [
+    {
+      "line": 201,
+      "column": 28,
+      "stop_line": 201,
+      "stop_column": 73,
+      "path": "src/flext_infra/codegen/consolidator.py",
+      "code": -2,
+      "name": "bad-argument-type",
+      "description": "Argument `Generator[tuple[FlextInfraProtocolsRopeRuntime.RopeScope, tuple[str]]]` is not assignable to parameter `iterable` with type `Iterable[tuple[FlextInfraProtocolsRopeRuntime.RopeScope, tuple[()]]]` in function `list.extend`",
+      "concise_description": "Argument `Generator[tuple[FlextInfraProtocolsRopeRuntime.RopeScope, tuple[str]]]` is not assignable to parameter `iterable` with type `Iterable[tuple[FlextInfraProtocolsRopeRuntime.RopeScope, tuple[()]]]` in function `list.extend`",
+      "severity": "error"
+    }
+  ]
+}

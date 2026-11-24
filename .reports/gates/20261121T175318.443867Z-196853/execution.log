@@ -1,0 +1,25 @@
+INFO: check: registry initialization start
+INFO: check: registry initialization complete
+INFO: check: selection start phase=complete
+INFO: check: selection complete projects=1 gates=6
+INFO: check: preparation start identity=True
+INFO: check: preparation complete projects=1
+INFO: check: prerequisite planning start projects=1
+INFO: check: prerequisite planning complete gates=1
+INFO: check: prerequisite wave start gate=lint jobs=1
+INFO: gate_executed project=flext-ezljc gate=lint passed=False elapsed=0.253
+2026-11-21T17:53:20.674302Z [error    ] stage_failed                   [flext_cli.api.FlextCli] error='lint failed for flext-ezljc with 1 findings' stage_id=lint
+2026-11-21T17:53:20.680022Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=264.13 failed=1 skipped=0 total_stages=1
+INFO: check: prerequisite wave complete gate=lint
+    [FAIL] lint           1 errors  (0.25s)
+INFO: lint: findings; Native output receipt: /home/marlonsc/flext/flext-infra/worktrees/flext-ezljc/.reports/gates/20261121T175318.443867Z-196853/check/d2f3ecf3-dcfc-4bda-8249-f95358844e14/flext-ezljc/lint.raw.log
+
+-- check summary --
+Total: 1  Success: 0  Failed: 1  Skipped: 0  (0.29s)
+INFO: Execution INCOMPLETE: 1/1 projects reached; see the requested gate inventory in the reports
+INFO: NOT EXECUTED: format, markdown, markdown-format, markdown-code, conflict-markers
+INFO: Reports: /home/marlonsc/flext/flext-infra/worktrees/flext-ezljc/.reports/gates/20261121T175318.443867Z-196853/check/d2f3ecf3-dcfc-4bda-8249-f95358844e14/check-report.md
+INFO:          /home/marlonsc/flext/flext-infra/worktrees/flext-ezljc/.reports/gates/20261121T175318.443867Z-196853/check/d2f3ecf3-dcfc-4bda-8249-f95358844e14/check-report.sarif
+INFO: Findings by project (see reports for detail):
+INFO: flext-ezljc                         1  (lint=1)
+❌ quality check target accounting is incomplete

@@ -1,0 +1,956 @@
+{
+  "eligible": [],
+  "selected": [],
+  "deselected": [],
+  "diagnostics": {
+    "failed_count": 2,
+    "error_count": 0,
+    "warning_count": 0,
+    "skipped_count": 0,
+    "connectivity_skip_cases": [],
+    "collection_failed_count": 0,
+    "collection_skipped_count": 0,
+    "collection_failed_cases": [],
+    "collection_skip_cases": [],
+    "reported_node_ids": [
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-canonical]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[assert (  # outside predicate capture\\n    True\\n)\\n]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[assert True  # retained trailing comment\\n]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[assert True, (  # outside message capture\\n    'message'\\n)\\n]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[assert True; effect()\\n]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[def check(): assert True\\n]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[def check():\\n    assert '''first\\nsecond'''\\n]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[def check():\\n    assert 'first\\x0bsecond'\\n]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[def check():\\n    assert True, '''first\\nsecond'''\\n]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[effect(); assert True\\n]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[if True: \\\\\\n    assert True\\n]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[if True: assert True; effect()\\n]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[if True: assert True\\n]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[AssertionError = ValueError\\nassert True\\n]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[assert True\\nAssertionError = ValueError\\n]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[def check():\\n    AssertionError = ValueError\\n    assert True\\n]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[def check(AssertionError):\\n    assert True\\n]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[def outer(AssertionError):\\n    def check():\\n        assert True\\n    return check\\n]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[from builtins import AssertionError\\nassert True\\n]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[from builtins import ValueError as AssertionError\\nassert True\\n]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default=()-rope_contract_consumer0]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default=()-rope_contract_consumer2]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default=()-rope_contract_consumer3]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default_factory=None-rope_contract_consumer0]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default_factory=None-rope_contract_consumer1]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default_factory=None-rope_contract_consumer2]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default_factory=None-rope_contract_consumer3]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), description=describe()-rope_contract_consumer2]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[**metadata-rope_contract_consumer1]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[**metadata-rope_contract_consumer2]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[**metadata-rope_contract_consumer3]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[*defaults-rope_contract_consumer0]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[*defaults-rope_contract_consumer1]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[*defaults-rope_contract_consumer2]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[*defaults-rope_contract_consumer3]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[...-rope_contract_consumer0]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[...-rope_contract_consumer1]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[...-rope_contract_consumer2]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[...-rope_contract_consumer3]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default=(), default_factory=tuple-rope_contract_consumer0]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default=(), default_factory=tuple-rope_contract_consumer2]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default=(), default_factory=tuple-rope_contract_consumer3]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default=...-rope_contract_consumer0]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default=...-rope_contract_consumer1]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default=...-rope_contract_consumer3]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default_factory=tuple-rope_contract_consumer1]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default_factory=tuple-rope_contract_consumer2]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default_factory=tuple-rope_contract_consumer3]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[description='Required'-rope_contract_consumer0]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[description='Required'-rope_contract_consumer1]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[description='Required'-rope_contract_consumer2]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[description='Required'-rope_contract_consumer3]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[from pydantic import Field as Tag-Tag(discriminator='kind')-Payload | OtherPayload-model]",
+      "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[imports5-Tag(discriminator='kind')-Payload | OtherPayload-function]"
+    ],
+    "phase_outcomes": [
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-canonical]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-canonical]",
+        "phase": "call",
+        "outcome": "failed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-canonical]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[assert (  # outside predicate capture\\n    True\\n)\\n]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[assert (  # outside predicate capture\\n    True\\n)\\n]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[assert (  # outside predicate capture\\n    True\\n)\\n]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[assert True  # retained trailing comment\\n]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[assert True  # retained trailing comment\\n]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[assert True  # retained trailing comment\\n]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[assert True, (  # outside message capture\\n    'message'\\n)\\n]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[assert True, (  # outside message capture\\n    'message'\\n)\\n]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[assert True, (  # outside message capture\\n    'message'\\n)\\n]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[assert True; effect()\\n]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[assert True; effect()\\n]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[assert True; effect()\\n]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[def check(): assert True\\n]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[def check(): assert True\\n]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[def check(): assert True\\n]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[def check():\\n    assert '''first\\nsecond'''\\n]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[def check():\\n    assert '''first\\nsecond'''\\n]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[def check():\\n    assert '''first\\nsecond'''\\n]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[def check():\\n    assert 'first\\x0bsecond'\\n]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[def check():\\n    assert 'first\\x0bsecond'\\n]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[def check():\\n    assert 'first\\x0bsecond'\\n]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[def check():\\n    assert True, '''first\\nsecond'''\\n]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[def check():\\n    assert True, '''first\\nsecond'''\\n]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[def check():\\n    assert True, '''first\\nsecond'''\\n]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[effect(); assert True\\n]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[effect(); assert True\\n]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[effect(); assert True\\n]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[if True: \\\\\\n    assert True\\n]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[if True: \\\\\\n    assert True\\n]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[if True: \\\\\\n    assert True\\n]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[if True: assert True; effect()\\n]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[if True: assert True; effect()\\n]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[if True: assert True; effect()\\n]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[if True: assert True\\n]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[if True: assert True\\n]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[if True: assert True\\n]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[AssertionError = ValueError\\nassert True\\n]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[AssertionError = ValueError\\nassert True\\n]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[AssertionError = ValueError\\nassert True\\n]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[assert True\\nAssertionError = ValueError\\n]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[assert True\\nAssertionError = ValueError\\n]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[assert True\\nAssertionError = ValueError\\n]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[def check():\\n    AssertionError = ValueError\\n    assert True\\n]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[def check():\\n    AssertionError = ValueError\\n    assert True\\n]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[def check():\\n    AssertionError = ValueError\\n    assert True\\n]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[def check(AssertionError):\\n    assert True\\n]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[def check(AssertionError):\\n    assert True\\n]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[def check(AssertionError):\\n    assert True\\n]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[def outer(AssertionError):\\n    def check():\\n        assert True\\n    return check\\n]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[def outer(AssertionError):\\n    def check():\\n        assert True\\n    return check\\n]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[def outer(AssertionError):\\n    def check():\\n        assert True\\n    return check\\n]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[from builtins import AssertionError\\nassert True\\n]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[from builtins import AssertionError\\nassert True\\n]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[from builtins import AssertionError\\nassert True\\n]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[from builtins import ValueError as AssertionError\\nassert True\\n]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[from builtins import ValueError as AssertionError\\nassert True\\n]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[from builtins import ValueError as AssertionError\\nassert True\\n]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default=()-rope_contract_consumer0]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default=()-rope_contract_consumer0]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default=()-rope_contract_consumer0]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default=()-rope_contract_consumer2]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default=()-rope_contract_consumer2]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default=()-rope_contract_consumer2]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default=()-rope_contract_consumer3]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default=()-rope_contract_consumer3]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default=()-rope_contract_consumer3]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default_factory=None-rope_contract_consumer0]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default_factory=None-rope_contract_consumer0]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default_factory=None-rope_contract_consumer0]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default_factory=None-rope_contract_consumer1]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default_factory=None-rope_contract_consumer1]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default_factory=None-rope_contract_consumer1]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default_factory=None-rope_contract_consumer2]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default_factory=None-rope_contract_consumer2]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default_factory=None-rope_contract_consumer2]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default_factory=None-rope_contract_consumer3]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default_factory=None-rope_contract_consumer3]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default_factory=None-rope_contract_consumer3]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), description=describe()-rope_contract_consumer2]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), description=describe()-rope_contract_consumer2]",
+        "phase": "call",
+        "outcome": "failed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), description=describe()-rope_contract_consumer2]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[**metadata-rope_contract_consumer1]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[**metadata-rope_contract_consumer1]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[**metadata-rope_contract_consumer1]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[**metadata-rope_contract_consumer2]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[**metadata-rope_contract_consumer2]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[**metadata-rope_contract_consumer2]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[**metadata-rope_contract_consumer3]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[**metadata-rope_contract_consumer3]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[**metadata-rope_contract_consumer3]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[*defaults-rope_contract_consumer0]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[*defaults-rope_contract_consumer0]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[*defaults-rope_contract_consumer0]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[*defaults-rope_contract_consumer1]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[*defaults-rope_contract_consumer1]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[*defaults-rope_contract_consumer1]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[*defaults-rope_contract_consumer2]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[*defaults-rope_contract_consumer2]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[*defaults-rope_contract_consumer2]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[*defaults-rope_contract_consumer3]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[*defaults-rope_contract_consumer3]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[*defaults-rope_contract_consumer3]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[...-rope_contract_consumer0]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[...-rope_contract_consumer0]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[...-rope_contract_consumer0]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[...-rope_contract_consumer1]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[...-rope_contract_consumer1]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[...-rope_contract_consumer1]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[...-rope_contract_consumer2]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[...-rope_contract_consumer2]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[...-rope_contract_consumer2]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[...-rope_contract_consumer3]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[...-rope_contract_consumer3]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[...-rope_contract_consumer3]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default=(), default_factory=tuple-rope_contract_consumer0]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default=(), default_factory=tuple-rope_contract_consumer0]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default=(), default_factory=tuple-rope_contract_consumer0]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default=(), default_factory=tuple-rope_contract_consumer2]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default=(), default_factory=tuple-rope_contract_consumer2]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default=(), default_factory=tuple-rope_contract_consumer2]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default=(), default_factory=tuple-rope_contract_consumer3]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default=(), default_factory=tuple-rope_contract_consumer3]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default=(), default_factory=tuple-rope_contract_consumer3]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default=...-rope_contract_consumer0]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default=...-rope_contract_consumer0]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default=...-rope_contract_consumer0]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default=...-rope_contract_consumer1]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default=...-rope_contract_consumer1]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default=...-rope_contract_consumer1]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default=...-rope_contract_consumer3]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default=...-rope_contract_consumer3]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default=...-rope_contract_consumer3]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default_factory=tuple-rope_contract_consumer1]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default_factory=tuple-rope_contract_consumer1]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default_factory=tuple-rope_contract_consumer1]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default_factory=tuple-rope_contract_consumer2]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default_factory=tuple-rope_contract_consumer2]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default_factory=tuple-rope_contract_consumer2]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default_factory=tuple-rope_contract_consumer3]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default_factory=tuple-rope_contract_consumer3]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default_factory=tuple-rope_contract_consumer3]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[description='Required'-rope_contract_consumer0]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[description='Required'-rope_contract_consumer0]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[description='Required'-rope_contract_consumer0]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[description='Required'-rope_contract_consumer1]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[description='Required'-rope_contract_consumer1]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[description='Required'-rope_contract_consumer1]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[description='Required'-rope_contract_consumer2]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[description='Required'-rope_contract_consumer2]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[description='Required'-rope_contract_consumer2]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[description='Required'-rope_contract_consumer3]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[description='Required'-rope_contract_consumer3]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[description='Required'-rope_contract_consumer3]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[from pydantic import Field as Tag-Tag(discriminator='kind')-Payload | OtherPayload-model]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[from pydantic import Field as Tag-Tag(discriminator='kind')-Payload | OtherPayload-model]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[from pydantic import Field as Tag-Tag(discriminator='kind')-Payload | OtherPayload-model]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[imports5-Tag(discriminator='kind')-Payload | OtherPayload-function]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[imports5-Tag(discriminator='kind')-Payload | OtherPayload-function]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[imports5-Tag(discriminator='kind')-Payload | OtherPayload-function]",
+        "phase": "teardown",
+        "outcome": "passed"
+      }
+    ],
+    "markdown_attempts": [],
+    "markdown_items": [],
+    "failed_cases": [
+      "tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-canonical]",
+      "tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), description=describe()-rope_contract_consumer2]"
+    ],
+    "error_traces": [
+      "=== FAILURE: tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-canonical] ===\nAssertionError: Expected success but got failure: 'OverlayFiles' object has no attribute 'stat'\ntests/unit/codegen/_utility_facade_projection/owner_publication.py:82: in test_explicit_owner_config_requires_canonical_metadata\n    rendered = tm.ok(tm.not_none(u.Infra.render_utility_facade(package)))\n               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n.venv/lib/python3.13/site-packages/flext_tests/_utilities/_matchers/result.py:270: in ok\n    original = FlextTestsUtilitiesResult.assert_success(\n.venv/lib/python3.13/site-packages/flext_tests/_utilities/result.py:62: in assert_success\n    raise AssertionError(\nE   AssertionError: Expected success but got failure: 'OverlayFiles' object has no attribute 'stat'",
+      "=== FAILURE: tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), description=describe()-rope_contract_consumer2] ===\nAttributeError: 'OverlayFiles' object has no attribute 'stat'\ntests/unit/codemod/test_rope_contract_bindings.py:563: in test_defaulted_metadata_preserves_required_factories_and_invalid_calls\n    tm.ok(u.Infra.plan_contract_rules(workspace, {path: source}, rules)),\n          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nsrc/flext_infra/_utilities/_semantic_cutover/contracts.py:345: in plan_contract_rules\n    return cls._plan_contract_rules_in_view(\nsrc/flext_infra/_utilities/_semantic_cutover/contracts.py:364: in _plan_contract_rules_in_view\n    return cls._plan_bound_contract_rules(workspace, sources, rules, options)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nsrc/flext_infra/_utilities/_semantic_cutover/contracts.py:397: in _plan_bound_contract_rules\n    working, applied, owned_modules = cls._apply_contract_rules(\nsrc/flext_infra/_utilities/_semantic_cutover/contracts.py:532: in _apply_contract_rules\n    cls._contract_rule_members(\nsrc/flext_infra/_utilities/_semantic_cutover/contracts.py:882: in _contract_rule_members\n    changes = FlextInfraUtilitiesRopeRuntimeRefactors.restructure_changes(\nsrc/flext_infra/_utilities/_rope/runtime_refactors.py:1200: in restructure_changes\n    changes = restructuring.get_changes(resources=list(request.resources))\n              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n.venv/lib/python3.13/site-packages/rope/refactor/restructure.py:180: in get_changes\n    matches = list(finder.get_matches(self.pattern, self.args))\n              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n.venv/lib/python3.13/site-packages/rope/refactor/similarfinder.py:108: in get_matches\n    for match in self._get_matched_asts(code):\n                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n.venv/lib/python3.13/site-packages/rope/refactor/similarfinder.py:118: in _get_matched_asts\n    matches = _ASTMatcher(self.ast, wanted, self.does_match).find_matches()\n              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n.venv/lib/python3.13/site-packages/rope/refactor/similarfinder.py:159: in find_matches\n    ast.call_for_nodes(self.body, self._check_node)\n.venv/lib/python3.13/site-packages/rope/base/ast.py:71: in call_for_nodes\n    call_for_nodes(child, callback)\n.venv/lib/python3.13/site-packages/rope/base/ast.py:68: in call_for_nodes\n    result = callback(node)\n             ^^^^^^^^^^^^^^\n.venv/lib/python3.13/site-packages/rope/refactor/similarfinder.py:164: in _check_node\n    self._check_statements(node)\n.venv/lib/python3.13/site-packages/rope/refactor/similarfinder.py:190: in _check_statements\n    self.__check_stmt_list(child)\n.venv/lib/python3.13/site-packages/rope/refactor/similarfinder.py:197: in __check_stmt_list\n    if self._match_stmts(current_stmts, mapping):\n       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n.venv/lib/python3.13/site-packages/rope/refactor/similarfinder.py:240: in _match_stmts\n    if not self._match_nodes(expected, stmt, mapping):\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n.venv/lib/python3.13/site-packages/rope/refactor/similarfinder.py:215: in _match_nodes\n    if not self._match_nodes(child1, child2, mapping):\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n.venv/lib/python3.13/site-packages/rope/refactor/similarfinder.py:215: in _match_nodes\n    if not self._match_nodes(child1, child2, mapping):\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n.venv/lib/python3.13/site-packages/rope/refactor/similarfinder.py:203: in _match_nodes\n    return self._match_wildcard(expected, node, mapping)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n.venv/lib/python3.13/site-packages/rope/refactor/similarfinder.py:247: in _match_wildcard\n    if self.matches_callback(node2, name):\n       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n.venv/lib/python3.13/site-packages/rope/refactor/similarfinder.py:68: in _does_match\n    return self.wildcards[kind].matches(suspect, arg)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nsrc/flext_infra/_utilities/_rope/restructure.py:39: in matches\n    return any(self._wildcard.matches(suspect, choice) for choice in arg)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nsrc/flext_infra/_utilities/_rope/restructure.py:39: in <genexpr>\n    return any(self._wildcard.matches(suspect, choice) for choice in arg)\n               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n.venv/lib/python3.13/site-packages/rope/refactor/wildcards.py:46: in matches\n    if not self._check_object(args, suspect):\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n.venv/lib/python3.13/site-packages/rope/refactor/wildcards.py:59: in _check_object\n    checker = _CheckObject(self.project, expected, kind, unsure=unsure)\n              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n.venv/lib/python3.13/site-packages/rope/refactor/wildcards.py:93: in __init__\n    self.expected = self._evaluate(expected)\n                    ^^^^^^^^^^^^^^^^^^^^^^^^\n.venv/lib/python3.13/site-packages/rope/refactor/wildcards.py:169: in _evaluate\n    pyobject = self.project.get_module(attributes[0])\n               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nsrc/flext_infra/_utilities/_rope/native_project.py:108: in get_module\n    return native.get_module(name, self._native_folder(folder))\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n.venv/lib/python3.13/site-packages/rope/base/project.py:84: in get_module\n    return self.pycore.resource_to_pyobject(module)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nsrc/flext_infra/_utilities/_rope/project.py:715: in resource_to_pyobject\n    return shared.project.pycore.resource_to_pyobject(shared, force_errors)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n.venv/lib/python3.13/site-packages/rope/base/pycore.py:141: in resource_to_pyobject\n    return self.module_cache.get_pymodule(resource, force_errors)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n.venv/lib/python3.13/site-packages/rope/base/pycore.py:257: in get_pymodule\n    result = pyobjectsdef.PyPackage(\n.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:705: in __init__\n    self.source_code = pycore.project.get_pymodule(\n.venv/lib/python3.13/site-packages/rope/base/project.py:192: in get_pymodule\n    return self.pycore.resource_to_pyobject(resource, force_errors)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n.venv/lib/python3.13/site-packages/rope/base/pycore.py:141: in resource_to_pyobject\n    return self.module_cache.get_pymodule(resource, force_errors)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n.venv/lib/python3.13/site-packages/rope/base/pycore.py:271: in get_pymodule\n    self.observer.add_resource(resource)\n.venv/lib/python3.13/site-packages/rope/base/resourceobserver.py:98: in add_resource\n    self.resources[resource] = self.timekeeper.get_indicator(resource)\n                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n.venv/lib/python3.13/site-packages/rope/base/resourceobserver.py:254: in get_indicator\n    state = filesystem.stat(path)\n            ^^^^^^^^^^^^^^^\nE   AttributeError: 'OverlayFiles' object has no attribute 'stat'"
+    ],
+    "warning_lines": [],
+    "skip_cases": [],
+    "slow_entries": [
+      "4.757000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[assert True  # retained trailing comment\\n]",
+      "3.352000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-canonical]",
+      "0.288000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[**metadata-rope_contract_consumer1]",
+      "0.268000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default_factory=tuple-rope_contract_consumer2]",
+      "0.220000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[if True: \\\\\\n    assert True\\n]",
+      "0.213000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), description=describe()-rope_contract_consumer2]",
+      "0.213000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default_factory=None-rope_contract_consumer0]",
+      "0.212000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[...-rope_contract_consumer1]",
+      "0.211000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[...-rope_contract_consumer0]",
+      "0.211000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default_factory=None-rope_contract_consumer1]",
+      "0.208000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[...-rope_contract_consumer3]",
+      "0.207000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[*defaults-rope_contract_consumer0]",
+      "0.206000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[...-rope_contract_consumer2]",
+      "0.203000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[*defaults-rope_contract_consumer3]",
+      "0.199000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[assert True\\nAssertionError = ValueError\\n]",
+      "0.198000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[from pydantic import Field as Tag-Tag(discriminator='kind')-Payload | OtherPayload-model]",
+      "0.197000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[assert True, (  # outside message capture\\n    'message'\\n)\\n]",
+      "0.196000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[from builtins import ValueError as AssertionError\\nassert True\\n]",
+      "0.195000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[description='Required'-rope_contract_consumer2]",
+      "0.195000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default_factory=None-rope_contract_consumer2]",
+      "0.192000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[def check():\\n    assert '''first\\nsecond'''\\n]",
+      "0.190000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[imports5-Tag(discriminator='kind')-Payload | OtherPayload-function]",
+      "0.190000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[description='Required'-rope_contract_consumer1]",
+      "0.190000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default=(), default_factory=tuple-rope_contract_consumer3]",
+      "0.190000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[*defaults-rope_contract_consumer2]",
+      "0.189000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[*defaults-rope_contract_consumer1]",
+      "0.189000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[def check(): assert True\\n]",
+      "0.188000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default_factory=tuple-rope_contract_consumer1]",
+      "0.188000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default=...-rope_contract_consumer0]",
+      "0.188000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default=(), default_factory=tuple-rope_contract_consumer2]",
+      "0.186000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default=...-rope_contract_consumer3]",
+      "0.186000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default=()-rope_contract_consumer3]",
+      "0.185000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[**metadata-rope_contract_consumer2]",
+      "0.184000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default=()-rope_contract_consumer2]",
+      "0.183000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[def check():\\n    assert 'first\\x0bsecond'\\n]",
+      "0.181000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[def check():\\n    assert True, '''first\\nsecond'''\\n]",
+      "0.177000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[**metadata-rope_contract_consumer3]",
+      "0.017000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[from builtins import AssertionError\\nassert True\\n]",
+      "0.014000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[def outer(AssertionError):\\n    def check():\\n        assert True\\n    return check\\n]",
+      "0.013000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[description='Required'-rope_contract_consumer3]",
+      "0.013000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[description='Required'-rope_contract_consumer0]",
+      "0.013000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default_factory=tuple-rope_contract_consumer3]",
+      "0.013000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default=...-rope_contract_consumer1]",
+      "0.013000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default=()-rope_contract_consumer0]",
+      "0.013000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[AssertionError = ValueError\\nassert True\\n]",
+      "0.013000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[if True: assert True\\n]",
+      "0.012000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default=(), default_factory=tuple-rope_contract_consumer0]",
+      "0.012000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default_factory=None-rope_contract_consumer3]",
+      "0.012000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[def check():\\n    AssertionError = ValueError\\n    assert True\\n]",
+      "0.012000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[if True: assert True; effect()\\n]",
+      "0.012000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[effect(); assert True\\n]",
+      "0.012000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[assert True; effect()\\n]",
+      "0.012000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[assert (  # outside predicate capture\\n    True\\n)\\n]",
+      "0.011000s | tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[def check(AssertionError):\\n    assert True\\n]"
+    ]
+  },
+  "cache_hit": false,
+  "violations": [
+    "selected node IDs differ from executed node IDs"
+  ]
+}

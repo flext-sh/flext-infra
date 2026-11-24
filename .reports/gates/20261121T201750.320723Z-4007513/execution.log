@@ -1,0 +1,28 @@
+INFO: check: registry initialization start
+INFO: check: registry initialization complete
+INFO: check: selection start phase=primary
+INFO: check: selection complete projects=1 gates=2
+INFO: check: preparation start identity=True
+INFO: check: preparation complete projects=1
+INFO: check: prerequisite planning start projects=1
+INFO: check: prerequisite planning complete gates=2
+INFO: check: prerequisite wave start gate=lint jobs=1
+INFO: gate_executed project=flext-ezljc gate=lint passed=False elapsed=0.304
+2026-11-21T20:17:55.701683Z [error    ] stage_failed                   [flext_cli.api.FlextCli] error='lint failed for flext-ezljc with 1 findings' stage_id=lint
+2026-11-21T20:17:55.704353Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=313.68 failed=1 skipped=0 total_stages=1
+INFO: check: prerequisite wave complete gate=lint
+    [FAIL] lint           1 errors  (0.30s)
+INFO: lint: findings; Native output receipt: /home/marlonsc/flext/flext-infra/worktrees/flext-ezljc/.reports/gates/20261121T201750.320723Z-4007513/check/ba7d68f2-5e5c-49e7-9ded-5eaba61d8c31/flext-ezljc/lint.raw.log
+INFO: check: prerequisite wave start gate=pyrefly jobs=1
+INFO: gate_executed project=flext-ezljc gate=pyrefly passed=True elapsed=14.547
+2026-11-21T20:18:10.273256Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=14547.32 failed=0 skipped=0 total_stages=1
+INFO: check: prerequisite wave complete gate=pyrefly
+    [OK] pyrefly        0 errors  (14.55s)
+
+-- check summary --
+Total: 1  Success: 0  Failed: 1  Skipped: 0  (15.01s)
+INFO: Reports: /home/marlonsc/flext/flext-infra/worktrees/flext-ezljc/.reports/gates/20261121T201750.320723Z-4007513/check/ba7d68f2-5e5c-49e7-9ded-5eaba61d8c31/check-report.md
+INFO:          /home/marlonsc/flext/flext-infra/worktrees/flext-ezljc/.reports/gates/20261121T201750.320723Z-4007513/check/ba7d68f2-5e5c-49e7-9ded-5eaba61d8c31/check-report.sarif
+INFO: Findings by project (see reports for detail):
+INFO: flext-ezljc                         1  (lint=1)
+❌ quality checks failed for: flext-ezljc (1 findings; see the check summary and reports)

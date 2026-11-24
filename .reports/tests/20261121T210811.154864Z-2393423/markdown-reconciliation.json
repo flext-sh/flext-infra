@@ -1,0 +1,757 @@
+{
+  "eligible": [],
+  "selected": [],
+  "deselected": [],
+  "diagnostics": {
+    "failed_count": 1,
+    "error_count": 0,
+    "warning_count": 0,
+    "skipped_count": 0,
+    "connectivity_skip_cases": [],
+    "collection_failed_count": 0,
+    "collection_skipped_count": 0,
+    "collection_failed_cases": [],
+    "collection_skip_cases": [],
+    "reported_node_ids": [
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-c]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-m]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-p]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-t]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-u]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-True-c]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-True-m]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-True-p]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-True-t]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-True-u]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-False-c]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-False-m]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-False-p]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-False-t]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-False-u]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-True-c]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-True-m]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-True-p]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-True-t]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-True-u]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication2-False-c]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-annotation]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-canonical]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-duplicate]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-foreign]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-renamed]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-annotation]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-canonical]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-duplicate]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-foreign]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-renamed]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-annotation]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-canonical]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-duplicate]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-foreign]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-renamed]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-annotation]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-canonical]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-duplicate]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-foreign]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-renamed]",
+      "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_initializer_retires_exports_moved_into_class_owners",
+      "tests/unit/codemod/test_api_alias_cutover.py::TestsFlextInfraApiAliasCutover::test_service_retirement_preserves_kernel_context_and_shadowing[from sample_pkg import s-s-FlextSampleService]"
+    ],
+    "phase_outcomes": [
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-c]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-c]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-c]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-m]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-m]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-m]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-p]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-p]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-p]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-t]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-t]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-t]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-u]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-u]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-u]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-True-c]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-True-c]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-True-c]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-True-m]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-True-m]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-True-m]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-True-p]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-True-p]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-True-p]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-True-t]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-True-t]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-True-t]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-True-u]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-True-u]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-True-u]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-False-c]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-False-c]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-False-c]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-False-m]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-False-m]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-False-m]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-False-p]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-False-p]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-False-p]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-False-t]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-False-t]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-False-t]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-False-u]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-False-u]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-False-u]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-True-c]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-True-c]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-True-c]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-True-m]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-True-m]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-True-m]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-True-p]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-True-p]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-True-p]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-True-t]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-True-t]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-True-t]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-True-u]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-True-u]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-True-u]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication2-False-c]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-annotation]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-annotation]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-annotation]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-canonical]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-canonical]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-canonical]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-duplicate]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-duplicate]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-duplicate]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-foreign]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-foreign]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-foreign]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-renamed]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-renamed]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-renamed]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-annotation]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-annotation]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-annotation]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-canonical]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-canonical]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-canonical]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-duplicate]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-duplicate]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-duplicate]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-foreign]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-foreign]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-foreign]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-renamed]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-renamed]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-renamed]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-annotation]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-annotation]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-annotation]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-canonical]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-canonical]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-canonical]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-duplicate]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-duplicate]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-duplicate]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-foreign]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-foreign]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-foreign]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-renamed]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-renamed]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-renamed]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-annotation]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-annotation]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-annotation]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-canonical]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-canonical]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-canonical]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-duplicate]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-duplicate]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-duplicate]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-foreign]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-foreign]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-foreign]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-renamed]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-renamed]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-renamed]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_initializer_retires_exports_moved_into_class_owners",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_initializer_retires_exports_moved_into_class_owners",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_initializer_retires_exports_moved_into_class_owners",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_api_alias_cutover.py::TestsFlextInfraApiAliasCutover::test_service_retirement_preserves_kernel_context_and_shadowing[from sample_pkg import s-s-FlextSampleService]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_api_alias_cutover.py::TestsFlextInfraApiAliasCutover::test_service_retirement_preserves_kernel_context_and_shadowing[from sample_pkg import s-s-FlextSampleService]",
+        "phase": "call",
+        "outcome": "failed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_api_alias_cutover.py::TestsFlextInfraApiAliasCutover::test_service_retirement_preserves_kernel_context_and_shadowing[from sample_pkg import s-s-FlextSampleService]",
+        "phase": "teardown",
+        "outcome": "passed"
+      }
+    ],
+    "markdown_attempts": [],
+    "markdown_items": [],
+    "failed_cases": [
+      "tests.unit.codemod.test_api_alias_cutover.TestsFlextInfraApiAliasCutover::test_service_retirement_preserves_kernel_context_and_shadowing[from sample_pkg import s-s-FlextSampleService]"
+    ],
+    "error_traces": [
+      "=== FAILURE: tests.unit.codemod.test_api_alias_cutover.TestsFlextInfraApiAliasCutover::test_service_retirement_preserves_kernel_context_and_shadowing[from sample_pkg import s-s-FlextSampleService] ===\nFailed: Timeout (>2.0s) from pytest-timeout.\ntests/unit/codemod/test_api_alias_cutover.py:86: in test_service_retirement_preserves_kernel_context_and_shadowing\n    with infra.rope_workspace(root) as workspace:\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^\nsrc/flext_infra/api.py:107: in rope_workspace\n    session = workspace.FlextInfraRopeWorkspace.open_workspace(\nsrc/flext_infra/workspace/rope.py:565: in open_workspace\n    _ = workspace.rope_project\n        ^^^^^^^^^^^^^^^^^^^^^^\nsrc/flext_infra/workspace/_rope/query.py:151: in rope_project\n    rope_project = self.snapshot.engine\n                   ^^^^^^^^^^^^^\nsrc/flext_infra/workspace/_rope/query.py:117: in snapshot\n    source_project = scope.enter_context(\n../../../../.local/share/mise/installs/python/3.13.18/lib/python3.13/contextlib.py:530: in enter_context\n    result = _enter(cm)\n             ^^^^^^^^^^\n../../../../.local/share/mise/installs/python/3.13.18/lib/python3.13/contextlib.py:141: in __enter__\n    return next(self.gen)\n           ^^^^^^^^^^^^^^\nsrc/flext_infra/_utilities/_rope/core.py:261: in workspace_overlay_project\n    FlextInfraRopeProject.from_atomic_reads(\nsrc/flext_infra/_utilities/_rope/project.py:1492: in from_atomic_reads\n    return snapshot.bind_atomic_reads(\nsrc/flext_infra/_utilities/_rope/project.py:1575: in bind_atomic_reads\n    self._set_source_view(declared_files, ())\nsrc/flext_infra/_utilities/_rope/project.py:968: in _set_source_view\n    self._elect_shared_names(files)\nsrc/flext_infra/_utilities/_rope/project.py:804: in _elect_shared_names\n    self._shared_names = self._shared_module_names(\nsrc/flext_infra/_utilities/_rope/project.py:1284: in _shared_module_names\n    graph = FlextInfraRopeProject._distribution_graph(state)\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nsrc/flext_infra/_utilities/_rope/project.py:1237: in _distribution_graph\n    for file in distribution.files or ():\n                ^^^^^^^^^^^^^^^^^^\n../../../../.local/share/mise/installs/python/3.13.18/lib/python3.13/importlib/metadata/__init__.py:533: in files\n    return skip_missing_files(\n../../../../.local/share/mise/installs/python/3.13.18/lib/python3.13/importlib/metadata/_functools.py:102: in wrapper\n    return func(param, *args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n../../../../.local/share/mise/installs/python/3.13.18/lib/python3.13/importlib/metadata/__init__.py:531: in skip_missing_files\n    return list(filter(lambda path: path.locate().exists(), package_paths))\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n../../../../.local/share/mise/installs/python/3.13.18/lib/python3.13/importlib/metadata/__init__.py:531: in <lambda>\n    return list(filter(lambda path: path.locate().exists(), package_paths))\n                                    ^^^^^^^^^^^^^^^^^^^^^^\n../../../../.local/share/mise/installs/python/3.13.18/lib/python3.13/pathlib/_abc.py:450: in exists\n    self.stat(follow_symlinks=follow_symlinks)\n../../../../.local/share/mise/installs/python/3.13.18/lib/python3.13/pathlib/_local.py:515: in stat\n    return os.stat(self, follow_symlinks=follow_symlinks)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   Failed: Timeout (>2.0s) from pytest-timeout."
+    ],
+    "warning_lines": [],
+    "skip_cases": [],
+    "slow_entries": [
+      "16.319000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-canonical]",
+      "8.720000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-m]",
+      "6.326000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-True-u]",
+      "5.935000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-False-m]",
+      "5.907000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-t]",
+      "5.566000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-p]",
+      "5.459000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-c]",
+      "5.337000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-True-u]",
+      "5.213000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-True-c]",
+      "5.137000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-u]",
+      "4.933000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-False-p]",
+      "4.912000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-True-m]",
+      "4.644000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-True-p]",
+      "4.627000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-False-t]",
+      "4.518000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-True-c]",
+      "4.474000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-False-c]",
+      "4.332000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-True-p]",
+      "4.311000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-True-t]",
+      "4.274000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-True-t]",
+      "4.236000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-True-m]",
+      "4.136000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-False-u]",
+      "3.391000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_initializer_retires_exports_moved_into_class_owners",
+      "3.366000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-canonical]",
+      "3.004000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-renamed]",
+      "2.473000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-canonical]",
+      "2.187000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-canonical]",
+      "2.046000s | tests.unit.codemod.test_api_alias_cutover.TestsFlextInfraApiAliasCutover::test_service_retirement_preserves_kernel_context_and_shadowing[from sample_pkg import s-s-FlextSampleService]",
+      "1.476000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-renamed]",
+      "1.212000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-annotation]",
+      "1.101000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-foreign]",
+      "0.930000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-foreign]",
+      "0.927000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-annotation]",
+      "0.898000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-foreign]",
+      "0.845000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-duplicate]",
+      "0.840000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-renamed]",
+      "0.818000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-renamed]",
+      "0.806000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-annotation]",
+      "0.804000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-duplicate]",
+      "0.799000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-duplicate]",
+      "0.689000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-duplicate]",
+      "0.664000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-annotation]",
+      "0.558000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-foreign]",
+      "0.007000s | "
+    ]
+  },
+  "cache_hit": false,
+  "violations": [
+    "selected node IDs differ from executed node IDs"
+  ]
+}

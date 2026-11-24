@@ -1,0 +1,556 @@
+============================= test session starts ==============================
+platform linux -- Python 3.13.18, pytest-9.2.0, pluggy-1.7.0 -- /home/marlonsc/flext/flext-infra/worktrees/flext-ezljc/.venv/bin/python
+cachedir: .pytest_cache
+hypothesis profile 'default'
+benchmark: 5.3.1 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+Using --randomly-seed=994177143
+testmon: selection deactivated, environment: toolchain-cdb896a9e715-d5880452-5834a665
+Help shape testmon! Tell us what saves you time and what we can improve: https://testmon.org/survey
+rootdir: /home/marlonsc/flext/flext-infra/worktrees/flext-ezljc
+configfile: pyproject.toml
+plugins: flext-tests-0.12.0, hypothesis-6.170.15, anyio-4.16.0, asyncio-1.4.1.post1, benchmark-5.3.1, cov-7.1.0, markdown-docs-0.9.2, randomly-5.1.0, reportlog-1.0.0, testmon-2.3.0, timeout-2.4.0, xdist-3.8.0, platformdirs-4.14.5, flext-infra-0.12.3
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
+timeout: 2.0s
+timeout method: signal
+timeout func_only: True
+created: 2/2 workers
+2 workers [6885 items]
+
+scheduling tests via LoadScopeScheduling
+
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[import pydantic as m-m.Field(discriminator='kind')-Payload | OtherPayload-model] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-canonical] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[import pydantic as m-m.Field(discriminator='kind')-Payload | OtherPayload-model] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[import pydantic as m-m.Field(discriminator='kind')-Payload | OtherPayload-function] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[import pydantic as m-m.Field(discriminator='kind')-Payload | OtherPayload-function] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[import pydantic-pydantic.Field(discriminator='kind')-Payload | OtherPayload-model] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[import pydantic-pydantic.Field(discriminator='kind')-Payload | OtherPayload-model] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[import pydantic-pydantic.Field(discriminator='kind')-Payload | OtherPayload-function] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[import pydantic-pydantic.Field(discriminator='kind')-Payload | OtherPayload-function] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[import pydantic as m-m.Discriminator('kind')-Payload | OtherPayload-model] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[import pydantic as m-m.Discriminator('kind')-Payload | OtherPayload-model] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[import pydantic as m-m.Discriminator('kind')-Payload | OtherPayload-function] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[import pydantic as m-m.Discriminator('kind')-Payload | OtherPayload-function] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[from pydantic import Field as Tag-Tag(discriminator='kind')-Payload | OtherPayload-model] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[from pydantic import Field as Tag-Tag(discriminator='kind')-Payload | OtherPayload-model] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[from pydantic import Field as Tag-Tag(discriminator='kind')-Payload | OtherPayload-function] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[from pydantic import Field as Tag-Tag(discriminator='kind')-Payload | OtherPayload-function] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[import pydantic as m-m.Field(discriminator='kind')-'Payload | OtherPayload'-model] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[import pydantic as m-m.Field(discriminator='kind')-'Payload | OtherPayload'-model] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[import pydantic as m-m.Field(discriminator='kind')-'Payload | OtherPayload'-function] 
+[gw0] [  0%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-canonical] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-foreign] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[import pydantic as m-m.Field(discriminator='kind')-'Payload | OtherPayload'-function] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[imports5-Tag(discriminator='kind')-Payload | OtherPayload-model] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[imports5-Tag(discriminator='kind')-Payload | OtherPayload-model] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[imports5-Tag(discriminator='kind')-Payload | OtherPayload-function] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[imports5-Tag(discriminator='kind')-Payload | OtherPayload-function] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_imported_type_and_metadata_aliases_protect_discriminator 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_imported_type_and_metadata_aliases_protect_discriminator 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[assert (retained := predicate(value)) is not None] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[assert (retained := predicate(value)) is not None] 
+[gw0] [  0%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-foreign] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[assert (retained := predicate(value)) is not None, diagnostic()] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-renamed] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[assert (retained := predicate(value)) is not None, diagnostic()] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[assert (retained := predicate(value)) is not None, ('one', 'two')] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[assert (retained := predicate(value)) is not None, ('one', 'two')] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[assert isinstance((retained := predicate(value)), str), diagnostic()] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[assert isinstance((retained := predicate(value)), str), diagnostic()] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[assert 0 < len((retained := predicate(value)) or '') < 100] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[assert 0 < len((retained := predicate(value)) or '') < 100] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[statement5] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[statement5] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[statement6] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_preserves_lazy_values_and_optimized_checks[statement6] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[assert True; effect()\n] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[assert True; effect()\n] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[effect(); assert True\n] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[effect(); assert True\n] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[if True: assert True\n] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[if True: assert True\n] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[if True: assert True; effect()\n] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[if True: assert True; effect()\n] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[if True: \\\n    assert True\n] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[if True: \\\n    assert True\n] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[def check(): assert True\n] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[def check(): assert True\n] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[assert True  # retained trailing comment\n] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[assert True  # retained trailing comment\n] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[assert (  # outside predicate capture\n    True\n)\n] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[assert (  # outside predicate capture\n    True\n)\n] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[assert True, (  # outside message capture\n    'message'\n)\n] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[assert True, (  # outside message capture\n    'message'\n)\n] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[def check():\n    assert True, '''first\nsecond'''\n] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[def check():\n    assert True, '''first\nsecond'''\n] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[def check():\n    assert '''first\nsecond'''\n] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[def check():\n    assert '''first\nsecond'''\n] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[def check():\n    assert 'first\x0bsecond'\n] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_refuses_incomplete_effects_and_lost_trivia[def check():\n    assert 'first\x0bsecond'\n] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[AssertionError = ValueError\nassert True\n] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[AssertionError = ValueError\nassert True\n] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[assert True\nAssertionError = ValueError\n] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[assert True\nAssertionError = ValueError\n] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[from builtins import AssertionError\nassert True\n] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[from builtins import AssertionError\nassert True\n] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[from builtins import ValueError as AssertionError\nassert True\n] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[from builtins import ValueError as AssertionError\nassert True\n] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[def check(AssertionError):\n    assert True\n] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[def check(AssertionError):\n    assert True\n] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[def check():\n    AssertionError = ValueError\n    assert True\n] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[def check():\n    AssertionError = ValueError\n    assert True\n] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[def outer(AssertionError):\n    def check():\n        assert True\n    return check\n] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_assert_lowering_requires_the_interpreter_exception_binding[def outer(AssertionError):\n    def check():\n        assert True\n    return check\n] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source0-rope_contract_consumer0] 
+[gw0] [  0%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-renamed] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-duplicate] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source0-rope_contract_consumer0] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source1-rope_contract_consumer0] 
+[gw0] [  0%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-duplicate] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-annotation] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source1-rope_contract_consumer0] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source2-rope_contract_consumer0] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source2-rope_contract_consumer0] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source3-rope_contract_consumer0] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source3-rope_contract_consumer0] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source4-rope_contract_consumer0] 
+[gw0] [  0%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-annotation] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-canonical] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source4-rope_contract_consumer0] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source5-rope_contract_consumer0] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source5-rope_contract_consumer0] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source6-rope_contract_consumer0] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source6-rope_contract_consumer0] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[()-()-rope_contract_consumer0] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[()-()-rope_contract_consumer0] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default=()-()-rope_contract_consumer0] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default=()-()-rope_contract_consumer0] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default=None-None-rope_contract_consumer0] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default=None-None-rope_contract_consumer0] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default=Choice.READY-Choice.READY-rope_contract_consumer0] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default=Choice.READY-Choice.READY-rope_contract_consumer0] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default=make_default()-make_default()-rope_contract_consumer0] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default=make_default()-make_default()-rope_contract_consumer0] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default='ready'-'ready'-rope_contract_consumer0] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default='ready'-'ready'-rope_contract_consumer0] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[description='Required'-rope_contract_consumer0] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[description='Required'-rope_contract_consumer0] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[...-rope_contract_consumer0] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[...-rope_contract_consumer0] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default=...-rope_contract_consumer0] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default=...-rope_contract_consumer0] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default_factory=tuple-rope_contract_consumer0] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default_factory=tuple-rope_contract_consumer0] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default=(), default_factory=tuple-rope_contract_consumer0] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default=(), default_factory=tuple-rope_contract_consumer0] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default=()-rope_contract_consumer0] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default=()-rope_contract_consumer0] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default_factory=None-rope_contract_consumer0] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default_factory=None-rope_contract_consumer0] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), description=describe()-rope_contract_consumer0] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), description=describe()-rope_contract_consumer0] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[*defaults-rope_contract_consumer0] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[*defaults-rope_contract_consumer0] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[**metadata-rope_contract_consumer0] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[**metadata-rope_contract_consumer0] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Type()-rope_contract_consumer0] 
+[gw1] [  0%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Type()-rope_contract_consumer0] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Annotated[str, metadata(default_factory=str)]-rope_contract_consumer0] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Annotated[str, metadata(default_factory=str)]-rope_contract_consumer0] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Annotated[str, SDKField(default_factory=make_factory())]-rope_contract_consumer0] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Annotated[str, SDKField(default_factory=make_factory())]-rope_contract_consumer0] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Annotated[str, SDKField(description=metadata())]-rope_contract_consumer0] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Annotated[str, SDKField(description=metadata())]-rope_contract_consumer0] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Annotated[str, SDKField(default_factory=custom_factory)]-rope_contract_consumer0] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Annotated[str, SDKField(default_factory=custom_factory)]-rope_contract_consumer0] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[ForeignAnnotated[str, SDKField(default_factory=str)]-rope_contract_consumer0] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[ForeignAnnotated[str, SDKField(default_factory=str)]-rope_contract_consumer0] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source0-rope_contract_consumer1] 
+[gw0] [  1%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-canonical] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-foreign] 
+[gw0] [  1%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-foreign] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-renamed] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source0-rope_contract_consumer1] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source1-rope_contract_consumer1] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source1-rope_contract_consumer1] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source2-rope_contract_consumer1] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source2-rope_contract_consumer1] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source3-rope_contract_consumer1] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source3-rope_contract_consumer1] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source4-rope_contract_consumer1] 
+[gw0] [  1%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-renamed] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-duplicate] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source4-rope_contract_consumer1] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source5-rope_contract_consumer1] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source5-rope_contract_consumer1] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source6-rope_contract_consumer1] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source6-rope_contract_consumer1] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[()-()-rope_contract_consumer1] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[()-()-rope_contract_consumer1] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default=()-()-rope_contract_consumer1] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default=()-()-rope_contract_consumer1] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default=None-None-rope_contract_consumer1] 
+[gw0] [  1%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-duplicate] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-annotation] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default=None-None-rope_contract_consumer1] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default=Choice.READY-Choice.READY-rope_contract_consumer1] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default=Choice.READY-Choice.READY-rope_contract_consumer1] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default=make_default()-make_default()-rope_contract_consumer1] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default=make_default()-make_default()-rope_contract_consumer1] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default='ready'-'ready'-rope_contract_consumer1] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default='ready'-'ready'-rope_contract_consumer1] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[description='Required'-rope_contract_consumer1] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[description='Required'-rope_contract_consumer1] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[...-rope_contract_consumer1] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[...-rope_contract_consumer1] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default=...-rope_contract_consumer1] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default=...-rope_contract_consumer1] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default_factory=tuple-rope_contract_consumer1] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default_factory=tuple-rope_contract_consumer1] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default=(), default_factory=tuple-rope_contract_consumer1] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default=(), default_factory=tuple-rope_contract_consumer1] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default=()-rope_contract_consumer1] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default=()-rope_contract_consumer1] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default_factory=None-rope_contract_consumer1] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default_factory=None-rope_contract_consumer1] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), description=describe()-rope_contract_consumer1] 
+[gw0] [  1%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-annotation] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-canonical] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), description=describe()-rope_contract_consumer1] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[*defaults-rope_contract_consumer1] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[*defaults-rope_contract_consumer1] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[**metadata-rope_contract_consumer1] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[**metadata-rope_contract_consumer1] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Type()-rope_contract_consumer1] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Type()-rope_contract_consumer1] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Annotated[str, metadata(default_factory=str)]-rope_contract_consumer1] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Annotated[str, metadata(default_factory=str)]-rope_contract_consumer1] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Annotated[str, SDKField(default_factory=make_factory())]-rope_contract_consumer1] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Annotated[str, SDKField(default_factory=make_factory())]-rope_contract_consumer1] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Annotated[str, SDKField(description=metadata())]-rope_contract_consumer1] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Annotated[str, SDKField(description=metadata())]-rope_contract_consumer1] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Annotated[str, SDKField(default_factory=custom_factory)]-rope_contract_consumer1] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Annotated[str, SDKField(default_factory=custom_factory)]-rope_contract_consumer1] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[ForeignAnnotated[str, SDKField(default_factory=str)]-rope_contract_consumer1] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[ForeignAnnotated[str, SDKField(default_factory=str)]-rope_contract_consumer1] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source0-rope_contract_consumer2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source0-rope_contract_consumer2] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source1-rope_contract_consumer2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source1-rope_contract_consumer2] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source2-rope_contract_consumer2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source2-rope_contract_consumer2] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source3-rope_contract_consumer2] 
+[gw0] [  1%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-canonical] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-foreign] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source3-rope_contract_consumer2] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source4-rope_contract_consumer2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source4-rope_contract_consumer2] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source5-rope_contract_consumer2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source5-rope_contract_consumer2] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source6-rope_contract_consumer2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source6-rope_contract_consumer2] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[()-()-rope_contract_consumer2] 
+[gw0] [  1%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-foreign] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-renamed] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[()-()-rope_contract_consumer2] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default=()-()-rope_contract_consumer2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default=()-()-rope_contract_consumer2] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default=None-None-rope_contract_consumer2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default=None-None-rope_contract_consumer2] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default=Choice.READY-Choice.READY-rope_contract_consumer2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default=Choice.READY-Choice.READY-rope_contract_consumer2] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default=make_default()-make_default()-rope_contract_consumer2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default=make_default()-make_default()-rope_contract_consumer2] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default='ready'-'ready'-rope_contract_consumer2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default='ready'-'ready'-rope_contract_consumer2] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[description='Required'-rope_contract_consumer2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[description='Required'-rope_contract_consumer2] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[...-rope_contract_consumer2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[...-rope_contract_consumer2] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default=...-rope_contract_consumer2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default=...-rope_contract_consumer2] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default_factory=tuple-rope_contract_consumer2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default_factory=tuple-rope_contract_consumer2] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default=(), default_factory=tuple-rope_contract_consumer2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default=(), default_factory=tuple-rope_contract_consumer2] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default=()-rope_contract_consumer2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default=()-rope_contract_consumer2] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default_factory=None-rope_contract_consumer2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default_factory=None-rope_contract_consumer2] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), description=describe()-rope_contract_consumer2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), description=describe()-rope_contract_consumer2] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[*defaults-rope_contract_consumer2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[*defaults-rope_contract_consumer2] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[**metadata-rope_contract_consumer2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[**metadata-rope_contract_consumer2] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Type()-rope_contract_consumer2] 
+[gw0] [  1%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-renamed] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Type()-rope_contract_consumer2] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-duplicate] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Annotated[str, metadata(default_factory=str)]-rope_contract_consumer2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Annotated[str, metadata(default_factory=str)]-rope_contract_consumer2] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Annotated[str, SDKField(default_factory=make_factory())]-rope_contract_consumer2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Annotated[str, SDKField(default_factory=make_factory())]-rope_contract_consumer2] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Annotated[str, SDKField(description=metadata())]-rope_contract_consumer2] 
+[gw1] [  1%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Annotated[str, SDKField(description=metadata())]-rope_contract_consumer2] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Annotated[str, SDKField(default_factory=custom_factory)]-rope_contract_consumer2] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Annotated[str, SDKField(default_factory=custom_factory)]-rope_contract_consumer2] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[ForeignAnnotated[str, SDKField(default_factory=str)]-rope_contract_consumer2] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[ForeignAnnotated[str, SDKField(default_factory=str)]-rope_contract_consumer2] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source0-rope_contract_consumer3] 
+[gw0] [  2%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-duplicate] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-annotation] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source0-rope_contract_consumer3] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source1-rope_contract_consumer3] 
+[gw0] [  2%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-annotation] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-canonical] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source1-rope_contract_consumer3] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source2-rope_contract_consumer3] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source2-rope_contract_consumer3] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source3-rope_contract_consumer3] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source3-rope_contract_consumer3] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source4-rope_contract_consumer3] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source4-rope_contract_consumer3] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source5-rope_contract_consumer3] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source5-rope_contract_consumer3] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source6-rope_contract_consumer3] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source6-rope_contract_consumer3] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[()-()-rope_contract_consumer3] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[()-()-rope_contract_consumer3] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default=()-()-rope_contract_consumer3] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default=()-()-rope_contract_consumer3] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default=None-None-rope_contract_consumer3] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default=None-None-rope_contract_consumer3] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default=Choice.READY-Choice.READY-rope_contract_consumer3] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default=Choice.READY-Choice.READY-rope_contract_consumer3] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default=make_default()-make_default()-rope_contract_consumer3] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default=make_default()-make_default()-rope_contract_consumer3] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default='ready'-'ready'-rope_contract_consumer3] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_single_rule_preserves_concrete_default[default='ready'-'ready'-rope_contract_consumer3] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[description='Required'-rope_contract_consumer3] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[description='Required'-rope_contract_consumer3] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[...-rope_contract_consumer3] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[...-rope_contract_consumer3] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default=...-rope_contract_consumer3] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default=...-rope_contract_consumer3] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default_factory=tuple-rope_contract_consumer3] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default_factory=tuple-rope_contract_consumer3] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default=(), default_factory=tuple-rope_contract_consumer3] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[default=(), default_factory=tuple-rope_contract_consumer3] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default=()-rope_contract_consumer3] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default=()-rope_contract_consumer3] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default_factory=None-rope_contract_consumer3] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), default_factory=None-rope_contract_consumer3] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), description=describe()-rope_contract_consumer3] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), description=describe()-rope_contract_consumer3] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[*defaults-rope_contract_consumer3] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[*defaults-rope_contract_consumer3] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[**metadata-rope_contract_consumer3] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[**metadata-rope_contract_consumer3] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Type()-rope_contract_consumer3] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Type()-rope_contract_consumer3] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Annotated[str, metadata(default_factory=str)]-rope_contract_consumer3] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Annotated[str, metadata(default_factory=str)]-rope_contract_consumer3] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Annotated[str, SDKField(default_factory=make_factory())]-rope_contract_consumer3] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Annotated[str, SDKField(default_factory=make_factory())]-rope_contract_consumer3] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Annotated[str, SDKField(description=metadata())]-rope_contract_consumer3] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Annotated[str, SDKField(description=metadata())]-rope_contract_consumer3] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Annotated[str, SDKField(default_factory=custom_factory)]-rope_contract_consumer3] 
+[gw0] [  2%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-canonical] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-foreign] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[Annotated[str, SDKField(default_factory=custom_factory)]-rope_contract_consumer3] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[ForeignAnnotated[str, SDKField(default_factory=str)]-rope_contract_consumer3] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_required_metadata_rejects_unproved_annotation_calls[ForeignAnnotated[str, SDKField(default_factory=str)]-rope_contract_consumer3] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_unset_private_annotation_preserves_native_descriptor_behavior 
+[gw0] [  2%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-foreign] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-renamed] 
+[gw0] [  2%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-renamed] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-duplicate] 
+[gw0] [  2%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-duplicate] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-annotation] 
+[gw0] [  2%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-annotation] 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_initializer_retires_exports_moved_into_class_owners 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_unset_private_annotation_preserves_native_descriptor_behavior 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_native_metadata_admission_preserves_nonfields_and_homonyms 
+[gw0] [  2%] PASSED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_initializer_retires_exports_moved_into_class_owners 
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-c] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_native_metadata_admission_preserves_nonfields_and_homonyms 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_metadata_destination_cannot_capture_a_generic_parameter[rope_contract_consumer0] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_metadata_destination_cannot_capture_a_generic_parameter[rope_contract_consumer0] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_destination_binding_refuses_invalid_publication[module-shadow-rope_contract_consumer0] 
+[gw0] [  2%] FAILED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-c] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_destination_binding_refuses_invalid_publication[module-shadow-rope_contract_consumer0] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_destination_binding_refuses_invalid_publication[parameter-shadow-rope_contract_consumer0] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_destination_binding_refuses_invalid_publication[parameter-shadow-rope_contract_consumer0] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_destination_binding_refuses_invalid_publication[late-import-rope_contract_consumer0] 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_destination_binding_refuses_invalid_publication[late-import-rope_contract_consumer0] 
+tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_shadowed_dictionary_constructor_retains_its_own_contract 
+[gw1] [  2%] PASSED tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_shadowed_dictionary_constructor_retains_its_own_contract 
+
+=================================== FAILURES ===================================
+_ TestsFlextInfraUtilityFacadeProjection.test_explicit_owner_classes_preserve_publication_identity[publication0-False-c] _
+[gw0] linux -- Python 3.13.18 /home/marlonsc/flext/flext-infra/worktrees/flext-ezljc/.venv/bin/python
+tests/unit/codegen/_utility_facade_projection/owner_publication.py:234: in test_explicit_owner_classes_preserve_publication_identity
+    u.Tests.conform_plan_result(
+tests/_utilities/conform.py:143: in conform_plan_result
+    ).plan(request)
+      ^^^^^^^^^^^^^
+src/flext_infra/codegen/_conform/plan.py:48: in plan
+    return self._plan_request(request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/codegen/_conform/plan.py:65: in _plan_request
+    return self._plan_repositories(request, inputs.value)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/codegen/_conform/plan.py:126: in _plan_repositories
+    return self._plan_selected_repositories(
+src/flext_infra/codegen/_conform/plan.py:148: in _plan_selected_repositories
+    gathered = self._gathered_repository_plans(
+src/flext_infra/codegen/_conform/plan.py:991: in _gathered_repository_plans
+    outcomes = self._repository_plan_outcomes(tasks, surface, inputs, snapshots)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/codegen/_conform/plan.py:678: in _repository_plan_outcomes
+    return self._governed_plan_outcomes(
+src/flext_infra/codegen/_conform/plan.py:739: in _governed_plan_outcomes
+    planned = self._managed_plan_outcomes(
+src/flext_infra/codegen/_conform/plan.py:865: in _managed_plan_outcomes
+    outcome = type(self).plan_repository_task(
+src/flext_infra/codegen/_conform/plan.py:1169: in plan_repository_task
+    outcome = cls._plan_repository_task(task, snapshot)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/codegen/_conform/plan.py:1240: in _plan_repository_task
+    return planner._governed_repository_outcome(
+src/flext_infra/codegen/_conform/plan.py:1363: in _governed_repository_outcome
+    planned = self._governed_repository_plans(
+src/flext_infra/codegen/_conform/plan.py:1598: in _governed_repository_plans
+    repository_plan = planner(
+src/flext_infra/codegen/_conform/scaffold_plan.py:40: in _plan_existing_repository
+    existing = super()._plan_existing_repository(
+src/flext_infra/codegen/_conform/existing_plan.py:132: in _plan_existing_repository
+    return self._plan_existing_managed(
+src/flext_infra/codegen/_conform/existing_plan.py:253: in _plan_existing_managed
+    sources = self._existing_managed_sources(target, codegen, contract)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/codegen/_conform/existing_plan.py:376: in _existing_managed_sources
+    return self._projected_custom_sources(
+src/flext_infra/codegen/_conform/existing_plan.py:447: in _projected_custom_sources
+    else self._projected_exports(root, staged, selection=selection)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/codegen/_conform/existing_plan.py:631: in _projected_exports
+    return FlextInfraCodegenLazyInit.plan_candidate(
+src/flext_infra/codegen/lazy_init.py:130: in plan_candidate
+    planned = cls(repository_root=root, project_scope_roots=(root,)).plan_files(
+src/flext_infra/codegen/lazy_init.py:244: in plan_files
+    root: FlextInfraUtilitiesRopeAnalysisWorkspace.index_rope_workspace(
+src/flext_infra/_utilities/_rope/_analysis/rope_analysis_workspace.py:482: in index_rope_workspace
+    listing = tuple(
+src/flext_infra/_utilities/_rope/_analysis/rope_analysis_workspace.py:497: in <genexpr>
+    for path in FlextInfraUtilitiesWorkspaceSnapshot.workspace_python_files(
+src/flext_infra/_utilities/workspace_snapshot.py:444: in workspace_python_files
+    for path in FlextInfraUtilitiesProjectDiscovery.discover_python_files(
+src/flext_infra/_utilities/project_discovery.py:645: in discover_python_files
+    for path in cls._walk_python_files(
+src/flext_infra/_utilities/project_discovery.py:713: in _walk_python_files
+    source_paths = cls._source_scope_paths(directory)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/project_discovery.py:805: in _source_scope_paths
+    source_paths = FlextInfraUtilitiesGit.git_source_scope_paths(directory)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_git/scope.py:321: in git_source_scope_paths
+    root = cls.git_repo_root(str(scope_root))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_git/scope.py:93: in git_repo_root
+    probed = probe(m.Infra.GitRepoRequest(repo_root=resolved_scope))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_git/semantic_identity.py:261: in git_is_inside_work_tree
+    refreshed = FlextInfraUtilitiesGitRepo.refresh_binary()
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_git/repo.py:260: in refresh_binary
+    Git.refresh(resolved)
+.venv/lib/python3.13/site-packages/git/cmd.py:854: in refresh
+    cls().version()
+.venv/lib/python3.13/site-packages/git/cmd.py:1175: in <lambda>
+    return lambda *args, **kwargs: self._call_process(name, *args, **kwargs)
+                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/git/cmd.py:1900: in _call_process
+    return self.execute(call, **exec_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/git/cmd.py:1520: in execute
+    env = os.environ.copy()
+          ^^^^^^^^^^^^^^^^^
+<frozen os>:752: in copy
+    ???
+<frozen os>:718: in __getitem__
+    ???
+<frozen os>:799: in decode
+    ???
+E   Failed: Timeout (>20.0s) from pytest-timeout.
+----------------------------- Captured stdout call -----------------------------
+INFO: stage=plan repositories=1
+INFO: stage=repository state=start repository=flext-test-project root=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-14909/popen-gw0/test_explicit_owner_classes_pr0/flext-test-project source_root=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-14909/popen-gw0/test_explicit_owner_classes_pr0/flext-test-project surface=lazy-init role=standalone
+INFO: stage=lazy-init state=start root=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-14909/popen-gw0/test_explicit_owner_classes_pr0/flext-test-project
+INFO: stage=lazy-init state=end root=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-14909/popen-gw0/test_explicit_owner_classes_pr0/flext-test-project elapsed=0.267s files=1 effects=1
+INFO: stage=repository state=end repository=flext-test-project surface=lazy-init elapsed=0.278s files=1
+INFO: stage=repository state=start repository=flext-test-project root=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-14909/popen-gw0/test_explicit_owner_classes_pr0/flext-test-project source_root=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-14909/popen-gw0/test_explicit_owner_classes_pr0/flext-test-project surface=all role=standalone
+INFO:   stage=pyproject repository=flext-test-project
+INFO: stage=facades state=start root=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-14909/popen-gw0/test_explicit_owner_classes_pr0/flext-test-project
+INFO: stage=facades state=end root=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-14909/popen-gw0/test_explicit_owner_classes_pr0/flext-test-project elapsed=7.517s files=1
+INFO: stage=lazy-init state=start root=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-14909/popen-gw0/test_explicit_owner_classes_pr0/flext-test-project
++++++++++++++++++++++++++++++++++++ Timeout ++++++++++++++++++++++++++++++++++++
+~~~~~~~~~~~~~~ Stack of flext-async-log-writer (140537571047104) ~~~~~~~~~~~~~~~
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.18/lib/python3.13/threading.py", line 1015, in _bootstrap
+    self._bootstrap_inner()
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.18/lib/python3.13/threading.py", line 1044, in _bootstrap_inner
+    self.run()
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.18/lib/python3.13/threading.py", line 995, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/marlonsc/flext/flext-infra/worktrees/flext-ezljc/.venv/lib/python3.13/site-packages/flext_core/_utilities/_logging/async_writer.py", line 138, in _worker
+    job = self.queue.get(
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.18/lib/python3.13/queue.py", line 210, in get
+    self.not_empty.wait(remaining)
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.18/lib/python3.13/threading.py", line 363, in wait
+    gotit = waiter.acquire(True, timeout)
+~~~~~~~~~~~~~~~~~~~~~ Stack of <unknown> (140537923368640) ~~~~~~~~~~~~~~~~~~~~~
+  File "/home/marlonsc/flext/flext-infra/worktrees/flext-ezljc/.venv/lib/python3.13/site-packages/execnet/gateway_base.py", line 411, in _perform_spawn
+    reply.run()
+  File "/home/marlonsc/flext/flext-infra/worktrees/flext-ezljc/.venv/lib/python3.13/site-packages/execnet/gateway_base.py", line 341, in run
+    self._result = func(*args, **kwargs)
+  File "/home/marlonsc/flext/flext-infra/worktrees/flext-ezljc/.venv/lib/python3.13/site-packages/execnet/gateway_base.py", line 1160, in _thread_receiver
+    msg = Message.from_io(io)
+  File "/home/marlonsc/flext/flext-infra/worktrees/flext-ezljc/.venv/lib/python3.13/site-packages/execnet/gateway_base.py", line 567, in from_io
+    header = io.read(9)  # type 1, channel 4, payload 4
+  File "/home/marlonsc/flext/flext-infra/worktrees/flext-ezljc/.venv/lib/python3.13/site-packages/execnet/gateway_base.py", line 534, in read
+    data = self._read(numbytes - len(buf))
++++++++++++++++++++++++++++++++++++ Timeout ++++++++++++++++++++++++++++++++++++
+- generated xml file: /home/marlonsc/flext/flext-infra/worktrees/flext-ezljc/.reports/tests/20261121T182809.281006Z-971306/junit.xml -
+- generated report log file: /home/marlonsc/flext/flext-infra/worktrees/flext-ezljc/.reports/tests/20261121T182809.281006Z-971306/events.jsonl -
+------------------------------- flext slow tests -------------------------------
+0 near the ordinary limit; 1 near the slow limit
+  95% of the 20.00s slow limit (18.94s): tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_metadata_destination_cannot_capture_a_generic_parameter[rope_contract_consumer0]
+============================= slowest 25 durations =============================
+20.26s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-c]
+18.94s call     tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_metadata_destination_cannot_capture_a_generic_parameter[rope_contract_consumer0]
+12.72s call     tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_shadowed_dictionary_constructor_retains_its_own_contract
+11.73s call     tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_destination_binding_refuses_invalid_publication[module-shadow-rope_contract_consumer0]
+10.23s call     tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_destination_binding_refuses_invalid_publication[late-import-rope_contract_consumer0]
+8.37s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-canonical]
+7.49s call     tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_unset_private_annotation_preserves_native_descriptor_behavior
+5.24s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-canonical]
+5.01s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-canonical]
+5.00s setup    tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_shadowed_dictionary_constructor_retains_its_own_contract
+3.99s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-canonical]
+3.40s setup    tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_qualified_and_forward_discriminator_consumers_retain_literal_contract[import pydantic as m-m.Field(discriminator='kind')-Payload | OtherPayload-model]
+3.30s call     tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_destination_binding_refuses_invalid_publication[parameter-shadow-rope_contract_consumer0]
+3.16s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-True-foreign]
+2.78s call     tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source0-rope_contract_consumer1]
+2.76s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-renamed]
+2.65s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[m.ConfigDict-False-renamed]
+2.16s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-True-foreign]
+2.09s setup    tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source0-rope_contract_consumer1]
+2.02s call     tests/unit/codemod/test_rope_contract_bindings.py::TestsFlextInfraRopeContractBindings::test_field_metadata_preserves_native_validation_and_schema[source4-rope_contract_consumer3]
+
+(5 durations < 2s hidden.)
+=========================== short test summary info ============================
+FAILED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-c]
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!! xdist.dsession.Interrupted: stopping after 1 failures !!!!!!!!!!!!!
+================== 1 failed, 183 passed in 160.84s (0:02:40) ===================

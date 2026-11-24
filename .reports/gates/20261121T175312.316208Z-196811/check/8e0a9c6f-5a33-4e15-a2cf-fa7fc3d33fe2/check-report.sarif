@@ -1,0 +1,138 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "flext-infra-check",
+          "informationUri": "https://github.com/flext-sh/flext-infra",
+          "rules": [
+            {
+              "id": "too-many-public-methods",
+              "shortDescription": {
+                "text": "Ruff Linter (lint) issue"
+              },
+              "helpUri": "https://docs.astral.sh/ruff/"
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "too-many-public-methods",
+          "level": "error",
+          "message": {
+            "text": "Too many public methods (21 > 20)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/home/marlonsc/flext/flext-infra/worktrees/flext-ezljc/src/flext_infra/_utilities/project_managed_artifacts.py",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 24,
+                  "startColumn": 1
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "properties": {
+    "phase": "complete",
+    "requested_gates": [
+      "lint",
+      "format",
+      "markdown",
+      "markdown-format",
+      "markdown-code",
+      "conflict-markers"
+    ],
+    "pending_gates": [
+      "format",
+      "markdown",
+      "markdown-format",
+      "markdown-code",
+      "conflict-markers"
+    ],
+    "targets": [
+      {
+        "name": "flext-ezljc",
+        "path": "/home/marlonsc/flext/flext-infra/worktrees/flext-ezljc",
+        "applicable_gates": [
+          "lint",
+          "format",
+          "markdown",
+          "markdown-format",
+          "markdown-code",
+          "conflict-markers"
+        ],
+        "source_identity": {
+          "repo_root": "/home/marlonsc/flext/flext-infra/worktrees/flext-ezljc",
+          "primary_root": "/home/marlonsc/flext/flext-infra",
+          "head_oid": "2a01f316f40452701a3cded668cd775ab616f976",
+          "porcelain": "M  src/flext_infra/_utilities/_rope/inventory.py\nM  src/flext_infra/_utilities/codegen.py\nM  src/flext_infra/_utilities/project_managed_artifacts.py\nM  src/flext_infra/_utilities/protocol_models.py\nM  src/flext_infra/codegen/consolidator.py\nM  tests/unit/codegen/consolidator_tests.py\nM  tests/unit/codegen/scaffolder_naming_tests.py",
+          "dirty": true,
+          "git_dir": "/home/marlonsc/flext/.git/modules/flext-infra/worktrees/flext-ezljc",
+          "common_dir": "/home/marlonsc/flext/.git/modules/flext-infra",
+          "branch": "fix/flext-ezljc-rope-consolidator",
+          "origin_remote": "https://github.com/flext-sh/flext-infra.git",
+          "upstream_remote": null,
+          "superproject_root": "/home/marlonsc/flext",
+          "requested_path": "/home/marlonsc/flext/flext-infra/worktrees/flext-ezljc",
+          "is_worktree": true,
+          "is_submodule": true,
+          "is_attached_submodule": false,
+          "has_submodules": false,
+          "is_inside_work_tree": true
+        }
+      }
+    ],
+    "results": [
+      {
+        "project": "flext-ezljc",
+        "gates": {
+          "lint": {
+            "result": {
+              "project": "flext-ezljc",
+              "gate": "lint",
+              "passed": false,
+              "errors": [
+                "/home/marlonsc/flext/flext-infra/worktrees/flext-ezljc/src/flext_infra/_utilities/project_managed_artifacts.py:24:1 [too-many-public-methods] Too many public methods (21 > 20)"
+              ],
+              "duration": 1.179
+            },
+            "issues": [
+              {
+                "file": "/home/marlonsc/flext/flext-infra/worktrees/flext-ezljc/src/flext_infra/_utilities/project_managed_artifacts.py",
+                "line": 24,
+                "column": 1,
+                "code": "too-many-public-methods",
+                "message": "Too many public methods (21 > 20)",
+                "severity": "error",
+                "locations": [],
+                "related_locations": []
+              }
+            ],
+            "raw_receipt": "/home/marlonsc/flext/flext-infra/worktrees/flext-ezljc/.reports/gates/20261121T175312.316208Z-196811/check/8e0a9c6f-5a33-4e15-a2cf-fa7fc3d33fe2/flext-ezljc/lint.raw.log",
+            "outcome": "findings",
+            "process": {
+              "raw_return_code": 1,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          }
+        }
+      }
+    ],
+    "selected_files": [],
+    "global_targets": null
+  }
+}

@@ -1,0 +1,21 @@
+[
+  {
+    "cell": null,
+    "code": "E501",
+    "end_location": {
+      "column": 95,
+      "row": 305
+    },
+    "filename": "/home/marlonsc/flext/flext-infra/worktrees/flext-ezljc/tests/unit/codegen/test_codegen_make_verbs.py",
+    "fix": null,
+    "location": {
+      "column": 89,
+      "row": 305
+    },
+    "message": "Line too long (94 > 88)",
+    "name": "line-too-long",
+    "noqa_row": 305,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/line-too-long"
+  }
+]

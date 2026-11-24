@@ -1,0 +1,1 @@
+tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_long_protocol_owner_bases_are_canonical_before_publication[plain]

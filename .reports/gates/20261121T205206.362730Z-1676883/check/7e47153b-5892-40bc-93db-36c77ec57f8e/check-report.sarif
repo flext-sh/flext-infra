@@ -1,0 +1,297 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "flext-infra-check",
+          "informationUri": "https://github.com/flext-sh/flext-infra",
+          "rules": [
+            {
+              "id": "line-too-long",
+              "shortDescription": {
+                "text": "Ruff Linter (lint) issue"
+              },
+              "helpUri": "https://docs.astral.sh/ruff/"
+            },
+            {
+              "id": "bad-return",
+              "shortDescription": {
+                "text": "Pyrefly (pyrefly) issue"
+              },
+              "helpUri": "https://github.com/facebook/pyrefly"
+            },
+            {
+              "id": "missing-override-decorator",
+              "shortDescription": {
+                "text": "Pyrefly (pyrefly) issue"
+              },
+              "helpUri": "https://github.com/facebook/pyrefly"
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "line-too-long",
+          "level": "error",
+          "message": {
+            "text": "Line too long (89 > 88)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/home/marlonsc/flext/flext-infra/worktrees/flext-ezljc/src/flext_infra/_utilities/_rope/project.py",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 1232,
+                  "startColumn": 89
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "line-too-long",
+          "level": "error",
+          "message": {
+            "text": "Line too long (93 > 88)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/home/marlonsc/flext/flext-infra/worktrees/flext-ezljc/src/flext_infra/_utilities/_rope/project.py",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 1278,
+                  "startColumn": 89
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "line-too-long",
+          "level": "error",
+          "message": {
+            "text": "Line too long (91 > 88)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/home/marlonsc/flext/flext-infra/worktrees/flext-ezljc/src/flext_infra/_utilities/_rope/project.py",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 1279,
+                  "startColumn": 89
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "bad-return",
+          "level": "error",
+          "message": {
+            "text": "Returned type `AbstractModule | BuiltinModule` is not assignable to declared return type `BuiltinModule | PyModule | PyPackage`"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/flext_infra/_utilities/_rope/project.py",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 696,
+                  "startColumn": 20
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "missing-override-decorator",
+          "level": "error",
+          "message": {
+            "text": "Class member `FlextInfraRopeProject.pycore` overrides a member in a parent class but is missing an `@override` decorator"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/flext_infra/_utilities/_rope/project.py",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 719,
+                  "startColumn": 9
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "properties": {
+    "phase": "primary",
+    "requested_gates": [
+      "lint",
+      "pyrefly"
+    ],
+    "pending_gates": [],
+    "targets": [
+      {
+        "name": "flext-ezljc",
+        "path": "/home/marlonsc/flext/flext-infra/worktrees/flext-ezljc",
+        "applicable_gates": [
+          "lint",
+          "pyrefly"
+        ],
+        "source_identity": {
+          "repo_root": "/home/marlonsc/flext/flext-infra/worktrees/flext-ezljc",
+          "primary_root": "/home/marlonsc/flext/flext-infra",
+          "head_oid": "714bd55e0026775f13a83ec92a8c3575adba18fd",
+          "porcelain": " M src/flext_infra/_protocols/workspace_snapshot.py\n M src/flext_infra/_utilities/_rope/native_project.py\n M src/flext_infra/_utilities/_rope/project.py\n M src/flext_infra/_utilities/_semantic_cutover/aliases.py",
+          "dirty": true,
+          "git_dir": "/home/marlonsc/flext/.git/modules/flext-infra/worktrees/flext-ezljc",
+          "common_dir": "/home/marlonsc/flext/.git/modules/flext-infra",
+          "branch": "fix/flext-4wa0l-setup-trust-first",
+          "origin_remote": "https://github.com/flext-sh/flext-infra.git",
+          "upstream_remote": null,
+          "superproject_root": "/home/marlonsc/flext",
+          "requested_path": "/home/marlonsc/flext/flext-infra/worktrees/flext-ezljc",
+          "is_worktree": true,
+          "is_submodule": true,
+          "is_attached_submodule": false,
+          "has_submodules": false,
+          "is_inside_work_tree": true
+        }
+      }
+    ],
+    "results": [
+      {
+        "project": "flext-ezljc",
+        "gates": {
+          "lint": {
+            "result": {
+              "project": "flext-ezljc",
+              "gate": "lint",
+              "passed": false,
+              "errors": [
+                "/home/marlonsc/flext/flext-infra/worktrees/flext-ezljc/src/flext_infra/_utilities/_rope/project.py:1232:89 [line-too-long] Line too long (89 > 88)",
+                "/home/marlonsc/flext/flext-infra/worktrees/flext-ezljc/src/flext_infra/_utilities/_rope/project.py:1278:89 [line-too-long] Line too long (93 > 88)",
+                "/home/marlonsc/flext/flext-infra/worktrees/flext-ezljc/src/flext_infra/_utilities/_rope/project.py:1279:89 [line-too-long] Line too long (91 > 88)"
+              ],
+              "duration": 0.316
+            },
+            "issues": [
+              {
+                "file": "/home/marlonsc/flext/flext-infra/worktrees/flext-ezljc/src/flext_infra/_utilities/_rope/project.py",
+                "line": 1232,
+                "column": 89,
+                "code": "line-too-long",
+                "message": "Line too long (89 > 88)",
+                "severity": "error",
+                "locations": [],
+                "related_locations": []
+              },
+              {
+                "file": "/home/marlonsc/flext/flext-infra/worktrees/flext-ezljc/src/flext_infra/_utilities/_rope/project.py",
+                "line": 1278,
+                "column": 89,
+                "code": "line-too-long",
+                "message": "Line too long (93 > 88)",
+                "severity": "error",
+                "locations": [],
+                "related_locations": []
+              },
+              {
+                "file": "/home/marlonsc/flext/flext-infra/worktrees/flext-ezljc/src/flext_infra/_utilities/_rope/project.py",
+                "line": 1279,
+                "column": 89,
+                "code": "line-too-long",
+                "message": "Line too long (91 > 88)",
+                "severity": "error",
+                "locations": [],
+                "related_locations": []
+              }
+            ],
+            "raw_receipt": "/home/marlonsc/flext/flext-infra/worktrees/flext-ezljc/.reports/gates/20261121T205206.362730Z-1676883/check/7e47153b-5892-40bc-93db-36c77ec57f8e/flext-ezljc/lint.raw.log",
+            "outcome": "findings",
+            "process": {
+              "raw_return_code": 1,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          },
+          "pyrefly": {
+            "result": {
+              "project": "flext-ezljc",
+              "gate": "pyrefly",
+              "passed": false,
+              "errors": [
+                "src/flext_infra/_utilities/_rope/project.py:696:20 [bad-return] Returned type `AbstractModule | BuiltinModule` is not assignable to declared return type `BuiltinModule | PyModule | PyPackage`",
+                "src/flext_infra/_utilities/_rope/project.py:719:9 [missing-override-decorator] Class member `FlextInfraRopeProject.pycore` overrides a member in a parent class but is missing an `@override` decorator"
+              ],
+              "duration": 16.832
+            },
+            "issues": [
+              {
+                "file": "src/flext_infra/_utilities/_rope/project.py",
+                "line": 696,
+                "column": 20,
+                "code": "bad-return",
+                "message": "Returned type `AbstractModule | BuiltinModule` is not assignable to declared return type `BuiltinModule | PyModule | PyPackage`",
+                "severity": "error",
+                "locations": [],
+                "related_locations": []
+              },
+              {
+                "file": "src/flext_infra/_utilities/_rope/project.py",
+                "line": 719,
+                "column": 9,
+                "code": "missing-override-decorator",
+                "message": "Class member `FlextInfraRopeProject.pycore` overrides a member in a parent class but is missing an `@override` decorator",
+                "severity": "error",
+                "locations": [],
+                "related_locations": []
+              }
+            ],
+            "raw_receipt": "/home/marlonsc/flext/flext-infra/worktrees/flext-ezljc/.reports/gates/20261121T205206.362730Z-1676883/check/7e47153b-5892-40bc-93db-36c77ec57f8e/flext-ezljc/pyrefly.raw.log",
+            "outcome": "findings",
+            "process": {
+              "raw_return_code": 1,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          }
+        }
+      }
+    ],
+    "selected_files": [],
+    "global_targets": [
+      {
+        "name": "flext-ezljc",
+        "path": "/home/marlonsc/flext/flext-infra/worktrees/flext-ezljc",
+        "applicable_gates": [
+          "lint",
+          "pyrefly"
+        ],
+        "source_identity": null
+      }
+    ]
+  }
+}

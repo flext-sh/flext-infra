@@ -1,0 +1,11 @@
+=== FAILURE: tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-c] ===
+pydantic_core._pydantic_core.ValidationError: 1 validation error for CodegenConformRequest
+  Value error, facades requires an exact destination --module [type=value_error]
+    For further information visit https://errors.pydantic.dev/2.14/v/value_error
+tests/unit/codegen/_utility_facade_projection/owner_publication.py:236: in test_explicit_owner_classes_preserve_publication_identity
+    u.Tests.conform_request(
+tests/_utilities/conform.py:90: in conform_request
+    return m.Infra.CodegenConformRequest(
+E   pydantic_core._pydantic_core.ValidationError: 1 validation error for CodegenConformRequest
+E     Value error, facades requires an exact destination --module [type=value_error]
+E       For further information visit https://errors.pydantic.dev/2.14/v/value_error

@@ -1,0 +1,7 @@
+{
+  "execution_mode": "full",
+  "testmon_db": "/home/marlonsc/flext/flext-infra/worktrees/flext-ezljc/.testmondata",
+  "deadline_monotonic": null,
+  "report_directory": "/home/marlonsc/flext/flext-infra/worktrees/flext-ezljc/.reports/tests/20261122T015719.849971Z-2828588",
+  "profile_sha256": null
+}

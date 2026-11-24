@@ -1,0 +1,35 @@
+INFO: check: registry initialization start
+INFO: check: registry initialization complete
+INFO: check: selection start phase=complete
+INFO: check: selection complete projects=1 gates=6
+INFO: check: preparation start identity=True
+INFO: check: preparation complete projects=1
+INFO: check: prerequisite planning start projects=1
+INFO: check: prerequisite planning complete gates=1
+INFO: check: prerequisite wave start gate=lint jobs=1
+INFO: gate_executed project=flext-ezljc gate=lint passed=True elapsed=0.534
+2026-11-21T20:44:43.060348Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=550.05 failed=0 skipped=0 total_stages=1
+INFO: check: prerequisite wave complete gate=lint
+    [OK] lint           0 errors  (0.53s)
+[1/1] flext-ezljc check ...
+INFO: gate_executed project=flext-ezljc gate=markdown-format passed=True elapsed=1.691
+2026-11-21T20:44:46.619432Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=1691.31 failed=0 skipped=0 total_stages=1
+INFO: gate_executed project=flext-ezljc gate=markdown passed=True elapsed=1.706
+2026-11-21T20:44:46.634173Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=1706.67 failed=0 skipped=0 total_stages=1
+INFO: gate_executed project=flext-ezljc gate=format passed=True elapsed=4.1
+2026-11-21T20:44:49.027141Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=4100.04 failed=0 skipped=0 total_stages=1
+INFO: gate_executed project=flext-ezljc gate=markdown-code passed=True elapsed=4.309
+2026-11-21T20:44:49.238784Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=4309.59 failed=0 skipped=0 total_stages=1
+INFO: gate_executed project=flext-ezljc gate=conflict-markers passed=True elapsed=5.055
+2026-11-21T20:44:51.655514Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=6725.72 failed=0 skipped=0 total_stages=1
+    [OK] format         0 errors  (4.10s)
+    [OK] markdown       0 errors  (1.71s)
+    [OK] markdown-format     0 errors  (1.69s)
+    [OK] markdown-code     0 errors  (4.31s)
+    [OK] conflict-markers     0 errors  (5.05s)
+  [OK] check    flext-ezljc              6.87s
+
+-- check summary --
+Total: 1  Success: 1  Failed: 0  Skipped: 0  (7.48s)
+INFO: Reports: /home/marlonsc/flext/flext-infra/worktrees/flext-ezljc/.reports/gates/20261121T204439.463488Z-1069875/check/a13843a1-d904-4be1-a9d4-f18beec65467/check-report.md
+INFO:          /home/marlonsc/flext/flext-infra/worktrees/flext-ezljc/.reports/gates/20261121T204439.463488Z-1069875/check/a13843a1-d904-4be1-a9d4-f18beec65467/check-report.sarif

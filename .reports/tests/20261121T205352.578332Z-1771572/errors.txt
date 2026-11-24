@@ -1,0 +1,120 @@
+=== FAILURE: tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_config_requires_canonical_metadata[ConfigDict-False-canonical] ===
+AssertionError: Expected success but got failure: 'OverlayFiles' object has no attribute 'stat'
+tests/unit/codegen/_utility_facade_projection/owner_publication.py:82: in test_explicit_owner_config_requires_canonical_metadata
+    rendered = tm.ok(tm.not_none(u.Infra.render_utility_facade(package)))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/flext_tests/_utilities/_matchers/result.py:270: in ok
+    original = FlextTestsUtilitiesResult.assert_success(
+.venv/lib/python3.13/site-packages/flext_tests/_utilities/result.py:62: in assert_success
+    raise AssertionError(
+E   AssertionError: Expected success but got failure: 'OverlayFiles' object has no attribute 'stat'
+
+=== FAILURE: tests.unit.codemod.test_rope_contract_bindings.TestsFlextInfraRopeContractBindings::test_defaulted_metadata_preserves_required_factories_and_invalid_calls[(), description=describe()-rope_contract_consumer2] ===
+AttributeError: 'OverlayFiles' object has no attribute 'stat'
+tests/unit/codemod/test_rope_contract_bindings.py:563: in test_defaulted_metadata_preserves_required_factories_and_invalid_calls
+    tm.ok(u.Infra.plan_contract_rules(workspace, {path: source}, rules)),
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/contracts.py:345: in plan_contract_rules
+    return cls._plan_contract_rules_in_view(
+src/flext_infra/_utilities/_semantic_cutover/contracts.py:364: in _plan_contract_rules_in_view
+    return cls._plan_bound_contract_rules(workspace, sources, rules, options)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/contracts.py:397: in _plan_bound_contract_rules
+    working, applied, owned_modules = cls._apply_contract_rules(
+src/flext_infra/_utilities/_semantic_cutover/contracts.py:532: in _apply_contract_rules
+    cls._contract_rule_members(
+src/flext_infra/_utilities/_semantic_cutover/contracts.py:882: in _contract_rule_members
+    changes = FlextInfraUtilitiesRopeRuntimeRefactors.restructure_changes(
+src/flext_infra/_utilities/_rope/runtime_refactors.py:1200: in restructure_changes
+    changes = restructuring.get_changes(resources=list(request.resources))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/refactor/restructure.py:180: in get_changes
+    matches = list(finder.get_matches(self.pattern, self.args))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/refactor/similarfinder.py:108: in get_matches
+    for match in self._get_matched_asts(code):
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/refactor/similarfinder.py:118: in _get_matched_asts
+    matches = _ASTMatcher(self.ast, wanted, self.does_match).find_matches()
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/refactor/similarfinder.py:159: in find_matches
+    ast.call_for_nodes(self.body, self._check_node)
+.venv/lib/python3.13/site-packages/rope/base/ast.py:71: in call_for_nodes
+    call_for_nodes(child, callback)
+.venv/lib/python3.13/site-packages/rope/base/ast.py:68: in call_for_nodes
+    result = callback(node)
+             ^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/refactor/similarfinder.py:164: in _check_node
+    self._check_statements(node)
+.venv/lib/python3.13/site-packages/rope/refactor/similarfinder.py:190: in _check_statements
+    self.__check_stmt_list(child)
+.venv/lib/python3.13/site-packages/rope/refactor/similarfinder.py:197: in __check_stmt_list
+    if self._match_stmts(current_stmts, mapping):
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/refactor/similarfinder.py:240: in _match_stmts
+    if not self._match_nodes(expected, stmt, mapping):
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/refactor/similarfinder.py:215: in _match_nodes
+    if not self._match_nodes(child1, child2, mapping):
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/refactor/similarfinder.py:215: in _match_nodes
+    if not self._match_nodes(child1, child2, mapping):
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/refactor/similarfinder.py:203: in _match_nodes
+    return self._match_wildcard(expected, node, mapping)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/refactor/similarfinder.py:247: in _match_wildcard
+    if self.matches_callback(node2, name):
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/refactor/similarfinder.py:68: in _does_match
+    return self.wildcards[kind].matches(suspect, arg)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/restructure.py:39: in matches
+    return any(self._wildcard.matches(suspect, choice) for choice in arg)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/restructure.py:39: in <genexpr>
+    return any(self._wildcard.matches(suspect, choice) for choice in arg)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/refactor/wildcards.py:46: in matches
+    if not self._check_object(args, suspect):
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/refactor/wildcards.py:59: in _check_object
+    checker = _CheckObject(self.project, expected, kind, unsure=unsure)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/refactor/wildcards.py:93: in __init__
+    self.expected = self._evaluate(expected)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/refactor/wildcards.py:169: in _evaluate
+    pyobject = self.project.get_module(attributes[0])
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/native_project.py:108: in get_module
+    return native.get_module(name, self._native_folder(folder))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/project.py:84: in get_module
+    return self.pycore.resource_to_pyobject(module)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/project.py:715: in resource_to_pyobject
+    return shared.project.pycore.resource_to_pyobject(shared, force_errors)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pycore.py:141: in resource_to_pyobject
+    return self.module_cache.get_pymodule(resource, force_errors)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pycore.py:257: in get_pymodule
+    result = pyobjectsdef.PyPackage(
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:705: in __init__
+    self.source_code = pycore.project.get_pymodule(
+.venv/lib/python3.13/site-packages/rope/base/project.py:192: in get_pymodule
+    return self.pycore.resource_to_pyobject(resource, force_errors)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pycore.py:141: in resource_to_pyobject
+    return self.module_cache.get_pymodule(resource, force_errors)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pycore.py:271: in get_pymodule
+    self.observer.add_resource(resource)
+.venv/lib/python3.13/site-packages/rope/base/resourceobserver.py:98: in add_resource
+    self.resources[resource] = self.timekeeper.get_indicator(resource)
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/resourceobserver.py:254: in get_indicator
+    state = filesystem.stat(path)
+            ^^^^^^^^^^^^^^^
+E   AttributeError: 'OverlayFiles' object has no attribute 'stat'

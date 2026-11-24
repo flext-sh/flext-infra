@@ -1,0 +1,8 @@
+{
+  "execution_mode": "global-incremental",
+  "testmon_db": "/home/marlonsc/.cache/flext/infra/testmon/flext-infra/flext-ezljc/.testmondata",
+  "testmon_lease_acquired": true,
+  "deadline_monotonic": 240950.755677615,
+  "report_directory": "/home/marlonsc/flext/flext-infra/worktrees/flext-ezljc/.reports/tests/20261121T205352.578332Z-1771572",
+  "profile_sha256": null
+}
