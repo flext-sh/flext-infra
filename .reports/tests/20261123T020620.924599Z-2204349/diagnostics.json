@@ -1,0 +1,112 @@
+{
+  "failed_count": 1,
+  "error_count": 0,
+  "warning_count": 0,
+  "skipped_count": 0,
+  "connectivity_skip_cases": [],
+  "collection_failed_count": 0,
+  "collection_skipped_count": 0,
+  "collection_failed_cases": [],
+  "collection_skip_cases": [],
+  "reported_node_ids": [
+    "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_declared_imports_preserve_relative_levels[from . import Owner as Local-.inner.leaf.Owner]",
+    "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_declared_imports_preserve_relative_levels[from ... import Owner as Local-.Owner]",
+    "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_namespace_policy_retains_inherited_public_payload",
+    "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_superclass_name_uses_the_sdk_class_or_instance_type[from .provider import Parent\\nvalue = Parent()-Parent]",
+    "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_superclass_name_uses_the_sdk_class_or_instance_type[from .provider import Parent\\nvalue = Parent-Parent]"
+  ],
+  "phase_outcomes": [
+    {
+      "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_declared_imports_preserve_relative_levels[from . import Owner as Local-.inner.leaf.Owner]",
+      "phase": "setup",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_declared_imports_preserve_relative_levels[from . import Owner as Local-.inner.leaf.Owner]",
+      "phase": "call",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_declared_imports_preserve_relative_levels[from . import Owner as Local-.inner.leaf.Owner]",
+      "phase": "teardown",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_declared_imports_preserve_relative_levels[from ... import Owner as Local-.Owner]",
+      "phase": "setup",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_declared_imports_preserve_relative_levels[from ... import Owner as Local-.Owner]",
+      "phase": "call",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_declared_imports_preserve_relative_levels[from ... import Owner as Local-.Owner]",
+      "phase": "teardown",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_namespace_policy_retains_inherited_public_payload",
+      "phase": "setup",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_namespace_policy_retains_inherited_public_payload",
+      "phase": "call",
+      "outcome": "failed"
+    },
+    {
+      "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_namespace_policy_retains_inherited_public_payload",
+      "phase": "teardown",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_superclass_name_uses_the_sdk_class_or_instance_type[from .provider import Parent\\nvalue = Parent()-Parent]",
+      "phase": "setup",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_superclass_name_uses_the_sdk_class_or_instance_type[from .provider import Parent\\nvalue = Parent()-Parent]",
+      "phase": "call",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_superclass_name_uses_the_sdk_class_or_instance_type[from .provider import Parent\\nvalue = Parent()-Parent]",
+      "phase": "teardown",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_superclass_name_uses_the_sdk_class_or_instance_type[from .provider import Parent\\nvalue = Parent-Parent]",
+      "phase": "setup",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_superclass_name_uses_the_sdk_class_or_instance_type[from .provider import Parent\\nvalue = Parent-Parent]",
+      "phase": "call",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_superclass_name_uses_the_sdk_class_or_instance_type[from .provider import Parent\\nvalue = Parent-Parent]",
+      "phase": "teardown",
+      "outcome": "passed"
+    }
+  ],
+  "markdown_attempts": [],
+  "markdown_items": [],
+  "failed_cases": [
+    "tests.unit._utilities.test_rope_analysis.TestsFlextInfraRopeAnalysis::test_namespace_policy_retains_inherited_public_payload"
+  ],
+  "error_traces": [
+    "=== FAILURE: tests.unit._utilities.test_rope_analysis.TestsFlextInfraRopeAnalysis::test_namespace_policy_retains_inherited_public_payload ===\nRuntimeError: Python source discovery requires a Git checkout: /home/marlonsc/tmp/pytest-of-marlonsc/pytest-15137/popen-gw0/test_namespace_policy_retains_0/demo-project\n{\"error\":\"Python source discovery requires a Git checkout: /home/marlonsc/tmp/pytest-of-marlonsc/pytest-15137/popen-gw0/test_namespace_policy_retains_0/demo-project\"}\ntests/unit/_utilities/test_rope_analysis.py:137: in test_namespace_policy_retains_inherited_public_payload\n    policy = u.Infra.policy(source, rope_project=rope_project)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nsrc/flext_infra/_utilities/namespace.py:998: in policy\n    policy = cls.publication_policy(\nsrc/flext_infra/_utilities/namespace.py:925: in publication_policy\n    project_layout = cls.layout(project_root, rope_project=rope_project)\n                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nsrc/flext_infra/_utilities/namespace.py:581: in layout\n    cls.repository_namespace_packages(\nsrc/flext_infra/_utilities/namespace.py:765: in repository_namespace_packages\n    ).unwrap()\n      ^^^^^^^^\n.venv/lib/python3.13/site-packages/flext_core/_result/unwrap.py:51: in unwrap\n    return self.value\n           ^^^^^^^^^^\n.venv/lib/python3.13/site-packages/flext_core/_result/behavior.py:58: in value\n    self._raise_failure()\n.venv/lib/python3.13/site-packages/flext_core/_result/behavior.py:73: in _raise_failure\n    raise error\n.venv/lib/python3.13/site-packages/flext_core/_result/construction.py:239: in create_from_callable\n    value = func()\n            ^^^^^^\nsrc/flext_infra/_utilities/_project/discovery_shape.py:67: in detected_project_kind\n    ) or cls._uses_flext_imports(repository_root, source_project):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nsrc/flext_infra/_utilities/_project/discovery_shape.py:112: in _uses_flext_imports\n    for resource in project.get_python_files():\n                    ^^^^^^^^^^^^^^^^^^^^^^^^^^\nsrc/flext_infra/_utilities/_rope/native_project.py:283: in get_python_files\n    for path in FlextInfraUtilitiesProjectDiscovery.discover_python_files(\nsrc/flext_infra/_utilities/project_discovery.py:645: in discover_python_files\n    for path in cls._walk_python_files(\nsrc/flext_infra/_utilities/project_discovery.py:713: in _walk_python_files\n    source_paths = cls._source_scope_paths(directory)\n                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nsrc/flext_infra/_utilities/project_discovery.py:817: in _source_scope_paths\n    raise RuntimeError(msg)\nE   RuntimeError: Python source discovery requires a Git checkout: /home/marlonsc/tmp/pytest-of-marlonsc/pytest-15137/popen-gw0/test_namespace_policy_retains_0/demo-project\nE   {\"error\":\"Python source discovery requires a Git checkout: /home/marlonsc/tmp/pytest-of-marlonsc/pytest-15137/popen-gw0/test_namespace_policy_retains_0/demo-project\"}"
+  ],
+  "warning_lines": [],
+  "skip_cases": [],
+  "slow_entries": [
+    "0.663000s | tests.unit._utilities.test_rope_analysis.TestsFlextInfraRopeAnalysis::test_declared_imports_preserve_relative_levels[from ... import Owner as Local-.Owner]",
+    "0.528000s | tests.unit._utilities.test_rope_analysis.TestsFlextInfraRopeAnalysis::test_namespace_policy_retains_inherited_public_payload",
+    "0.292000s | tests.unit._utilities.test_rope_analysis.TestsFlextInfraRopeAnalysis::test_superclass_name_uses_the_sdk_class_or_instance_type[from .provider import Parent\\nvalue = Parent-Parent]",
+    "0.014000s | tests.unit._utilities.test_rope_analysis.TestsFlextInfraRopeAnalysis::test_superclass_name_uses_the_sdk_class_or_instance_type[from .provider import Parent\\nvalue = Parent()-Parent]",
+    "0.010000s | tests.unit._utilities.test_rope_analysis.TestsFlextInfraRopeAnalysis::test_declared_imports_preserve_relative_levels[from . import Owner as Local-.inner.leaf.Owner]"
+  ]
+}

@@ -1,0 +1,76 @@
+================================================= test session starts ==================================================
+platform linux -- Python 3.13.18, pytest-9.2.0, pluggy-1.7.0 -- /home/marlonsc/flext/flext-infra/worktrees/fix-ci-timeout-fixture-2786/.venv/bin/python
+cachedir: .pytest_cache
+testmon: selection deactivated, environment: toolchain-2c96107a0cd9-6a8897dd-e3b0c442
+benchmark: 5.3.1 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+hypothesis profile 'default'
+Using --randomly-seed=4159443536
+rootdir: /home/marlonsc/flext/flext-infra/worktrees/fix-ci-timeout-fixture-2786
+configfile: pyproject.toml
+plugins: flext-tests-0.12.0, asyncio-1.4.1.post1, timeout-2.4.0, cov-7.1.0, testmon-2.3.0, anyio-4.16.0, platformdirs-4.14.5, xdist-3.8.0, benchmark-5.3.1, hypothesis-6.170.15, reportlog-1.0.0, randomly-5.1.0, markdown-docs-0.9.2, flext-infra-0.12.3
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
+timeout: 2.0s
+timeout method: signal
+timeout func_only: True
+created: 4/4 workers
+4 workers [27 items]
+
+scheduling tests via LoadScopeScheduling
+
+tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_runtime_self_import_still_fails_with_lazy_publication[True] 
+[gw2] [  3%] FAILED tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_runtime_self_import_still_fails_with_lazy_publication[True] 
+
+======================================================= FAILURES =======================================================
+__________ TestsFlextInfraFacadeBaseCutover.test_runtime_self_import_still_fails_with_lazy_publication[True] ___________
+[gw2] linux -- Python 3.13.18 /home/marlonsc/flext/flext-infra/worktrees/fix-ci-timeout-fixture-2786/.venv/bin/python
+tests/unit/codemod/test_facade_base_cutover.py:480: in test_runtime_self_import_still_fails_with_lazy_publication
+    tm.fail(self._plan(tmp_path, sources, child), has="cyclic facade binding")
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/unit/codemod/test_facade_base_cutover.py:601: in _plan
+    return u.Infra.plan_semantic_cutover(
+src/flext_infra/_utilities/_semantic_cutover/base.py:78: in plan_semantic_cutover
+    attempt = r.safe(
+.venv/lib/python3.13/site-packages/flext_core/_result/composition.py:201: in wrapper
+    return cls._create_success(func(*args, **kwargs))
+                               ^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/base.py:142: in _plan_semantic_cutover_phase
+    return cls._plan_selected_phase_dispatch(
+src/flext_infra/_utilities/_semantic_cutover/base.py:340: in _plan_selected_phase_dispatch
+    return factory()
+           ^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/base.py:329: in <lambda>
+    c.Infra.SemanticCutoverPhase.FACADE_BASE: lambda: cls._plan_facade_bases(
+src/flext_infra/_utilities/_semantic_cutover/facade_bases.py:1371: in _plan_facade_bases
+    imported = cls._plan_facade_import_bases(
+src/flext_infra/_utilities/_semantic_cutover/facade_bases.py:1411: in _plan_facade_import_bases
+    return cls.facade_import_base_edits(
+src/flext_infra/_utilities/_semantic_cutover/facade_bases.py:1485: in facade_import_base_edits
+    with FlextInfraUtilitiesWorkspaceSnapshot.facade_source_project(
+../../../../.local/share/mise/installs/python/3.13.18/lib/python3.13/contextlib.py:141: in __enter__
+    return next(self.gen)
+           ^^^^^^^^^^^^^^
+src/flext_infra/_utilities/workspace_snapshot.py:213: in facade_source_project
+    FlextInfraUtilitiesProjectDiscovery.discover_python_files(
+src/flext_infra/_utilities/project_discovery.py:645: in discover_python_files
+    for path in cls._walk_python_files(
+src/flext_infra/_utilities/project_discovery.py:713: in _walk_python_files
+    source_paths = cls._source_scope_paths(directory)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/project_discovery.py:817: in _source_scope_paths
+    raise RuntimeError(msg)
+E   RuntimeError: Python source discovery requires a Git checkout: /home/marlonsc/tmp/pytest-of-marlonsc/pytest-15143/popen-gw2/test_runtime_self_import_still0
+------------------------------------------------- Captured stdout call -------------------------------------------------
+INFO: rope: opening workspace at /home/marlonsc/tmp/pytest-of-marlonsc/pytest-15143/popen-gw2/test_runtime_self_import_still0
+INFO: rope: workspace ready in 0.20s
+- generated xml file: /home/marlonsc/flext/flext-infra/worktrees/fix-ci-timeout-fixture-2786/.reports/tests/20261123T021008.909576Z-2378762/junit.xml -
+- generated report log file: /home/marlonsc/flext/flext-infra/worktrees/fix-ci-timeout-fixture-2786/.reports/tests/20261123T021008.909576Z-2378762/events.jsonl -
+--------------------------------------------------- flext slow tests ---------------------------------------------------
+no test near the ordinary or slow limit
+================================================= slowest 25 durations =================================================
+
+(3 durations < 2s hidden.)
+=============================================== short test summary info ================================================
+FAILED tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_runtime_self_import_still_fails_with_lazy_publication[True]
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! xdist.dsession.Interrupted: stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+================================================== 1 failed in 5.80s ===================================================

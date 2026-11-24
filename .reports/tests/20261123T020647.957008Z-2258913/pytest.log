@@ -1,0 +1,90 @@
+================================================= test session starts ==================================================
+platform linux -- Python 3.13.18, pytest-9.2.0, pluggy-1.7.0 -- /home/marlonsc/flext/flext-infra/worktrees/fix-ci-timeout-fixture-2786/.venv/bin/python
+cachedir: .pytest_cache
+testmon: selection deactivated, environment: toolchain-2c96107a0cd9-6a8897dd-e3b0c442
+benchmark: 5.3.1 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+hypothesis profile 'default'
+Using --randomly-seed=2496245088
+rootdir: /home/marlonsc/flext/flext-infra/worktrees/fix-ci-timeout-fixture-2786
+configfile: pyproject.toml
+plugins: flext-tests-0.12.0, asyncio-1.4.1.post1, timeout-2.4.0, cov-7.1.0, testmon-2.3.0, anyio-4.16.0, platformdirs-4.14.5, xdist-3.8.0, benchmark-5.3.1, hypothesis-6.170.15, reportlog-1.0.0, randomly-5.1.0, markdown-docs-0.9.2, flext-infra-0.12.3
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
+timeout: 2.0s
+timeout method: signal
+timeout func_only: True
+created: 4/4 workers
+4 workers [31 items]
+
+scheduling tests via LoadScopeScheduling
+
+tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_copyright_notice_rejects_an_undeclared_or_unsupported_license[LicenseRef-Unsupported-unsupported scaffold license] 
+[gw0] [  3%] PASSED tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_copyright_notice_rejects_an_undeclared_or_unsupported_license[LicenseRef-Unsupported-unsupported scaffold license] 
+tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_static_method_recipe_retains_service_operation_findings[FlextService] 
+[gw0] [  6%] PASSED tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_static_method_recipe_retains_service_operation_findings[FlextService] 
+tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_returns_section_takes_the_summary_object 
+[gw0] [  9%] PASSED tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_returns_section_takes_the_summary_object 
+tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_static_method_refuses_a_comment_beside_the_receiver 
+[gw0] [ 12%] PASSED tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_static_method_refuses_a_comment_beside_the_receiver 
+tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_summary_docstring_expands_declaration_suites[class-and-inline-suite] 
+[gw0] [ 16%] PASSED tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_summary_docstring_expands_declaration_suites[class-and-inline-suite] 
+tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_copyright_notice_of_an_undeclared_project_reads_its_manifest[Proprietary] 
+[gw0] [ 19%] PASSED tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_copyright_notice_of_an_undeclared_project_reads_its_manifest[Proprietary] 
+tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_copyright_notice_rejects_an_undeclared_or_unsupported_license[None-declares no SPDX project.license] 
+[gw0] [ 22%] PASSED tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_copyright_notice_rejects_an_undeclared_or_unsupported_license[None-declares no SPDX project.license] 
+tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_copyright_notice_follows_the_module_summary 
+[gw0] [ 25%] PASSED tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_copyright_notice_follows_the_module_summary 
+tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_copyright_notice_of_an_undeclared_project_reads_its_manifest[MIT] 
+[gw0] [ 29%] PASSED tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_copyright_notice_of_an_undeclared_project_reads_its_manifest[MIT] 
+tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_gate_owned_recipe_requires_its_runtime_owner[line-too-long] 
+[gw0] [ 32%] PASSED tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_gate_owned_recipe_requires_its_runtime_owner[line-too-long] 
+tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_summary_docstring_expands_declaration_suites[inline-protocol-suite] 
+[gw0] [ 35%] PASSED tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_summary_docstring_expands_declaration_suites[inline-protocol-suite] 
+tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_static_method_retains_receiver_contracts[overridden-base-hook] 
+[gw0] [ 38%] PASSED tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_static_method_retains_receiver_contracts[overridden-base-hook] 
+tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_gate_owned_recipe_requires_its_runtime_owner[import-outside-top-level] 
+[gw0] [ 41%] PASSED tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_gate_owned_recipe_requires_its_runtime_owner[import-outside-top-level] 
+tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_static_method_retains_receiver_contracts[parent-method-override] 
+[gw0] [ 45%] PASSED tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_static_method_retains_receiver_contracts[parent-method-override] 
+tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_raises_condition_drops_the_opener_its_placeholder_left 
+[gw0] [ 48%] PASSED tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_raises_condition_drops_the_opener_its_placeholder_left 
+tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_extraneous_raises_leaves_only_its_own_entry 
+[gw0] [ 51%] PASSED tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_extraneous_raises_leaves_only_its_own_entry 
+tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_raises_condition_with_quotes_keeps_the_literal_intact 
+[gw0] [ 54%] PASSED tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_raises_condition_with_quotes_keeps_the_literal_intact 
+tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_static_method_collapses_a_sole_receiver 
+[gw0] [ 58%] PASSED tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_static_method_collapses_a_sole_receiver 
+tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_extraneous_raises_keeps_the_following_section 
+[gw0] [ 61%] PASSED tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_extraneous_raises_keeps_the_following_section 
+tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_raises_section_states_the_message_condition 
+[gw0] [ 64%] PASSED tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_raises_section_states_the_message_condition 
+tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_static_method_retains_receiver_contracts[implicit-super-receiver] 
+[gw0] [ 67%] PASSED tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_static_method_retains_receiver_contracts[implicit-super-receiver] 
+tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_extraneous_raises_drops_the_emptied_section 
+[gw0] [ 70%] PASSED tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_extraneous_raises_drops_the_emptied_section 
+tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_copyright_notice_signs_with_the_declared_project[Proprietary] 
+[gw0] [ 74%] PASSED tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_copyright_notice_signs_with_the_declared_project[Proprietary] 
+tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_static_method_recipe_retains_service_operation_findings[s] 
+[gw0] [ 77%] PASSED tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_static_method_recipe_retains_service_operation_findings[s] 
+tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_copyright_notice_signs_with_the_declared_project[MIT] 
+[gw0] [ 80%] PASSED tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_copyright_notice_signs_with_the_declared_project[MIT] 
+tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_a_module_without_a_copyright_finding_needs_no_author 
+[gw0] [ 83%] PASSED tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_a_module_without_a_copyright_finding_needs_no_author 
+tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_copyright_notice_signs_with_the_declared_project[LicenseRef-Proprietary] 
+[gw0] [ 87%] PASSED tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_copyright_notice_signs_with_the_declared_project[LicenseRef-Proprietary] 
+tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_summary_docstring_expands_declaration_suites[wrapped-generic-signature] 
+[gw0] [ 90%] PASSED tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_summary_docstring_expands_declaration_suites[wrapped-generic-signature] 
+tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_static_method_keeps_every_body_byte 
+[gw0] [ 93%] PASSED tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_static_method_keeps_every_body_byte 
+tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_summary_docstring_derives_from_the_name 
+[gw0] [ 96%] PASSED tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_summary_docstring_derives_from_the_name 
+tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_copyright_notice_of_an_undeclared_project_reads_its_manifest[LicenseRef-Proprietary] 
+[gw0] [100%] PASSED tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_copyright_notice_of_an_undeclared_project_reads_its_manifest[LicenseRef-Proprietary] 
+
+- generated xml file: /home/marlonsc/flext/flext-infra/worktrees/fix-ci-timeout-fixture-2786/.reports/tests/20261123T020647.957008Z-2258913/junit.xml -
+- generated report log file: /home/marlonsc/flext/flext-infra/worktrees/fix-ci-timeout-fixture-2786/.reports/tests/20261123T020647.957008Z-2258913/events.jsonl -
+--------------------------------------------------- flext slow tests ---------------------------------------------------
+no test near the ordinary or slow limit
+================================================= slowest 25 durations =================================================
+
+(25 durations < 2s hidden.)
+================================================== 31 passed in 6.32s ==================================================

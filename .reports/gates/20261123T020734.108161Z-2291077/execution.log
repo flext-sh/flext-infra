@@ -1,0 +1,35 @@
+INFO: check: registry initialization start
+INFO: check: registry initialization complete
+INFO: check: selection start phase=complete
+INFO: check: selection complete projects=1 gates=6
+INFO: check: preparation start identity=True
+INFO: check: preparation complete projects=1
+INFO: check: prerequisite planning start projects=1
+INFO: check: prerequisite planning complete gates=1
+INFO: check: prerequisite wave start gate=lint jobs=1
+INFO: gate_executed project=fix-ci-timeout-fixture-2786 gate=lint passed=True elapsed=0.307
+2026-11-23T02:07:36.576541Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=319.37 failed=0 skipped=0 total_stages=1
+INFO: check: prerequisite wave complete gate=lint
+    [OK] lint           0 errors  (0.31s)
+[1/1] fix-ci-timeout-fixture-2786 check ...
+INFO: gate_executed project=fix-ci-timeout-fixture-2786 gate=format passed=True elapsed=1.884
+2026-11-23T02:07:39.393345Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=1884.74 failed=0 skipped=0 total_stages=1
+INFO: gate_executed project=fix-ci-timeout-fixture-2786 gate=markdown-format passed=True elapsed=3.487
+2026-11-23T02:07:40.997035Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=3487.27 failed=0 skipped=0 total_stages=1
+INFO: gate_executed project=fix-ci-timeout-fixture-2786 gate=markdown passed=True elapsed=3.489
+2026-11-23T02:07:40.998160Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=3489.2 failed=0 skipped=0 total_stages=1
+INFO: gate_executed project=fix-ci-timeout-fixture-2786 gate=conflict-markers passed=True elapsed=14.37
+2026-11-23T02:07:53.152322Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=15641.52 failed=0 skipped=0 total_stages=1
+INFO: gate_executed project=fix-ci-timeout-fixture-2786 gate=markdown-code passed=True elapsed=15.643
+2026-11-23T02:07:53.153737Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=15643.38 failed=0 skipped=0 total_stages=1
+    [OK] format         0 errors  (1.88s)
+    [OK] markdown       0 errors  (3.49s)
+    [OK] markdown-format     0 errors  (3.49s)
+    [OK] markdown-code     0 errors  (15.64s)
+    [OK] conflict-markers     0 errors  (14.37s)
+  [OK] check    fix-ci-timeout-fixture-2786 15.79s
+
+-- check summary --
+Total: 1  Success: 1  Failed: 0  Skipped: 0  (16.15s)
+INFO: Reports: /home/marlonsc/flext/flext-infra/worktrees/fix-ci-timeout-fixture-2786/.reports/gates/20261123T020734.108161Z-2291077/check/c3d7a4af-8a38-4003-a1e7-2d75a714dede/check-report.md
+INFO:          /home/marlonsc/flext/flext-infra/worktrees/fix-ci-timeout-fixture-2786/.reports/gates/20261123T020734.108161Z-2291077/check/c3d7a4af-8a38-4003-a1e7-2d75a714dede/check-report.sarif

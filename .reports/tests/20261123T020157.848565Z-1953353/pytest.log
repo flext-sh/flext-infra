@@ -1,0 +1,109 @@
+================================================= test session starts ==================================================
+platform linux -- Python 3.13.18, pytest-9.2.0, pluggy-1.7.0 -- /home/marlonsc/flext/flext-infra/worktrees/fix-ci-timeout-fixture-2786/.venv/bin/python
+cachedir: .pytest_cache
+testmon: selection deactivated, environment: toolchain-2c96107a0cd9-6a8897dd-e3b0c442
+Help shape testmon! Tell us what saves you time and what we can improve: https://testmon.org/survey
+benchmark: 5.3.1 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+hypothesis profile 'default'
+Using --randomly-seed=2419876901
+rootdir: /home/marlonsc/flext/flext-infra/worktrees/fix-ci-timeout-fixture-2786
+configfile: pyproject.toml
+plugins: flext-tests-0.12.0, asyncio-1.4.1.post1, timeout-2.4.0, cov-7.1.0, testmon-2.3.0, anyio-4.16.0, platformdirs-4.14.5, xdist-3.8.0, benchmark-5.3.1, hypothesis-6.170.15, reportlog-1.0.0, randomly-5.1.0, markdown-docs-0.9.2, flext-infra-0.12.3
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
+timeout: 2.0s
+timeout method: signal
+timeout func_only: True
+created: 4/4 workers
+4 workers [40 items]
+
+scheduling tests via LoadScopeScheduling
+
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_native_scheduling_policy_round_trips[False-loadscope] 
+[gw2] [  2%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_native_scheduling_policy_round_trips[False-loadscope] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_project_run_budget_overrides_are_rejected 
+[gw2] [  5%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_project_run_budget_overrides_are_rejected 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_pytest_ini_override_is_forbidden[-o] 
+[gw2] [  7%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_pytest_ini_override_is_forbidden[-o] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[-o] 
+[gw2] [ 10%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[-o] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_pytest_ini_override_is_forbidden[--override-ini] 
+[gw2] [ 12%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_pytest_ini_override_is_forbidden[--override-ini] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_slow_budget_is_declared_and_bounded_by_the_run_wall 
+[gw2] [ 15%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_slow_budget_is_declared_and_bounded_by_the_run_wall 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_slow_budget_is_a_hard_typed_boundary 
+[gw2] [ 17%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_slow_budget_is_a_hard_typed_boundary 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_operator_caps_are_hard_typed_boundaries[slow-timeout-seconds] 
+[gw2] [ 20%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_operator_caps_are_hard_typed_boundaries[slow-timeout-seconds] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--no-loadscope-reorder] 
+[gw2] [ 22%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--no-loadscope-reorder] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_pytest_ini_override_is_forbidden[--override-ini=addopts=] 
+[gw2] [ 25%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_pytest_ini_override_is_forbidden[--override-ini=addopts=] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_deadlines_cannot_exceed_operator_caps[ordinary-timeout-seconds-3] 
+[gw2] [ 27%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_deadlines_cannot_exceed_operator_caps[ordinary-timeout-seconds-3] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_long_execution_budget_is_admitted_by_the_operator_caps 
+[gw2] [ 30%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_long_execution_budget_is_admitted_by_the_operator_caps 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_ci_must_not_exclude_slow_items 
+[gw2] [ 32%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_ci_must_not_exclude_slow_items 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_pytest_ini_override_is_forbidden[--no-loadscope-reorder] 
+[gw2] [ 35%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_pytest_ini_override_is_forbidden[--no-loadscope-reorder] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--override-ini=addopts=] 
+[gw2] [ 37%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--override-ini=addopts=] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_progress_policy_cannot_hide_item_names 
+[gw2] [ 40%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_progress_policy_cannot_hide_item_names 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_operator_caps_are_hard_typed_boundaries[run-timeout-seconds] 
+[gw2] [ 42%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_operator_caps_are_hard_typed_boundaries[run-timeout-seconds] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_pytest_ini_override_is_forbidden[--timeout=0] 
+[gw2] [ 45%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_pytest_ini_override_is_forbidden[--timeout=0] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_pytest_ini_override_is_forbidden[--loadscope-reorder] 
+[gw2] [ 47%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_pytest_ini_override_is_forbidden[--loadscope-reorder] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_arbitrary_valid_execution_policy_round_trips[1-6-1-1] 
+[gw2] [ 50%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_arbitrary_valid_execution_policy_round_trips[1-6-1-1] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_arbitrary_valid_execution_policy_round_trips[7-20-2-8] 
+[gw2] [ 52%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_arbitrary_valid_execution_policy_round_trips[7-20-2-8] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_native_scheduling_policy_round_trips[True-load] 
+[gw2] [ 55%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_native_scheduling_policy_round_trips[True-load] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_deadlines_cannot_exceed_operator_caps[run-timeout-seconds-1801] 
+[gw2] [ 57%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_deadlines_cannot_exceed_operator_caps[run-timeout-seconds-1801] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_native_scheduling_policy_round_trips[True-loadscope] 
+[gw2] [ 60%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_native_scheduling_policy_round_trips[True-loadscope] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--cov=unowned] 
+[gw2] [ 62%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--cov=unowned] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[tests] 
+[gw2] [ 65%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[tests] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_run_budget_exceeds_the_derived_suite_stop_reserve 
+[gw2] [ 67%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_run_budget_exceeds_the_derived_suite_stop_reserve 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_policy_round_trips_through_its_production_model 
+[gw2] [ 70%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_policy_round_trips_through_its_production_model 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_pytest_ini_override_is_forbidden[-o=addopts=] 
+[gw2] [ 72%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_pytest_ini_override_is_forbidden[-o=addopts=] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_deadlines_cannot_exceed_operator_caps[slow-timeout-seconds-1801] 
+[gw2] [ 75%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_deadlines_cannot_exceed_operator_caps[slow-timeout-seconds-1801] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--dist=load] 
+[gw2] [ 77%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--dist=load] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--junitxml=elsewhere.xml] 
+[gw2] [ 80%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--junitxml=elsewhere.xml] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--timeout=999] 
+[gw2] [ 82%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--timeout=999] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--tb=short\n-o=addopts=] 
+[gw2] [ 85%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--tb=short\n-o=addopts=] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[-n=auto] 
+[gw2] [ 87%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[-n=auto] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--loadscope-reorder] 
+[gw2] [ 90%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[--loadscope-reorder] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reordering_refuses_string_coercion 
+[gw2] [ 92%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reordering_refuses_string_coercion 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_operator_caps_are_hard_typed_boundaries[termination-grace-seconds] 
+[gw2] [ 95%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_operator_caps_are_hard_typed_boundaries[termination-grace-seconds] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_native_scheduling_policy_round_trips[False-load] 
+[gw2] [ 97%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_native_scheduling_policy_round_trips[False-load] 
+tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[-p=no:flext_tests.enforcement_plugin] 
+[gw2] [100%] PASSED tests/unit/deps/test_pytest_timeout_config.py::TestsFlextInfraPytestTimeoutConfig::test_reporting_policy_cannot_override_runner_owned_argv[-p=no:flext_tests.enforcement_plugin] 
+
+- generated xml file: /home/marlonsc/flext/flext-infra/worktrees/fix-ci-timeout-fixture-2786/.reports/tests/20261123T020157.848565Z-1953353/junit.xml -
+- generated report log file: /home/marlonsc/flext/flext-infra/worktrees/fix-ci-timeout-fixture-2786/.reports/tests/20261123T020157.848565Z-1953353/events.jsonl -
+--------------------------------------------------- flext slow tests ---------------------------------------------------
+no test near the ordinary or slow limit
+================================================= slowest 25 durations =================================================
+
+(25 durations < 2s hidden.)
+================================================== 40 passed in 5.92s ==================================================

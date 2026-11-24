@@ -1,0 +1,31 @@
+tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_declared_imports_preserve_relative_levels[from ... import Owner as Local-.Owner]
+tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_superclass_name_uses_the_sdk_class_or_instance_type[from .provider import Parent\nvalue = Parent-Parent]
+tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_superclass_name_uses_the_sdk_class_or_instance_type[from .provider import Parent\nvalue = Parent()-Parent]
+tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_declared_imports_preserve_relative_levels[from . import Owner as Local-.inner.leaf.Owner]
+tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_namespace_policy_retains_inherited_public_payload
+tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[declarations6-Left, Right-pass-expected6]
+tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_superclass_name_uses_the_sdk_class_or_instance_type[value = object-object]
+tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[class Parent(Exception):\n    class Shared:\n        pass\n-Parent-pass-expected3]
+tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_superclass_name_refuses_nonclass_or_unresolved_type[value = len\n-not a class or inferred instance]
+tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespace_cycle_is_not_a_builtin_boundary
+tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_ast_boundary_validates_before_traversal
+tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[-Exception-pass-expected0]
+tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_superclass_name_refuses_nonclass_or_unresolved_type[import os as value\n-not a class or inferred instance]
+tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_superclass_name_uses_the_sdk_class_or_instance_type[value = Exception-Exception]
+tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[class Parent:\n    class Shared:\n        pass\n-Parent-class Shared:\n        pass-expected5]
+tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[from .provider import Parent\n-Parent, Exception-pass-expected7]
+tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_superclass_name_refuses_nonclass_or_unresolved_type[def value():\n    pass\n-not a class or inferred instance]
+tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[-object-pass-expected1]
+tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[class Parent:\n    pass\n-Parent-pass-expected2]
+tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_superclass_name_refuses_nonclass_or_unresolved_type[value = missing\n-cyclic Rope superclass type]
+tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_declared_imports_reject_relative_level_beyond_package
+tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_class_info_refuses_incomplete_superclass_lineage[class Parent:\n    pass\nclass Consumer(Parent, missing):\n    pass\n]
+tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_superclass_name_uses_the_sdk_class_or_instance_type[class Parent:\n    pass\nvalue = Parent-Parent]
+tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[class Parent(object):\n    class Shared:\n        pass\nclass Middle(Parent):\n    pass\n-Middle-pass-expected4]
+tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_class_info_refuses_incomplete_superclass_lineage[def invalid():\n    pass\nclass Consumer(invalid):\n    pass\n]
+tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_declared_imports_preserve_relative_levels[from .. import Owner as Local-.inner.Owner]
+tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_declared_imports_preserve_relative_levels[from ..leaf import Owner as Local-.inner.leaf.Owner]
+tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_superclass_name_uses_the_sdk_class_or_instance_type[class Parent:\n    pass\nvalue = Parent()-Parent]
+tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_superclass_name_uses_the_sdk_class_or_instance_type[value = Exception()-Exception]
+tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_facade_namespaces_skip_builtin_bases
+tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_class_info_refuses_incomplete_superclass_lineage[class Consumer(missing):\n    pass\n]

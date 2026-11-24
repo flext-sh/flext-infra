@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="5.049" timestamp="2026-11-22T23:06:10.419087-03:00" hostname="tungs"><testcase classname="tests.unit.gates.test_lint_recipes.TestsFlextInfraLintRecipes" name="test_copyright_notice_rejects_an_undeclared_or_unsupported_license[LicenseRef-Unsupported-unsupported scaffold license]" time="0.325"><failure message="AssertionError: Regex pattern did not match.&#10;  Expected regex: 'unsupported scaffold license'&#10;  Actual message: 'Python source discovery requires a Git checkout: /home/marlonsc/tmp/pytest-of-marlonsc/pytest-15136/popen-gw0/test_copyright_notice_rejects_0'">tests/unit/gates/test_lint_recipes.py:569: in test_copyright_notice_rejects_an_undeclared_or_unsupported_license
+    with u.Tests.raises(ValueError, match=cause) as failure:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AssertionError: Regex pattern did not match.
+E     Expected regex: 'unsupported scaffold license'
+E     Actual message: 'Python source discovery requires a Git checkout: /home/marlonsc/tmp/pytest-of-marlonsc/pytest-15136/popen-gw0/test_copyright_notice_rejects_0'</failure></testcase></testsuite></testsuites>

@@ -1,0 +1,1 @@
+tests.unit.gates.test_lint_recipes.TestsFlextInfraLintRecipes::test_copyright_notice_rejects_an_undeclared_or_unsupported_license[LicenseRef-Unsupported-unsupported scaffold license]

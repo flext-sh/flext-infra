@@ -1,0 +1,163 @@
+{
+  "failed_count": 1,
+  "error_count": 0,
+  "warning_count": 0,
+  "skipped_count": 0,
+  "connectivity_skip_cases": [],
+  "collection_failed_count": 0,
+  "collection_skipped_count": 0,
+  "collection_failed_cases": [],
+  "collection_skip_cases": [],
+  "reported_node_ids": [
+    "tests/unit/deps/test_modernizer_tooling.py::TestsFlextInfraDepsModernizerTooling::test_native_markdown_render_does_not_mutate_the_shared_policy",
+    "tests/unit/deps/test_modernizer_tooling.py::TestsFlextInfraDepsModernizerTooling::test_native_tool_configuration_rejects_an_undeclared_root",
+    "tests/unit/deps/test_modernizer_tooling.py::TestsFlextInfraDepsModernizerTooling::test_project_cannot_declare_its_own_ruff_exemption",
+    "tests/unit/deps/test_modernizer_tooling.py::TestsFlextInfraDepsModernizerTooling::test_ruff_phase_sets_expected_state",
+    "tests/unit/deps/test_modernizer_tooling.py::TestsFlextInfraDepsModernizerTooling::test_ruff_phase_skips_nonmember_workspace_namespaces",
+    "tests/unit/deps/test_modernizer_tooling.py::TestsFlextInfraDepsModernizerTooling::test_stub_options_are_rejected_through_real_tooling_layers[pyrefly-stub-path-local_typing]",
+    "tests/unit/deps/test_modernizer_tooling.py::TestsFlextInfraDepsModernizerTooling::test_stub_options_cannot_be_claimed_by_derived_settings",
+    "tests/unit/deps/test_modernizer_tooling.py::TestsFlextInfraDepsModernizerTooling::test_typecheck_policy_keeps_tracked_surfaces_visible"
+  ],
+  "phase_outcomes": [
+    {
+      "node_id": "tests/unit/deps/test_modernizer_tooling.py::TestsFlextInfraDepsModernizerTooling::test_native_markdown_render_does_not_mutate_the_shared_policy",
+      "phase": "setup",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/deps/test_modernizer_tooling.py::TestsFlextInfraDepsModernizerTooling::test_native_markdown_render_does_not_mutate_the_shared_policy",
+      "phase": "call",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/deps/test_modernizer_tooling.py::TestsFlextInfraDepsModernizerTooling::test_native_markdown_render_does_not_mutate_the_shared_policy",
+      "phase": "teardown",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/deps/test_modernizer_tooling.py::TestsFlextInfraDepsModernizerTooling::test_native_tool_configuration_rejects_an_undeclared_root",
+      "phase": "setup",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/deps/test_modernizer_tooling.py::TestsFlextInfraDepsModernizerTooling::test_native_tool_configuration_rejects_an_undeclared_root",
+      "phase": "call",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/deps/test_modernizer_tooling.py::TestsFlextInfraDepsModernizerTooling::test_native_tool_configuration_rejects_an_undeclared_root",
+      "phase": "teardown",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/deps/test_modernizer_tooling.py::TestsFlextInfraDepsModernizerTooling::test_project_cannot_declare_its_own_ruff_exemption",
+      "phase": "setup",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/deps/test_modernizer_tooling.py::TestsFlextInfraDepsModernizerTooling::test_project_cannot_declare_its_own_ruff_exemption",
+      "phase": "call",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/deps/test_modernizer_tooling.py::TestsFlextInfraDepsModernizerTooling::test_project_cannot_declare_its_own_ruff_exemption",
+      "phase": "teardown",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/deps/test_modernizer_tooling.py::TestsFlextInfraDepsModernizerTooling::test_ruff_phase_sets_expected_state",
+      "phase": "setup",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/deps/test_modernizer_tooling.py::TestsFlextInfraDepsModernizerTooling::test_ruff_phase_sets_expected_state",
+      "phase": "call",
+      "outcome": "failed"
+    },
+    {
+      "node_id": "tests/unit/deps/test_modernizer_tooling.py::TestsFlextInfraDepsModernizerTooling::test_ruff_phase_sets_expected_state",
+      "phase": "teardown",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/deps/test_modernizer_tooling.py::TestsFlextInfraDepsModernizerTooling::test_ruff_phase_skips_nonmember_workspace_namespaces",
+      "phase": "setup",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/deps/test_modernizer_tooling.py::TestsFlextInfraDepsModernizerTooling::test_ruff_phase_skips_nonmember_workspace_namespaces",
+      "phase": "call",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/deps/test_modernizer_tooling.py::TestsFlextInfraDepsModernizerTooling::test_ruff_phase_skips_nonmember_workspace_namespaces",
+      "phase": "teardown",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/deps/test_modernizer_tooling.py::TestsFlextInfraDepsModernizerTooling::test_stub_options_are_rejected_through_real_tooling_layers[pyrefly-stub-path-local_typing]",
+      "phase": "setup",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/deps/test_modernizer_tooling.py::TestsFlextInfraDepsModernizerTooling::test_stub_options_are_rejected_through_real_tooling_layers[pyrefly-stub-path-local_typing]",
+      "phase": "call",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/deps/test_modernizer_tooling.py::TestsFlextInfraDepsModernizerTooling::test_stub_options_are_rejected_through_real_tooling_layers[pyrefly-stub-path-local_typing]",
+      "phase": "teardown",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/deps/test_modernizer_tooling.py::TestsFlextInfraDepsModernizerTooling::test_stub_options_cannot_be_claimed_by_derived_settings",
+      "phase": "setup",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/deps/test_modernizer_tooling.py::TestsFlextInfraDepsModernizerTooling::test_stub_options_cannot_be_claimed_by_derived_settings",
+      "phase": "call",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/deps/test_modernizer_tooling.py::TestsFlextInfraDepsModernizerTooling::test_stub_options_cannot_be_claimed_by_derived_settings",
+      "phase": "teardown",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/deps/test_modernizer_tooling.py::TestsFlextInfraDepsModernizerTooling::test_typecheck_policy_keeps_tracked_surfaces_visible",
+      "phase": "setup",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/deps/test_modernizer_tooling.py::TestsFlextInfraDepsModernizerTooling::test_typecheck_policy_keeps_tracked_surfaces_visible",
+      "phase": "call",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/deps/test_modernizer_tooling.py::TestsFlextInfraDepsModernizerTooling::test_typecheck_policy_keeps_tracked_surfaces_visible",
+      "phase": "teardown",
+      "outcome": "passed"
+    }
+  ],
+  "markdown_attempts": [],
+  "markdown_items": [],
+  "failed_cases": [
+    "tests.unit.deps.test_modernizer_tooling.TestsFlextInfraDepsModernizerTooling::test_ruff_phase_sets_expected_state"
+  ],
+  "error_traces": [
+    "=== FAILURE: tests.unit.deps.test_modernizer_tooling.TestsFlextInfraDepsModernizerTooling::test_ruff_phase_sets_expected_state ===\nAssertionError: Expected success but got failure: Python source discovery requires a Git checkout: /home/marlonsc/tmp/pytest-of-marlonsc/pytest-15141/popen-gw0/test_ruff_phase_sets_expected_0/flext-sample\ntests/unit/deps/test_modernizer_tooling.py:579: in test_ruff_phase_sets_expected_state\n    codegen = tm.ok(u.Infra.load_codegen_inputs(project_dir)).spec\n              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n.venv/lib/python3.13/site-packages/flext_tests/_utilities/_matchers/result.py:270: in ok\n    original = FlextTestsUtilitiesResult.assert_success(\n.venv/lib/python3.13/site-packages/flext_tests/_utilities/result.py:62: in assert_success\n    raise AssertionError(\nE   AssertionError: Expected success but got failure: Python source discovery requires a Git checkout: /home/marlonsc/tmp/pytest-of-marlonsc/pytest-15141/popen-gw0/test_ruff_phase_sets_expected_0/flext-sample"
+  ],
+  "warning_lines": [],
+  "skip_cases": [],
+  "slow_entries": [
+    "1.597000s | tests.unit.deps.test_modernizer_tooling.TestsFlextInfraDepsModernizerTooling::test_ruff_phase_skips_nonmember_workspace_namespaces",
+    "0.265000s | tests.unit.deps.test_modernizer_tooling.TestsFlextInfraDepsModernizerTooling::test_ruff_phase_sets_expected_state",
+    "0.076000s | tests.unit.deps.test_modernizer_tooling.TestsFlextInfraDepsModernizerTooling::test_stub_options_are_rejected_through_real_tooling_layers[pyrefly-stub-path-local_typing]",
+    "0.052000s | tests.unit.deps.test_modernizer_tooling.TestsFlextInfraDepsModernizerTooling::test_project_cannot_declare_its_own_ruff_exemption",
+    "0.034000s | tests.unit.deps.test_modernizer_tooling.TestsFlextInfraDepsModernizerTooling::test_stub_options_cannot_be_claimed_by_derived_settings",
+    "0.031000s | tests.unit.deps.test_modernizer_tooling.TestsFlextInfraDepsModernizerTooling::test_native_markdown_render_does_not_mutate_the_shared_policy",
+    "0.007000s | tests.unit.deps.test_modernizer_tooling.TestsFlextInfraDepsModernizerTooling::test_typecheck_policy_keeps_tracked_surfaces_visible",
+    "0.006000s | tests.unit.deps.test_modernizer_tooling.TestsFlextInfraDepsModernizerTooling::test_native_tool_configuration_rejects_an_undeclared_root"
+  ]
+}

@@ -1,0 +1,12 @@
+=== FAILURE: tests.unit.codegen.test_codegen_pyproject_conform.TestsFlextInfraCodegenPyprojectConform::test_artifact_composition_retires_the_removed_analyzer_tables ===
+AssertionError: Expected {'mypy': {'retired': True}, 'pyright': {'retired': True}, 'pydantic-mypy': {'retired': True}, 'deptry': {}, 'uv': {'constraint-dependencies': ['pillow>=13.0.0', 'soupsieve>=4.0.0', 'certifi>=2026.10.19', 'setuptools>=84.1.0', 'virtualenv>=21.14.13', 'filelock>=4.2.1', 'uv>=0.13.4'], 'environments': ["sys_platform == 'linux'", "sys_platform == 'darwin'"], 'exclude-newer': 'P10D', 'link-mode': 'clone', 'override-dependencies': ['rope @ git+https://github.com/marlon-costa-d...
+[truncated; full report in element text]
+tests/unit/codegen/test_codegen_pyproject_conform.py:74: in test_artifact_composition_retires_the_removed_analyzer_tables
+    tm.that(first_tools, lacks=table)
+.venv/lib/python3.13/site-packages/flext_tests/_utilities/_matchers/that.py:728: in that
+    FlextTestsUtilitiesMatchersContainment.check_has_lacks(
+.venv/lib/python3.13/site-packages/flext_tests/_utilities/_matchers/containment.py:75: in check_has_lacks
+    FlextTestsUtilitiesMatchersAssertions.raise_match_assertion(
+.venv/lib/python3.13/site-packages/flext_tests/_utilities/_matchers/assertions.py:45: in raise_match_assertion
+    raise AssertionError(msg or template.format(container=container, item=item))
+E   AssertionError: Expected {'mypy': {'retired': True}, 'pyright': {'retired': True}, 'pydantic-mypy': {'retired': True}, 'deptry': {}, 'uv': {'constraint-dependencies': ['pillow>=13.0.0', 'soupsieve>=4.0.0', 'certifi>=2026.10.19', 'setuptools>=84.1.0', 'virtualenv>=21.14.13', 'filelock>=4.2.1', 'uv>=0.13.4'], 'environments': ["sys_platform == 'linux'", "sys_platform == 'darwin'"], 'exclude-newer': 'P10D', 'link-mode': 'clone', 'override-dependencies': ['rope @ git+https://github.com/marlon-costa-dc/rope.git@ecdee0efcbfa1bbdbd070218de3c39716b0299aa'], 'exclude-newer-package': {'soupsieve': False}, 'sources': {}}} to NOT contain 'mypy'

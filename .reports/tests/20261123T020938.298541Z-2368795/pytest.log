@@ -1,0 +1,59 @@
+================================================= test session starts ==================================================
+platform linux -- Python 3.13.18, pytest-9.2.0, pluggy-1.7.0 -- /home/marlonsc/flext/flext-infra/worktrees/fix-ci-timeout-fixture-2786/.venv/bin/python
+cachedir: .pytest_cache
+testmon: selection deactivated, environment: toolchain-2c96107a0cd9-6a8897dd-e3b0c442
+benchmark: 5.3.1 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+hypothesis profile 'default'
+Using --randomly-seed=2976109693
+rootdir: /home/marlonsc/flext/flext-infra/worktrees/fix-ci-timeout-fixture-2786
+configfile: pyproject.toml
+plugins: flext-tests-0.12.0, asyncio-1.4.1.post1, timeout-2.4.0, cov-7.1.0, testmon-2.3.0, anyio-4.16.0, platformdirs-4.14.5, xdist-3.8.0, benchmark-5.3.1, hypothesis-6.170.15, reportlog-1.0.0, randomly-5.1.0, markdown-docs-0.9.2, flext-infra-0.12.3
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
+timeout: 2.0s
+timeout method: signal
+timeout func_only: True
+created: 4/4 workers
+4 workers [29 items]
+
+scheduling tests via LoadScopeScheduling
+
+tests/unit/deps/test_modernizer_tooling.py::TestsFlextInfraDepsModernizerTooling::test_ruff_phase_skips_nonmember_workspace_namespaces 
+[gw0] [  3%] PASSED tests/unit/deps/test_modernizer_tooling.py::TestsFlextInfraDepsModernizerTooling::test_ruff_phase_skips_nonmember_workspace_namespaces 
+tests/unit/deps/test_modernizer_tooling.py::TestsFlextInfraDepsModernizerTooling::test_stub_options_cannot_be_claimed_by_derived_settings 
+[gw0] [  6%] PASSED tests/unit/deps/test_modernizer_tooling.py::TestsFlextInfraDepsModernizerTooling::test_stub_options_cannot_be_claimed_by_derived_settings 
+tests/unit/deps/test_modernizer_tooling.py::TestsFlextInfraDepsModernizerTooling::test_project_cannot_declare_its_own_ruff_exemption 
+[gw0] [ 10%] PASSED tests/unit/deps/test_modernizer_tooling.py::TestsFlextInfraDepsModernizerTooling::test_project_cannot_declare_its_own_ruff_exemption 
+tests/unit/deps/test_modernizer_tooling.py::TestsFlextInfraDepsModernizerTooling::test_typecheck_policy_keeps_tracked_surfaces_visible 
+[gw0] [ 13%] PASSED tests/unit/deps/test_modernizer_tooling.py::TestsFlextInfraDepsModernizerTooling::test_typecheck_policy_keeps_tracked_surfaces_visible 
+tests/unit/deps/test_modernizer_tooling.py::TestsFlextInfraDepsModernizerTooling::test_native_markdown_render_does_not_mutate_the_shared_policy 
+[gw0] [ 17%] PASSED tests/unit/deps/test_modernizer_tooling.py::TestsFlextInfraDepsModernizerTooling::test_native_markdown_render_does_not_mutate_the_shared_policy 
+tests/unit/deps/test_modernizer_tooling.py::TestsFlextInfraDepsModernizerTooling::test_native_tool_configuration_rejects_an_undeclared_root 
+[gw0] [ 20%] PASSED tests/unit/deps/test_modernizer_tooling.py::TestsFlextInfraDepsModernizerTooling::test_native_tool_configuration_rejects_an_undeclared_root 
+tests/unit/deps/test_modernizer_tooling.py::TestsFlextInfraDepsModernizerTooling::test_stub_options_are_rejected_through_real_tooling_layers[pyrefly-stub-path-local_typing] 
+[gw0] [ 24%] PASSED tests/unit/deps/test_modernizer_tooling.py::TestsFlextInfraDepsModernizerTooling::test_stub_options_are_rejected_through_real_tooling_layers[pyrefly-stub-path-local_typing] 
+tests/unit/deps/test_modernizer_tooling.py::TestsFlextInfraDepsModernizerTooling::test_ruff_phase_sets_expected_state 
+[gw0] [ 27%] FAILED tests/unit/deps/test_modernizer_tooling.py::TestsFlextInfraDepsModernizerTooling::test_ruff_phase_sets_expected_state 
+
+======================================================= FAILURES =======================================================
+_______________________ TestsFlextInfraDepsModernizerTooling.test_ruff_phase_sets_expected_state _______________________
+[gw0] linux -- Python 3.13.18 /home/marlonsc/flext/flext-infra/worktrees/fix-ci-timeout-fixture-2786/.venv/bin/python
+tests/unit/deps/test_modernizer_tooling.py:579: in test_ruff_phase_sets_expected_state
+    codegen = tm.ok(u.Infra.load_codegen_inputs(project_dir)).spec
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/flext_tests/_utilities/_matchers/result.py:270: in ok
+    original = FlextTestsUtilitiesResult.assert_success(
+.venv/lib/python3.13/site-packages/flext_tests/_utilities/result.py:62: in assert_success
+    raise AssertionError(
+E   AssertionError: Expected success but got failure: Python source discovery requires a Git checkout: /home/marlonsc/tmp/pytest-of-marlonsc/pytest-15141/popen-gw0/test_ruff_phase_sets_expected_0/flext-sample
+- generated xml file: /home/marlonsc/flext/flext-infra/worktrees/fix-ci-timeout-fixture-2786/.reports/tests/20261123T020938.298541Z-2368795/junit.xml -
+- generated report log file: /home/marlonsc/flext/flext-infra/worktrees/fix-ci-timeout-fixture-2786/.reports/tests/20261123T020938.298541Z-2368795/events.jsonl -
+--------------------------------------------------- flext slow tests ---------------------------------------------------
+no test near the ordinary or slow limit
+================================================= slowest 25 durations =================================================
+
+(24 durations < 2s hidden.)
+=============================================== short test summary info ================================================
+FAILED tests/unit/deps/test_modernizer_tooling.py::TestsFlextInfraDepsModernizerTooling::test_ruff_phase_sets_expected_state
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! xdist.dsession.Interrupted: stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+============================================= 1 failed, 7 passed in 6.61s ==============================================

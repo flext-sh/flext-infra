@@ -1,0 +1,43 @@
+=== FAILURE: tests.unit._utilities.test_rope_analysis.TestsFlextInfraRopeAnalysis::test_namespace_policy_retains_inherited_public_payload ===
+RuntimeError: Python source discovery requires a Git checkout: /home/marlonsc/tmp/pytest-of-marlonsc/pytest-15137/popen-gw0/test_namespace_policy_retains_0/demo-project
+{"error":"Python source discovery requires a Git checkout: /home/marlonsc/tmp/pytest-of-marlonsc/pytest-15137/popen-gw0/test_namespace_policy_retains_0/demo-project"}
+tests/unit/_utilities/test_rope_analysis.py:137: in test_namespace_policy_retains_inherited_public_payload
+    policy = u.Infra.policy(source, rope_project=rope_project)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/namespace.py:998: in policy
+    policy = cls.publication_policy(
+src/flext_infra/_utilities/namespace.py:925: in publication_policy
+    project_layout = cls.layout(project_root, rope_project=rope_project)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/namespace.py:581: in layout
+    cls.repository_namespace_packages(
+src/flext_infra/_utilities/namespace.py:765: in repository_namespace_packages
+    ).unwrap()
+      ^^^^^^^^
+.venv/lib/python3.13/site-packages/flext_core/_result/unwrap.py:51: in unwrap
+    return self.value
+           ^^^^^^^^^^
+.venv/lib/python3.13/site-packages/flext_core/_result/behavior.py:58: in value
+    self._raise_failure()
+.venv/lib/python3.13/site-packages/flext_core/_result/behavior.py:73: in _raise_failure
+    raise error
+.venv/lib/python3.13/site-packages/flext_core/_result/construction.py:239: in create_from_callable
+    value = func()
+            ^^^^^^
+src/flext_infra/_utilities/_project/discovery_shape.py:67: in detected_project_kind
+    ) or cls._uses_flext_imports(repository_root, source_project):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_project/discovery_shape.py:112: in _uses_flext_imports
+    for resource in project.get_python_files():
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/native_project.py:283: in get_python_files
+    for path in FlextInfraUtilitiesProjectDiscovery.discover_python_files(
+src/flext_infra/_utilities/project_discovery.py:645: in discover_python_files
+    for path in cls._walk_python_files(
+src/flext_infra/_utilities/project_discovery.py:713: in _walk_python_files
+    source_paths = cls._source_scope_paths(directory)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/project_discovery.py:817: in _source_scope_paths
+    raise RuntimeError(msg)
+E   RuntimeError: Python source discovery requires a Git checkout: /home/marlonsc/tmp/pytest-of-marlonsc/pytest-15137/popen-gw0/test_namespace_policy_retains_0/demo-project
+E   {"error":"Python source discovery requires a Git checkout: /home/marlonsc/tmp/pytest-of-marlonsc/pytest-15137/popen-gw0/test_namespace_policy_retains_0/demo-project"}

@@ -1,0 +1,1 @@
+tests.unit.codegen.test_codegen_pyproject_conform.TestsFlextInfraCodegenPyprojectConform::test_artifact_composition_retires_the_removed_analyzer_tables

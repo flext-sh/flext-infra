@@ -1,0 +1,190 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "flext-infra-check",
+          "informationUri": "https://github.com/flext-sh/flext-infra",
+          "rules": []
+        }
+      },
+      "results": []
+    }
+  ],
+  "properties": {
+    "phase": "complete",
+    "requested_gates": [
+      "lint",
+      "format",
+      "markdown",
+      "markdown-format",
+      "markdown-code",
+      "conflict-markers"
+    ],
+    "pending_gates": [],
+    "targets": [
+      {
+        "name": "fix-ci-timeout-fixture-2786",
+        "path": "/home/marlonsc/flext/flext-infra/worktrees/fix-ci-timeout-fixture-2786",
+        "applicable_gates": [
+          "lint",
+          "format",
+          "markdown",
+          "markdown-format",
+          "markdown-code",
+          "conflict-markers"
+        ],
+        "source_identity": {
+          "repo_root": "/home/marlonsc/flext/flext-infra/worktrees/fix-ci-timeout-fixture-2786",
+          "primary_root": "/home/marlonsc/flext/flext-infra",
+          "head_oid": "c51d2a47cc75e727a64f5b975489f8262c4489d6",
+          "porcelain": "M  tests/unit/deps/test_pytest_timeout_config.py",
+          "dirty": true,
+          "git_dir": "/home/marlonsc/flext/.git/modules/flext-infra/worktrees/fix-ci-timeout-fixture-2786",
+          "common_dir": "/home/marlonsc/flext/.git/modules/flext-infra",
+          "branch": "fix/ci-timeout-fixture-2786",
+          "origin_remote": "https://github.com/flext-sh/flext-infra.git",
+          "upstream_remote": null,
+          "superproject_root": "/home/marlonsc/flext",
+          "requested_path": "/home/marlonsc/flext/flext-infra/worktrees/fix-ci-timeout-fixture-2786",
+          "is_worktree": true,
+          "is_submodule": true,
+          "is_attached_submodule": false,
+          "has_submodules": false,
+          "is_inside_work_tree": true
+        }
+      }
+    ],
+    "results": [
+      {
+        "project": "fix-ci-timeout-fixture-2786",
+        "gates": {
+          "lint": {
+            "result": {
+              "project": "fix-ci-timeout-fixture-2786",
+              "gate": "lint",
+              "passed": true,
+              "errors": [],
+              "duration": 1.236
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext/flext-infra/worktrees/fix-ci-timeout-fixture-2786/.reports/gates/20261123T020241.207758Z-2016493/check/d25c37de-ad78-4054-a189-4847ed693fc5/fix-ci-timeout-fixture-2786/lint.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          },
+          "format": {
+            "result": {
+              "project": "fix-ci-timeout-fixture-2786",
+              "gate": "format",
+              "passed": true,
+              "errors": [],
+              "duration": 4.455
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext/flext-infra/worktrees/fix-ci-timeout-fixture-2786/.reports/gates/20261123T020241.207758Z-2016493/check/d25c37de-ad78-4054-a189-4847ed693fc5/fix-ci-timeout-fixture-2786/format.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          },
+          "markdown": {
+            "result": {
+              "project": "fix-ci-timeout-fixture-2786",
+              "gate": "markdown",
+              "passed": true,
+              "errors": [],
+              "duration": 1.53
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext/flext-infra/worktrees/fix-ci-timeout-fixture-2786/.reports/gates/20261123T020241.207758Z-2016493/check/d25c37de-ad78-4054-a189-4847ed693fc5/fix-ci-timeout-fixture-2786/markdown.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          },
+          "markdown-format": {
+            "result": {
+              "project": "fix-ci-timeout-fixture-2786",
+              "gate": "markdown-format",
+              "passed": true,
+              "errors": [],
+              "duration": 1.541
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext/flext-infra/worktrees/fix-ci-timeout-fixture-2786/.reports/gates/20261123T020241.207758Z-2016493/check/d25c37de-ad78-4054-a189-4847ed693fc5/fix-ci-timeout-fixture-2786/markdown-format.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          },
+          "markdown-code": {
+            "result": {
+              "project": "fix-ci-timeout-fixture-2786",
+              "gate": "markdown-code",
+              "passed": true,
+              "errors": [],
+              "duration": 4.243
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext/flext-infra/worktrees/fix-ci-timeout-fixture-2786/.reports/gates/20261123T020241.207758Z-2016493/check/d25c37de-ad78-4054-a189-4847ed693fc5/fix-ci-timeout-fixture-2786/markdown-code.raw.log",
+            "outcome": "clean",
+            "process": null,
+            "components": {},
+            "requested_components": []
+          },
+          "conflict-markers": {
+            "result": {
+              "project": "fix-ci-timeout-fixture-2786",
+              "gate": "conflict-markers",
+              "passed": true,
+              "errors": [],
+              "duration": 5.081
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext/flext-infra/worktrees/fix-ci-timeout-fixture-2786/.reports/gates/20261123T020241.207758Z-2016493/check/d25c37de-ad78-4054-a189-4847ed693fc5/fix-ci-timeout-fixture-2786/conflict-markers.raw.log",
+            "outcome": "clean",
+            "process": null,
+            "components": {},
+            "requested_components": []
+          }
+        }
+      }
+    ],
+    "selected_files": [],
+    "global_targets": [
+      {
+        "name": "fix-ci-timeout-fixture-2786",
+        "path": "/home/marlonsc/flext/flext-infra/worktrees/fix-ci-timeout-fixture-2786",
+        "applicable_gates": [
+          "lint",
+          "format",
+          "markdown",
+          "markdown-format",
+          "markdown-code",
+          "conflict-markers"
+        ],
+        "source_identity": null
+      }
+    ]
+  }
+}

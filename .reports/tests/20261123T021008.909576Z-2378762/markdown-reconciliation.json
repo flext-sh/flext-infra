@@ -1,0 +1,53 @@
+{
+  "eligible": [],
+  "selected": [],
+  "deselected": [],
+  "diagnostics": {
+    "failed_count": 1,
+    "error_count": 0,
+    "warning_count": 0,
+    "skipped_count": 0,
+    "connectivity_skip_cases": [],
+    "collection_failed_count": 0,
+    "collection_skipped_count": 0,
+    "collection_failed_cases": [],
+    "collection_skip_cases": [],
+    "reported_node_ids": [
+      "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_runtime_self_import_still_fails_with_lazy_publication[True]"
+    ],
+    "phase_outcomes": [
+      {
+        "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_runtime_self_import_still_fails_with_lazy_publication[True]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_runtime_self_import_still_fails_with_lazy_publication[True]",
+        "phase": "call",
+        "outcome": "failed"
+      },
+      {
+        "node_id": "tests/unit/codemod/test_facade_base_cutover.py::TestsFlextInfraFacadeBaseCutover::test_runtime_self_import_still_fails_with_lazy_publication[True]",
+        "phase": "teardown",
+        "outcome": "passed"
+      }
+    ],
+    "markdown_attempts": [],
+    "markdown_items": [],
+    "failed_cases": [
+      "tests.unit.codemod.test_facade_base_cutover.TestsFlextInfraFacadeBaseCutover::test_runtime_self_import_still_fails_with_lazy_publication[True]"
+    ],
+    "error_traces": [
+      "=== FAILURE: tests.unit.codemod.test_facade_base_cutover.TestsFlextInfraFacadeBaseCutover::test_runtime_self_import_still_fails_with_lazy_publication[True] ===\nRuntimeError: Python source discovery requires a Git checkout: /home/marlonsc/tmp/pytest-of-marlonsc/pytest-15143/popen-gw2/test_runtime_self_import_still0\ntests/unit/codemod/test_facade_base_cutover.py:480: in test_runtime_self_import_still_fails_with_lazy_publication\n    tm.fail(self._plan(tmp_path, sources, child), has=\"cyclic facade binding\")\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\ntests/unit/codemod/test_facade_base_cutover.py:601: in _plan\n    return u.Infra.plan_semantic_cutover(\nsrc/flext_infra/_utilities/_semantic_cutover/base.py:78: in plan_semantic_cutover\n    attempt = r.safe(\n.venv/lib/python3.13/site-packages/flext_core/_result/composition.py:201: in wrapper\n    return cls._create_success(func(*args, **kwargs))\n                               ^^^^^^^^^^^^^^^^^^^^^\nsrc/flext_infra/_utilities/_semantic_cutover/base.py:142: in _plan_semantic_cutover_phase\n    return cls._plan_selected_phase_dispatch(\nsrc/flext_infra/_utilities/_semantic_cutover/base.py:340: in _plan_selected_phase_dispatch\n    return factory()\n           ^^^^^^^^^\nsrc/flext_infra/_utilities/_semantic_cutover/base.py:329: in <lambda>\n    c.Infra.SemanticCutoverPhase.FACADE_BASE: lambda: cls._plan_facade_bases(\nsrc/flext_infra/_utilities/_semantic_cutover/facade_bases.py:1371: in _plan_facade_bases\n    imported = cls._plan_facade_import_bases(\nsrc/flext_infra/_utilities/_semantic_cutover/facade_bases.py:1411: in _plan_facade_import_bases\n    return cls.facade_import_base_edits(\nsrc/flext_infra/_utilities/_semantic_cutover/facade_bases.py:1485: in facade_import_base_edits\n    with FlextInfraUtilitiesWorkspaceSnapshot.facade_source_project(\n../../../../.local/share/mise/installs/python/3.13.18/lib/python3.13/contextlib.py:141: in __enter__\n    return next(self.gen)\n           ^^^^^^^^^^^^^^\nsrc/flext_infra/_utilities/workspace_snapshot.py:213: in facade_source_project\n    FlextInfraUtilitiesProjectDiscovery.discover_python_files(\nsrc/flext_infra/_utilities/project_discovery.py:645: in discover_python_files\n    for path in cls._walk_python_files(\nsrc/flext_infra/_utilities/project_discovery.py:713: in _walk_python_files\n    source_paths = cls._source_scope_paths(directory)\n                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nsrc/flext_infra/_utilities/project_discovery.py:817: in _source_scope_paths\n    raise RuntimeError(msg)\nE   RuntimeError: Python source discovery requires a Git checkout: /home/marlonsc/tmp/pytest-of-marlonsc/pytest-15143/popen-gw2/test_runtime_self_import_still0"
+    ],
+    "warning_lines": [],
+    "skip_cases": [],
+    "slow_entries": [
+      "0.997000s | tests.unit.codemod.test_facade_base_cutover.TestsFlextInfraFacadeBaseCutover::test_runtime_self_import_still_fails_with_lazy_publication[True]"
+    ]
+  },
+  "cache_hit": false,
+  "violations": [
+    "selected node IDs differ from executed node IDs"
+  ]
+}

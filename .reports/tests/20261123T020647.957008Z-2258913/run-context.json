@@ -1,0 +1,8 @@
+{
+  "execution_mode": "full",
+  "isolated_fixture": false,
+  "testmon_db": "/home/marlonsc/flext/flext-infra/worktrees/fix-ci-timeout-fixture-2786/.testmondata",
+  "deadline_monotonic": null,
+  "report_directory": "/home/marlonsc/flext/flext-infra/worktrees/fix-ci-timeout-fixture-2786/.reports/tests/20261123T020647.957008Z-2258913",
+  "profile_sha256": null
+}

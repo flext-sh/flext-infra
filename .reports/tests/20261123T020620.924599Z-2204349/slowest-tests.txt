@@ -1,0 +1,5 @@
+0.663000s | tests.unit._utilities.test_rope_analysis.TestsFlextInfraRopeAnalysis::test_declared_imports_preserve_relative_levels[from ... import Owner as Local-.Owner]
+0.528000s | tests.unit._utilities.test_rope_analysis.TestsFlextInfraRopeAnalysis::test_namespace_policy_retains_inherited_public_payload
+0.292000s | tests.unit._utilities.test_rope_analysis.TestsFlextInfraRopeAnalysis::test_superclass_name_uses_the_sdk_class_or_instance_type[from .provider import Parent\nvalue = Parent-Parent]
+0.014000s | tests.unit._utilities.test_rope_analysis.TestsFlextInfraRopeAnalysis::test_superclass_name_uses_the_sdk_class_or_instance_type[from .provider import Parent\nvalue = Parent()-Parent]
+0.010000s | tests.unit._utilities.test_rope_analysis.TestsFlextInfraRopeAnalysis::test_declared_imports_preserve_relative_levels[from . import Owner as Local-.inner.leaf.Owner]

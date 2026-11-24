@@ -1,0 +1,557 @@
+{
+  "eligible": [],
+  "selected": [],
+  "deselected": [],
+  "diagnostics": {
+    "failed_count": 0,
+    "error_count": 0,
+    "warning_count": 0,
+    "skipped_count": 0,
+    "connectivity_skip_cases": [],
+    "collection_failed_count": 0,
+    "collection_skipped_count": 0,
+    "collection_failed_cases": [],
+    "collection_skip_cases": [],
+    "reported_node_ids": [
+      "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_a_module_without_a_copyright_finding_needs_no_author",
+      "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_copyright_notice_follows_the_module_summary",
+      "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_copyright_notice_of_an_undeclared_project_reads_its_manifest[LicenseRef-Proprietary]",
+      "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_copyright_notice_of_an_undeclared_project_reads_its_manifest[MIT]",
+      "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_copyright_notice_of_an_undeclared_project_reads_its_manifest[Proprietary]",
+      "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_copyright_notice_rejects_an_undeclared_or_unsupported_license[LicenseRef-Unsupported-unsupported scaffold license]",
+      "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_copyright_notice_rejects_an_undeclared_or_unsupported_license[None-declares no SPDX project.license]",
+      "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_copyright_notice_signs_with_the_declared_project[LicenseRef-Proprietary]",
+      "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_copyright_notice_signs_with_the_declared_project[MIT]",
+      "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_copyright_notice_signs_with_the_declared_project[Proprietary]",
+      "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_extraneous_raises_drops_the_emptied_section",
+      "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_extraneous_raises_keeps_the_following_section",
+      "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_extraneous_raises_leaves_only_its_own_entry",
+      "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_gate_owned_recipe_requires_its_runtime_owner[import-outside-top-level]",
+      "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_gate_owned_recipe_requires_its_runtime_owner[line-too-long]",
+      "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_raises_condition_drops_the_opener_its_placeholder_left",
+      "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_raises_condition_with_quotes_keeps_the_literal_intact",
+      "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_raises_section_states_the_message_condition",
+      "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_returns_section_takes_the_summary_object",
+      "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_static_method_collapses_a_sole_receiver",
+      "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_static_method_keeps_every_body_byte",
+      "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_static_method_recipe_retains_service_operation_findings[FlextService]",
+      "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_static_method_recipe_retains_service_operation_findings[s]",
+      "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_static_method_refuses_a_comment_beside_the_receiver",
+      "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_static_method_retains_receiver_contracts[implicit-super-receiver]",
+      "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_static_method_retains_receiver_contracts[overridden-base-hook]",
+      "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_static_method_retains_receiver_contracts[parent-method-override]",
+      "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_summary_docstring_derives_from_the_name",
+      "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_summary_docstring_expands_declaration_suites[class-and-inline-suite]",
+      "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_summary_docstring_expands_declaration_suites[inline-protocol-suite]",
+      "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_summary_docstring_expands_declaration_suites[wrapped-generic-signature]"
+    ],
+    "phase_outcomes": [
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_a_module_without_a_copyright_finding_needs_no_author",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_a_module_without_a_copyright_finding_needs_no_author",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_a_module_without_a_copyright_finding_needs_no_author",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_copyright_notice_follows_the_module_summary",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_copyright_notice_follows_the_module_summary",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_copyright_notice_follows_the_module_summary",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_copyright_notice_of_an_undeclared_project_reads_its_manifest[LicenseRef-Proprietary]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_copyright_notice_of_an_undeclared_project_reads_its_manifest[LicenseRef-Proprietary]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_copyright_notice_of_an_undeclared_project_reads_its_manifest[LicenseRef-Proprietary]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_copyright_notice_of_an_undeclared_project_reads_its_manifest[MIT]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_copyright_notice_of_an_undeclared_project_reads_its_manifest[MIT]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_copyright_notice_of_an_undeclared_project_reads_its_manifest[MIT]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_copyright_notice_of_an_undeclared_project_reads_its_manifest[Proprietary]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_copyright_notice_of_an_undeclared_project_reads_its_manifest[Proprietary]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_copyright_notice_of_an_undeclared_project_reads_its_manifest[Proprietary]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_copyright_notice_rejects_an_undeclared_or_unsupported_license[LicenseRef-Unsupported-unsupported scaffold license]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_copyright_notice_rejects_an_undeclared_or_unsupported_license[LicenseRef-Unsupported-unsupported scaffold license]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_copyright_notice_rejects_an_undeclared_or_unsupported_license[LicenseRef-Unsupported-unsupported scaffold license]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_copyright_notice_rejects_an_undeclared_or_unsupported_license[None-declares no SPDX project.license]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_copyright_notice_rejects_an_undeclared_or_unsupported_license[None-declares no SPDX project.license]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_copyright_notice_rejects_an_undeclared_or_unsupported_license[None-declares no SPDX project.license]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_copyright_notice_signs_with_the_declared_project[LicenseRef-Proprietary]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_copyright_notice_signs_with_the_declared_project[LicenseRef-Proprietary]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_copyright_notice_signs_with_the_declared_project[LicenseRef-Proprietary]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_copyright_notice_signs_with_the_declared_project[MIT]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_copyright_notice_signs_with_the_declared_project[MIT]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_copyright_notice_signs_with_the_declared_project[MIT]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_copyright_notice_signs_with_the_declared_project[Proprietary]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_copyright_notice_signs_with_the_declared_project[Proprietary]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_copyright_notice_signs_with_the_declared_project[Proprietary]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_extraneous_raises_drops_the_emptied_section",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_extraneous_raises_drops_the_emptied_section",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_extraneous_raises_drops_the_emptied_section",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_extraneous_raises_keeps_the_following_section",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_extraneous_raises_keeps_the_following_section",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_extraneous_raises_keeps_the_following_section",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_extraneous_raises_leaves_only_its_own_entry",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_extraneous_raises_leaves_only_its_own_entry",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_extraneous_raises_leaves_only_its_own_entry",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_gate_owned_recipe_requires_its_runtime_owner[import-outside-top-level]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_gate_owned_recipe_requires_its_runtime_owner[import-outside-top-level]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_gate_owned_recipe_requires_its_runtime_owner[import-outside-top-level]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_gate_owned_recipe_requires_its_runtime_owner[line-too-long]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_gate_owned_recipe_requires_its_runtime_owner[line-too-long]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_gate_owned_recipe_requires_its_runtime_owner[line-too-long]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_raises_condition_drops_the_opener_its_placeholder_left",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_raises_condition_drops_the_opener_its_placeholder_left",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_raises_condition_drops_the_opener_its_placeholder_left",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_raises_condition_with_quotes_keeps_the_literal_intact",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_raises_condition_with_quotes_keeps_the_literal_intact",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_raises_condition_with_quotes_keeps_the_literal_intact",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_raises_section_states_the_message_condition",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_raises_section_states_the_message_condition",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_raises_section_states_the_message_condition",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_returns_section_takes_the_summary_object",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_returns_section_takes_the_summary_object",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_returns_section_takes_the_summary_object",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_static_method_collapses_a_sole_receiver",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_static_method_collapses_a_sole_receiver",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_static_method_collapses_a_sole_receiver",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_static_method_keeps_every_body_byte",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_static_method_keeps_every_body_byte",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_static_method_keeps_every_body_byte",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_static_method_recipe_retains_service_operation_findings[FlextService]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_static_method_recipe_retains_service_operation_findings[FlextService]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_static_method_recipe_retains_service_operation_findings[FlextService]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_static_method_recipe_retains_service_operation_findings[s]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_static_method_recipe_retains_service_operation_findings[s]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_static_method_recipe_retains_service_operation_findings[s]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_static_method_refuses_a_comment_beside_the_receiver",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_static_method_refuses_a_comment_beside_the_receiver",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_static_method_refuses_a_comment_beside_the_receiver",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_static_method_retains_receiver_contracts[implicit-super-receiver]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_static_method_retains_receiver_contracts[implicit-super-receiver]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_static_method_retains_receiver_contracts[implicit-super-receiver]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_static_method_retains_receiver_contracts[overridden-base-hook]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_static_method_retains_receiver_contracts[overridden-base-hook]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_static_method_retains_receiver_contracts[overridden-base-hook]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_static_method_retains_receiver_contracts[parent-method-override]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_static_method_retains_receiver_contracts[parent-method-override]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_static_method_retains_receiver_contracts[parent-method-override]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_summary_docstring_derives_from_the_name",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_summary_docstring_derives_from_the_name",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_summary_docstring_derives_from_the_name",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_summary_docstring_expands_declaration_suites[class-and-inline-suite]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_summary_docstring_expands_declaration_suites[class-and-inline-suite]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_summary_docstring_expands_declaration_suites[class-and-inline-suite]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_summary_docstring_expands_declaration_suites[inline-protocol-suite]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_summary_docstring_expands_declaration_suites[inline-protocol-suite]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_summary_docstring_expands_declaration_suites[inline-protocol-suite]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_summary_docstring_expands_declaration_suites[wrapped-generic-signature]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_summary_docstring_expands_declaration_suites[wrapped-generic-signature]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_summary_docstring_expands_declaration_suites[wrapped-generic-signature]",
+        "phase": "teardown",
+        "outcome": "passed"
+      }
+    ],
+    "markdown_attempts": [],
+    "markdown_items": [],
+    "failed_cases": [],
+    "error_traces": [],
+    "warning_lines": [],
+    "skip_cases": [],
+    "slow_entries": [
+      "0.630000s | tests.unit.gates.test_lint_recipes.TestsFlextInfraLintRecipes::test_copyright_notice_rejects_an_undeclared_or_unsupported_license[LicenseRef-Unsupported-unsupported scaffold license]",
+      "0.160000s | tests.unit.gates.test_lint_recipes.TestsFlextInfraLintRecipes::test_copyright_notice_follows_the_module_summary",
+      "0.075000s | tests.unit.gates.test_lint_recipes.TestsFlextInfraLintRecipes::test_copyright_notice_of_an_undeclared_project_reads_its_manifest[MIT]",
+      "0.071000s | tests.unit.gates.test_lint_recipes.TestsFlextInfraLintRecipes::test_copyright_notice_rejects_an_undeclared_or_unsupported_license[None-declares no SPDX project.license]",
+      "0.070000s | tests.unit.gates.test_lint_recipes.TestsFlextInfraLintRecipes::test_copyright_notice_signs_with_the_declared_project[Proprietary]",
+      "0.064000s | tests.unit.gates.test_lint_recipes.TestsFlextInfraLintRecipes::test_copyright_notice_signs_with_the_declared_project[MIT]",
+      "0.063000s | tests.unit.gates.test_lint_recipes.TestsFlextInfraLintRecipes::test_copyright_notice_of_an_undeclared_project_reads_its_manifest[Proprietary]",
+      "0.063000s | tests.unit.gates.test_lint_recipes.TestsFlextInfraLintRecipes::test_copyright_notice_of_an_undeclared_project_reads_its_manifest[LicenseRef-Proprietary]",
+      "0.060000s | tests.unit.gates.test_lint_recipes.TestsFlextInfraLintRecipes::test_copyright_notice_signs_with_the_declared_project[LicenseRef-Proprietary]",
+      "0.014000s | tests.unit.gates.test_lint_recipes.TestsFlextInfraLintRecipes::test_static_method_recipe_retains_service_operation_findings[FlextService]",
+      "0.009000s | tests.unit.gates.test_lint_recipes.TestsFlextInfraLintRecipes::test_returns_section_takes_the_summary_object",
+      "0.009000s | tests.unit.gates.test_lint_recipes.TestsFlextInfraLintRecipes::test_raises_condition_drops_the_opener_its_placeholder_left",
+      "0.008000s | tests.unit.gates.test_lint_recipes.TestsFlextInfraLintRecipes::test_a_module_without_a_copyright_finding_needs_no_author",
+      "0.007000s | tests.unit.gates.test_lint_recipes.TestsFlextInfraLintRecipes::test_summary_docstring_expands_declaration_suites[class-and-inline-suite]",
+      "0.007000s | tests.unit.gates.test_lint_recipes.TestsFlextInfraLintRecipes::test_summary_docstring_derives_from_the_name",
+      "0.007000s | tests.unit.gates.test_lint_recipes.TestsFlextInfraLintRecipes::test_static_method_retains_receiver_contracts[overridden-base-hook]",
+      "0.006000s | tests.unit.gates.test_lint_recipes.TestsFlextInfraLintRecipes::test_summary_docstring_expands_declaration_suites[wrapped-generic-signature]",
+      "0.006000s | tests.unit.gates.test_lint_recipes.TestsFlextInfraLintRecipes::test_summary_docstring_expands_declaration_suites[inline-protocol-suite]",
+      "0.006000s | tests.unit.gates.test_lint_recipes.TestsFlextInfraLintRecipes::test_static_method_retains_receiver_contracts[parent-method-override]",
+      "0.006000s | tests.unit.gates.test_lint_recipes.TestsFlextInfraLintRecipes::test_static_method_retains_receiver_contracts[implicit-super-receiver]",
+      "0.006000s | tests.unit.gates.test_lint_recipes.TestsFlextInfraLintRecipes::test_static_method_refuses_a_comment_beside_the_receiver",
+      "0.006000s | tests.unit.gates.test_lint_recipes.TestsFlextInfraLintRecipes::test_static_method_keeps_every_body_byte",
+      "0.006000s | tests.unit.gates.test_lint_recipes.TestsFlextInfraLintRecipes::test_raises_section_states_the_message_condition",
+      "0.006000s | tests.unit.gates.test_lint_recipes.TestsFlextInfraLintRecipes::test_raises_condition_with_quotes_keeps_the_literal_intact",
+      "0.006000s | tests.unit.gates.test_lint_recipes.TestsFlextInfraLintRecipes::test_gate_owned_recipe_requires_its_runtime_owner[line-too-long]",
+      "0.006000s | tests.unit.gates.test_lint_recipes.TestsFlextInfraLintRecipes::test_gate_owned_recipe_requires_its_runtime_owner[import-outside-top-level]",
+      "0.006000s | tests.unit.gates.test_lint_recipes.TestsFlextInfraLintRecipes::test_extraneous_raises_leaves_only_its_own_entry",
+      "0.006000s | tests.unit.gates.test_lint_recipes.TestsFlextInfraLintRecipes::test_extraneous_raises_drops_the_emptied_section",
+      "0.005000s | tests.unit.gates.test_lint_recipes.TestsFlextInfraLintRecipes::test_static_method_recipe_retains_service_operation_findings[s]",
+      "0.005000s | tests.unit.gates.test_lint_recipes.TestsFlextInfraLintRecipes::test_static_method_collapses_a_sole_receiver",
+      "0.005000s | tests.unit.gates.test_lint_recipes.TestsFlextInfraLintRecipes::test_extraneous_raises_keeps_the_following_section"
+    ]
+  },
+  "cache_hit": false,
+  "violations": []
+}

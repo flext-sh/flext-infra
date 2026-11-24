@@ -1,0 +1,43 @@
+================================================= test session starts ==================================================
+platform linux -- Python 3.13.18, pytest-9.2.0, pluggy-1.7.0 -- /home/marlonsc/flext/flext-infra/worktrees/fix-ci-timeout-fixture-2786/.venv/bin/python
+cachedir: .pytest_cache
+testmon: selection deactivated, environment: toolchain-2c96107a0cd9-6a8897dd-e3b0c442
+benchmark: 5.3.1 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+hypothesis profile 'default'
+Using --randomly-seed=342026273
+rootdir: /home/marlonsc/flext/flext-infra/worktrees/fix-ci-timeout-fixture-2786
+configfile: pyproject.toml
+plugins: flext-tests-0.12.0, asyncio-1.4.1.post1, timeout-2.4.0, cov-7.1.0, testmon-2.3.0, anyio-4.16.0, platformdirs-4.14.5, xdist-3.8.0, benchmark-5.3.1, hypothesis-6.170.15, reportlog-1.0.0, randomly-5.1.0, markdown-docs-0.9.2, flext-infra-0.12.3
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
+timeout: 2.0s
+timeout method: signal
+timeout func_only: True
+created: 4/4 workers
+4 workers [31 items]
+
+scheduling tests via LoadScopeScheduling
+
+tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_copyright_notice_rejects_an_undeclared_or_unsupported_license[LicenseRef-Unsupported-unsupported scaffold license] 
+[gw0] [  3%] FAILED tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_copyright_notice_rejects_an_undeclared_or_unsupported_license[LicenseRef-Unsupported-unsupported scaffold license] 
+
+======================================================= FAILURES =======================================================
+_ TestsFlextInfraLintRecipes.test_copyright_notice_rejects_an_undeclared_or_unsupported_license[LicenseRef-Unsupported-unsupported scaffold license] _
+[gw0] linux -- Python 3.13.18 /home/marlonsc/flext/flext-infra/worktrees/fix-ci-timeout-fixture-2786/.venv/bin/python
+tests/unit/gates/test_lint_recipes.py:569: in test_copyright_notice_rejects_an_undeclared_or_unsupported_license
+    with u.Tests.raises(ValueError, match=cause) as failure:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AssertionError: Regex pattern did not match.
+E     Expected regex: 'unsupported scaffold license'
+E     Actual message: 'Python source discovery requires a Git checkout: /home/marlonsc/tmp/pytest-of-marlonsc/pytest-15136/popen-gw0/test_copyright_notice_rejects_0'
+- generated xml file: /home/marlonsc/flext/flext-infra/worktrees/fix-ci-timeout-fixture-2786/.reports/tests/20261123T020607.077622Z-2205032/junit.xml -
+- generated report log file: /home/marlonsc/flext/flext-infra/worktrees/fix-ci-timeout-fixture-2786/.reports/tests/20261123T020607.077622Z-2205032/events.jsonl -
+--------------------------------------------------- flext slow tests ---------------------------------------------------
+no test near the ordinary or slow limit
+================================================= slowest 25 durations =================================================
+
+(3 durations < 2s hidden.)
+=============================================== short test summary info ================================================
+FAILED tests/unit/gates/test_lint_recipes.py::TestsFlextInfraLintRecipes::test_copyright_notice_rejects_an_undeclared_or_unsupported_license[LicenseRef-Unsupported-unsupported scaffold license]
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! xdist.dsession.Interrupted: stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+================================================== 1 failed in 5.07s ===================================================

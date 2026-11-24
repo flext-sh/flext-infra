@@ -1,0 +1,38 @@
+=== FAILURE: tests.unit.codemod.test_facade_base_cutover.TestsFlextInfraFacadeBaseCutover::test_runtime_self_import_still_fails_with_lazy_publication[True] ===
+RuntimeError: Python source discovery requires a Git checkout: /home/marlonsc/tmp/pytest-of-marlonsc/pytest-15143/popen-gw2/test_runtime_self_import_still0
+tests/unit/codemod/test_facade_base_cutover.py:480: in test_runtime_self_import_still_fails_with_lazy_publication
+    tm.fail(self._plan(tmp_path, sources, child), has="cyclic facade binding")
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/unit/codemod/test_facade_base_cutover.py:601: in _plan
+    return u.Infra.plan_semantic_cutover(
+src/flext_infra/_utilities/_semantic_cutover/base.py:78: in plan_semantic_cutover
+    attempt = r.safe(
+.venv/lib/python3.13/site-packages/flext_core/_result/composition.py:201: in wrapper
+    return cls._create_success(func(*args, **kwargs))
+                               ^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/base.py:142: in _plan_semantic_cutover_phase
+    return cls._plan_selected_phase_dispatch(
+src/flext_infra/_utilities/_semantic_cutover/base.py:340: in _plan_selected_phase_dispatch
+    return factory()
+           ^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/base.py:329: in <lambda>
+    c.Infra.SemanticCutoverPhase.FACADE_BASE: lambda: cls._plan_facade_bases(
+src/flext_infra/_utilities/_semantic_cutover/facade_bases.py:1371: in _plan_facade_bases
+    imported = cls._plan_facade_import_bases(
+src/flext_infra/_utilities/_semantic_cutover/facade_bases.py:1411: in _plan_facade_import_bases
+    return cls.facade_import_base_edits(
+src/flext_infra/_utilities/_semantic_cutover/facade_bases.py:1485: in facade_import_base_edits
+    with FlextInfraUtilitiesWorkspaceSnapshot.facade_source_project(
+../../../../.local/share/mise/installs/python/3.13.18/lib/python3.13/contextlib.py:141: in __enter__
+    return next(self.gen)
+           ^^^^^^^^^^^^^^
+src/flext_infra/_utilities/workspace_snapshot.py:213: in facade_source_project
+    FlextInfraUtilitiesProjectDiscovery.discover_python_files(
+src/flext_infra/_utilities/project_discovery.py:645: in discover_python_files
+    for path in cls._walk_python_files(
+src/flext_infra/_utilities/project_discovery.py:713: in _walk_python_files
+    source_paths = cls._source_scope_paths(directory)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/project_discovery.py:817: in _source_scope_paths
+    raise RuntimeError(msg)
+E   RuntimeError: Python source discovery requires a Git checkout: /home/marlonsc/tmp/pytest-of-marlonsc/pytest-15143/popen-gw2/test_runtime_self_import_still0

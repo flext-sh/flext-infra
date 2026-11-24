@@ -1,0 +1,56 @@
+================================================= test session starts ==================================================
+platform linux -- Python 3.13.18, pytest-9.2.0, pluggy-1.7.0 -- /home/marlonsc/flext/flext-infra/worktrees/fix-ci-timeout-fixture-2786/.venv/bin/python
+cachedir: .pytest_cache
+testmon: selection deactivated, environment: toolchain-2c96107a0cd9-6a8897dd-e3b0c442
+benchmark: 5.3.1 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+hypothesis profile 'default'
+Using --randomly-seed=1947336271
+rootdir: /home/marlonsc/flext/flext-infra/worktrees/fix-ci-timeout-fixture-2786
+configfile: pyproject.toml
+plugins: flext-tests-0.12.0, asyncio-1.4.1.post1, timeout-2.4.0, cov-7.1.0, testmon-2.3.0, anyio-4.16.0, platformdirs-4.14.5, xdist-3.8.0, benchmark-5.3.1, hypothesis-6.170.15, reportlog-1.0.0, randomly-5.1.0, markdown-docs-0.9.2, flext-infra-0.12.3
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
+timeout: 2.0s
+timeout method: signal
+timeout func_only: True
+created: 4/4 workers
+4 workers [27 items]
+
+scheduling tests via LoadScopeScheduling
+
+tests/unit/codegen/test_codegen_pyproject_conform.py::TestsFlextInfraCodegenPyprojectConform::test_overlay_replaces_duplicated_managed_lists[table_path1-extend-safe-fixes-expected1] 
+[gw0] [  3%] PASSED tests/unit/codegen/test_codegen_pyproject_conform.py::TestsFlextInfraCodegenPyprojectConform::test_overlay_replaces_duplicated_managed_lists[table_path1-extend-safe-fixes-expected1] 
+tests/unit/codegen/test_codegen_pyproject_conform.py::TestsFlextInfraCodegenPyprojectConform::test_custom_entry_point_groups_survive_conformance 
+[gw0] [  7%] PASSED tests/unit/codegen/test_codegen_pyproject_conform.py::TestsFlextInfraCodegenPyprojectConform::test_custom_entry_point_groups_survive_conformance 
+tests/unit/codegen/test_codegen_pyproject_conform.py::TestsFlextInfraCodegenPyprojectConform::test_overlay_defaults_only_the_omitted_policy 
+[gw0] [ 11%] PASSED tests/unit/codegen/test_codegen_pyproject_conform.py::TestsFlextInfraCodegenPyprojectConform::test_overlay_defaults_only_the_omitted_policy 
+tests/unit/codegen/test_codegen_pyproject_conform.py::TestsFlextInfraCodegenPyprojectConform::test_overlay_replaces_duplicated_managed_lists[table_path0-select-expected0] 
+[gw0] [ 14%] PASSED tests/unit/codegen/test_codegen_pyproject_conform.py::TestsFlextInfraCodegenPyprojectConform::test_overlay_replaces_duplicated_managed_lists[table_path0-select-expected0] 
+tests/unit/codegen/test_codegen_pyproject_conform.py::TestsFlextInfraCodegenPyprojectConform::test_generated_dev_floors_follow_publication_topology[workspace] 
+[gw0] [ 18%] PASSED tests/unit/codegen/test_codegen_pyproject_conform.py::TestsFlextInfraCodegenPyprojectConform::test_generated_dev_floors_follow_publication_topology[workspace] 
+tests/unit/codegen/test_codegen_pyproject_conform.py::TestsFlextInfraCodegenPyprojectConform::test_artifact_composition_retires_the_removed_analyzer_tables 
+[gw0] [ 22%] FAILED tests/unit/codegen/test_codegen_pyproject_conform.py::TestsFlextInfraCodegenPyprojectConform::test_artifact_composition_retires_the_removed_analyzer_tables 
+
+======================================================= FAILURES =======================================================
+_________ TestsFlextInfraCodegenPyprojectConform.test_artifact_composition_retires_the_removed_analyzer_tables _________
+[gw0] linux -- Python 3.13.18 /home/marlonsc/flext/flext-infra/worktrees/fix-ci-timeout-fixture-2786/.venv/bin/python
+tests/unit/codegen/test_codegen_pyproject_conform.py:74: in test_artifact_composition_retires_the_removed_analyzer_tables
+    tm.that(first_tools, lacks=table)
+.venv/lib/python3.13/site-packages/flext_tests/_utilities/_matchers/that.py:728: in that
+    FlextTestsUtilitiesMatchersContainment.check_has_lacks(
+.venv/lib/python3.13/site-packages/flext_tests/_utilities/_matchers/containment.py:75: in check_has_lacks
+    FlextTestsUtilitiesMatchersAssertions.raise_match_assertion(
+.venv/lib/python3.13/site-packages/flext_tests/_utilities/_matchers/assertions.py:45: in raise_match_assertion
+    raise AssertionError(msg or template.format(container=container, item=item))
+E   AssertionError: Expected {'mypy': {'retired': True}, 'pyright': {'retired': True}, 'pydantic-mypy': {'retired': True}, 'deptry': {}, 'uv': {'constraint-dependencies': ['pillow>=13.0.0', 'soupsieve>=4.0.0', 'certifi>=2026.10.19', 'setuptools>=84.1.0', 'virtualenv>=21.14.13', 'filelock>=4.2.1', 'uv>=0.13.4'], 'environments': ["sys_platform == 'linux'", "sys_platform == 'darwin'"], 'exclude-newer': 'P10D', 'link-mode': 'clone', 'override-dependencies': ['rope @ git+https://github.com/marlon-costa-dc/rope.git@ecdee0efcbfa1bbdbd070218de3c39716b0299aa'], 'exclude-newer-package': {'soupsieve': False}, 'sources': {}}} to NOT contain 'mypy'
+- generated xml file: /home/marlonsc/flext/flext-infra/worktrees/fix-ci-timeout-fixture-2786/.reports/tests/20261123T020954.129492Z-2374164/junit.xml -
+- generated report log file: /home/marlonsc/flext/flext-infra/worktrees/fix-ci-timeout-fixture-2786/.reports/tests/20261123T020954.129492Z-2374164/events.jsonl -
+--------------------------------------------------- flext slow tests ---------------------------------------------------
+no test near the ordinary or slow limit
+================================================= slowest 25 durations =================================================
+
+(18 durations < 2s hidden.)
+=============================================== short test summary info ================================================
+FAILED tests/unit/codegen/test_codegen_pyproject_conform.py::TestsFlextInfraCodegenPyprojectConform::test_artifact_composition_retires_the_removed_analyzer_tables
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! xdist.dsession.Interrupted: stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+============================================= 1 failed, 5 passed in 7.31s ==============================================

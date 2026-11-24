@@ -1,0 +1,557 @@
+{
+  "eligible": [],
+  "selected": [],
+  "deselected": [],
+  "diagnostics": {
+    "failed_count": 0,
+    "error_count": 0,
+    "warning_count": 0,
+    "skipped_count": 0,
+    "connectivity_skip_cases": [],
+    "collection_failed_count": 0,
+    "collection_skipped_count": 0,
+    "collection_failed_cases": [],
+    "collection_skip_cases": [],
+    "reported_node_ids": [
+      "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_ast_boundary_validates_before_traversal",
+      "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_class_info_refuses_incomplete_superclass_lineage[class Consumer(missing):\\n    pass\\n]",
+      "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_class_info_refuses_incomplete_superclass_lineage[class Parent:\\n    pass\\nclass Consumer(Parent, missing):\\n    pass\\n]",
+      "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_class_info_refuses_incomplete_superclass_lineage[def invalid():\\n    pass\\nclass Consumer(invalid):\\n    pass\\n]",
+      "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_declared_imports_preserve_relative_levels[from . import Owner as Local-.inner.leaf.Owner]",
+      "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_declared_imports_preserve_relative_levels[from .. import Owner as Local-.inner.Owner]",
+      "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_declared_imports_preserve_relative_levels[from ... import Owner as Local-.Owner]",
+      "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_declared_imports_preserve_relative_levels[from ..leaf import Owner as Local-.inner.leaf.Owner]",
+      "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_declared_imports_reject_relative_level_beyond_package",
+      "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_facade_namespaces_skip_builtin_bases",
+      "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespace_cycle_is_not_a_builtin_boundary",
+      "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[-Exception-pass-expected0]",
+      "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[-object-pass-expected1]",
+      "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[class Parent(Exception):\\n    class Shared:\\n        pass\\n-Parent-pass-expected3]",
+      "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[class Parent(object):\\n    class Shared:\\n        pass\\nclass Middle(Parent):\\n    pass\\n-Middle-pass-expected4]",
+      "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[class Parent:\\n    class Shared:\\n        pass\\n-Parent-class Shared:\\n        pass-expected5]",
+      "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[class Parent:\\n    pass\\n-Parent-pass-expected2]",
+      "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[declarations6-Left, Right-pass-expected6]",
+      "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[from .provider import Parent\\n-Parent, Exception-pass-expected7]",
+      "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_namespace_policy_retains_inherited_public_payload",
+      "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_superclass_name_refuses_nonclass_or_unresolved_type[def value():\\n    pass\\n-not a class or inferred instance]",
+      "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_superclass_name_refuses_nonclass_or_unresolved_type[import os as value\\n-not a class or inferred instance]",
+      "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_superclass_name_refuses_nonclass_or_unresolved_type[value = len\\n-not a class or inferred instance]",
+      "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_superclass_name_refuses_nonclass_or_unresolved_type[value = missing\\n-cyclic Rope superclass type]",
+      "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_superclass_name_uses_the_sdk_class_or_instance_type[class Parent:\\n    pass\\nvalue = Parent()-Parent]",
+      "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_superclass_name_uses_the_sdk_class_or_instance_type[class Parent:\\n    pass\\nvalue = Parent-Parent]",
+      "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_superclass_name_uses_the_sdk_class_or_instance_type[from .provider import Parent\\nvalue = Parent()-Parent]",
+      "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_superclass_name_uses_the_sdk_class_or_instance_type[from .provider import Parent\\nvalue = Parent-Parent]",
+      "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_superclass_name_uses_the_sdk_class_or_instance_type[value = Exception()-Exception]",
+      "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_superclass_name_uses_the_sdk_class_or_instance_type[value = Exception-Exception]",
+      "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_superclass_name_uses_the_sdk_class_or_instance_type[value = object-object]"
+    ],
+    "phase_outcomes": [
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_ast_boundary_validates_before_traversal",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_ast_boundary_validates_before_traversal",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_ast_boundary_validates_before_traversal",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_class_info_refuses_incomplete_superclass_lineage[class Consumer(missing):\\n    pass\\n]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_class_info_refuses_incomplete_superclass_lineage[class Consumer(missing):\\n    pass\\n]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_class_info_refuses_incomplete_superclass_lineage[class Consumer(missing):\\n    pass\\n]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_class_info_refuses_incomplete_superclass_lineage[class Parent:\\n    pass\\nclass Consumer(Parent, missing):\\n    pass\\n]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_class_info_refuses_incomplete_superclass_lineage[class Parent:\\n    pass\\nclass Consumer(Parent, missing):\\n    pass\\n]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_class_info_refuses_incomplete_superclass_lineage[class Parent:\\n    pass\\nclass Consumer(Parent, missing):\\n    pass\\n]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_class_info_refuses_incomplete_superclass_lineage[def invalid():\\n    pass\\nclass Consumer(invalid):\\n    pass\\n]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_class_info_refuses_incomplete_superclass_lineage[def invalid():\\n    pass\\nclass Consumer(invalid):\\n    pass\\n]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_class_info_refuses_incomplete_superclass_lineage[def invalid():\\n    pass\\nclass Consumer(invalid):\\n    pass\\n]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_declared_imports_preserve_relative_levels[from . import Owner as Local-.inner.leaf.Owner]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_declared_imports_preserve_relative_levels[from . import Owner as Local-.inner.leaf.Owner]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_declared_imports_preserve_relative_levels[from . import Owner as Local-.inner.leaf.Owner]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_declared_imports_preserve_relative_levels[from .. import Owner as Local-.inner.Owner]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_declared_imports_preserve_relative_levels[from .. import Owner as Local-.inner.Owner]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_declared_imports_preserve_relative_levels[from .. import Owner as Local-.inner.Owner]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_declared_imports_preserve_relative_levels[from ... import Owner as Local-.Owner]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_declared_imports_preserve_relative_levels[from ... import Owner as Local-.Owner]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_declared_imports_preserve_relative_levels[from ... import Owner as Local-.Owner]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_declared_imports_preserve_relative_levels[from ..leaf import Owner as Local-.inner.leaf.Owner]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_declared_imports_preserve_relative_levels[from ..leaf import Owner as Local-.inner.leaf.Owner]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_declared_imports_preserve_relative_levels[from ..leaf import Owner as Local-.inner.leaf.Owner]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_declared_imports_reject_relative_level_beyond_package",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_declared_imports_reject_relative_level_beyond_package",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_declared_imports_reject_relative_level_beyond_package",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_facade_namespaces_skip_builtin_bases",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_facade_namespaces_skip_builtin_bases",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_facade_namespaces_skip_builtin_bases",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespace_cycle_is_not_a_builtin_boundary",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespace_cycle_is_not_a_builtin_boundary",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespace_cycle_is_not_a_builtin_boundary",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[-Exception-pass-expected0]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[-Exception-pass-expected0]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[-Exception-pass-expected0]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[-object-pass-expected1]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[-object-pass-expected1]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[-object-pass-expected1]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[class Parent(Exception):\\n    class Shared:\\n        pass\\n-Parent-pass-expected3]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[class Parent(Exception):\\n    class Shared:\\n        pass\\n-Parent-pass-expected3]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[class Parent(Exception):\\n    class Shared:\\n        pass\\n-Parent-pass-expected3]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[class Parent(object):\\n    class Shared:\\n        pass\\nclass Middle(Parent):\\n    pass\\n-Middle-pass-expected4]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[class Parent(object):\\n    class Shared:\\n        pass\\nclass Middle(Parent):\\n    pass\\n-Middle-pass-expected4]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[class Parent(object):\\n    class Shared:\\n        pass\\nclass Middle(Parent):\\n    pass\\n-Middle-pass-expected4]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[class Parent:\\n    class Shared:\\n        pass\\n-Parent-class Shared:\\n        pass-expected5]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[class Parent:\\n    class Shared:\\n        pass\\n-Parent-class Shared:\\n        pass-expected5]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[class Parent:\\n    class Shared:\\n        pass\\n-Parent-class Shared:\\n        pass-expected5]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[class Parent:\\n    pass\\n-Parent-pass-expected2]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[class Parent:\\n    pass\\n-Parent-pass-expected2]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[class Parent:\\n    pass\\n-Parent-pass-expected2]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[declarations6-Left, Right-pass-expected6]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[declarations6-Left, Right-pass-expected6]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[declarations6-Left, Right-pass-expected6]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[from .provider import Parent\\n-Parent, Exception-pass-expected7]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[from .provider import Parent\\n-Parent, Exception-pass-expected7]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[from .provider import Parent\\n-Parent, Exception-pass-expected7]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_namespace_policy_retains_inherited_public_payload",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_namespace_policy_retains_inherited_public_payload",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_namespace_policy_retains_inherited_public_payload",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_superclass_name_refuses_nonclass_or_unresolved_type[def value():\\n    pass\\n-not a class or inferred instance]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_superclass_name_refuses_nonclass_or_unresolved_type[def value():\\n    pass\\n-not a class or inferred instance]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_superclass_name_refuses_nonclass_or_unresolved_type[def value():\\n    pass\\n-not a class or inferred instance]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_superclass_name_refuses_nonclass_or_unresolved_type[import os as value\\n-not a class or inferred instance]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_superclass_name_refuses_nonclass_or_unresolved_type[import os as value\\n-not a class or inferred instance]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_superclass_name_refuses_nonclass_or_unresolved_type[import os as value\\n-not a class or inferred instance]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_superclass_name_refuses_nonclass_or_unresolved_type[value = len\\n-not a class or inferred instance]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_superclass_name_refuses_nonclass_or_unresolved_type[value = len\\n-not a class or inferred instance]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_superclass_name_refuses_nonclass_or_unresolved_type[value = len\\n-not a class or inferred instance]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_superclass_name_refuses_nonclass_or_unresolved_type[value = missing\\n-cyclic Rope superclass type]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_superclass_name_refuses_nonclass_or_unresolved_type[value = missing\\n-cyclic Rope superclass type]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_superclass_name_refuses_nonclass_or_unresolved_type[value = missing\\n-cyclic Rope superclass type]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_superclass_name_uses_the_sdk_class_or_instance_type[class Parent:\\n    pass\\nvalue = Parent()-Parent]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_superclass_name_uses_the_sdk_class_or_instance_type[class Parent:\\n    pass\\nvalue = Parent()-Parent]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_superclass_name_uses_the_sdk_class_or_instance_type[class Parent:\\n    pass\\nvalue = Parent()-Parent]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_superclass_name_uses_the_sdk_class_or_instance_type[class Parent:\\n    pass\\nvalue = Parent-Parent]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_superclass_name_uses_the_sdk_class_or_instance_type[class Parent:\\n    pass\\nvalue = Parent-Parent]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_superclass_name_uses_the_sdk_class_or_instance_type[class Parent:\\n    pass\\nvalue = Parent-Parent]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_superclass_name_uses_the_sdk_class_or_instance_type[from .provider import Parent\\nvalue = Parent()-Parent]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_superclass_name_uses_the_sdk_class_or_instance_type[from .provider import Parent\\nvalue = Parent()-Parent]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_superclass_name_uses_the_sdk_class_or_instance_type[from .provider import Parent\\nvalue = Parent()-Parent]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_superclass_name_uses_the_sdk_class_or_instance_type[from .provider import Parent\\nvalue = Parent-Parent]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_superclass_name_uses_the_sdk_class_or_instance_type[from .provider import Parent\\nvalue = Parent-Parent]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_superclass_name_uses_the_sdk_class_or_instance_type[from .provider import Parent\\nvalue = Parent-Parent]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_superclass_name_uses_the_sdk_class_or_instance_type[value = Exception()-Exception]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_superclass_name_uses_the_sdk_class_or_instance_type[value = Exception()-Exception]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_superclass_name_uses_the_sdk_class_or_instance_type[value = Exception()-Exception]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_superclass_name_uses_the_sdk_class_or_instance_type[value = Exception-Exception]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_superclass_name_uses_the_sdk_class_or_instance_type[value = Exception-Exception]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_superclass_name_uses_the_sdk_class_or_instance_type[value = Exception-Exception]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_superclass_name_uses_the_sdk_class_or_instance_type[value = object-object]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_superclass_name_uses_the_sdk_class_or_instance_type[value = object-object]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/_utilities/test_rope_analysis.py::TestsFlextInfraRopeAnalysis::test_superclass_name_uses_the_sdk_class_or_instance_type[value = object-object]",
+        "phase": "teardown",
+        "outcome": "passed"
+      }
+    ],
+    "markdown_attempts": [],
+    "markdown_items": [],
+    "failed_cases": [],
+    "error_traces": [],
+    "warning_lines": [],
+    "skip_cases": [],
+    "slow_entries": [
+      "0.534000s | tests.unit._utilities.test_rope_analysis.TestsFlextInfraRopeAnalysis::test_namespace_policy_retains_inherited_public_payload",
+      "0.015000s | tests.unit._utilities.test_rope_analysis.TestsFlextInfraRopeAnalysis::test_declared_imports_preserve_relative_levels[from ..leaf import Owner as Local-.inner.leaf.Owner]",
+      "0.013000s | tests.unit._utilities.test_rope_analysis.TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[class Parent(object):\\n    class Shared:\\n        pass\\nclass Middle(Parent):\\n    pass\\n-Middle-pass-expected4]",
+      "0.013000s | tests.unit._utilities.test_rope_analysis.TestsFlextInfraRopeAnalysis::test_class_info_refuses_incomplete_superclass_lineage[class Parent:\\n    pass\\nclass Consumer(Parent, missing):\\n    pass\\n]",
+      "0.012000s | tests.unit._utilities.test_rope_analysis.TestsFlextInfraRopeAnalysis::test_superclass_name_refuses_nonclass_or_unresolved_type[import os as value\\n-not a class or inferred instance]",
+      "0.012000s | tests.unit._utilities.test_rope_analysis.TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[from .provider import Parent\\n-Parent, Exception-pass-expected7]",
+      "0.012000s | tests.unit._utilities.test_rope_analysis.TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[class Parent:\\n    class Shared:\\n        pass\\n-Parent-class Shared:\\n        pass-expected5]",
+      "0.012000s | tests.unit._utilities.test_rope_analysis.TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[class Parent(Exception):\\n    class Shared:\\n        pass\\n-Parent-pass-expected3]",
+      "0.012000s | tests.unit._utilities.test_rope_analysis.TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[-Exception-pass-expected0]",
+      "0.012000s | tests.unit._utilities.test_rope_analysis.TestsFlextInfraRopeAnalysis::test_declared_imports_preserve_relative_levels[from . import Owner as Local-.inner.leaf.Owner]",
+      "0.012000s | tests.unit._utilities.test_rope_analysis.TestsFlextInfraRopeAnalysis::test_class_info_refuses_incomplete_superclass_lineage[def invalid():\\n    pass\\nclass Consumer(invalid):\\n    pass\\n]",
+      "0.011000s | tests.unit._utilities.test_rope_analysis.TestsFlextInfraRopeAnalysis::test_superclass_name_uses_the_sdk_class_or_instance_type[value = object-object]",
+      "0.011000s | tests.unit._utilities.test_rope_analysis.TestsFlextInfraRopeAnalysis::test_superclass_name_uses_the_sdk_class_or_instance_type[value = Exception-Exception]",
+      "0.011000s | tests.unit._utilities.test_rope_analysis.TestsFlextInfraRopeAnalysis::test_superclass_name_uses_the_sdk_class_or_instance_type[value = Exception()-Exception]",
+      "0.011000s | tests.unit._utilities.test_rope_analysis.TestsFlextInfraRopeAnalysis::test_superclass_name_uses_the_sdk_class_or_instance_type[from .provider import Parent\\nvalue = Parent-Parent]",
+      "0.011000s | tests.unit._utilities.test_rope_analysis.TestsFlextInfraRopeAnalysis::test_superclass_name_uses_the_sdk_class_or_instance_type[class Parent:\\n    pass\\nvalue = Parent-Parent]",
+      "0.011000s | tests.unit._utilities.test_rope_analysis.TestsFlextInfraRopeAnalysis::test_superclass_name_uses_the_sdk_class_or_instance_type[class Parent:\\n    pass\\nvalue = Parent()-Parent]",
+      "0.011000s | tests.unit._utilities.test_rope_analysis.TestsFlextInfraRopeAnalysis::test_superclass_name_refuses_nonclass_or_unresolved_type[value = missing\\n-cyclic Rope superclass type]",
+      "0.011000s | tests.unit._utilities.test_rope_analysis.TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[declarations6-Left, Right-pass-expected6]",
+      "0.011000s | tests.unit._utilities.test_rope_analysis.TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[class Parent:\\n    pass\\n-Parent-pass-expected2]",
+      "0.011000s | tests.unit._utilities.test_rope_analysis.TestsFlextInfraRopeAnalysis::test_inherited_namespaces_require_source_scope_and_binding_identity[-object-pass-expected1]",
+      "0.011000s | tests.unit._utilities.test_rope_analysis.TestsFlextInfraRopeAnalysis::test_inherited_namespace_cycle_is_not_a_builtin_boundary",
+      "0.011000s | tests.unit._utilities.test_rope_analysis.TestsFlextInfraRopeAnalysis::test_declared_imports_preserve_relative_levels[from ... import Owner as Local-.Owner]",
+      "0.011000s | tests.unit._utilities.test_rope_analysis.TestsFlextInfraRopeAnalysis::test_declared_imports_preserve_relative_levels[from .. import Owner as Local-.inner.Owner]",
+      "0.010000s | tests.unit._utilities.test_rope_analysis.TestsFlextInfraRopeAnalysis::test_superclass_name_uses_the_sdk_class_or_instance_type[from .provider import Parent\\nvalue = Parent()-Parent]",
+      "0.010000s | tests.unit._utilities.test_rope_analysis.TestsFlextInfraRopeAnalysis::test_superclass_name_refuses_nonclass_or_unresolved_type[value = len\\n-not a class or inferred instance]",
+      "0.010000s | tests.unit._utilities.test_rope_analysis.TestsFlextInfraRopeAnalysis::test_superclass_name_refuses_nonclass_or_unresolved_type[def value():\\n    pass\\n-not a class or inferred instance]",
+      "0.010000s | tests.unit._utilities.test_rope_analysis.TestsFlextInfraRopeAnalysis::test_facade_namespaces_skip_builtin_bases",
+      "0.010000s | tests.unit._utilities.test_rope_analysis.TestsFlextInfraRopeAnalysis::test_declared_imports_reject_relative_level_beyond_package",
+      "0.010000s | tests.unit._utilities.test_rope_analysis.TestsFlextInfraRopeAnalysis::test_class_info_refuses_incomplete_superclass_lineage[class Consumer(missing):\\n    pass\\n]",
+      "0.006000s | tests.unit._utilities.test_rope_analysis.TestsFlextInfraRopeAnalysis::test_ast_boundary_validates_before_traversal"
+    ]
+  },
+  "cache_hit": false,
+  "violations": []
+}
