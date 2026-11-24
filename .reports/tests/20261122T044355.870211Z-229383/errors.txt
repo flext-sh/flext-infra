@@ -1,0 +1,127 @@
+=== FAILURE: tests.unit.codemod.test_api_alias_cutover.TestsFlextInfraApiAliasCutover::test_rewires_consumer_before_removing_owner[from {owner_module} import sample\n\nfacade = sample\n-api.py-flext_sample.api] ===
+RuntimeError: Python source discovery requires a Git checkout: /home/marlonsc/tmp/pytest-of-marlonsc/pytest-14980/popen-gw1/test_rewires_consumer_before_r0
+tests/unit/codemod/test_api_alias_cutover.py:240: in test_rewires_consumer_before_removing_owner
+    planned = u.Infra.plan_semantic_cutover(
+src/flext_infra/_utilities/_semantic_cutover/base.py:78: in plan_semantic_cutover
+    attempt = r.safe(
+.venv/lib/python3.13/site-packages/flext_core/_result/composition.py:201: in wrapper
+    return cls._create_success(func(*args, **kwargs))
+                               ^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/base.py:142: in _plan_semantic_cutover_phase
+    return cls._plan_selected_phase_dispatch(
+src/flext_infra/_utilities/_semantic_cutover/base.py:340: in _plan_selected_phase_dispatch
+    return factory()
+           ^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/base.py:313: in <lambda>
+    c.Infra.SemanticCutoverPhase.COMPAT_ALIAS: lambda: cls._plan_alias_cutover(
+src/flext_infra/_utilities/_semantic_cutover/base.py:363: in _plan_alias_cutover
+    api = cls._plan_api_aliases(workspace, working, selected, import_normalizer)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/aliases.py:431: in _plan_api_aliases
+    service_aliases, service_graph = cls._service_aliases(workspace, sources)
+                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/aliases.py:87: in _service_aliases
+    with FlextInfraUtilitiesWorkspaceSnapshot.facade_source_project(
+../../../../.local/share/mise/installs/python/3.13.18/lib/python3.13/contextlib.py:141: in __enter__
+    return next(self.gen)
+           ^^^^^^^^^^^^^^
+src/flext_infra/_utilities/workspace_snapshot.py:213: in facade_source_project
+    FlextInfraUtilitiesProjectDiscovery.discover_python_files(
+src/flext_infra/_utilities/project_discovery.py:645: in discover_python_files
+    for path in cls._walk_python_files(
+src/flext_infra/_utilities/project_discovery.py:713: in _walk_python_files
+    source_paths = cls._source_scope_paths(directory)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/project_discovery.py:817: in _source_scope_paths
+    raise RuntimeError(msg)
+E   RuntimeError: Python source discovery requires a Git checkout: /home/marlonsc/tmp/pytest-of-marlonsc/pytest-14980/popen-gw1/test_rewires_consumer_before_r0
+
+=== FAILURE: tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication1-True-t] ===
+Failed: Timeout (>20.0s) from pytest-timeout.
+tests/unit/codegen/_utility_facade_projection/owner_publication.py:254: in test_explicit_owner_classes_preserve_publication_identity
+    u.Infra.render_type_facade(package, facade, sources, project=project)
+src/flext_infra/_utilities/facade_components.py:610: in render_type_facade
+    return cls.facade_component_source(
+src/flext_infra/_utilities/facade_components.py:705: in facade_component_source
+    planned = cls._facade_component_plan(
+src/flext_infra/_utilities/facade_components.py:1059: in _facade_component_plan
+    resolved = cls._facade_namespace_owner(
+src/flext_infra/_utilities/facade_components.py:1383: in _facade_namespace_owner
+    namespaces = cls._facade_inherited_namespaces(
+src/flext_infra/_utilities/facade_components.py:1674: in _facade_inherited_namespaces
+    FlextInfraUtilitiesFacadeMembers.class_kind(
+src/flext_infra/_utilities/facade_members.py:484: in class_kind
+    kind = FlextInfraUtilitiesFacadeMembers._class_kind_uncached(
+src/flext_infra/_utilities/facade_members.py:523: in _class_kind_uncached
+    return FlextInfraUtilitiesFacadeMembers._class_kind_classified(
+src/flext_infra/_utilities/facade_members.py:563: in _class_kind_classified
+    if FlextInfraUtilitiesFacadeMembers._model_class(
+src/flext_infra/_utilities/facade_members.py:602: in _model_class
+    model = resolver_factory()(
+src/flext_infra/_utilities/_rope/source_bases_runtime.py:143: in __call__
+    return self.source_member_binding(qualified)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/source_bases_runtime.py:198: in source_member_binding
+    for ancestor in self._linearize(identity):
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/source_bases_runtime.py:2212: in _linearize
+    parents = tuple(
+src/flext_infra/_utilities/_rope/source_bases_runtime.py:2215: in <genexpr>
+    if not any(
+src/flext_infra/_utilities/_rope/source_bases_runtime.py:2216: in <genexpr>
+    parent in self._linearize(previous)[1:]
+              ^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/source_bases_runtime.py:2205: in _linearize
+    parents = self._bases(identity)
+              ^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/source_bases_runtime.py:2136: in _bases
+    tuple(self._resolve(base) for base in declared)
+src/flext_infra/_utilities/_rope/source_bases_runtime.py:2136: in <genexpr>
+    tuple(self._resolve(base) for base in declared)
+          ^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/source_bases_runtime.py:1799: in _resolve
+    target, attributes = self._unresolved_target(
+src/flext_infra/_utilities/_rope/source_bases_runtime.py:1872: in _unresolved_target
+    resolved = self._external_reference(
+src/flext_infra/_utilities/_rope/source_bases_runtime.py:1746: in _external_reference
+    return self._provider_reference(
+src/flext_infra/_utilities/_rope/source_bases_runtime.py:1148: in _provider_reference
+    if self._function_object_identity(binding.get_object()) is not None:
+                                      ^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/utils/__init__.py:56: in newfunc
+    return func(self, *args, **kwds)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pynames.py:189: in get_object
+    return self._get_imported_pyname().get_object()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pynames.py:180: in _get_imported_pyname
+    result = self.imported_module.get_object()[self.imported_name]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pynames.py:162: in get_object
+    if self._get_pymodule() is None:
+       ^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pynames.py:149: in _get_pymodule
+    pymodule = pycore.project.get_module(
+src/flext_infra/_utilities/_rope/native_project.py:117: in get_module
+    return native.get_module(name, self._native_folder(folder))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/project.py:84: in get_module
+    return self.pycore.resource_to_pyobject(module)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pycore.py:141: in resource_to_pyobject
+    return self.module_cache.get_pymodule(resource, force_errors)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pycore.py:263: in get_pymodule
+    result = pyobjectsdef.PyModule(
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:610: in __init__
+    source, node = self._init_source(pycore, source, resource)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:637: in _init_source
+    ast_node = ast.parse(source_bytes, filename=filename)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/ast.py:46: in parse
+    return ast.parse(source, filename=filename, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../.local/share/mise/installs/python/3.13.18/lib/python3.13/ast.py:50: in parse
+    return compile(source, filename, mode, flags,
+E   Failed: Timeout (>20.0s) from pytest-timeout.

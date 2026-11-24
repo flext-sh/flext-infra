@@ -1,0 +1,7 @@
+{
+  "execution_mode": "global-incremental",
+  "testmon_db": "/home/marlonsc/flext/flext-infra/worktrees/aihub-vkb1j.14/.testmondata",
+  "deadline_monotonic": 268763.358167426,
+  "report_directory": "/home/marlonsc/flext/flext-infra/worktrees/aihub-vkb1j.14/.reports/tests/20261122T043726.336276Z-33383",
+  "profile_sha256": "c4bb30a9ac7063d4363041712e75f1914056ff4d1258a77ca533e7ebd5ced000"
+}

@@ -1,0 +1,153 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "flext-infra-check",
+          "informationUri": "https://github.com/flext-sh/flext-infra",
+          "rules": [
+            {
+              "id": "bad-argument-type",
+              "shortDescription": {
+                "text": "Pyrefly (pyrefly) issue"
+              },
+              "helpUri": "https://github.com/facebook/pyrefly"
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "bad-argument-type",
+          "level": "error",
+          "message": {
+            "text": "Argument `FlextInfraProtocolsRopeRuntime.RopeScope | None` is not assignable to parameter `scope` with type `FlextInfraProtocolsRopeRuntime.RopeScope` in function `flext_infra._utilities._rope.runtime_modules.FlextInfraUtilitiesRopeRuntimeModules.resolve_symbol`\n  Protocol `RopeScope` requires attribute `parent`\n  The declared type does not allow `None`. Consider narrowing the value with an `is not None` check."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/flext_infra/_utilities/_semantic_cutover/aliases.py",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 287,
+                  "startColumn": 17
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "properties": {
+    "phase": "primary",
+    "requested_gates": [
+      "lint",
+      "pyrefly"
+    ],
+    "pending_gates": [],
+    "targets": [
+      {
+        "name": "aihub-vkb1j.14",
+        "path": "/home/marlonsc/flext/flext-infra/worktrees/aihub-vkb1j.14",
+        "applicable_gates": [
+          "lint",
+          "pyrefly"
+        ],
+        "source_identity": {
+          "repo_root": "/home/marlonsc/flext/flext-infra/worktrees/aihub-vkb1j.14",
+          "primary_root": "/home/marlonsc/flext/flext-infra",
+          "head_oid": "6ed13a5a5e2eaec4c7a4b4458ced5f7ff0f6e622",
+          "porcelain": " M src/flext_infra/_utilities/_semantic_cutover/aliases.py",
+          "dirty": true,
+          "git_dir": "/home/marlonsc/flext/.git/modules/flext-infra/worktrees/aihub-vkb1j.14",
+          "common_dir": "/home/marlonsc/flext/.git/modules/flext-infra",
+          "branch": "fix/flext-obbd0-ordered-kernel-bases",
+          "origin_remote": "https://github.com/flext-sh/flext-infra.git",
+          "upstream_remote": null,
+          "superproject_root": "/home/marlonsc/flext",
+          "requested_path": "/home/marlonsc/flext/flext-infra/worktrees/aihub-vkb1j.14",
+          "is_worktree": true,
+          "is_submodule": true,
+          "is_attached_submodule": false,
+          "has_submodules": false,
+          "is_inside_work_tree": true
+        }
+      }
+    ],
+    "results": [
+      {
+        "project": "aihub-vkb1j.14",
+        "gates": {
+          "lint": {
+            "result": {
+              "project": "aihub-vkb1j.14",
+              "gate": "lint",
+              "passed": true,
+              "errors": [],
+              "duration": 0.184
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext/flext-infra/worktrees/aihub-vkb1j.14/.reports/gates/20261122T043617.725220Z-492/check/f67b306e-735b-454f-9785-de8ce137a6e0/aihub-vkb1j.14/lint.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          },
+          "pyrefly": {
+            "result": {
+              "project": "aihub-vkb1j.14",
+              "gate": "pyrefly",
+              "passed": false,
+              "errors": [
+                "src/flext_infra/_utilities/_semantic_cutover/aliases.py:287:17 [bad-argument-type] Argument `FlextInfraProtocolsRopeRuntime.RopeScope | None` is not assignable to parameter `scope` with type `FlextInfraProtocolsRopeRuntime.RopeScope` in function `flext_infra._utilities._rope.runtime_modules.FlextInfraUtilitiesRopeRuntimeModules.resolve_symbol`\n  Protocol `RopeScope` requires attribute `parent`\n  The declared type does not allow `None`. Consider narrowing the value with an `is not None` check."
+              ],
+              "duration": 12.55
+            },
+            "issues": [
+              {
+                "file": "src/flext_infra/_utilities/_semantic_cutover/aliases.py",
+                "line": 287,
+                "column": 17,
+                "code": "bad-argument-type",
+                "message": "Argument `FlextInfraProtocolsRopeRuntime.RopeScope | None` is not assignable to parameter `scope` with type `FlextInfraProtocolsRopeRuntime.RopeScope` in function `flext_infra._utilities._rope.runtime_modules.FlextInfraUtilitiesRopeRuntimeModules.resolve_symbol`\n  Protocol `RopeScope` requires attribute `parent`\n  The declared type does not allow `None`. Consider narrowing the value with an `is not None` check.",
+                "severity": "error",
+                "locations": [],
+                "related_locations": []
+              }
+            ],
+            "raw_receipt": "/home/marlonsc/flext/flext-infra/worktrees/aihub-vkb1j.14/.reports/gates/20261122T043617.725220Z-492/check/f67b306e-735b-454f-9785-de8ce137a6e0/aihub-vkb1j.14/pyrefly.raw.log",
+            "outcome": "findings",
+            "process": {
+              "raw_return_code": 1,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          }
+        }
+      }
+    ],
+    "selected_files": [],
+    "global_targets": [
+      {
+        "name": "aihub-vkb1j.14",
+        "path": "/home/marlonsc/flext/flext-infra/worktrees/aihub-vkb1j.14",
+        "applicable_gates": [
+          "lint",
+          "pyrefly"
+        ],
+        "source_identity": null
+      }
+    ]
+  }
+}

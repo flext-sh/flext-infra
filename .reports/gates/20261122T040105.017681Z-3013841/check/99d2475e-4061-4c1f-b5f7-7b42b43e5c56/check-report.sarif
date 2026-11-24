@@ -1,0 +1,110 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "flext-infra-check",
+          "informationUri": "https://github.com/flext-sh/flext-infra",
+          "rules": []
+        }
+      },
+      "results": []
+    }
+  ],
+  "properties": {
+    "phase": "primary",
+    "requested_gates": [
+      "lint",
+      "pyrefly"
+    ],
+    "pending_gates": [],
+    "targets": [
+      {
+        "name": "aihub-vkb1j.14",
+        "path": "/home/marlonsc/flext/flext-infra/worktrees/aihub-vkb1j.14",
+        "applicable_gates": [
+          "lint",
+          "pyrefly"
+        ],
+        "source_identity": {
+          "repo_root": "/home/marlonsc/flext/flext-infra/worktrees/aihub-vkb1j.14",
+          "primary_root": "/home/marlonsc/flext/flext-infra",
+          "head_oid": "e4e177086f7a5356c8babe045d327bde83016965",
+          "porcelain": " M Makefile\n M src/flext_infra/templates/project/base/Makefile.j2\n M src/flext_infra/templates/project/base/tool_bootstrap_recipe.j2\n M tests/unit/codegen/test_codegen_make_environment.py",
+          "dirty": true,
+          "git_dir": "/home/marlonsc/flext/.git/modules/flext-infra/worktrees/aihub-vkb1j.14",
+          "common_dir": "/home/marlonsc/flext/.git/modules/flext-infra",
+          "branch": "fix/flext-7lip7-shared-shims",
+          "origin_remote": "https://github.com/flext-sh/flext-infra.git",
+          "upstream_remote": null,
+          "superproject_root": "/home/marlonsc/flext",
+          "requested_path": "/home/marlonsc/flext/flext-infra/worktrees/aihub-vkb1j.14",
+          "is_worktree": true,
+          "is_submodule": true,
+          "is_attached_submodule": false,
+          "has_submodules": false,
+          "is_inside_work_tree": true
+        }
+      }
+    ],
+    "results": [
+      {
+        "project": "aihub-vkb1j.14",
+        "gates": {
+          "lint": {
+            "result": {
+              "project": "aihub-vkb1j.14",
+              "gate": "lint",
+              "passed": true,
+              "errors": [],
+              "duration": 0.185
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext/flext-infra/worktrees/aihub-vkb1j.14/.reports/gates/20261122T040105.017681Z-3013841/check/99d2475e-4061-4c1f-b5f7-7b42b43e5c56/aihub-vkb1j.14/lint.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          },
+          "pyrefly": {
+            "result": {
+              "project": "aihub-vkb1j.14",
+              "gate": "pyrefly",
+              "passed": true,
+              "errors": [],
+              "duration": 11.831
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext/flext-infra/worktrees/aihub-vkb1j.14/.reports/gates/20261122T040105.017681Z-3013841/check/99d2475e-4061-4c1f-b5f7-7b42b43e5c56/aihub-vkb1j.14/pyrefly.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          }
+        }
+      }
+    ],
+    "selected_files": [],
+    "global_targets": [
+      {
+        "name": "aihub-vkb1j.14",
+        "path": "/home/marlonsc/flext/flext-infra/worktrees/aihub-vkb1j.14",
+        "applicable_gates": [
+          "lint",
+          "pyrefly"
+        ],
+        "source_identity": null
+      }
+    ]
+  }
+}

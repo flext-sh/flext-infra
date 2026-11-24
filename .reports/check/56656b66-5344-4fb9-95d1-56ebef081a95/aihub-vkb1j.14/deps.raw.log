@@ -1,0 +1,14 @@
+cwd=/home/marlonsc/flext/flext-infra/worktrees/aihub-vkb1j.14 report=/home/marlonsc/flext/flext-infra/worktrees/aihub-vkb1j.14/.reports/check/56656b66-5344-4fb9-95d1-56ebef081a95/aihub-vkb1j.14/aihub-vkb1j.14-deps-3e6d902c1e344162aed83cdf5874c83b/deptry.json
+return-code=1
+stdout:
+
+stderr:
+Scanning 778 files...
+
+/home/marlonsc/flext/flext-infra/worktrees/aihub-vkb1j.14/pyproject.toml: DEP002 'properdocs' defined as a dependency but not used in the codebase
+Found 1 dependency issue.
+
+For more information, see the documentation: https://deptry.com/
+
+retained-by-declared-usage=1
+report-sha256=ee54754b34cc2d365ddd13764258bae9c81f457c1e97eda18a0c09e11ebdce52

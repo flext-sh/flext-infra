@@ -1,0 +1,23 @@
+INFO: check: registry initialization start
+INFO: check: registry initialization complete
+INFO: check: selection start phase=primary
+INFO: check: selection complete projects=1 gates=2
+INFO: check: preparation start identity=True
+INFO: check: preparation complete projects=1
+INFO: check: prerequisite planning start projects=1
+INFO: check: prerequisite planning complete gates=2
+INFO: check: prerequisite wave start gate=lint jobs=1
+INFO: gate_executed project=aihub-vkb1j.14 gate=lint passed=True elapsed=0.187
+2026-11-22T04:43:32.111009Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=192.09 failed=0 skipped=0 total_stages=1
+INFO: check: prerequisite wave complete gate=lint
+    [OK] lint           0 errors  (0.19s)
+INFO: check: prerequisite wave start gate=pyrefly jobs=1
+INFO: gate_executed project=aihub-vkb1j.14 gate=pyrefly passed=True elapsed=10.81
+2026-11-22T04:43:42.937255Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=10809.89 failed=0 skipped=0 total_stages=1
+INFO: check: prerequisite wave complete gate=pyrefly
+    [OK] pyrefly        0 errors  (10.81s)
+
+-- check summary --
+Total: 1  Success: 1  Failed: 0  Skipped: 0  (11.04s)
+INFO: Reports: /home/marlonsc/flext/flext-infra/worktrees/aihub-vkb1j.14/.reports/gates/20261122T044330.162551Z-223457/check/18dc065a-28a2-49b8-9d2c-ed3698cb056e/check-report.md
+INFO:          /home/marlonsc/flext/flext-infra/worktrees/aihub-vkb1j.14/.reports/gates/20261122T044330.162551Z-223457/check/18dc065a-28a2-49b8-9d2c-ed3698cb056e/check-report.sarif

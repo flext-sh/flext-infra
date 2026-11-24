@@ -1,0 +1,16 @@
+{
+  "errors": [
+    {
+      "line": 280,
+      "column": 17,
+      "stop_line": 280,
+      "stop_column": 32,
+      "path": "src/flext_infra/_utilities/_semantic_cutover/aliases.py",
+      "code": -2,
+      "name": "missing-attribute",
+      "description": "Object of class `RopePyObject` has no attribute `get_scope`\n  Did you mean `get_type`?",
+      "concise_description": "Object of class `RopePyObject` has no attribute `get_scope`",
+      "severity": "error"
+    }
+  ]
+}
