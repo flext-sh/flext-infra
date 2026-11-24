@@ -1,0 +1,1 @@
+{"id":"exports--flext_infra.codegen._layout","language":"Python","rule":{"regex":"^(?:FlextInfraCodegenLayoutApply|FlextInfraCodegenLayoutFiles|FlextInfraCodegenLayoutGitignore|FlextInfraCodegenLayoutPlan)$"}}

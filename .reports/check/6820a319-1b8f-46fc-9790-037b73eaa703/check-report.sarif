@@ -1,0 +1,142 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "flext-infra-check",
+          "informationUri": "https://github.com/flext-sh/flext-infra",
+          "rules": [
+            {
+              "id": "too-many-public-methods",
+              "shortDescription": {
+                "text": "Ruff Linter (lint) issue"
+              },
+              "helpUri": "https://docs.astral.sh/ruff/"
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "too-many-public-methods",
+          "level": "error",
+          "message": {
+            "text": "Too many public methods (21 > 20)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/home/marlonsc/worktrees/flext-infra/facade-upstream-first-20261119/tests/unit/codegen/lazy_init_helpers_tests.py",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 16,
+                  "startColumn": 1
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "properties": {
+    "phase": "complete",
+    "requested_gates": [
+      "lint",
+      "markdown",
+      "deps"
+    ],
+    "pending_gates": [],
+    "targets": [
+      {
+        "name": "facade-upstream-first-20261119",
+        "path": "/home/marlonsc/worktrees/flext-infra/facade-upstream-first-20261119",
+        "applicable_gates": [
+          "lint",
+          "markdown",
+          "deps"
+        ],
+        "source_identity": null
+      }
+    ],
+    "results": [
+      {
+        "project": "facade-upstream-first-20261119",
+        "gates": {
+          "lint": {
+            "result": {
+              "project": "facade-upstream-first-20261119",
+              "gate": "lint",
+              "passed": false,
+              "errors": [
+                "/home/marlonsc/worktrees/flext-infra/facade-upstream-first-20261119/tests/unit/codegen/lazy_init_helpers_tests.py:16:1 [too-many-public-methods] Too many public methods (21 > 20)"
+              ],
+              "duration": 0.465
+            },
+            "issues": [
+              {
+                "file": "/home/marlonsc/worktrees/flext-infra/facade-upstream-first-20261119/tests/unit/codegen/lazy_init_helpers_tests.py",
+                "line": 16,
+                "column": 1,
+                "code": "too-many-public-methods",
+                "message": "Too many public methods (21 > 20)",
+                "severity": "error",
+                "locations": [],
+                "related_locations": []
+              }
+            ],
+            "raw_receipt": "/home/marlonsc/worktrees/flext-infra/facade-upstream-first-20261119/.reports/check/6820a319-1b8f-46fc-9790-037b73eaa703/facade-upstream-first-20261119/lint.raw.log",
+            "outcome": "findings",
+            "process": {
+              "raw_return_code": 1,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          },
+          "markdown": {
+            "result": {
+              "project": "facade-upstream-first-20261119",
+              "gate": "markdown",
+              "passed": true,
+              "errors": [],
+              "duration": 2.294
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/worktrees/flext-infra/facade-upstream-first-20261119/.reports/check/6820a319-1b8f-46fc-9790-037b73eaa703/facade-upstream-first-20261119/markdown.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          },
+          "deps": {
+            "result": {
+              "project": "facade-upstream-first-20261119",
+              "gate": "deps",
+              "passed": true,
+              "errors": [],
+              "duration": 11.955
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/worktrees/flext-infra/facade-upstream-first-20261119/.reports/check/6820a319-1b8f-46fc-9790-037b73eaa703/facade-upstream-first-20261119/deps.raw.log",
+            "outcome": "clean",
+            "process": null,
+            "components": {},
+            "requested_components": []
+          }
+        }
+      }
+    ],
+    "selected_files": [],
+    "global_targets": null
+  }
+}

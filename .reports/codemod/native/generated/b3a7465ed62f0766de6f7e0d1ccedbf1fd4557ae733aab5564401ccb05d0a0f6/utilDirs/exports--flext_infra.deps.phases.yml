@@ -1,0 +1,1 @@
+{"id":"exports--flext_infra.deps.phases","language":"Python","rule":{"regex":"^(?:FlextInfraConsolidateGroupsPhase|FlextInfraEnsurePackagingPhase|FlextInfraEnsurePyreflyConfigPhase|FlextInfraEnsureRuffConfigPhase|FlextInfraInjectCommentsPhase|FlextInfraToolTablesPhase)$"}}

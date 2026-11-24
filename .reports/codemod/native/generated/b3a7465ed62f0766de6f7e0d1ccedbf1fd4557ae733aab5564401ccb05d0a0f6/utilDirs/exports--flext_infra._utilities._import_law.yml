@@ -1,0 +1,1 @@
+{"id":"exports--flext_infra._utilities._import_law","language":"Python","rule":{"regex":"^(?:FlextInfraUtilitiesImportLawAst|FlextInfraUtilitiesImportLawGraph|FlextInfraUtilitiesImportLawNormalization|FlextInfraUtilitiesImportLawPlacement|FlextInfraUtilitiesImportLawPolicy|FlextInfraUtilitiesImportLawRoutes)$"}}

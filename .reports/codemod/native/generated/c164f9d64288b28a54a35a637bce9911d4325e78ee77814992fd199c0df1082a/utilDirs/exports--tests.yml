@@ -1,0 +1,1 @@
+{"id":"exports--tests","language":"Python","rule":{"regex":"^(?:TestsFlextInfraConstants|TestsFlextInfraModels|TestsFlextInfraProtocols|TestsFlextInfraServiceBase|TestsFlextInfraTypes|TestsFlextInfraUtilities|c|config|d|e|h|infra|m|p|r|s|settings|t|td|tf|tk|tm|u|x)$"}}

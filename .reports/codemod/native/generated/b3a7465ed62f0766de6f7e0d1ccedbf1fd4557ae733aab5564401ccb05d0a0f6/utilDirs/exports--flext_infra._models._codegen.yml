@@ -1,0 +1,1 @@
+{"id":"exports--flext_infra._models._codegen","language":"Python","rule":{"regex":"^(?:FlextInfraCodegen|FlextInfraModelsCodegenFix|FlextInfraModelsCodegenLazyInit|FlextInfraModelsCodegenPipeline|FlextInfraModelsCodegenScaffold|FlextInfraModelsCodegenTransaction)$"}}

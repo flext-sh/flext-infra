@@ -1,0 +1,8 @@
+{
+  "execution_mode": "global-incremental",
+  "testmon_db": "/home/marlonsc/.cache/flext/infra/testmon/flext-infra/facade-upstream-first-20261119/.testmondata",
+  "testmon_lease_acquired": true,
+  "deadline_monotonic": 40131.995224947,
+  "report_directory": "/home/marlonsc/worktrees/flext-infra/facade-upstream-first-20261119/.reports/tests/20261119T130652.545678Z-3436173",
+  "profile_sha256": null
+}

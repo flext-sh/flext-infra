@@ -1,0 +1,1 @@
+{"id":"exports--flext_infra.docs","language":"Python","rule":{"regex":"^(?:FlextInfraDocAuditor|FlextInfraDocBuilder|FlextInfraDocCollector|FlextInfraDocFixer|FlextInfraDocFormatter|FlextInfraDocGenerator|FlextInfraDocServer|FlextInfraDocServiceBase|FlextInfraDocValidator)$"}}

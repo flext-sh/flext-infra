@@ -1,0 +1,1 @@
+{"id":"exports--flext_infra.codemod._gates","language":"Python","rule":{"regex":"^(?:FlextInfraModGateFindings|FlextInfraModGateFixtures|FlextInfraModGateRunner|FlextInfraModGateScanner)$"}}

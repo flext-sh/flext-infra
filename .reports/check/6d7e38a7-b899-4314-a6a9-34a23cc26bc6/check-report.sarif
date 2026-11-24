@@ -1,0 +1,84 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "flext-infra-check",
+          "informationUri": "https://github.com/flext-sh/flext-infra",
+          "rules": []
+        }
+      },
+      "results": []
+    }
+  ],
+  "properties": {
+    "phase": "complete",
+    "requested_gates": [
+      "lint",
+      "format"
+    ],
+    "pending_gates": [],
+    "targets": [
+      {
+        "name": "facade-upstream-first-20261119",
+        "path": "/home/marlonsc/worktrees/flext-infra/facade-upstream-first-20261119",
+        "applicable_gates": [
+          "lint",
+          "format"
+        ],
+        "source_identity": null
+      }
+    ],
+    "results": [
+      {
+        "project": "facade-upstream-first-20261119",
+        "gates": {
+          "lint": {
+            "result": {
+              "project": "facade-upstream-first-20261119",
+              "gate": "lint",
+              "passed": true,
+              "errors": [],
+              "duration": 0.427
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/worktrees/flext-infra/facade-upstream-first-20261119/.reports/check/6d7e38a7-b899-4314-a6a9-34a23cc26bc6/facade-upstream-first-20261119/lint.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          },
+          "format": {
+            "result": {
+              "project": "facade-upstream-first-20261119",
+              "gate": "format",
+              "passed": true,
+              "errors": [],
+              "duration": 0.08
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/worktrees/flext-infra/facade-upstream-first-20261119/.reports/check/6d7e38a7-b899-4314-a6a9-34a23cc26bc6/facade-upstream-first-20261119/format.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          }
+        }
+      }
+    ],
+    "selected_files": [
+      "/home/marlonsc/worktrees/flext-infra/facade-upstream-first-20261119/src/flext_infra/_utilities/facade_components.py"
+    ],
+    "global_targets": null
+  }
+}

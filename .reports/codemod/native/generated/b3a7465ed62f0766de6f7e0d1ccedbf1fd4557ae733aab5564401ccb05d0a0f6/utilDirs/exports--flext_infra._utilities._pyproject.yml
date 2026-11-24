@@ -1,0 +1,1 @@
+{"id":"exports--flext_infra._utilities._pyproject","language":"Python","rule":{"regex":"^(?:FlextInfraUtilitiesPyprojectConform|FlextInfraUtilitiesPyprojectConformBase|FlextInfraUtilitiesPyprojectDocument|FlextInfraUtilitiesPyprojectOverlay|FlextInfraUtilitiesPyprojectRequirements|FlextInfraUtilitiesPyprojectTomlPhases|FlextInfraUtilitiesPyprojectUvSources)$"}}

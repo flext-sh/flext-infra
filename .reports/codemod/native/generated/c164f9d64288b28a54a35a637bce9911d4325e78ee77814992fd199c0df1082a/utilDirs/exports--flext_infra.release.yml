@@ -1,0 +1,1 @@
+{"id":"exports--flext_infra.release","language":"Python","rule":{"regex":"^(?:FlextInfraReleaseOrchestrator|FlextInfraReleaseRelease)$"}}

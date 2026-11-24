@@ -1,0 +1,1 @@
+{"id":"exports--tests.fixtures","language":"Python","rule":{"regex":"^(?:TestsFlextInfraGateAdmissionHolder|TestsImportedModelCollision|TestsImportedModelReference)$"}}

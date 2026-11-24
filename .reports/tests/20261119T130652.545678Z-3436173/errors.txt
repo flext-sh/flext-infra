@@ -1,0 +1,13 @@
+=== FAILURE: tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_owner_classes_preserve_publication_identity[publication0-False-c] ===
+FileNotFoundError: [Errno 2] No such file or directory: '/home/marlonsc/worktrees/flext-infra/facade-upstream-first-20261119/tests/.mise.toml'
+tests/unit/codegen/_utility_facade_projection/owner_publication.py:171: in test_explicit_owner_classes_preserve_publication_identity
+    u.Tests.copy_tracked_mise_seeds(root)
+tests/_utilities/fixture_tooling.py:657: in copy_tracked_mise_seeds
+    _ = shutil.copy2(source, destination)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../.local/share/mise/installs/python/3.13.17/lib/python3.13/shutil.py:468: in copy2
+    copyfile(src, dst, follow_symlinks=follow_symlinks)
+../../../.local/share/mise/installs/python/3.13.17/lib/python3.13/shutil.py:260: in copyfile
+    with open(src, 'rb') as fsrc:
+         ^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/marlonsc/worktrees/flext-infra/facade-upstream-first-20261119/tests/.mise.toml'

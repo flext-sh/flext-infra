@@ -1,0 +1,1 @@
+{"id":"exports--flext_infra._pytest","language":"Python","rule":{"regex":"^(?:FlextInfraPytestClock|FlextInfraPytestCollection|FlextInfraPytestEntry|FlextInfraPytestProfileChild)$"}}

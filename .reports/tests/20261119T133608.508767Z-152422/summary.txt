@@ -1,0 +1,10 @@
+outcome=interrupted
+phase=selection
+suite=not_executed
+executed=0
+inventory_complete=unknown
+diagnostics=incomplete
+exit=-15
+timed_out=True
+forwarded_signal=None
+raw_log=/home/marlonsc/worktrees/flext-infra/facade-upstream-first-20261119/.reports/tests/20261119T133608.508767Z-152422/testmon-selection.log

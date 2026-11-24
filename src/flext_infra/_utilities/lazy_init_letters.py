@@ -20,6 +20,7 @@ from pathlib import Path
 from flext_infra import c, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesBase,
+    FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesProjectManagedArtifacts,
     FlextInfraUtilitiesPythonModel,
 )
@@ -147,6 +148,30 @@ class FlextInfraUtilitiesLazyInitLetters:
                 del lazy_map[letter]
         if pkg_dir == cls.lazy_init_public_root(run, project):
             cls._lazy_init_inherited_facets(run, context, lazy_map, local_owners)
+
+    @classmethod
+    def lazy_init_inherit_children(
+        cls,
+        run: p.Infra.LazyInitRun,
+        context: p.Infra.LazyInitPackageContext,
+        lazy_map: t.MutableLazyAliasMap,
+    ) -> None:
+        """Re-export each non-family child package's names the tests root lacks."""
+        project = run.model.source_project
+        for child in sorted(project.source_children(context.pkg_dir)):
+            if (
+                FlextInfraUtilitiesCodegenNamespace.facade_family_of_directory(
+                    child.name
+                )
+                is None
+                and project.source_query(child, "isdir")
+                and project.source_query(child / c.Infra.INIT_PY, "isfile")
+                and str(child) in run.index.packages_by_dir
+            ):
+                package = f"{context.current_pkg}.{child.name}"
+                for name in sorted(cls._lazy_init_package_names(run, package)):
+                    if not name.startswith("__"):
+                        lazy_map.setdefault(name, (package, name))
 
     @classmethod
     def lazy_init_inherit_source(

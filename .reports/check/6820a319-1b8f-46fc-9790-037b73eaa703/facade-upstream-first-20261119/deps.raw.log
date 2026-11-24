@@ -1,0 +1,14 @@
+cwd=/home/marlonsc/worktrees/flext-infra/facade-upstream-first-20261119 report=/home/marlonsc/worktrees/flext-infra/facade-upstream-first-20261119/.reports/check/6820a319-1b8f-46fc-9790-037b73eaa703/facade-upstream-first-20261119/facade-upstream-first-20261119-deps-04dfad9468dc4d09a5017ecfb4aaf675/deptry.json
+return-code=1
+stdout:
+
+stderr:
+Scanning 773 files...
+
+/home/marlonsc/worktrees/flext-infra/facade-upstream-first-20261119/pyproject.toml: DEP002 'properdocs' defined as a dependency but not used in the codebase
+Found 1 dependency issue.
+
+For more information, see the documentation: https://deptry.com/
+
+retained-by-declared-usage=1
+report-sha256=650573048434a8d047348767b9ed4e726c6ca0976f37b552121238358bbcd5e2

@@ -437,6 +437,9 @@ class FlextInfraUtilitiesLazyInitPlan:
         )
         facade_root = cls.lazy_init_is_facade_root(context)
         if facade_root and context.current_pkg == c.Infra.DIR_TESTS:
+            FlextInfraUtilitiesLazyInitLetters.lazy_init_inherit_children(
+                run, context, lazy_map
+            )
             FlextInfraUtilitiesLazyInitLetters.lazy_init_inherit_source(
                 run, context, lazy_map
             )

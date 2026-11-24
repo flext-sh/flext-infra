@@ -1,0 +1,21 @@
+[
+  {
+    "cell": null,
+    "code": "PLR0904",
+    "end_location": {
+      "column": 55,
+      "row": 857
+    },
+    "filename": "/home/marlonsc/worktrees/flext-infra/facade-upstream-first-20261119/tests/unit/codegen/lazy_init_helpers_tests.py",
+    "fix": null,
+    "location": {
+      "column": 1,
+      "row": 16
+    },
+    "message": "Too many public methods (21 > 20)",
+    "name": "too-many-public-methods",
+    "noqa_row": 16,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/too-many-public-methods"
+  }
+]
