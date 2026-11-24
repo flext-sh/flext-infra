@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     from flext_infra.validate._pytest_runner.execution import (
         FlextInfraPytestRunnerExecution,
     )
+    from flext_infra.validate._pytest_runner.isolation import isolated_pytest_command
     from flext_infra.validate._pytest_runner.reports import (
         FlextInfraPytestRunnerReports,
     )
@@ -29,6 +30,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraPytestRunnerCommand",
     "FlextInfraPytestRunnerExecution",
     "FlextInfraPytestRunnerReports",
+    "isolated_pytest_command",
 )
 
 install_lazy_exports(
@@ -39,6 +41,7 @@ install_lazy_exports(
         "FlextInfraPytestRunnerCommand": ".command",
         "FlextInfraPytestRunnerExecution": ".execution",
         "FlextInfraPytestRunnerReports": ".reports",
+        "isolated_pytest_command": ".isolation",
     },
     public_exports=__all__,
 )

@@ -76,6 +76,7 @@ class FlextInfraProtocolsDepsToolConfig:
     class PytestConfig(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
+        sandbox: Literal["bubblewrap"] | None
         ordinary_timeout_seconds: int
         slow_timeout_seconds: int
         slow_marker: t.NonEmptyStr

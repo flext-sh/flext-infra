@@ -442,7 +442,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
                 FlextInfraPytestCollection.__module__,
                 (
                     f"{c.Infra.PYTEST_COLLECTION_MANIFEST_OPTION}="
-                    f"{report_dir / 'testmon-inventory.json'}"
+                    f"{self._child_reports(report_dir) / 'testmon-inventory.json'}"
                 ),
             )
         return self._suite_argv(
@@ -515,7 +515,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
                     execution_mode=c.Infra.PytestExecutionMode.COVERAGE,
                 ),
                 f"--cov={self.repository_root / c.Infra.DEFAULT_SRC_DIR}",
-                f"--cov-report=xml:{report_dir / 'coverage.xml'}",
+                f"--cov-report=xml:{self._child_reports(report_dir) / 'coverage.xml'}",
                 "--no-cov-on-fail",
             ),
         )
@@ -560,13 +560,14 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
 
         """
         pytest = self.pytest_policy()
+        child_reports = self._child_reports(report_dir)
         return (
             sys.executable,
             *(
                 (
                     "-c",
                     c.Infra.PYTEST_PROFILE_LAUNCHER,
-                    str(report_dir / pytest.profile_suite_filename),
+                    str(child_reports / pytest.profile_suite_filename),
                 )
                 if self.profile_enabled
                 else ("-m", "pytest")
@@ -576,8 +577,8 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             *pytest.report_args,
             *limits,
             f"--maxfail={pytest.max_failures}",
-            f"--junitxml={report_dir / 'junit.xml'}",
-            f"--report-log={report_dir / 'events.jsonl'}",
+            f"--junitxml={child_reports / 'junit.xml'}",
+            f"--report-log={child_reports / 'events.jsonl'}",
             *trailing,
             "-n",
             workers,

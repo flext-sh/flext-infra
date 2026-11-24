@@ -228,6 +228,10 @@ class FlextInfraModelsDepsToolConfig(
     class PytestConfig(m.ArbitraryTypesModel):
         """Pytest baseline settings loaded from YAML."""
 
+        sandbox: Literal["bubblewrap"] | None = m.Field(
+            default=None,
+            description="OS isolation policy for pytest collection and suite children.",
+        )
         # Every rendered pytest value is validated config data.
         ordinary_timeout_seconds: int = m.Field(
             alias="ordinary-timeout-seconds",

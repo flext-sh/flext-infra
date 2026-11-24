@@ -506,5 +506,16 @@ class FlextInfraPytestRunnerBase(s[int]):
         u.Cli.info(f"pytest run receipt: {report_dir}")
         return report_dir
 
+    def _child_reports(self, report_dir: Path, *, phase: str = "suite") -> Path:
+        """Locate the process-owned artifacts apart from the parent receipts.
+
+        Returns:
+            The writable pytest artifact directory.
+
+        """
+        if self.pytest_policy().sandbox is not None:
+            return report_dir / "child" / phase
+        return report_dir
+
 
 __all__: list[str] = ["FlextInfraPytestRunnerBase"]

@@ -109,16 +109,20 @@ endif
 # else, outside CI, the declared command when its executable is installed, else
 # anonymous. A selected command that fails or prints nothing stops the network
 # verbs (_builtin_require_github_credential), never degrading to anonymous.
-# The value stays in the environment and is never printed.
+# The value stays in the environment and is never printed. The command is a
+# Mise-managed executable, refused in a checkout whose .mise.toml is not trusted
+# yet, so a bare `make setup` resolves it only after trusting the checkout.
 GITHUB_TOKEN := $(firstword $(GITHUB_TOKEN) $(GH_TOKEN) $(MISE_GITHUB_TOKEN))
 GITHUB_CREDENTIAL_SOURCE := $(if $(GITHUB_TOKEN),environment,anonymous)
 ifeq ($(GITHUB_TOKEN),)
 ifneq ($(strip $(CI)),Y)
+ifneq ($(MAKECMDGOALS),setup)
 GITHUB_CREDENTIAL_EXECUTABLE := $(shell command -v gh)
 ifneq ($(GITHUB_CREDENTIAL_EXECUTABLE),)
 GITHUB_CREDENTIAL_SOURCE := command
 GITHUB_TOKEN := $(shell "$(GITHUB_CREDENTIAL_EXECUTABLE)" auth token)
 GITHUB_CREDENTIAL_STATUS := $(.SHELLSTATUS)
+endif
 endif
 endif
 endif
@@ -949,8 +953,41 @@ endif
 # `setup` keeps its own recipe (it must not require the environment it is about
 # to build), but it still runs the pre-/post-setup lifecycle hooks so a project
 # declaring them in the custom handler surface is actually honoured.
+# A fresh checkout is trusted first; the provisioning half then reruns Make so
+# the credential command resolves inside the trusted checkout.
 ifeq ($(PROJECT_ROOT),$(RUNTIME_ROOT))
-setup: _builtin_require_github_credential _bootstrap_setup_tools
+.PHONY: _setup_trust _setup_provision
+setup: _setup_trust
+	+@$(SELF_MAKE) _setup_provision
+_setup_trust:
+	+@set -eu; \
+	mise_stage=; bootstrap_status=0; \
+	trap 'bootstrap_status=$$?; trap - EXIT; \
+		if [ -n "$${mise_stage}" ]; then \
+			if rm -rf "$${mise_stage}"; then :; else \
+				mise_cleanup_status=$$?; \
+				printf "ERROR: bootstrap staging cleanup failed (exit %s); original exit %s\n" "$${mise_cleanup_status}" "$${bootstrap_status}" >&2; \
+				if [ "$${bootstrap_status}" -eq 0 ]; then bootstrap_status=$${mise_cleanup_status}; fi; \
+			fi; \
+		fi; \
+		exit "$${bootstrap_status}"' EXIT; \
+	trap 'exit 129' HUP; trap 'exit 130' INT; trap 'exit 143' TERM; \
+	bootstrap_stage=acquisition; \
+	if [ ! -x "$(BOOTSTRAP_MISE)" ]; then \
+	export MISE_INSTALL_FROM_GITHUB=1 MISE_INSTALL_HELP=0; \
+	export MISE_VERSION="2026.10.3"; \
+	case "$${OS:-}" in \
+		(Windows_NT) \
+			powershell.exe -NoProfile -Command '$$ErrorActionPreference = "Stop"; Invoke-RestMethod https://mise.run/powershell | Invoke-Expression' ;; \
+		(*) \
+			mise_stage="$$(mktemp -d)"; \
+			curl --proto '=https' --tlsv1.2 -fsSL -o "$${mise_stage}/install.sh" https://mise.run; \
+			sh "$${mise_stage}/install.sh" ;; \
+	esac; \
+	fi; \
+	bootstrap_stage=trust; \
+	"$(BOOTSTRAP_MISE)" trust "$(PROJECT_ROOT)/.mise.toml";
+_setup_provision: _builtin_require_github_credential _bootstrap_setup_tools
 else
 setup: _builtin_require_workspace
 	+@"$(SELF_MAKE_EXECUTABLE)" --no-print-directory -C "$(RUNTIME_ROOT)" -f "$(RUNTIME_ROOT)/Makefile" setup

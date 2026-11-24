@@ -314,11 +314,12 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
             The resulting ``p.Result[p.Infra.PytestDiagnostics]``.
 
         """
+        child_reports = self._child_reports(report_dir)
         extractor = FlextInfraPytestDiagExtractor(
             repository_root=self.repository_root,
-            junit=report_dir / "junit.xml",
+            junit=child_reports / "junit.xml",
             log_path=report_dir / "pytest.log",
-            report_log=report_dir / "events.jsonl",
+            report_log=child_reports / "events.jsonl",
         )
         return extractor.extract(
             extractor.junit,
@@ -329,6 +330,7 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
 
     @staticmethod
     def _read_collection_diagnostics(
+        report_dir: Path,
         report_log: Path,
     ) -> p.Infra.PytestDiagnostics:
         """Read and retain the collection's native typed evidence.
@@ -341,7 +343,7 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
             report_log,
             interrupted=False,
         ).unwrap()
-        receipt = report_log.with_suffix(".diagnostics.json")
+        receipt = report_dir / report_log.with_suffix(".diagnostics.json").name
         u.Cli.atomic_write_text_file(
             receipt,
             diagnostics.model_dump_json(indent=2) + "\n",
@@ -349,21 +351,20 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
         return diagnostics
 
     @classmethod
-    def _collection_diagnostics(cls, report_log: Path) -> None:
+    def _collection_diagnostics(cls, report_dir: Path, report_log: Path) -> None:
         """Require complete collection evidence before accepting a selection.
 
         Raises:
             RuntimeError: If pytest collection contains blocking findings.
 
         """
-        diagnostics = cls._read_collection_diagnostics(report_log)
-        receipt = report_log.with_suffix(".diagnostics.json")
+        diagnostics = cls._read_collection_diagnostics(report_dir, report_log)
         if any((
             diagnostics.collection_failed_count,
             diagnostics.collection_skipped_count,
             diagnostics.warning_count,
         )):
-            msg = f"pytest collection contains blocking findings: {receipt}"
+            msg = f"pytest collection contains blocking findings: {report_log}"
             raise RuntimeError(msg)
 
     def _write_collection_failure(
@@ -403,7 +404,7 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
                     f"missing_report={path}\n" for path in missing_reports
                 )
             else:
-                diagnostics = self._read_collection_diagnostics(report_log)
+                diagnostics = self._read_collection_diagnostics(report_dir, report_log)
                 self._write_diagnostics(
                     report_dir,
                     diagnostics,
@@ -514,7 +515,7 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
                 ``coverage.stat().st_size == 0``.
 
         """
-        coverage = report_dir / "coverage.xml"
+        coverage = self._child_reports(report_dir) / "coverage.xml"
         if not coverage.exists():
             raise FileNotFoundError(coverage)
         if not coverage.is_file():

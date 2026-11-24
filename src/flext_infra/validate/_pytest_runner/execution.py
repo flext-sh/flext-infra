@@ -22,6 +22,7 @@ from flext_infra.validate._pytest_runner import (
     FlextInfraPytestRunnerCommand,
     FlextInfraPytestRunnerReports,
 )
+from flext_infra.validate._pytest_runner.isolation import isolated_pytest_command
 
 
 class FlextInfraPytestRunnerExecution(
@@ -111,6 +112,30 @@ class FlextInfraPytestRunnerExecution(
             deadline=self._process_deadline(),
         )
 
+    def _child_command(
+        self,
+        command: t.StrTuple,
+        child_reports: Path,
+        database: Path | None,
+        options: p.Cli.ProcessOptions,
+    ) -> t.StrTuple:
+        """Apply the repository's process boundary to the selected native argv.
+
+        Returns:
+            The actual child argument vector.
+
+        """
+        if self.pytest_policy().sandbox is None:
+            return command
+        u.Cli.ensure_dir(child_reports).unwrap()
+        return isolated_pytest_command(
+            command,
+            repository_root=self.repository_root,
+            report_dir=child_reports,
+            database=database,
+            options=options,
+        )
+
     def _collect_selection(
         self,
         report_dir: Path,
@@ -135,30 +160,34 @@ class FlextInfraPytestRunnerExecution(
 
         """
         complete = complete or self.target_file is not None
-        artifact = "testmon-inventory" if complete else "testmon-selection"
+        phase = "inventory" if complete else "selection"
+        artifact = f"testmon-{phase}"
         selection_log = report_dir / f"{artifact}.log"
-        manifest_path = report_dir / f"{artifact}.json"
-        report_log = report_dir / f"{artifact}.events.jsonl"
+        child_reports = self._child_reports(report_dir, phase=phase)
+        manifest_path = child_reports / f"{artifact}.json"
+        report_log = child_reports / f"{artifact}.events.jsonl"
         command = self.build_selection_command(
             report_log=report_log,
             manifest_path=manifest_path,
             complete=complete,
             execution_mode=execution_mode,
         )
+        options = self._selection_process_options(
+            execution_mode=execution_mode, database=database
+        )
+        command = self._child_command(command, child_reports, database, options)
         if self.profile_enabled or self.collection_command_prefix:
             sys.stdout.write(
                 f"pytest {artifact} profile: {manifest_path.with_suffix('.pstats')}\n",
             )
         outcome = self._record_process_outcome(
             report_dir,
-            "inventory" if complete else "selection",
+            phase,
             u.Cli.run_to_file(
                 command,
                 selection_log,
                 cwd=self.repository_root,
-                options=self._selection_process_options(
-                    execution_mode=execution_mode, database=database
-                ),
+                options=options,
             ),
             report_log=report_log,
             raw_log=selection_log,
@@ -209,7 +238,7 @@ class FlextInfraPytestRunnerExecution(
             ):
                 self._write_collection_failure(
                     report_dir,
-                    phase="inventory" if complete else "selection",
+                    phase=phase,
                     report_log=report_log,
                     raw_log=selection_log,
                     outcome=outcome,
@@ -230,7 +259,7 @@ class FlextInfraPytestRunnerExecution(
         if self.profile_enabled or self.collection_command_prefix:
             self._bind_child_profile(report_dir, manifest_path.with_suffix(".pstats"))
         if not owns_no_tests:
-            self._collection_diagnostics(report_log)
+            self._collection_diagnostics(report_dir, report_log)
         if (
             owns_no_tests
             and outcome.raw_return_code == c.Infra.PytestExitCode.NO_TESTS_COLLECTED
@@ -377,6 +406,11 @@ class FlextInfraPytestRunnerExecution(
             The resulting ``p.Cli.ProcessOutcome``.
 
         """
+        options = self._selection_process_options(
+            execution_mode=execution_mode, database=database, live=True
+        )
+        child_reports = self._child_reports(report_dir)
+        command = self._child_command(command, child_reports, database, options)
         u.Cli.atomic_write_text_file(
             report_dir / "command.txt",
             f"{shlex.join(command)}\n",
@@ -411,18 +445,14 @@ class FlextInfraPytestRunnerExecution(
                 command,
                 report_dir / "pytest.log",
                 cwd=self.repository_root,
-                options=self._selection_process_options(
-                    execution_mode=execution_mode,
-                    database=database,
-                    live=True,
-                ),
+                options=options,
             ),
-            report_log=report_dir / "events.jsonl",
+            report_log=child_reports / "events.jsonl",
             raw_log=report_dir / "pytest.log",
         )
         if self.profile_enabled:
             policy = self.pytest_policy()
-            suite_profile = report_dir / policy.profile_suite_filename
+            suite_profile = child_reports / policy.profile_suite_filename
             # The process owner has reaped the child before binding its native
             # checkpoints. An interrupted run retains its failure and real data.
             if (
@@ -432,7 +462,7 @@ class FlextInfraPytestRunnerExecution(
             ):
                 self._bind_child_profile(report_dir, suite_profile)
             for profile in sorted(
-                (report_dir / policy.profile_process_directory).glob("*.pstats")
+                (child_reports / policy.profile_process_directory).glob("*.pstats")
             ):
                 self._bind_child_profile(report_dir, profile)
         return outcome
@@ -530,8 +560,9 @@ class FlextInfraPytestRunnerExecution(
             or outcome.raw_return_code == c.Infra.PytestExitCode.INTERRUPTED
         )
 
-    @staticmethod
-    def _completed_failure(outcome: p.Cli.ProcessOutcome, report_dir: Path) -> bool:
+    def _completed_failure(
+        self, outcome: p.Cli.ProcessOutcome, report_dir: Path
+    ) -> bool:
         """Return whether a failing suite still finished its lifecycle.
 
         Under xdist the declared max-failures stop exits as Interrupted, not
@@ -550,7 +581,7 @@ class FlextInfraPytestRunnerExecution(
             Whether a failing suite still finished its lifecycle.
 
         """
-        junit = report_dir / "junit.xml"
+        junit = self._child_reports(report_dir) / "junit.xml"
         if outcome.forwarded_signal is not None or not junit.is_file():
             return False
         if outcome.raw_return_code in c.Infra.PYTEST_COMPLETED_FAILURES:
@@ -605,7 +636,7 @@ class FlextInfraPytestRunnerExecution(
             interrupted=interrupted,
         ).unwrap()
         accounting = self._accounting(
-            report_dir / "junit.xml",
+            self._child_reports(report_dir) / "junit.xml",
             report_dir / "pytest.log",
             cache_restored=cache_restored,
             reported_count=len(diagnostics.reported_node_ids),
@@ -1269,7 +1300,8 @@ class FlextInfraPytestRunnerExecution(
             or outcome.raw_return_code < 0
         ):
             return outcome
-        manifest_path = report_dir / "testmon-inventory.json"
+        child_reports = self._child_reports(report_dir)
+        manifest_path = child_reports / "testmon-inventory.json"
         manifest = (
             m.Infra.PytestCollectionManifest.model_validate_json(
                 manifest_path.read_text(encoding="utf-8"),
@@ -1286,7 +1318,7 @@ class FlextInfraPytestRunnerExecution(
             self._write_collection_failure(
                 report_dir,
                 phase="suite",
-                report_log=report_dir / "events.jsonl",
+                report_log=child_reports / "events.jsonl",
                 raw_log=report_dir / "pytest.log",
                 outcome=outcome,
             )

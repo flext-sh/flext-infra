@@ -3309,6 +3309,10 @@ but no completed-suite summary or run accounting is published. A graceful failin
 suite with JUnit still follows the normal diagnostics and accounting path; neither
 an interruption nor a missing report is evidence that tests passed.
 
+Each isolated pytest child writes native artifacts in its own phase directory.
+The runner reads those artifacts after the child finishes and writes typed
+collection diagnostics beside the other parent-owned receipts.
+
 Suite profiles are bound only after successful execution or a completed failing
 suite with its final JUnit report. An interrupted profiling child keeps its native
 process outcome and raw log without attempting to read an unfinished profile.
