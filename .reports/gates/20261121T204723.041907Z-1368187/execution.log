@@ -1,0 +1,35 @@
+INFO: check: registry initialization start
+INFO: check: registry initialization complete
+INFO: check: selection start phase=complete
+INFO: check: selection complete projects=1 gates=6
+INFO: check: preparation start identity=True
+INFO: check: preparation complete projects=1
+INFO: check: prerequisite planning start projects=1
+INFO: check: prerequisite planning complete gates=1
+INFO: check: prerequisite wave start gate=lint jobs=1
+INFO: gate_executed project=flext-69cg5 gate=lint passed=True elapsed=0.551
+2026-11-21T20:47:32.752912Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=586.59 failed=0 skipped=0 total_stages=1
+INFO: check: prerequisite wave complete gate=lint
+    [OK] lint           0 errors  (0.55s)
+[1/1] flext-69cg5 check ...
+INFO: gate_executed project=flext-69cg5 gate=markdown-format passed=True elapsed=1.783
+2026-11-21T20:47:36.368021Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=1783.39 failed=0 skipped=0 total_stages=1
+INFO: gate_executed project=flext-69cg5 gate=markdown passed=True elapsed=1.787
+2026-11-21T20:47:36.371798Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=1787.94 failed=0 skipped=0 total_stages=1
+INFO: gate_executed project=flext-69cg5 gate=format passed=True elapsed=2.156
+2026-11-21T20:47:36.739296Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=2155.83 failed=0 skipped=0 total_stages=1
+INFO: gate_executed project=flext-69cg5 gate=markdown-code passed=True elapsed=5.46
+2026-11-21T20:47:40.045778Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=5460.52 failed=0 skipped=0 total_stages=1
+INFO: gate_executed project=flext-69cg5 gate=conflict-markers passed=True elapsed=5.292
+2026-11-21T20:47:41.595862Z [info     ] pipeline_complete              [flext_cli.api.FlextCli] duration_ms=7009.7 failed=0 skipped=0 total_stages=1
+    [OK] format         0 errors  (2.16s)
+    [OK] markdown       0 errors  (1.79s)
+    [OK] markdown-format     0 errors  (1.78s)
+    [OK] markdown-code     0 errors  (5.46s)
+    [OK] conflict-markers     0 errors  (5.29s)
+  [OK] check    flext-69cg5              7.42s
+
+-- check summary --
+Total: 1  Success: 1  Failed: 0  Skipped: 0  (8.12s)
+INFO: Reports: /home/marlonsc/flext/flext-infra/worktrees/flext-69cg5/.reports/gates/20261121T204723.041907Z-1368187/check/fc1c34ee-c00b-4c77-a164-57e16cff189f/check-report.md
+INFO:          /home/marlonsc/flext/flext-infra/worktrees/flext-69cg5/.reports/gates/20261121T204723.041907Z-1368187/check/fc1c34ee-c00b-4c77-a164-57e16cff189f/check-report.sarif

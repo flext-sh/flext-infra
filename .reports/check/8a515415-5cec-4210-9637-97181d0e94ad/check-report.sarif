@@ -1,0 +1,99 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "flext-infra-check",
+          "informationUri": "https://github.com/flext-sh/flext-infra",
+          "rules": []
+        }
+      },
+      "results": []
+    }
+  ],
+  "properties": {
+    "phase": "complete",
+    "requested_gates": [
+      "format",
+      "markdown-format",
+      "markdown-code"
+    ],
+    "pending_gates": [],
+    "targets": [
+      {
+        "name": "flext-69cg5",
+        "path": "/home/marlonsc/flext/flext-infra/worktrees/flext-69cg5",
+        "applicable_gates": [
+          "format",
+          "markdown-format",
+          "markdown-code"
+        ],
+        "source_identity": null
+      }
+    ],
+    "results": [
+      {
+        "project": "flext-69cg5",
+        "gates": {
+          "format": {
+            "result": {
+              "project": "flext-69cg5",
+              "gate": "format",
+              "passed": true,
+              "errors": [],
+              "duration": 1.614
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext/flext-infra/worktrees/flext-69cg5/.reports/check/8a515415-5cec-4210-9637-97181d0e94ad/flext-69cg5/format.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          },
+          "markdown-format": {
+            "result": {
+              "project": "flext-69cg5",
+              "gate": "markdown-format",
+              "passed": true,
+              "errors": [],
+              "duration": 1.178
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext/flext-infra/worktrees/flext-69cg5/.reports/check/8a515415-5cec-4210-9637-97181d0e94ad/flext-69cg5/markdown-format.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          },
+          "markdown-code": {
+            "result": {
+              "project": "flext-69cg5",
+              "gate": "markdown-code",
+              "passed": true,
+              "errors": [],
+              "duration": 2.82
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext/flext-infra/worktrees/flext-69cg5/.reports/check/8a515415-5cec-4210-9637-97181d0e94ad/flext-69cg5/markdown-code.raw.log",
+            "outcome": "clean",
+            "process": null,
+            "components": {},
+            "requested_components": []
+          }
+        }
+      }
+    ],
+    "selected_files": [],
+    "global_targets": null
+  }
+}

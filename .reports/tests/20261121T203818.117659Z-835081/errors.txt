@@ -1,0 +1,238 @@
+=== FAILURE: tests.unit.codemod.test_api_alias_cutover.TestsFlextInfraApiAliasCutover::test_service_retirement_preserves_kernel_context_and_shadowing[from sample_pkg import s-s-FlextSampleService] ===
+Failed: Timeout (>2.0s) from pytest-timeout.
+tests/unit/codemod/test_api_alias_cutover.py:88: in test_service_retirement_preserves_kernel_context_and_shadowing
+    u.Infra.plan_semantic_cutover(
+src/flext_infra/_utilities/_semantic_cutover/base.py:78: in plan_semantic_cutover
+    attempt = r.safe(
+.venv/lib/python3.13/site-packages/flext_core/_result/composition.py:201: in wrapper
+    return cls._create_success(func(*args, **kwargs))
+                               ^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/base.py:142: in _plan_semantic_cutover_phase
+    return cls._plan_selected_phase_dispatch(
+src/flext_infra/_utilities/_semantic_cutover/base.py:340: in _plan_selected_phase_dispatch
+    return factory()
+           ^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/base.py:313: in <lambda>
+    c.Infra.SemanticCutoverPhase.COMPAT_ALIAS: lambda: cls._plan_alias_cutover(
+src/flext_infra/_utilities/_semantic_cutover/base.py:363: in _plan_alias_cutover
+    api = cls._plan_api_aliases(workspace, working, selected, import_normalizer)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/aliases.py:407: in _plan_api_aliases
+    service_aliases, service_graph = cls._service_aliases(workspace, sources)
+                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/aliases.py:150: in _service_aliases
+    if value is not None and cls._inherits_service_kernel(value, kernel):
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/aliases.py:271: in _inherits_service_kernel
+    pending = list(FlextInfraUtilitiesDeclarationPayload.direct_bases(value))
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_semantic_cutover/declaration_payload.py:218: in direct_bases
+    tuple(value.get_superclasses())
+          ^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:324: in get_superclasses
+    for base in self.get_bases()
+                ^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:309: in get_bases
+    bases = self._get_bases()
+            ^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:482: in _get_bases
+    evaluated = rope.base.evaluate.eval_node(scope, base_node)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/evaluate.py:216: in eval_node
+    return eval_node2(scope, node)[1]
+           ^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/evaluate.py:249: in eval_node2
+    evaluator.visit(node)
+.venv/lib/python3.13/site-packages/rope/base/ast.py:79: in visit
+    return visitor(node)
+           ^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/evaluate.py:988: in _Subscript
+    self.result = rope.base.pynames.UnboundName(called.get_returned_object(args))
+                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:174: in get_returned_object
+    return self.returned.get(args)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/utils/__init__.py:56: in newfunc
+    return func(self, *args, **kwds)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pynames.py:216: in get
+    self.set(self.get_inferred(*args, **kwds))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:144: in _infer_returned
+    return rope.base.oi.soi.infer_returned_object(self, args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/utils/__init__.py:71: in newfunc
+    return func(*args, **kwds)
+           ^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/oi/soi.py:25: in infer_returned_object
+    result = _infer_returned(pyfunction, args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/oi/soi.py:342: in _infer_returned
+    resulting_pyname = evaluate.eval_node(scope, returned_node)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/evaluate.py:216: in eval_node
+    return eval_node2(scope, node)[1]
+           ^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/evaluate.py:249: in eval_node2
+    evaluator.visit(node)
+.venv/lib/python3.13/site-packages/rope/base/ast.py:79: in visit
+    return visitor(node)
+           ^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/evaluate.py:501: in _Name
+    self.result = self.scope.lookup(node.id, read_node=node)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/evaluate.py:191: in lookup
+    binding.get_object(branch_context=self.branch_context),
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pynamesdef.py:44: in get_object
+    value = self._get_inferred(
+.venv/lib/python3.13/site-packages/rope/base/utils/__init__.py:56: in newfunc
+    return func(self, *args, **kwds)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pynamesdef.py:29: in _get_inferred
+    return rope.base.oi.soi.infer_assigned_object(
+.venv/lib/python3.13/site-packages/rope/base/utils/__init__.py:71: in newfunc
+    return func(*args, **kwds)
+           ^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/oi/soi.py:116: in infer_assigned_object
+    result, ambiguous = _infer_assignment_path(
+.venv/lib/python3.13/site-packages/rope/base/oi/soi.py:202: in _infer_assignment_path
+    result = _infer_assignment(
+.venv/lib/python3.13/site-packages/rope/base/utils/__init__.py:71: in newfunc
+    return func(*args, **kwds)
+           ^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/oi/soi.py:402: in _infer_assignment
+    result = _follow_pyname(
+.venv/lib/python3.13/site-packages/rope/base/utils/__init__.py:71: in newfunc
+    return func(*args, **kwds)
+           ^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/oi/soi.py:451: in _follow_pyname
+    pyname = evaluate.eval_node(holding_scope, assign_node)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/evaluate.py:216: in eval_node
+    return eval_node2(scope, node)[1]
+           ^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/evaluate.py:249: in eval_node2
+    evaluator.visit(node)
+.venv/lib/python3.13/site-packages/rope/base/ast.py:79: in visit
+    return visitor(node)
+           ^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/evaluate.py:660: in _Call
+    result = _get_returned(pyfunction)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/evaluate.py:608: in _get_returned
+    return pyobject.get_returned_object(args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:174: in get_returned_object
+    return self.returned.get(args)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/utils/__init__.py:56: in newfunc
+    return func(self, *args, **kwds)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pynames.py:216: in get
+    self.set(self.get_inferred(*args, **kwds))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pyobjectsdef.py:144: in _infer_returned
+    return rope.base.oi.soi.infer_returned_object(self, args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/utils/__init__.py:71: in newfunc
+    return func(*args, **kwds)
+           ^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/oi/soi.py:28: in infer_returned_object
+    params = args.get_arguments(pyfunction.get_param_names(special_args=False))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/arguments.py:21: in get_arguments
+    for pyname in self.get_pynames(parameters):
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/arguments.py:30: in get_pynames
+    return self._get_function_pynames(parameters)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/arguments.py:62: in _get_function_pynames
+    result[positional[position]] = self._evaluate(arg)
+                                   ^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/arguments.py:82: in _evaluate
+    return rope.base.evaluate.eval_node(self.scope, ast_node)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/evaluate.py:216: in eval_node
+    return eval_node2(scope, node)[1]
+           ^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/evaluate.py:249: in eval_node2
+    evaluator.visit(node)
+.venv/lib/python3.13/site-packages/rope/base/ast.py:79: in visit
+    return visitor(node)
+           ^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/evaluate.py:501: in _Name
+    self.result = self.scope.lookup(node.id, read_node=node)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/evaluate.py:191: in lookup
+    binding.get_object(branch_context=self.branch_context),
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pynamesdef.py:44: in get_object
+    value = self._get_inferred(
+.venv/lib/python3.13/site-packages/rope/base/utils/__init__.py:56: in newfunc
+    return func(self, *args, **kwds)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/pynamesdef.py:29: in _get_inferred
+    return rope.base.oi.soi.infer_assigned_object(
+.venv/lib/python3.13/site-packages/rope/base/utils/__init__.py:71: in newfunc
+    return func(*args, **kwds)
+           ^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/oi/soi.py:116: in infer_assigned_object
+    result, ambiguous = _infer_assignment_path(
+.venv/lib/python3.13/site-packages/rope/base/oi/soi.py:180: in _infer_assignment_path
+    first, first_ambiguous = _infer_assignment_path(
+.venv/lib/python3.13/site-packages/rope/base/oi/soi.py:202: in _infer_assignment_path
+    result = _infer_assignment(
+.venv/lib/python3.13/site-packages/rope/base/utils/__init__.py:71: in newfunc
+    return func(*args, **kwds)
+           ^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/oi/soi.py:402: in _infer_assignment
+    result = _follow_pyname(
+.venv/lib/python3.13/site-packages/rope/base/utils/__init__.py:71: in newfunc
+    return func(*args, **kwds)
+           ^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/oi/soi.py:451: in _follow_pyname
+    pyname = evaluate.eval_node(holding_scope, assign_node)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/evaluate.py:216: in eval_node
+    return eval_node2(scope, node)[1]
+           ^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/evaluate.py:249: in eval_node2
+    evaluator.visit(node)
+.venv/lib/python3.13/site-packages/rope/base/ast.py:79: in visit
+    return visitor(node)
+           ^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/evaluate.py:651: in _Call
+    result = _get_returned(new_function)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/evaluate.py:608: in _get_returned
+    return pyobject.get_returned_object(args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/builtins.py:422: in get_returned_object
+    return self.function(_CallContext(self.argnames, args))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/builtins.py:976: in _new_tuple
+    return _create_builtin(args, get_tuple)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/builtins.py:1515: in _create_builtin
+    return creator(holding)
+           ^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/builtins.py:487: in _get_builtin
+    return pyobjects.PyObject(type_getter(*args))
+                              ^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/builtins.py:477: in _get_builtin
+    cls._generated[key] = cls(*args)
+                          ^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/builtins.py:949: in __init__
+    "__iter__": BuiltinName(BuiltinFunction(get_iterator(first))),
+                                            ^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/builtins.py:487: in _get_builtin
+    return pyobjects.PyObject(type_getter(*args))
+                              ^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/builtins.py:477: in _get_builtin
+    cls._generated[key] = cls(*args)
+                          ^^^^^^^^^^
+.venv/lib/python3.13/site-packages/rope/base/builtins.py:1111: in __init__
+    "next": BuiltinName(BuiltinFunction(_read_mutable_holding(holding, self))),
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: Timeout (>2.0s) from pytest-timeout.
