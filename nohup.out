@@ -1,0 +1,14 @@
+mise trusted ~/flext/flext-infra/worktrees/flext-7lip7
+mise ERROR mise version 2026.11.11 is required, but you are using 2026.10.3
+Run `mise self-update` to update mise
+mise ERROR Version: 2026.10.3 linux-x64 (2026-10-05)
+mise ERROR Run with --verbose or MISE_VERBOSE=1 for more information
+ERROR: the declared GitHub credential command gh auth token exited 1 without a token; refusing anonymous network access
+make[1]: *** [/home/marlonsc/flext/flext-infra/worktrees/flext-7lip7/Makefile:1205: _builtin_require_github_credential] Error 2
+make: *** [Makefile:971: setup] Error 2
+mise ERROR mise version 2026.11.11 is required, but you are using 2026.10.3
+Run `mise self-update` to update mise
+mise ERROR Version: 2026.10.3 linux-x64 (2026-10-05)
+mise ERROR Run with --verbose or MISE_VERBOSE=1 for more information
+ERROR: missing environment interpreter /home/marlonsc/flext/flext-infra/worktrees/flext-7lip7/.venv/bin/python; make setup creates it
+make: *** [Makefile:1230: _builtin_require_interpreter] Error 2
