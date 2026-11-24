@@ -855,7 +855,7 @@ Infra:
       pre_commit: true
       pre_push: false
       # Public refactor violations-sweep default; custom sequences use verbs below.
-      violations_sweep_repair_verbs: [ fix, fmt, mod ]
+      violations_sweep_repair_verbs: [ mod ]
       type_contract_rules:
       - bind-typing-adapter-utilities
       - rewire-cli-json-mapping-adapter
@@ -865,9 +865,9 @@ Infra:
       workflow:
       # A commit provisions the checkout before its check, so a fresh lane
       # worktree commits against its own locked toolchain, never PATH.
-      - { identity: setup, verb: setup, contexts: [ local, ci, pre_commit ] }
+      - { identity: setup, verb: setup, contexts: [ local, ci ] }
       # Initial behavioral admission requires global source evidence, not full check.
-      - { identity: check-primary, verb: check, phase: primary, contexts: [ local, ci, pre_push ] }
+      - { identity: check-primary, verb: check, phase: primary, contexts: [ local, ci, pre_commit, pre_push ] }
       # Operator decision 2026-11-22 (supersedes the 2026-11-12 ruling): CI runs
       # the fast tests after the primary check, with no external infrastructure
       # and no Docker; the runner deselects the docker, remote and slow markers.
@@ -877,52 +877,25 @@ Infra:
         contexts: [ local, ci, pre_push ]
         requires:
         - { step: check-primary, contexts: [ local, ci, pre_push ] }
-      # CI never generates: check's `codegen conform --mode check` is the
-      # read-only projection verdict of the LOCKED generator, so a stale or
-      # skewed projection fails there, while CI generation would run the
-      # local codemod cascade and verify only its own output.
-      - { identity: gen, verb: gen, contexts: [ local ], requires: [ { step: tests-primary, contexts: [ local ] } ] }
-      - { identity: fmt, verb: fmt, contexts: [ local ], requires: [ { step: gen, contexts: [ local ] } ] }
-      - { identity: fix, verb: fix, contexts: [ local ], requires: [ { step: fmt, contexts: [ local ] } ] }
-      - { identity: mod, verb: mod, contexts: [ local ], requires: [ { step: fix, contexts: [ local ] } ] }
-      - identity: check-primary-refresh
+      - identity: check-complete
         verb: check
-        phase: primary
+        phase: complete
         contexts: [ local ]
         requires:
-        - { step: mod, contexts: [ local ] }
-      - identity: check
-        verb: check
-        contexts: [ local, pre_commit ]
-        requires:
         - { step: tests-primary, contexts: [ local ] }
-        - { step: check-primary-refresh, contexts: [ local ] }
       - identity: tests
         verb: tests
         contexts: [ local ]
         requires:
-        - { step: check, contexts: [ local ] }
-        - { step: check-primary-refresh, contexts: [ local ] }
+        - { step: check-primary, contexts: [ local ] }
+        - { step: check-complete, contexts: [ local ] }
       # Acceptance composes operations explicitly; each operation retains its domain.
       lifecycle_steps:
       - { verb: help, contexts: [ local ] }
       - { verb: setup, contexts: [ local, ci ] }
       - { verb: check, phase: primary, contexts: [ local, ci ] }
       - { verb: tests, contexts: [ local ] }
-      - { verb: gen, contexts: [ local ] }
-      - { verb: gen, contexts: [ local ] }
-      - { verb: fmt, contexts: [ local ] }
-      - { verb: fix, contexts: [ local ] }
-      - { verb: mod, contexts: [ local ] }
-      # Consecutive generation proves convergence on unchanged declarations.
-      - { verb: gen, contexts: [ local ] }
-      - { verb: gen, contexts: [ local ] }
-      - { verb: check, phase: primary, contexts: [ local, ci ] }
-      - { verb: check, contexts: [ local ] }
-      - { verb: tests, contexts: [ local ] }
       - { verb: build, contexts: [ local ] }
-      # Repository-local directory of the project's Mise shims. Mise itself is
-      # the official installer's shared default executable, never copied here.
       bootstrap_bin_dir: .bin
       # Artifacts `make clean` removes. Read by Makefile.j2 for the cache
       # sweep and the root-level directory/file lists.
@@ -975,25 +948,9 @@ Infra:
         arguments: [ FLEXT, RECREATE ]
       - name: upg
         description: Resolve declared dependency and tool updates and publish their resolution metadata and locks.
-      - name: lock
-        description: Resolve newly declared dependencies into the locks and keep every existing pin; only upg moves pins.
-      - name: gen
-        arguments: [ ROOT ]
-        description: Materialize explicitly declared new projects and publish every applicable generated projection.
-        requires_activation: false
-      - name: gen-scope
-        arguments: [ ROOT, WHAT, MODULE, SCOPE ]
-        description: Run the focal generation surface (WHAT, MODULE for facades, SCOPE) through the same engine, lock and budget as gen.
-        requires_activation: false
       - name: mod
         arguments: [ LAWS, RULES ]
         description: Refactor declared source structure through the shared pipeline and publish the complete coherent change; LAWS (ENFORCE ids) or RULES (rule ids) diagnose or repair one law (ADR-028 Decision 18 item 2).
-      - name: fix
-        description: Apply declared repairs to authored inputs through their canonical owners; in a workspace root ALL=Y includes every governed member.
-        arguments: [ ALL ]
-      - name: fmt
-        description: Format authored content through the configured formatters; in a workspace root ALL=Y includes every governed member.
-        arguments: [ ALL ]
       - name: check
         description: Validate declarations, projections, environment, documentation and configured gates without repairs or publication.
         arguments: [ CHECK_PHASE ]
