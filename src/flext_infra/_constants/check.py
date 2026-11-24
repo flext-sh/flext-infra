@@ -35,6 +35,7 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
     MARKDOWN_FORMAT: ClassVar[str] = "markdown-format"
     MARKDOWN_CODE: ClassVar[str] = "markdown-code"
     SMELLS: ClassVar[str] = "smells"
+    CUBIC: ClassVar[str] = "cubic"
     FRESH_IMPORT: ClassVar[str] = "fresh-import"
     CONFLICT_MARKERS: ClassVar[str] = "conflict-markers"
     DEPS: ClassVar[str] = "deps"
@@ -102,6 +103,13 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
                 False,
                 False,
                 FlextInfraConstantsConfig.GateStage.PUSH,
+            ),
+            CUBIC: (
+                "cubic",
+                "https://www.cubic.dev",
+                False,
+                False,
+                FlextInfraConstantsConfig.GateStage.CI,
             ),
         }),
         FlextInfraConstantsConfig.GateKind.TYPE_CHECKER: MappingProxyType({
@@ -549,6 +557,22 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
     )
     "Smells scan arguments; the gate appends explicit targets, scanned in full."
     SMELLS_RULE_PREFIX: ClassVar[str] = "qlty:"
+
+    # --- cubic AI-review gate SSOT ---
+    CUBIC_BINARY: ClassVar[str] = "cubic"
+    "Provisioned by mise from codegen.toolchain.tools entry 'cubic'."
+    CUBIC_API_KEY_ENV: ClassVar[str] = "CUBIC_API_KEY"
+    "Headless credential variable cubic reads; the gate never stores it."
+    CUBIC_REVIEW_ARGS: ClassVar[Sequence[str]] = ("review", "-b", "--json")
+    "Branch review with base auto-detection, one JSON object on stdout."
+    CUBIC_FINDINGS_EXIT_CODE: ClassVar[int] = 1
+    "Exit status cubic uses when the review reports findings."
+    CUBIC_HEADLESS_ENV: ClassVar[Mapping[str, str]] = MappingProxyType({
+        "CUBIC_DISABLE_AUTOUPDATE": "1",
+        "CUBIC_DISABLE_LSP_DOWNLOAD": "1",
+        "CUBIC_DISABLE_GIT_AI": "true",
+    })
+    "Deterministic headless flags: mise owns the pinned CLI, not auto-update."
     # --- jscpd duplication gate SSOT (flext-infra owns the
     # jscpd plugin behind one centralized `make check` verb; its config is
     # rendered from this typed SSOT at scan time, never a hand-maintained file).
