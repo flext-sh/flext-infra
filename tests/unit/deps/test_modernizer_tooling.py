@@ -191,9 +191,11 @@ class TestsFlextInfraDepsModernizerTooling:
     ) -> None:
         """Attached member overlays bind installed typing to their actual root."""
         root = u.Tests.git_repository(tmp_path, "member-policy")
-        path = os.path.relpath(
-            f"{sysconfig.get_path('purelib')}/vendor-stubs",
-            start=root if relative_to_project else Path.cwd(),
+        purelib_stubs = f"{sysconfig.get_path('purelib')}/vendor-stubs"
+        path = (
+            purelib_stubs
+            if relative_to_project
+            else os.path.relpath(purelib_stubs, start=Path.cwd())
         )
         declaration = root / c.CONFIG_DIR_NAME / "tooling.yaml"
         declaration.parent.mkdir(parents=True, exist_ok=True)
@@ -221,7 +223,7 @@ class TestsFlextInfraDepsModernizerTooling:
                 tm.ok(
                     loaded
                 ).document.tools.pyrefly.path_rules.project_shared_search_paths,
-                eq=(path,),
+                eq=[path],
             )
         else:
             tm.fail(loaded, has="Local stub search roots")
