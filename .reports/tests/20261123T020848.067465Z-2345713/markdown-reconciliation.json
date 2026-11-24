@@ -1,0 +1,359 @@
+{
+  "eligible": [],
+  "selected": [],
+  "deselected": [],
+  "diagnostics": {
+    "failed_count": 1,
+    "error_count": 0,
+    "warning_count": 0,
+    "skipped_count": 0,
+    "connectivity_skip_cases": [],
+    "collection_failed_count": 0,
+    "collection_skipped_count": 0,
+    "collection_failed_cases": [],
+    "collection_skip_cases": [],
+    "reported_node_ids": [
+      "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_ci_and_hook_share_the_check_and_test_workflow[standalone]",
+      "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_ci_and_hook_share_the_check_and_test_workflow[workspace]",
+      "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_ci_preserves_original_execution_receipts_on_every_outcome[standalone]",
+      "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_ci_preserves_original_execution_receipts_on_every_outcome[workspace]",
+      "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_ci_triggers_deduplicate_integration_branch_against_baselines",
+      "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_ci_triggers_include_custom_workspace_integration_branch",
+      "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_event_context_matches_the_rendered_workflow_triggers[template_source0]",
+      "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_event_context_matches_the_rendered_workflow_triggers[template_source1]",
+      "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_event_context_matches_the_rendered_workflow_triggers[template_source2]",
+      "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_title_edits_revalidate_only_the_release_plan_workflow",
+      "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_tool_cache_is_keyed_by_lock_state_and_saved_on_miss",
+      "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_typed_approval_cannot_disable_pre_commit",
+      "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_typed_approval_rejects_missing_stages[check]",
+      "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_typed_approval_rejects_missing_stages[setup]",
+      "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_typed_approval_rejects_missing_stages[tests]",
+      "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_workflow_projection_uses_only_manifest_workflows",
+      "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCodegenMakeCheckPartition::test_make_check_keeps_a_missing_runtime_fatal[all]",
+      "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCodegenMakeCheckPartition::test_project_declared_gate_defaults_to_the_push_stage",
+      "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCodegenMakeCheckPartition::test_project_declared_gates_follow_their_declared_stage[push]"
+    ],
+    "phase_outcomes": [
+      {
+        "node_id": "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_ci_and_hook_share_the_check_and_test_workflow[standalone]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_ci_and_hook_share_the_check_and_test_workflow[standalone]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_ci_and_hook_share_the_check_and_test_workflow[standalone]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_ci_and_hook_share_the_check_and_test_workflow[workspace]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_ci_and_hook_share_the_check_and_test_workflow[workspace]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_ci_and_hook_share_the_check_and_test_workflow[workspace]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_ci_preserves_original_execution_receipts_on_every_outcome[standalone]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_ci_preserves_original_execution_receipts_on_every_outcome[standalone]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_ci_preserves_original_execution_receipts_on_every_outcome[standalone]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_ci_preserves_original_execution_receipts_on_every_outcome[workspace]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_ci_preserves_original_execution_receipts_on_every_outcome[workspace]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_ci_preserves_original_execution_receipts_on_every_outcome[workspace]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_ci_triggers_deduplicate_integration_branch_against_baselines",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_ci_triggers_deduplicate_integration_branch_against_baselines",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_ci_triggers_deduplicate_integration_branch_against_baselines",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_ci_triggers_include_custom_workspace_integration_branch",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_ci_triggers_include_custom_workspace_integration_branch",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_ci_triggers_include_custom_workspace_integration_branch",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_event_context_matches_the_rendered_workflow_triggers[template_source0]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_event_context_matches_the_rendered_workflow_triggers[template_source0]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_event_context_matches_the_rendered_workflow_triggers[template_source0]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_event_context_matches_the_rendered_workflow_triggers[template_source1]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_event_context_matches_the_rendered_workflow_triggers[template_source1]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_event_context_matches_the_rendered_workflow_triggers[template_source1]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_event_context_matches_the_rendered_workflow_triggers[template_source2]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_event_context_matches_the_rendered_workflow_triggers[template_source2]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_event_context_matches_the_rendered_workflow_triggers[template_source2]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_title_edits_revalidate_only_the_release_plan_workflow",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_title_edits_revalidate_only_the_release_plan_workflow",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_title_edits_revalidate_only_the_release_plan_workflow",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_tool_cache_is_keyed_by_lock_state_and_saved_on_miss",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_tool_cache_is_keyed_by_lock_state_and_saved_on_miss",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_tool_cache_is_keyed_by_lock_state_and_saved_on_miss",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_typed_approval_cannot_disable_pre_commit",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_typed_approval_cannot_disable_pre_commit",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_typed_approval_cannot_disable_pre_commit",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_typed_approval_rejects_missing_stages[check]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_typed_approval_rejects_missing_stages[check]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_typed_approval_rejects_missing_stages[check]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_typed_approval_rejects_missing_stages[setup]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_typed_approval_rejects_missing_stages[setup]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_typed_approval_rejects_missing_stages[setup]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_typed_approval_rejects_missing_stages[tests]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_typed_approval_rejects_missing_stages[tests]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_typed_approval_rejects_missing_stages[tests]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_workflow_projection_uses_only_manifest_workflows",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_workflow_projection_uses_only_manifest_workflows",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_workflow_projection_uses_only_manifest_workflows",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCodegenMakeCheckPartition::test_make_check_keeps_a_missing_runtime_fatal[all]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCodegenMakeCheckPartition::test_make_check_keeps_a_missing_runtime_fatal[all]",
+        "phase": "call",
+        "outcome": "failed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCodegenMakeCheckPartition::test_make_check_keeps_a_missing_runtime_fatal[all]",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCodegenMakeCheckPartition::test_project_declared_gate_defaults_to_the_push_stage",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCodegenMakeCheckPartition::test_project_declared_gate_defaults_to_the_push_stage",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCodegenMakeCheckPartition::test_project_declared_gate_defaults_to_the_push_stage",
+        "phase": "teardown",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCodegenMakeCheckPartition::test_project_declared_gates_follow_their_declared_stage[push]",
+        "phase": "setup",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCodegenMakeCheckPartition::test_project_declared_gates_follow_their_declared_stage[push]",
+        "phase": "call",
+        "outcome": "passed"
+      },
+      {
+        "node_id": "tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCodegenMakeCheckPartition::test_project_declared_gates_follow_their_declared_stage[push]",
+        "phase": "teardown",
+        "outcome": "passed"
+      }
+    ],
+    "markdown_attempts": [],
+    "markdown_items": [],
+    "failed_cases": [
+      "tests.unit.codegen.test_codegen_make_check_partition.TestsFlextInfraCodegenMakeCheckPartition::test_make_check_keeps_a_missing_runtime_fatal[all]"
+    ],
+    "error_traces": [
+      "=== FAILURE: tests.unit.codegen.test_codegen_make_check_partition.TestsFlextInfraCodegenMakeCheckPartition::test_make_check_keeps_a_missing_runtime_fatal[all] ===\nFailed: Timeout (>20.0s) from pytest-timeout.\ntests/unit/codegen/test_codegen_make_check_partition.py:553: in test_make_check_keeps_a_missing_runtime_fatal\n    u.Cli.run_raw(\n.venv/lib/python3.13/site-packages/flext_cli/_utilities/runtime.py:201: in run_raw\n    return cls._execute_streamed_process(\n.venv/lib/python3.13/site-packages/flext_cli/_utilities/_runtime/process_execution.py:62: in _execute_streamed_process\n    cls._execute_lifecycle(request, state, timing)\n.venv/lib/python3.13/site-packages/flext_cli/_utilities/_runtime/process_execution.py:169: in _execute_lifecycle\n    state.timed_out, state.final_deadline = cls._monitor_process(\n.venv/lib/python3.13/site-packages/flext_cli/_utilities/_runtime/process_monitor.py:49: in _monitor_process\n    cls._wait_next_boundary(state, phase, now)\n.venv/lib/python3.13/site-packages/flext_cli/_utilities/_runtime/process_monitor.py:113: in _wait_next_boundary\n    state.wake.wait(\n../../../../.local/share/mise/installs/python/3.13.18/lib/python3.13/threading.py:660: in wait\n    signaled = self._cond.wait(timeout)\n               ^^^^^^^^^^^^^^^^^^^^^^^^\n../../../../.local/share/mise/installs/python/3.13.18/lib/python3.13/threading.py:359: in wait\n    waiter.acquire()\nE   Failed: Timeout (>20.0s) from pytest-timeout."
+    ],
+    "warning_lines": [],
+    "skip_cases": [],
+    "slow_entries": [
+      "20.146000s | tests.unit.codegen.test_codegen_make_check_partition.TestsFlextInfraCodegenMakeCheckPartition::test_make_check_keeps_a_missing_runtime_fatal[all]",
+      "0.471000s | tests.unit.codegen.test_codegen_make_check_partition.TestsFlextInfraCiIntegrationBranchTriggers::test_event_context_matches_the_rendered_workflow_triggers[template_source1]",
+      "0.168000s | tests.unit.codegen.test_codegen_make_check_partition.TestsFlextInfraCodegenMakeCheckPartition::test_project_declared_gates_follow_their_declared_stage[push]",
+      "0.042000s | tests.unit.codegen.test_codegen_make_check_partition.TestsFlextInfraCiIntegrationBranchTriggers::test_ci_preserves_original_execution_receipts_on_every_outcome[workspace]",
+      "0.040000s | tests.unit.codegen.test_codegen_make_check_partition.TestsFlextInfraCiIntegrationBranchTriggers::test_event_context_matches_the_rendered_workflow_triggers[template_source2]",
+      "0.040000s | tests.unit.codegen.test_codegen_make_check_partition.TestsFlextInfraCiIntegrationBranchTriggers::test_event_context_matches_the_rendered_workflow_triggers[template_source0]",
+      "0.033000s | tests.unit.codegen.test_codegen_make_check_partition.TestsFlextInfraCiIntegrationBranchTriggers::test_title_edits_revalidate_only_the_release_plan_workflow",
+      "0.030000s | tests.unit.codegen.test_codegen_make_check_partition.TestsFlextInfraCiIntegrationBranchTriggers::test_workflow_projection_uses_only_manifest_workflows",
+      "0.029000s | tests.unit.codegen.test_codegen_make_check_partition.TestsFlextInfraCiIntegrationBranchTriggers::test_typed_approval_rejects_missing_stages[setup]",
+      "0.029000s | tests.unit.codegen.test_codegen_make_check_partition.TestsFlextInfraCiIntegrationBranchTriggers::test_ci_and_hook_share_the_check_and_test_workflow[standalone]",
+      "0.022000s | tests.unit.codegen.test_codegen_make_check_partition.TestsFlextInfraCiIntegrationBranchTriggers::test_ci_preserves_original_execution_receipts_on_every_outcome[standalone]",
+      "0.021000s | tests.unit.codegen.test_codegen_make_check_partition.TestsFlextInfraCiIntegrationBranchTriggers::test_ci_and_hook_share_the_check_and_test_workflow[workspace]",
+      "0.020000s | tests.unit.codegen.test_codegen_make_check_partition.TestsFlextInfraCiIntegrationBranchTriggers::test_tool_cache_is_keyed_by_lock_state_and_saved_on_miss",
+      "0.015000s | tests.unit.codegen.test_codegen_make_check_partition.TestsFlextInfraCiIntegrationBranchTriggers::test_ci_triggers_deduplicate_integration_branch_against_baselines",
+      "0.013000s | tests.unit.codegen.test_codegen_make_check_partition.TestsFlextInfraCodegenMakeCheckPartition::test_project_declared_gate_defaults_to_the_push_stage",
+      "0.012000s | tests.unit.codegen.test_codegen_make_check_partition.TestsFlextInfraCiIntegrationBranchTriggers::test_ci_triggers_include_custom_workspace_integration_branch",
+      "0.010000s | tests.unit.codegen.test_codegen_make_check_partition.TestsFlextInfraCiIntegrationBranchTriggers::test_typed_approval_rejects_missing_stages[tests]",
+      "0.010000s | tests.unit.codegen.test_codegen_make_check_partition.TestsFlextInfraCiIntegrationBranchTriggers::test_typed_approval_rejects_missing_stages[check]",
+      "0.010000s | tests.unit.codegen.test_codegen_make_check_partition.TestsFlextInfraCiIntegrationBranchTriggers::test_typed_approval_cannot_disable_pre_commit"
+    ]
+  },
+  "cache_hit": false,
+  "violations": [
+    "selected node IDs differ from executed node IDs"
+  ]
+}

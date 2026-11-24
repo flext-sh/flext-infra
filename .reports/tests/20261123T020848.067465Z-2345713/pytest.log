@@ -1,0 +1,179 @@
+================================================= test session starts ==================================================
+platform linux -- Python 3.13.18, pytest-9.2.0, pluggy-1.7.0 -- /home/marlonsc/flext/flext-infra/worktrees/ci-independent-fast-tests/.venv/bin/python
+cachedir: .pytest_cache
+hypothesis profile 'default'
+benchmark: 5.3.1 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+Using --randomly-seed=1143303992
+testmon: selection deactivated, environment: toolchain-2c96107a0cd9-6a8897dd-e3b0c442
+Help shape testmon! Tell us what saves you time and what we can improve: https://testmon.org/survey
+rootdir: /home/marlonsc/flext/flext-infra/worktrees/ci-independent-fast-tests
+configfile: pyproject.toml
+plugins: flext-tests-0.12.0, flext-infra-0.12.3, hypothesis-6.170.15, anyio-4.16.0, asyncio-1.4.1.post1, benchmark-5.3.1, cov-7.1.0, markdown-docs-0.9.2, randomly-5.1.0, reportlog-1.0.0, testmon-2.3.0, timeout-2.4.0, xdist-3.8.0, platformdirs-4.14.5
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
+timeout: 2.0s
+timeout method: signal
+timeout func_only: True
+created: 4/4 workers
+4 workers [45 items]
+
+scheduling tests via LoadScopeScheduling
+
+tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_event_context_matches_the_rendered_workflow_triggers[template_source1] 
+tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCodegenMakeCheckPartition::test_project_declared_gates_follow_their_declared_stage[push] 
+[gw2] [  2%] PASSED tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCodegenMakeCheckPartition::test_project_declared_gates_follow_their_declared_stage[push] 
+tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCodegenMakeCheckPartition::test_project_declared_gate_defaults_to_the_push_stage 
+[gw2] [  4%] PASSED tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCodegenMakeCheckPartition::test_project_declared_gate_defaults_to_the_push_stage 
+tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCodegenMakeCheckPartition::test_make_check_keeps_a_missing_runtime_fatal[all] 
+[gw0] [  6%] PASSED tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_event_context_matches_the_rendered_workflow_triggers[template_source1] 
+tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_ci_preserves_original_execution_receipts_on_every_outcome[workspace] 
+[gw0] [  8%] PASSED tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_ci_preserves_original_execution_receipts_on_every_outcome[workspace] 
+tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_event_context_matches_the_rendered_workflow_triggers[template_source0] 
+[gw0] [ 11%] PASSED tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_event_context_matches_the_rendered_workflow_triggers[template_source0] 
+tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_event_context_matches_the_rendered_workflow_triggers[template_source2] 
+[gw0] [ 13%] PASSED tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_event_context_matches_the_rendered_workflow_triggers[template_source2] 
+tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_typed_approval_rejects_missing_stages[setup] 
+[gw0] [ 15%] PASSED tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_typed_approval_rejects_missing_stages[setup] 
+tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_ci_triggers_include_custom_workspace_integration_branch 
+[gw0] [ 17%] PASSED tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_ci_triggers_include_custom_workspace_integration_branch 
+tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_ci_and_hook_share_the_check_and_test_workflow[standalone] 
+[gw0] [ 20%] PASSED tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_ci_and_hook_share_the_check_and_test_workflow[standalone] 
+tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_ci_and_hook_share_the_check_and_test_workflow[workspace] 
+[gw0] [ 22%] PASSED tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_ci_and_hook_share_the_check_and_test_workflow[workspace] 
+tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_workflow_projection_uses_only_manifest_workflows 
+[gw0] [ 24%] PASSED tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_workflow_projection_uses_only_manifest_workflows 
+tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_title_edits_revalidate_only_the_release_plan_workflow 
+[gw0] [ 26%] PASSED tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_title_edits_revalidate_only_the_release_plan_workflow 
+tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_typed_approval_rejects_missing_stages[check] 
+[gw0] [ 28%] PASSED tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_typed_approval_rejects_missing_stages[check] 
+tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_typed_approval_rejects_missing_stages[tests] 
+[gw0] [ 31%] PASSED tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_typed_approval_rejects_missing_stages[tests] 
+tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_tool_cache_is_keyed_by_lock_state_and_saved_on_miss 
+[gw0] [ 33%] PASSED tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_tool_cache_is_keyed_by_lock_state_and_saved_on_miss 
+tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_typed_approval_cannot_disable_pre_commit 
+[gw0] [ 35%] PASSED tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_typed_approval_cannot_disable_pre_commit 
+tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_ci_preserves_original_execution_receipts_on_every_outcome[standalone] 
+[gw0] [ 37%] PASSED tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_ci_preserves_original_execution_receipts_on_every_outcome[standalone] 
+tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_ci_triggers_deduplicate_integration_branch_against_baselines 
+[gw0] [ 40%] PASSED tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCiIntegrationBranchTriggers::test_ci_triggers_deduplicate_integration_branch_against_baselines 
+[gw2] [ 42%] FAILED tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCodegenMakeCheckPartition::test_make_check_keeps_a_missing_runtime_fatal[all] 
+
+======================================================= FAILURES =======================================================
+_____________ TestsFlextInfraCodegenMakeCheckPartition.test_make_check_keeps_a_missing_runtime_fatal[all] ______________
+[gw2] linux -- Python 3.13.18 /home/marlonsc/flext/flext-infra/worktrees/ci-independent-fast-tests/.venv/bin/python
+tests/unit/codegen/test_codegen_make_check_partition.py:553: in test_make_check_keeps_a_missing_runtime_fatal
+    u.Cli.run_raw(
+.venv/lib/python3.13/site-packages/flext_cli/_utilities/runtime.py:201: in run_raw
+    return cls._execute_streamed_process(
+.venv/lib/python3.13/site-packages/flext_cli/_utilities/_runtime/process_execution.py:62: in _execute_streamed_process
+    cls._execute_lifecycle(request, state, timing)
+.venv/lib/python3.13/site-packages/flext_cli/_utilities/_runtime/process_execution.py:169: in _execute_lifecycle
+    state.timed_out, state.final_deadline = cls._monitor_process(
+.venv/lib/python3.13/site-packages/flext_cli/_utilities/_runtime/process_monitor.py:49: in _monitor_process
+    cls._wait_next_boundary(state, phase, now)
+.venv/lib/python3.13/site-packages/flext_cli/_utilities/_runtime/process_monitor.py:113: in _wait_next_boundary
+    state.wake.wait(
+../../../../.local/share/mise/installs/python/3.13.18/lib/python3.13/threading.py:660: in wait
+    signaled = self._cond.wait(timeout)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../.local/share/mise/installs/python/3.13.18/lib/python3.13/threading.py:359: in wait
+    waiter.acquire()
+E   Failed: Timeout (>20.0s) from pytest-timeout.
+------------------------------------------------- Captured stdout call -------------------------------------------------
+INFO: stage=plan repositories=1
+INFO: stage=repository state=start repository=fixture-project root=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-15140/popen-gw2/test_make_check_keeps_a_missin0/standalone/fixture-project source_root=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-15140/popen-gw2/test_make_check_keeps_a_missin0/standalone/fixture-project surface=lazy-init role=standalone
+INFO: stage=repository state=end repository=fixture-project surface=lazy-init elapsed=0.007s files=0
+INFO: stage=repository state=start repository=fixture-project root=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-15140/popen-gw2/test_make_check_keeps_a_missin0/standalone/fixture-project source_root=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-15140/popen-gw2/test_make_check_keeps_a_missin0/standalone/fixture-project surface=pyproject role=standalone
+INFO: stage=lazy-init state=start root=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-15140/popen-gw2/test_make_check_keeps_a_missin0/standalone/fixture-project
+INFO: stage=lazy-init state=end root=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-15140/popen-gw2/test_make_check_keeps_a_missin0/standalone/fixture-project elapsed=0.364s files=0 effects=0
+INFO: stage=repository state=end repository=fixture-project surface=pyproject elapsed=1.743s files=1
+INFO: stage=repository state=start repository=fixture-project root=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-15140/popen-gw2/test_make_check_keeps_a_missin0/standalone/fixture-project source_root=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-15140/popen-gw2/test_make_check_keeps_a_missin0/standalone/fixture-project surface=all role=standalone
+INFO: stage=lazy-init state=start root=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-15140/popen-gw2/test_make_check_keeps_a_missin0/standalone/fixture-project
+INFO: stage=lazy-init state=end root=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-15140/popen-gw2/test_make_check_keeps_a_missin0/standalone/fixture-project elapsed=0.065s files=0 effects=0
+INFO: stage=lazy-init state=start root=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-15140/popen-gw2/test_make_check_keeps_a_missin0/standalone/fixture-project
+INFO: stage=lazy-init state=end root=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-15140/popen-gw2/test_make_check_keeps_a_missin0/standalone/fixture-project elapsed=0.392s files=1 effects=1
+INFO: stage=lazy-init state=start root=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-15140/popen-gw2/test_make_check_keeps_a_missin0/standalone/fixture-project
+INFO: stage=lazy-init state=end root=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-15140/popen-gw2/test_make_check_keeps_a_missin0/standalone/fixture-project elapsed=0.200s files=1 effects=1
+INFO: stage=repository state=end repository=fixture-project surface=all elapsed=10.859s files=66
+[1/1] fixture-project plan ...
+  [OK] plan     fixture-project          10.86s
+DEBUG: file_changes: verify pid=2349056 observed=4 lock=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-15140/popen-gw2/test_make_check_keeps_a_missin0/standalone/fixture-project/.git/flext-infra.lock
+DEBUG: file_changes: publish pid=2349056 path=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-15140/popen-gw2/test_make_check_keeps_a_missin0/standalone/fixture-project/.beads/config.yaml before_inode=None before_bytes=None desired_bytes=1069
+DEBUG: file_changes: publish pid=2349056 path=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-15140/popen-gw2/test_make_check_keeps_a_missin0/standalone/fixture-project/.beads/metadata.json before_inode=None before_bytes=None desired_bytes=109
+DEBUG: file_changes: publish pid=2349056 path=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-15140/popen-gw2/test_make_check_keeps_a_missin0/standalone/fixture-project/.envrc before_inode=None before_bytes=None desired_bytes=11118
+DEBUG: file_changes: publish pid=2349056 path=/home/marlonsc/tmp/pytest-of-marlonsc/pytest-15140/popen-gw2/test_make_check_keeps_a_missin0/standalone/fixture-project/Makefile before_inode=None before_bytes=None desired_bytes=85199
++++++++++++++++++++++++++++++++++++++++++++++++++++++++ Timeout ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Stack of flext-cli-process-stderr (140275130287808) ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.18/lib/python3.13/threading.py", line 1015, in _bootstrap
+    self._bootstrap_inner()
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.18/lib/python3.13/threading.py", line 1044, in _bootstrap_inner
+    self.run()
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.18/lib/python3.13/threading.py", line 995, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/marlonsc/flext/flext-infra/worktrees/ci-independent-fast-tests/.venv/lib/python3.13/site-packages/flext_cli/_utilities/_runtime/process_stream.py", line 72, in _pump_process_output
+    chunk = cls._read_process_chunk(source, state.failures)
+  File "/home/marlonsc/flext/flext-infra/worktrees/ci-independent-fast-tests/.venv/lib/python3.13/site-packages/flext_cli/_utilities/_runtime/process_stream.py", line 99, in _read_process_chunk
+    chunk = source.read(cls._STREAM_CHUNK_BYTES)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Stack of flext-cli-process-stdout (140275176437440) ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.18/lib/python3.13/threading.py", line 1015, in _bootstrap
+    self._bootstrap_inner()
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.18/lib/python3.13/threading.py", line 1044, in _bootstrap_inner
+    self.run()
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.18/lib/python3.13/threading.py", line 995, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/marlonsc/flext/flext-infra/worktrees/ci-independent-fast-tests/.venv/lib/python3.13/site-packages/flext_cli/_utilities/_runtime/process_stream.py", line 72, in _pump_process_output
+    chunk = cls._read_process_chunk(source, state.failures)
+  File "/home/marlonsc/flext/flext-infra/worktrees/ci-independent-fast-tests/.venv/lib/python3.13/site-packages/flext_cli/_utilities/_runtime/process_stream.py", line 99, in _read_process_chunk
+    chunk = source.read(cls._STREAM_CHUNK_BYTES)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Stack of flext-cli-process-waiter (140275168044736) ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.18/lib/python3.13/threading.py", line 1015, in _bootstrap
+    self._bootstrap_inner()
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.18/lib/python3.13/threading.py", line 1044, in _bootstrap_inner
+    self.run()
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.18/lib/python3.13/threading.py", line 995, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/marlonsc/flext/flext-infra/worktrees/ci-independent-fast-tests/.venv/lib/python3.13/site-packages/flext_cli/_utilities/_runtime/process_wait.py", line 21, in _wait_for_root_process
+    state.return_codes.append(process.wait())
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.18/lib/python3.13/subprocess.py", line 1281, in wait
+    return self._wait(timeout=timeout)
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.18/lib/python3.13/subprocess.py", line 2086, in _wait
+    (pid, sts) = self._try_wait(0)
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.18/lib/python3.13/subprocess.py", line 2044, in _try_wait
+    (pid, sts) = os.waitpid(self.pid, wait_flags)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Stack of flext-async-log-writer (140275159652032) ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.18/lib/python3.13/threading.py", line 1015, in _bootstrap
+    self._bootstrap_inner()
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.18/lib/python3.13/threading.py", line 1044, in _bootstrap_inner
+    self.run()
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.18/lib/python3.13/threading.py", line 995, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/marlonsc/flext/flext-infra/worktrees/ci-independent-fast-tests/.venv/lib/python3.13/site-packages/flext_core/_utilities/_logging/async_writer.py", line 138, in _worker
+    job = self.queue.get(
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.18/lib/python3.13/queue.py", line 210, in get
+    self.not_empty.wait(remaining)
+  File "/home/marlonsc/.local/share/mise/installs/python/3.13.18/lib/python3.13/threading.py", line 363, in wait
+    gotit = waiter.acquire(True, timeout)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Stack of <unknown> (140275368326848) ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  File "/home/marlonsc/flext/flext-infra/worktrees/ci-independent-fast-tests/.venv/lib/python3.13/site-packages/execnet/gateway_base.py", line 411, in _perform_spawn
+    reply.run()
+  File "/home/marlonsc/flext/flext-infra/worktrees/ci-independent-fast-tests/.venv/lib/python3.13/site-packages/execnet/gateway_base.py", line 341, in run
+    self._result = func(*args, **kwargs)
+  File "/home/marlonsc/flext/flext-infra/worktrees/ci-independent-fast-tests/.venv/lib/python3.13/site-packages/execnet/gateway_base.py", line 1160, in _thread_receiver
+    msg = Message.from_io(io)
+  File "/home/marlonsc/flext/flext-infra/worktrees/ci-independent-fast-tests/.venv/lib/python3.13/site-packages/execnet/gateway_base.py", line 567, in from_io
+    header = io.read(9)  # type 1, channel 4, payload 4
+  File "/home/marlonsc/flext/flext-infra/worktrees/ci-independent-fast-tests/.venv/lib/python3.13/site-packages/execnet/gateway_base.py", line 534, in read
+    data = self._read(numbytes - len(buf))
++++++++++++++++++++++++++++++++++++++++++++++++++++++++ Timeout ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+- generated xml file: /home/marlonsc/flext/flext-infra/worktrees/ci-independent-fast-tests/.reports/tests/20261123T020848.067465Z-2345713/junit.xml -
+- generated report log file: /home/marlonsc/flext/flext-infra/worktrees/ci-independent-fast-tests/.reports/tests/20261123T020848.067465Z-2345713/events.jsonl -
+--------------------------------------------------- flext slow tests ---------------------------------------------------
+no test near the ordinary or slow limit
+================================================= slowest 25 durations =================================================
+20.13s call     tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCodegenMakeCheckPartition::test_make_check_keeps_a_missing_runtime_fatal[all]
+
+(24 durations < 2s hidden.)
+=============================================== short test summary info ================================================
+FAILED tests/unit/codegen/test_codegen_make_check_partition.py::TestsFlextInfraCodegenMakeCheckPartition::test_make_check_keeps_a_missing_runtime_fatal[all]
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! xdist.dsession.Interrupted: stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+============================================ 1 failed, 18 passed in 27.34s =============================================

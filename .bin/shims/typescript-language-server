@@ -1,0 +1,1 @@
+/home/marlonsc/.local/bin/mise

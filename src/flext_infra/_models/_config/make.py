@@ -1132,10 +1132,10 @@ class FlextInfraModelsConfigMake(
             self._validate_admission_requirements()
 
         def _validate_test_admission(self, tests: p.Infra.MakeWorkflowStepSpec) -> None:
-            """Require primary evidence in every context of each test invocation.
+            """Require primary evidence locally while CI reports tests independently.
 
             Raises:
-                ValueError: If any test context lacks a declared primary dependency.
+                ValueError: If the primary dependency contexts violate the test partition.
 
             """
             primary = {
@@ -1150,10 +1150,10 @@ class FlextInfraModelsConfigMake(
                 if required.step in primary
                 for context in required.contexts
             }
-            if covered != set(tests.contexts):
+            if covered != set(tests.contexts) - {"ci"}:
                 msg = (
                     "tests require fresh global primary check evidence: "
-                    "every tests context must require the primary check phase"
+                    "only non-CI tests contexts must require the primary check phase"
                 )
                 raise ValueError(msg)
 

@@ -237,6 +237,10 @@ class TestsFlextInfraCodegenMakeCheckPartition:
                 commands[position],
                 eq=f"{make.ci.variable}={make.ci.value} {row.make_command}",
             )
+            if row.verb == c.Infra.VERB_TEST:
+                condition = str(steps[position]["if"])
+                tm.that(condition, has="steps.approval-setup.outcome == 'success'")
+                tm.that(condition, lacks="steps.approval-check-primary.outcome")
         local = f"{make.ci.variable}={make.ci.local_value} make"
         for step in steps:
             if local in str(step.get("run", "")):

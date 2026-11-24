@@ -1,0 +1,8 @@
+{
+  "execution_mode": "full",
+  "isolated_fixture": false,
+  "testmon_db": "/home/marlonsc/flext/flext-infra/worktrees/ci-independent-fast-tests/.testmondata",
+  "deadline_monotonic": null,
+  "report_directory": "/home/marlonsc/flext/flext-infra/worktrees/ci-independent-fast-tests/.reports/tests/20261123T020848.067465Z-2345713",
+  "profile_sha256": null
+}
