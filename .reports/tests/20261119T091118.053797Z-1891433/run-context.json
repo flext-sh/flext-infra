@@ -1,0 +1,8 @@
+{
+  "execution_mode": "global-incremental",
+  "testmon_db": "/home/marlonsc/.cache/flext/infra/testmon/flext-infra/restore-flext-tests-bases-20261119/.testmondata",
+  "testmon_lease_acquired": true,
+  "deadline_monotonic": 25996.941324262,
+  "report_directory": "/home/marlonsc/worktrees/flext-infra/restore-flext-tests-bases-20261119/.reports/tests/20261119T091118.053797Z-1891433",
+  "profile_sha256": null
+}

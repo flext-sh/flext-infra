@@ -1,0 +1,1 @@
+/home/marlonsc/.local/share/mise/installs/github-jdx-mise/2026.10.3/bin/mise

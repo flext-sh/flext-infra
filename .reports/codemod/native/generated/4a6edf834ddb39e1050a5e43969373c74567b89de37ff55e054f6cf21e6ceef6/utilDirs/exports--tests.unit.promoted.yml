@@ -1,0 +1,1 @@
+{"id":"exports--tests.unit.promoted","language":"Python","rule":{"regex":"^(?:TestsFlextInfraPromotedCommandHeader|TestsFlextInfraPromotedCommandStem)$"}}

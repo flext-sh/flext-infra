@@ -1,0 +1,1 @@
+{"id":"exports--flext_infra._promoted","language":"Python","rule":{"regex":"^(?:FlextInfraPromotedBase|FlextInfraPromotedDiscovery|FlextInfraPromotedDispatch|FlextInfraPromotedRegistry)$"}}

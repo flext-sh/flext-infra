@@ -1,0 +1,1 @@
+{"id":"exports--flext_infra.codemod._extract","language":"Python","rule":{"regex":"^(?:FlextInfraCodemodExtractDuplicate)$"}}

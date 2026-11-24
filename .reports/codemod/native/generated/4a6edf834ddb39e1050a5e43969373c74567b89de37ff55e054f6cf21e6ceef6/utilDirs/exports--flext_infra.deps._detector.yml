@@ -1,0 +1,1 @@
+{"id":"exports--flext_infra.deps._detector","language":"Python","rule":{"regex":"^(?:FlextInfraDepsDetectorRuntimeSteps)$"}}
