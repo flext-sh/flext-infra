@@ -1,0 +1,44 @@
+{
+  "failed_count": 1,
+  "error_count": 0,
+  "warning_count": 0,
+  "skipped_count": 0,
+  "connectivity_skip_cases": [],
+  "collection_failed_count": 0,
+  "collection_skipped_count": 0,
+  "collection_failed_cases": [],
+  "collection_skip_cases": [],
+  "reported_node_ids": [
+    "tests/unit/validate/pytest_runner_public_tests.py::TestsFlextInfraPytestRunner::test_first_failure_stops_remaining_cases"
+  ],
+  "phase_outcomes": [
+    {
+      "node_id": "tests/unit/validate/pytest_runner_public_tests.py::TestsFlextInfraPytestRunner::test_first_failure_stops_remaining_cases",
+      "phase": "setup",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/validate/pytest_runner_public_tests.py::TestsFlextInfraPytestRunner::test_first_failure_stops_remaining_cases",
+      "phase": "call",
+      "outcome": "failed"
+    },
+    {
+      "node_id": "tests/unit/validate/pytest_runner_public_tests.py::TestsFlextInfraPytestRunner::test_first_failure_stops_remaining_cases",
+      "phase": "teardown",
+      "outcome": "passed"
+    }
+  ],
+  "markdown_attempts": [],
+  "markdown_items": [],
+  "failed_cases": [
+    "tests.unit.validate.pytest_runner_public_tests.TestsFlextInfraPytestRunner::test_first_failure_stops_remaining_cases"
+  ],
+  "error_traces": [
+    "=== FAILURE: tests.unit.validate.pytest_runner_public_tests.TestsFlextInfraPytestRunner::test_first_failure_stops_remaining_cases ===\nRuntimeError: Python source discovery requires a Git checkout: /home/marlonsc/tmp/pytest-of-marlonsc/pytest-14646/popen-gw3/test_first_failure_stops_remai0/cached_runner_project\n{\"error\":\"Python source discovery requires a Git checkout: /home/marlonsc/tmp/pytest-of-marlonsc/pytest-14646/popen-gw3/test_first_failure_stops_remai0/cached_runner_project\"}\ntests/unit/validate/pytest_runner_public_tests.py:547: in test_first_failure_stops_remaining_cases\n    exit_code = tm.ok(runner.execute())\n                      ^^^^^^^^^^^^^^^^\nsrc/flext_infra/validate/_pytest_runner/execution.py:747: in execute\n    return self.execute_global()\n           ^^^^^^^^^^^^^^^^^^^^^\nsrc/flext_infra/validate/_pytest_runner/execution.py:819: in execute_global\n    else self._execute_testmon(execution_mode=execution_mode)\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nsrc/flext_infra/validate/_pytest_runner/execution.py:955: in _execute_testmon\n    result = self._execute_testmon_leased(\nsrc/flext_infra/validate/_pytest_runner/execution.py:1027: in _execute_testmon_leased\n    outcome = self._run_suite(\nsrc/flext_infra/validate/_pytest_runner/execution.py:376: in _run_suite\n    inputs=u.Infra.load_codegen_inputs(self.repository_root).unwrap(),\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n.venv/lib/python3.13/site-packages/flext_core/_result/unwrap.py:51: in unwrap\n    return self.value\n           ^^^^^^^^^^\n.venv/lib/python3.13/site-packages/flext_core/_result/behavior.py:58: in value\n    self._raise_failure()\n.venv/lib/python3.13/site-packages/flext_core/_result/behavior.py:73: in _raise_failure\n    raise error\n.venv/lib/python3.13/site-packages/flext_core/_result/construction.py:239: in create_from_callable\n    value = func()\n            ^^^^^^\nsrc/flext_infra/_utilities/project_managed_artifacts.py:533: in _repository_codegen_spec\n    kind = FlextInfraUtilitiesProjectDiscoveryShape.detected_project_kind(\nsrc/flext_infra/_utilities/_project/discovery_shape.py:67: in detected_project_kind\n    ) or cls._uses_flext_imports(repository_root, source_project):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nsrc/flext_infra/_utilities/_project/discovery_shape.py:112: in _uses_flext_imports\n    for resource in project.get_python_files():\n                    ^^^^^^^^^^^^^^^^^^^^^^^^^^\nsrc/flext_infra/_utilities/_rope/native_project.py:283: in get_python_files\n    for path in FlextInfraUtilitiesProjectDiscovery.discover_python_files(\nsrc/flext_infra/_utilities/project_discovery.py:645: in discover_python_files\n    for path in cls._walk_python_files(\nsrc/flext_infra/_utilities/project_discovery.py:713: in _walk_python_files\n    source_paths = cls._source_scope_paths(directory)\n                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nsrc/flext_infra/_utilities/project_discovery.py:817: in _source_scope_paths\n    raise RuntimeError(msg)\nE   RuntimeError: Python source discovery requires a Git checkout: /home/marlonsc/tmp/pytest-of-marlonsc/pytest-14646/popen-gw3/test_first_failure_stops_remai0/cached_runner_project\nE   {\"error\":\"Python source discovery requires a Git checkout: /home/marlonsc/tmp/pytest-of-marlonsc/pytest-14646/popen-gw3/test_first_failure_stops_remai0/cached_runner_project\"}"
+  ],
+  "warning_lines": [],
+  "skip_cases": [],
+  "slow_entries": [
+    "2.901000s | tests.unit.validate.pytest_runner_public_tests.TestsFlextInfraPytestRunner::test_first_failure_stops_remaining_cases"
+  ]
+}

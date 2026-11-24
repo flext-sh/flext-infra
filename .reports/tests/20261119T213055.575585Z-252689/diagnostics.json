@@ -1,0 +1,44 @@
+{
+  "failed_count": 1,
+  "error_count": 0,
+  "warning_count": 0,
+  "skipped_count": 0,
+  "connectivity_skip_cases": [],
+  "collection_failed_count": 0,
+  "collection_skipped_count": 0,
+  "collection_failed_cases": [],
+  "collection_skip_cases": [],
+  "reported_node_ids": [
+    "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_publication_rejects_ambiguous_bindings[Base = Owner\\n    Base = Owner-p]"
+  ],
+  "phase_outcomes": [
+    {
+      "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_publication_rejects_ambiguous_bindings[Base = Owner\\n    Base = Owner-p]",
+      "phase": "setup",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_publication_rejects_ambiguous_bindings[Base = Owner\\n    Base = Owner-p]",
+      "phase": "call",
+      "outcome": "failed"
+    },
+    {
+      "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_publication_rejects_ambiguous_bindings[Base = Owner\\n    Base = Owner-p]",
+      "phase": "teardown",
+      "outcome": "passed"
+    }
+  ],
+  "markdown_attempts": [],
+  "markdown_items": [],
+  "failed_cases": [
+    "tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_publication_rejects_ambiguous_bindings[Base = Owner\\n    Base = Owner-p]"
+  ],
+  "error_traces": [
+    "=== FAILURE: tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_publication_rejects_ambiguous_bindings[Base = Owner\\n    Base = Owner-p] ===\nFailed: Timeout (>2.0s) from pytest-timeout.\ntests/unit/codegen/_utility_facade_projection/owner_publication.py:408: in test_explicit_publication_rejects_ambiguous_bindings\n    with u.Infra.facade_source_project(root) as (project, sources):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n../../../.local/share/mise/installs/python/3.13.17/lib/python3.13/contextlib.py:141: in __enter__\n    return next(self.gen)\n           ^^^^^^^^^^^^^^\nsrc/flext_infra/_utilities/workspace_snapshot.py:213: in facade_source_project\n    FlextInfraUtilitiesProjectDiscovery.discover_python_files(\nsrc/flext_infra/_utilities/project_discovery.py:645: in discover_python_files\n    for path in cls._walk_python_files(\nsrc/flext_infra/_utilities/project_discovery.py:713: in _walk_python_files\n    source_paths = cls._source_scope_paths(directory)\n                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nsrc/flext_infra/_utilities/project_discovery.py:805: in _source_scope_paths\n    source_paths = FlextInfraUtilitiesGit.git_source_scope_paths(directory)\n                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nsrc/flext_infra/_utilities/_git/scope.py:321: in git_source_scope_paths\n    root = cls.git_repo_root(str(scope_root))\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nsrc/flext_infra/_utilities/_git/scope.py:93: in git_repo_root\n    probed = probe(m.Infra.GitRepoRequest(repo_root=resolved_scope))\n                   ^^^^^^^^^^^^^^^^^^^^^^\n.venv/lib/python3.13/site-packages/flext_core/flextlazy_member.py:93: in __get__\n    raw = self.resolve()\n          ^^^^^^^^^^^^^^\n.venv/lib/python3.13/site-packages/flext_core/flextlazy_member.py:136: in resolve\n    getattr(self._load(self._module), self._owner),\n            ^^^^^^^^^^^^^^^^^^^^^^^^\n.venv/lib/python3.13/site-packages/flext_core/flextlazy_bootstrap.py:200: in load\n    mod = self._import_module(module_path)\n          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n../../../.local/share/mise/installs/python/3.13.17/lib/python3.13/importlib/__init__.py:88: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n<frozen importlib._bootstrap>:1404: in _gcd_import\n    ???\n<frozen importlib._bootstrap>:1369: in _find_and_load\n    ???\n<frozen importlib._bootstrap>:1340: in _find_and_load_unlocked\n    ???\n<frozen importlib._bootstrap>:935: in _load_unlocked\n    ???\n.venv/lib/python3.13/site-packages/_pytest/assertion/rewrite.py:185: in exec_module\n    exec(co, module.__dict__)\nsrc/flext_infra/_models/git.py:23: in <module>\n    class FlextInfraModelsGit(\nsrc/flext_infra/_models/git.py:134: in FlextInfraModelsGit\n    class GitBoolReport(m.ContractModel):\n.venv/lib/python3.13/site-packages/pydantic/_internal/_model_construction.py:217: in __new__\n    set_model_fields(cls, config_wrapper=config_wrapper, ns_resolver=ns_resolver, namespace_info=namespace_info)\n.venv/lib/python3.13/site-packages/pydantic/_internal/_model_construction.py:543: in set_model_fields\n    fields, pydantic_extra_info, class_vars, private_attributes = collect_model_fields(\n.venv/lib/python3.13/site-packages/pydantic/_internal/_fields.py:472: in collect_model_fields\n    field_info = FieldInfo_.from_annotation(ann_type, _source=AnnotationSource.CLASS)\n                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n.venv/lib/python3.13/site-packages/pydantic/fields.py:525: in from_annotation\n    inspected_ann = inspect_annotation(\n.venv/lib/python3.13/site-packages/typing_inspection/introspection.py:525: in inspect_annotation\n    return InspectedAnnotation(annotation, qualifiers, metadata)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n<string>:1: in <lambda>\n    ???\nE   Failed: Timeout (>2.0s) from pytest-timeout."
+  ],
+  "warning_lines": [],
+  "skip_cases": [],
+  "slow_entries": [
+    "2.037000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_publication_rejects_ambiguous_bindings[Base = Owner\\n    Base = Owner-p]"
+  ]
+}

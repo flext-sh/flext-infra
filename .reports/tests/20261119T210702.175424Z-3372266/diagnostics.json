@@ -1,0 +1,44 @@
+{
+  "failed_count": 1,
+  "error_count": 0,
+  "warning_count": 0,
+  "skipped_count": 0,
+  "connectivity_skip_cases": [],
+  "collection_failed_count": 0,
+  "collection_skipped_count": 0,
+  "collection_failed_cases": [],
+  "collection_skip_cases": [],
+  "reported_node_ids": [
+    "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_publication_rejects_ambiguous_bindings[Base = Owner\\n    Base = Owner-p]"
+  ],
+  "phase_outcomes": [
+    {
+      "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_publication_rejects_ambiguous_bindings[Base = Owner\\n    Base = Owner-p]",
+      "phase": "setup",
+      "outcome": "passed"
+    },
+    {
+      "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_publication_rejects_ambiguous_bindings[Base = Owner\\n    Base = Owner-p]",
+      "phase": "call",
+      "outcome": "failed"
+    },
+    {
+      "node_id": "tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_publication_rejects_ambiguous_bindings[Base = Owner\\n    Base = Owner-p]",
+      "phase": "teardown",
+      "outcome": "passed"
+    }
+  ],
+  "markdown_attempts": [],
+  "markdown_items": [],
+  "failed_cases": [
+    "tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_publication_rejects_ambiguous_bindings[Base = Owner\\n    Base = Owner-p]"
+  ],
+  "error_traces": [
+    "=== FAILURE: tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_publication_rejects_ambiguous_bindings[Base = Owner\\n    Base = Owner-p] ===\nFailed: Timeout (>2.0s) from pytest-timeout.\ntests/unit/codegen/_utility_facade_projection/owner_publication.py:408: in test_explicit_publication_rejects_ambiguous_bindings\n    with u.Infra.facade_source_project(root) as (project, sources):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n../../../.local/share/mise/installs/python/3.13.17/lib/python3.13/contextlib.py:141: in __enter__\n    return next(self.gen)\n           ^^^^^^^^^^^^^^\nsrc/flext_infra/_utilities/workspace_snapshot.py:206: in facade_source_project\n    project = bindings.enter_context(project_context)\n              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n../../../.local/share/mise/installs/python/3.13.17/lib/python3.13/contextlib.py:530: in enter_context\n    result = _enter(cm)\n             ^^^^^^^^^^\n../../../.local/share/mise/installs/python/3.13.17/lib/python3.13/contextlib.py:141: in __enter__\n    return next(self.gen)\n           ^^^^^^^^^^^^^^\nsrc/flext_infra/_utilities/_rope/core.py:261: in workspace_overlay_project\n    FlextInfraRopeProject.from_atomic_reads(\nsrc/flext_infra/_utilities/_rope/project.py:1236: in from_atomic_reads\n    return snapshot.bind_atomic_reads(\nsrc/flext_infra/_utilities/_rope/project.py:1273: in bind_atomic_reads\n    sorted({*election.source_folders, *additional_source_folders})\nE   Failed: Timeout (>2.0s) from pytest-timeout."
+  ],
+  "warning_lines": [],
+  "skip_cases": [],
+  "slow_entries": [
+    "2.034000s | tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_publication_rejects_ambiguous_bindings[Base = Owner\\n    Base = Owner-p]"
+  ]
+}

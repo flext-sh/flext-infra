@@ -1,0 +1,8 @@
+{
+  "execution_mode": "full",
+  "testmon_db": null,
+  "testmon_lease_acquired": null,
+  "deadline_monotonic": 68937.201953797,
+  "report_directory": "/home/marlonsc/flext/worktrees/flext-m6igj/.reports/tests/20261119T210702.175424Z-3372266",
+  "profile_sha256": "24d26612a0a7405b98bdc7cba245cf99c45b1db978d0e76139859967f97b8af5"
+}

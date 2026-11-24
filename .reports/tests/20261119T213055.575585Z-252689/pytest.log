@@ -1,0 +1,112 @@
+================================================= test session starts ==================================================
+platform linux -- Python 3.13.17, pytest-9.2.0, pluggy-1.7.0 -- /home/marlonsc/flext/worktrees/flext-m6igj/.venv/bin/python
+cachedir: .pytest_cache
+hypothesis profile 'default'
+benchmark: 5.3.1 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+Using --randomly-seed=3202387465
+rootdir: /home/marlonsc/flext/worktrees/flext-m6igj
+configfile: pyproject.toml
+plugins: flext-tests-0.12.0, flext-infra-0.12.1, hypothesis-6.170.15, anyio-4.16.0, asyncio-1.4.1.post1, benchmark-5.3.1, cov-7.1.0, markdown-docs-0.9.2, randomly-5.1.0, reportlog-1.0.0, timeout-2.4.0, xdist-3.8.0, platformdirs-4.14.5
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
+timeout: 2.0s
+timeout method: signal
+timeout func_only: True
+created: 4/4 workers
+4 workers [289 items]
+
+scheduling tests via LoadScopeScheduling
+
+tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_publication_rejects_ambiguous_bindings[Base = Owner\n    Base = Owner-p] 
+[gw3] [  0%] FAILED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_publication_rejects_ambiguous_bindings[Base = Owner\n    Base = Owner-p] 
+
+======================================================= FAILURES =======================================================
+_ TestsFlextInfraUtilityFacadeProjection.test_explicit_publication_rejects_ambiguous_bindings[Base = Owner\n    Base = Owner-p] _
+[gw3] linux -- Python 3.13.17 /home/marlonsc/flext/worktrees/flext-m6igj/.venv/bin/python
+tests/unit/codegen/_utility_facade_projection/owner_publication.py:408: in test_explicit_publication_rejects_ambiguous_bindings
+    with u.Infra.facade_source_project(root) as (project, sources):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../.local/share/mise/installs/python/3.13.17/lib/python3.13/contextlib.py:141: in __enter__
+    return next(self.gen)
+           ^^^^^^^^^^^^^^
+src/flext_infra/_utilities/workspace_snapshot.py:213: in facade_source_project
+    FlextInfraUtilitiesProjectDiscovery.discover_python_files(
+src/flext_infra/_utilities/project_discovery.py:645: in discover_python_files
+    for path in cls._walk_python_files(
+src/flext_infra/_utilities/project_discovery.py:713: in _walk_python_files
+    source_paths = cls._source_scope_paths(directory)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/project_discovery.py:805: in _source_scope_paths
+    source_paths = FlextInfraUtilitiesGit.git_source_scope_paths(directory)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_git/scope.py:321: in git_source_scope_paths
+    root = cls.git_repo_root(str(scope_root))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_git/scope.py:93: in git_repo_root
+    probed = probe(m.Infra.GitRepoRequest(repo_root=resolved_scope))
+                   ^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/flext_core/flextlazy_member.py:93: in __get__
+    raw = self.resolve()
+          ^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/flext_core/flextlazy_member.py:136: in resolve
+    getattr(self._load(self._module), self._owner),
+            ^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/flext_core/flextlazy_bootstrap.py:200: in load
+    mod = self._import_module(module_path)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../.local/share/mise/installs/python/3.13.17/lib/python3.13/importlib/__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1404: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1369: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1340: in _find_and_load_unlocked
+    ???
+<frozen importlib._bootstrap>:935: in _load_unlocked
+    ???
+.venv/lib/python3.13/site-packages/_pytest/assertion/rewrite.py:185: in exec_module
+    exec(co, module.__dict__)
+src/flext_infra/_models/git.py:23: in <module>
+    class FlextInfraModelsGit(
+src/flext_infra/_models/git.py:134: in FlextInfraModelsGit
+    class GitBoolReport(m.ContractModel):
+.venv/lib/python3.13/site-packages/pydantic/_internal/_model_construction.py:217: in __new__
+    set_model_fields(cls, config_wrapper=config_wrapper, ns_resolver=ns_resolver, namespace_info=namespace_info)
+.venv/lib/python3.13/site-packages/pydantic/_internal/_model_construction.py:543: in set_model_fields
+    fields, pydantic_extra_info, class_vars, private_attributes = collect_model_fields(
+.venv/lib/python3.13/site-packages/pydantic/_internal/_fields.py:472: in collect_model_fields
+    field_info = FieldInfo_.from_annotation(ann_type, _source=AnnotationSource.CLASS)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/pydantic/fields.py:525: in from_annotation
+    inspected_ann = inspect_annotation(
+.venv/lib/python3.13/site-packages/typing_inspection/introspection.py:525: in inspect_annotation
+    return InspectedAnnotation(annotation, qualifiers, metadata)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<string>:1: in <lambda>
+    ???
+E   Failed: Timeout (>2.0s) from pytest-timeout.
+------------------------------------------------- Captured stdout call -------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Stack of <unknown> (140240346937024) ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  File "/home/marlonsc/flext/worktrees/flext-m6igj/.venv/lib/python3.13/site-packages/execnet/gateway_base.py", line 411, in _perform_spawn
+    reply.run()
+  File "/home/marlonsc/flext/worktrees/flext-m6igj/.venv/lib/python3.13/site-packages/execnet/gateway_base.py", line 341, in run
+    self._result = func(*args, **kwargs)
+  File "/home/marlonsc/flext/worktrees/flext-m6igj/.venv/lib/python3.13/site-packages/execnet/gateway_base.py", line 1160, in _thread_receiver
+    msg = Message.from_io(io)
+  File "/home/marlonsc/flext/worktrees/flext-m6igj/.venv/lib/python3.13/site-packages/execnet/gateway_base.py", line 567, in from_io
+    header = io.read(9)  # type 1, channel 4, payload 4
+  File "/home/marlonsc/flext/worktrees/flext-m6igj/.venv/lib/python3.13/site-packages/execnet/gateway_base.py", line 534, in read
+    data = self._read(numbytes - len(buf))
+- generated xml file: /home/marlonsc/flext/worktrees/flext-m6igj/.reports/tests/20261119T213055.575585Z-252689/junit.xml -
+- generated report log file: /home/marlonsc/flext/worktrees/flext-m6igj/.reports/tests/20261119T213055.575585Z-252689/events.jsonl -
+--------------------------------------------------- flext slow tests ---------------------------------------------------
+no test near the ordinary or slow limit
+================================================= slowest 25 durations =================================================
+2.00s call     tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_publication_rejects_ambiguous_bindings[Base = Owner\n    Base = Owner-p]
+
+(2 durations < 2s hidden.)
+=============================================== short test summary info ================================================
+FAILED tests/unit/codegen/test_utility_facade_projection.py::TestsFlextInfraUtilityFacadeProjection::test_explicit_publication_rejects_ambiguous_bindings[Base = Owner\n    Base = Owner-p]
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! xdist.dsession.Interrupted: stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+================================================== 1 failed in 12.72s ==================================================

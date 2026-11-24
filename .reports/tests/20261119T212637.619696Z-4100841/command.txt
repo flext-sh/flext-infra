@@ -1,0 +1,17 @@
+/home/marlonsc/flext/worktrees/flext-m6igj/.venv/bin/python -c 'import sys
+from pathlib import Path
+from importlib.util import find_spec, module_from_spec, spec_from_file_location
+package = find_spec('"'"'flext_infra'"'"')
+if package is None or package.origin is None:
+    raise ModuleNotFoundError('"'"'flext_infra._pytest.profile_child'"'"')
+child_path = Path(package.origin).parent.joinpath(*('"'"'_pytest'"'"', '"'"'profile_child'"'"')).with_suffix('"'"'.py'"'"')
+spec = spec_from_file_location('"'"'flext_infra._pytest.profile_child'"'"', child_path)
+if spec is None or spec.loader is None:
+    raise ImportError('"'"'flext_infra._pytest.profile_child'"'"')
+child = sys.modules.get(spec.name)
+if child is None:
+    child = module_from_spec(spec)
+    sys.modules[spec.name] = child
+    spec.loader.exec_module(child)
+child.FlextInfraPytestProfileChild.launcher('"'"'flext_infra._pytest.clock'"'"', '"'"'FLEXT_PYTEST_PROFILE_CHILD_ROOT'"'"', '"'"'FLEXT_PYTEST_PROFILE_PROCESS_DIRECTORY'"'"')
+' /home/marlonsc/flext/worktrees/flext-m6igj/.reports/tests/20261119T212637.619696Z-4100841/pytest.pstats tests/unit/codegen/test_utility_facade_projection.py --verbose --failed-first -ra --durations=25 --durations-min=2.0 --tb=short --flext-suite-stop-monotonic=70070.056730276 --maxfail=1 --junitxml=/home/marlonsc/flext/worktrees/flext-m6igj/.reports/tests/20261119T212637.619696Z-4100841/junit.xml --report-log=/home/marlonsc/flext/worktrees/flext-m6igj/.reports/tests/20261119T212637.619696Z-4100841/events.jsonl -p flext_tests.enforcement_plugin --timeout=2 -p no:pytest-testmon -p no:testmon.pytest_testmon -p no:metadata -o asyncio_default_fixture_loop_scope=function -o flext_slow_timeout_seconds=20 -o timeout_func_only=true -p flext_infra._pytest.collection --flext-collection-manifest=/home/marlonsc/flext/worktrees/flext-m6igj/.reports/tests/20261119T212637.619696Z-4100841/testmon-inventory.json --no-cov -n 4 --max-worker-restart 0 --dist loadscope --loadscope-reorder --benchmark-disable

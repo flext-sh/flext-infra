@@ -1,0 +1,84 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "flext-infra-check",
+          "informationUri": "https://github.com/flext-sh/flext-infra",
+          "rules": []
+        }
+      },
+      "results": []
+    }
+  ],
+  "properties": {
+    "phase": "complete",
+    "requested_gates": [
+      "lint",
+      "format"
+    ],
+    "pending_gates": [],
+    "targets": [
+      {
+        "name": "flext-m6igj",
+        "path": "/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-m6igj",
+        "applicable_gates": [
+          "lint",
+          "format"
+        ],
+        "source_identity": null
+      }
+    ],
+    "results": [
+      {
+        "project": "flext-m6igj",
+        "gates": {
+          "lint": {
+            "result": {
+              "project": "flext-m6igj",
+              "gate": "lint",
+              "passed": true,
+              "errors": [],
+              "duration": 0.075
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-m6igj/.reports/check/12d5a469-b1c5-460c-bacd-7606e03aa36d/flext-m6igj/lint.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          },
+          "format": {
+            "result": {
+              "project": "flext-m6igj",
+              "gate": "format",
+              "passed": true,
+              "errors": [],
+              "duration": 0.043
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-m6igj/.reports/check/12d5a469-b1c5-460c-bacd-7606e03aa36d/flext-m6igj/format.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          }
+        }
+      }
+    ],
+    "selected_files": [
+      "/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-m6igj/tests/unit/validate/pytest_runner_public_tests.py"
+    ],
+    "global_targets": null
+  }
+}

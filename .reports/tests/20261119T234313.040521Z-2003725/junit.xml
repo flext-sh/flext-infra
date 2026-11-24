@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="6.917" timestamp="2026-11-19T20:43:42.443225-03:00" hostname="tungs"><testcase classname="tests.unit.validate.pytest_runner_public_tests.TestsFlextInfraPytestRunner" name="test_first_failure_stops_remaining_cases" time="2.901"><failure message="RuntimeError: Python source discovery requires a Git checkout: /home/marlonsc/tmp/pytest-of-marlonsc/pytest-14646/popen-gw3/test_first_failure_stops_remai0/cached_runner_project&#10;{&quot;error&quot;:&quot;Python source discovery requires a Git checkout: /home/marlonsc/tmp/pytest-of-marlonsc/pytest-14646/popen-gw3/test_first_failure_stops_remai0/cached_runner_project&quot;}">tests/unit/validate/pytest_runner_public_tests.py:547: in test_first_failure_stops_remaining_cases
+    exit_code = tm.ok(runner.execute())
+                      ^^^^^^^^^^^^^^^^
+src/flext_infra/validate/_pytest_runner/execution.py:747: in execute
+    return self.execute_global()
+           ^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/validate/_pytest_runner/execution.py:819: in execute_global
+    else self._execute_testmon(execution_mode=execution_mode)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/validate/_pytest_runner/execution.py:955: in _execute_testmon
+    result = self._execute_testmon_leased(
+src/flext_infra/validate/_pytest_runner/execution.py:1027: in _execute_testmon_leased
+    outcome = self._run_suite(
+src/flext_infra/validate/_pytest_runner/execution.py:376: in _run_suite
+    inputs=u.Infra.load_codegen_inputs(self.repository_root).unwrap(),
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/flext_core/_result/unwrap.py:51: in unwrap
+    return self.value
+           ^^^^^^^^^^
+.venv/lib/python3.13/site-packages/flext_core/_result/behavior.py:58: in value
+    self._raise_failure()
+.venv/lib/python3.13/site-packages/flext_core/_result/behavior.py:73: in _raise_failure
+    raise error
+.venv/lib/python3.13/site-packages/flext_core/_result/construction.py:239: in create_from_callable
+    value = func()
+            ^^^^^^
+src/flext_infra/_utilities/project_managed_artifacts.py:533: in _repository_codegen_spec
+    kind = FlextInfraUtilitiesProjectDiscoveryShape.detected_project_kind(
+src/flext_infra/_utilities/_project/discovery_shape.py:67: in detected_project_kind
+    ) or cls._uses_flext_imports(repository_root, source_project):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_project/discovery_shape.py:112: in _uses_flext_imports
+    for resource in project.get_python_files():
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/native_project.py:283: in get_python_files
+    for path in FlextInfraUtilitiesProjectDiscovery.discover_python_files(
+src/flext_infra/_utilities/project_discovery.py:645: in discover_python_files
+    for path in cls._walk_python_files(
+src/flext_infra/_utilities/project_discovery.py:713: in _walk_python_files
+    source_paths = cls._source_scope_paths(directory)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/flext_infra/_utilities/project_discovery.py:817: in _source_scope_paths
+    raise RuntimeError(msg)
+E   RuntimeError: Python source discovery requires a Git checkout: /home/marlonsc/tmp/pytest-of-marlonsc/pytest-14646/popen-gw3/test_first_failure_stops_remai0/cached_runner_project
+E   {"error":"Python source discovery requires a Git checkout: /home/marlonsc/tmp/pytest-of-marlonsc/pytest-14646/popen-gw3/test_first_failure_stops_remai0/cached_runner_project"}</failure></testcase></testsuite></testsuites>

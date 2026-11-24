@@ -1,0 +1,142 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "flext-infra-check",
+          "informationUri": "https://github.com/flext-sh/flext-infra",
+          "rules": [
+            {
+              "id": "error",
+              "shortDescription": {
+                "text": "Flext Dependency Declaration Gate (deps) issue"
+              },
+              "helpUri": "internal://flext-infra/deps"
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "error",
+          "level": "error",
+          "message": {
+            "text": "Traceback (most recent call last):\n  File \"/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-m6igj/src/flext_infra/gates/deps.py\", line 475, in _scan\n    scan = self._capture_with_retry(project_dir, report_dir)\n  File \"/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-m6igj/src/flext_infra/gates/deps.py\", line 327, in _capture_with_retry\n    captured.unwrap()  # non-transient: fail loud immediately\n    ~~~~~~~~~~~~~~~^^\n  File \"/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-m6igj/.venv/lib/python3.13/site-packages/flext_core/_result/unwrap.py\", line 51, in unwrap\n    return self.value\n           ^^^^^^^^^^\n  File \"/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-m6igj/.venv/lib/python3.13/site-packages/flext_core/_result/behavior.py\", line 58, in value\n    self._raise_failure()\n    ~~~~~~~~~~~~~~~~~~~^^\n  File \"/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-m6igj/.venv/lib/python3.13/site-packages/flext_core/_result/behavior.py\", line 73, in _raise_failure\n    raise error\n  File \"/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-m6igj/.venv/lib/python3.13/site-packages/flext_cli/_utilities/_runtime/process_execution.py\", line 66, in _execute_streamed_process\n    cls._execute_lifecycle(request, state, timing)\n    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-m6igj/.venv/lib/python3.13/site-packages/flext_cli/_utilities/_runtime/process_execution.py\", line 143, in _execute_lifecycle\n    start_result = cls._start_contained_process(\n        m.Cli.RuntimeSpawnCommand(\n    ...<12 lines>...\n        ),\n    )\n  File \"/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-m6igj/.venv/lib/python3.13/site-packages/flext_cli/_utilities/_runtime/process_start.py\", line 61, in _start_contained_process\n    process = cls._spawn_streamed_process(command, stdin_handle, options=contained)\n  File \"/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-m6igj/.venv/lib/python3.13/site-packages/flext_cli/_utilities/runtime.py\", line 94, in _spawn_streamed_process\n    return spawn_streamed_process(\n        command.cmd,\n    ...<3 lines>...\n        options=options,\n    )\n  File \"/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-m6igj/.venv/lib/python3.13/site-packages/flext_cli/_utilities/native_runtime.py\", line 80, in spawn_streamed_process\n    return subprocess.Popen(\n           ~~~~~~~~~~~~~~~~^\n        list(cmd),\n        ^^^^^^^^^^\n    ...<13 lines>...\n        pass_fds=options.pass_fds,\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^\n    )\n    ^\n  File \"/home/marlonsc/.local/share/mise/installs/python/3.13.17/lib/python3.13/subprocess.py\", line 1040, in __init__\n    self._execute_child(args, executable, preexec_fn, close_fds,\n    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n                        pass_fds, cwd, env,\n                        ^^^^^^^^^^^^^^^^^^^\n    ...<5 lines>...\n                        gid, gids, uid, umask,\n                        ^^^^^^^^^^^^^^^^^^^^^^\n                        start_new_session, process_group)\n                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/marlonsc/.local/share/mise/installs/python/3.13.17/lib/python3.13/subprocess.py\", line 1992, in _execute_child\n    raise child_exception_type(errno_num, err_msg, err_filename)\nFileNotFoundError: [Errno 2] No such file or directory: '/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-m6igj/.venv/bin/deptry'\n[Errno 2] No such file or directory: '/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-m6igj/.venv/bin/deptry'\n{\"error\":\"execution error: [Errno 2] No such file or directory: '/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-m6igj/.venv/bin/deptry'\"}"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-m6igj",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 0,
+                  "startColumn": 0
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "properties": {
+    "phase": "complete",
+    "requested_gates": [
+      "lint",
+      "markdown",
+      "deps"
+    ],
+    "pending_gates": [],
+    "targets": [
+      {
+        "name": "flext-m6igj",
+        "path": "/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-m6igj",
+        "applicable_gates": [
+          "lint",
+          "markdown",
+          "deps"
+        ],
+        "source_identity": null
+      }
+    ],
+    "results": [
+      {
+        "project": "flext-m6igj",
+        "gates": {
+          "lint": {
+            "result": {
+              "project": "flext-m6igj",
+              "gate": "lint",
+              "passed": true,
+              "errors": [],
+              "duration": 0.271
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-m6igj/.reports/check/70b25017-94ec-42bd-9e49-07fd05fce100/flext-m6igj/lint.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          },
+          "markdown": {
+            "result": {
+              "project": "flext-m6igj",
+              "gate": "markdown",
+              "passed": true,
+              "errors": [],
+              "duration": 0.589
+            },
+            "issues": [],
+            "raw_receipt": "/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-m6igj/.reports/check/70b25017-94ec-42bd-9e49-07fd05fce100/flext-m6igj/markdown.raw.log",
+            "outcome": "clean",
+            "process": {
+              "raw_return_code": 0,
+              "timed_out": false,
+              "forwarded_signal": null
+            },
+            "components": {},
+            "requested_components": []
+          },
+          "deps": {
+            "result": {
+              "project": "flext-m6igj",
+              "gate": "deps",
+              "passed": false,
+              "errors": [
+                "/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-m6igj:0:0 [error] Traceback (most recent call last):\n  File \"/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-m6igj/src/flext_infra/gates/deps.py\", line 475, in _scan\n    scan = self._capture_with_retry(project_dir, report_dir)\n  File \"/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-m6igj/src/flext_infra/gates/deps.py\", line 327, in _capture_with_retry\n    captured.unwrap()  # non-transient: fail loud immediately\n    ~~~~~~~~~~~~~~~^^\n  File \"/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-m6igj/.venv/lib/python3.13/site-packages/flext_core/_result/unwrap.py\", line 51, in unwrap\n    return self.value\n           ^^^^^^^^^^\n  File \"/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-m6igj/.venv/lib/python3.13/site-packages/flext_core/_result/behavior.py\", line 58, in value\n    self._raise_failure()\n    ~~~~~~~~~~~~~~~~~~~^^\n  File \"/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-m6igj/.venv/lib/python3.13/site-packages/flext_core/_result/behavior.py\", line 73, in _raise_failure\n    raise error\n  File \"/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-m6igj/.venv/lib/python3.13/site-packages/flext_cli/_utilities/_runtime/process_execution.py\", line 66, in _execute_streamed_process\n    cls._execute_lifecycle(request, state, timing)\n    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-m6igj/.venv/lib/python3.13/site-packages/flext_cli/_utilities/_runtime/process_execution.py\", line 143, in _execute_lifecycle\n    start_result = cls._start_contained_process(\n        m.Cli.RuntimeSpawnCommand(\n    ...<12 lines>...\n        ),\n    )\n  File \"/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-m6igj/.venv/lib/python3.13/site-packages/flext_cli/_utilities/_runtime/process_start.py\", line 61, in _start_contained_process\n    process = cls._spawn_streamed_process(command, stdin_handle, options=contained)\n  File \"/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-m6igj/.venv/lib/python3.13/site-packages/flext_cli/_utilities/runtime.py\", line 94, in _spawn_streamed_process\n    return spawn_streamed_process(\n        command.cmd,\n    ...<3 lines>...\n        options=options,\n    )\n  File \"/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-m6igj/.venv/lib/python3.13/site-packages/flext_cli/_utilities/native_runtime.py\", line 80, in spawn_streamed_process\n    return subprocess.Popen(\n           ~~~~~~~~~~~~~~~~^\n        list(cmd),\n        ^^^^^^^^^^\n    ...<13 lines>...\n        pass_fds=options.pass_fds,\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^\n    )\n    ^\n  File \"/home/marlonsc/.local/share/mise/installs/python/3.13.17/lib/python3.13/subprocess.py\", line 1040, in __init__\n    self._execute_child(args, executable, preexec_fn, close_fds,\n    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n                        pass_fds, cwd, env,\n                        ^^^^^^^^^^^^^^^^^^^\n    ...<5 lines>...\n                        gid, gids, uid, umask,\n                        ^^^^^^^^^^^^^^^^^^^^^^\n                        start_new_session, process_group)\n                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/marlonsc/.local/share/mise/installs/python/3.13.17/lib/python3.13/subprocess.py\", line 1992, in _execute_child\n    raise child_exception_type(errno_num, err_msg, err_filename)\nFileNotFoundError: [Errno 2] No such file or directory: '/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-m6igj/.venv/bin/deptry'\n[Errno 2] No such file or directory: '/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-m6igj/.venv/bin/deptry'\n{\"error\":\"execution error: [Errno 2] No such file or directory: '/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-m6igj/.venv/bin/deptry'\"}"
+              ],
+              "duration": 0.698
+            },
+            "issues": [
+              {
+                "file": "/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-m6igj",
+                "line": 0,
+                "column": 0,
+                "code": "error",
+                "message": "Traceback (most recent call last):\n  File \"/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-m6igj/src/flext_infra/gates/deps.py\", line 475, in _scan\n    scan = self._capture_with_retry(project_dir, report_dir)\n  File \"/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-m6igj/src/flext_infra/gates/deps.py\", line 327, in _capture_with_retry\n    captured.unwrap()  # non-transient: fail loud immediately\n    ~~~~~~~~~~~~~~~^^\n  File \"/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-m6igj/.venv/lib/python3.13/site-packages/flext_core/_result/unwrap.py\", line 51, in unwrap\n    return self.value\n           ^^^^^^^^^^\n  File \"/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-m6igj/.venv/lib/python3.13/site-packages/flext_core/_result/behavior.py\", line 58, in value\n    self._raise_failure()\n    ~~~~~~~~~~~~~~~~~~~^^\n  File \"/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-m6igj/.venv/lib/python3.13/site-packages/flext_core/_result/behavior.py\", line 73, in _raise_failure\n    raise error\n  File \"/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-m6igj/.venv/lib/python3.13/site-packages/flext_cli/_utilities/_runtime/process_execution.py\", line 66, in _execute_streamed_process\n    cls._execute_lifecycle(request, state, timing)\n    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-m6igj/.venv/lib/python3.13/site-packages/flext_cli/_utilities/_runtime/process_execution.py\", line 143, in _execute_lifecycle\n    start_result = cls._start_contained_process(\n        m.Cli.RuntimeSpawnCommand(\n    ...<12 lines>...\n        ),\n    )\n  File \"/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-m6igj/.venv/lib/python3.13/site-packages/flext_cli/_utilities/_runtime/process_start.py\", line 61, in _start_contained_process\n    process = cls._spawn_streamed_process(command, stdin_handle, options=contained)\n  File \"/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-m6igj/.venv/lib/python3.13/site-packages/flext_cli/_utilities/runtime.py\", line 94, in _spawn_streamed_process\n    return spawn_streamed_process(\n        command.cmd,\n    ...<3 lines>...\n        options=options,\n    )\n  File \"/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-m6igj/.venv/lib/python3.13/site-packages/flext_cli/_utilities/native_runtime.py\", line 80, in spawn_streamed_process\n    return subprocess.Popen(\n           ~~~~~~~~~~~~~~~~^\n        list(cmd),\n        ^^^^^^^^^^\n    ...<13 lines>...\n        pass_fds=options.pass_fds,\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^\n    )\n    ^\n  File \"/home/marlonsc/.local/share/mise/installs/python/3.13.17/lib/python3.13/subprocess.py\", line 1040, in __init__\n    self._execute_child(args, executable, preexec_fn, close_fds,\n    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n                        pass_fds, cwd, env,\n                        ^^^^^^^^^^^^^^^^^^^\n    ...<5 lines>...\n                        gid, gids, uid, umask,\n                        ^^^^^^^^^^^^^^^^^^^^^^\n                        start_new_session, process_group)\n                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/marlonsc/.local/share/mise/installs/python/3.13.17/lib/python3.13/subprocess.py\", line 1992, in _execute_child\n    raise child_exception_type(errno_num, err_msg, err_filename)\nFileNotFoundError: [Errno 2] No such file or directory: '/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-m6igj/.venv/bin/deptry'\n[Errno 2] No such file or directory: '/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-m6igj/.venv/bin/deptry'\n{\"error\":\"execution error: [Errno 2] No such file or directory: '/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-m6igj/.venv/bin/deptry'\"}",
+                "severity": "error",
+                "locations": [],
+                "related_locations": []
+              }
+            ],
+            "raw_receipt": "/home/marlonsc/flext/.claude/worktrees/kilo-code-flext-violations-89bd05/worktrees/flext-m6igj/.reports/check/70b25017-94ec-42bd-9e49-07fd05fce100/flext-m6igj/deps.raw.log",
+            "outcome": "error",
+            "process": null,
+            "components": {},
+            "requested_components": []
+          }
+        }
+      }
+    ],
+    "selected_files": [],
+    "global_targets": null
+  }
+}

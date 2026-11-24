@@ -1,0 +1,24 @@
+=== FAILURE: tests.unit.codegen.test_utility_facade_projection.TestsFlextInfraUtilityFacadeProjection::test_explicit_publication_rejects_ambiguous_bindings[Base = Owner\n    Base = Owner-p] ===
+Failed: Timeout (>2.0s) from pytest-timeout.
+tests/unit/codegen/_utility_facade_projection/owner_publication.py:408: in test_explicit_publication_rejects_ambiguous_bindings
+    with u.Infra.facade_source_project(root) as (project, sources):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../.local/share/mise/installs/python/3.13.17/lib/python3.13/contextlib.py:141: in __enter__
+    return next(self.gen)
+           ^^^^^^^^^^^^^^
+src/flext_infra/_utilities/workspace_snapshot.py:206: in facade_source_project
+    project = bindings.enter_context(project_context)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../.local/share/mise/installs/python/3.13.17/lib/python3.13/contextlib.py:530: in enter_context
+    result = _enter(cm)
+             ^^^^^^^^^^
+../../../.local/share/mise/installs/python/3.13.17/lib/python3.13/contextlib.py:141: in __enter__
+    return next(self.gen)
+           ^^^^^^^^^^^^^^
+src/flext_infra/_utilities/_rope/core.py:261: in workspace_overlay_project
+    FlextInfraRopeProject.from_atomic_reads(
+src/flext_infra/_utilities/_rope/project.py:1236: in from_atomic_reads
+    return snapshot.bind_atomic_reads(
+src/flext_infra/_utilities/_rope/project.py:1273: in bind_atomic_reads
+    sorted({*election.source_folders, *additional_source_folders})
+E   Failed: Timeout (>2.0s) from pytest-timeout.
