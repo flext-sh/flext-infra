@@ -1031,7 +1031,7 @@ _builtin_build_artifacts:
 # nothing, so its read-only gates fail when any byte would change.
 override CHECK_CONVERGE_MAX_PASSES := 5
 _builtin_check_all: _builtin_require_environment
-{{ "\t" }}@$(if $(filter Y {{ make.ci.pre_commit_value }},$(CI)),,$(SELF_MAKE) _builtin_converge_all && )
+{{ "\t" }}@$(if $(filter Y {{ make.ci.pre_commit_value }},$(CI)),,$(SELF_MAKE) _builtin_converge_all)
 {{ local_check_body() }}
 
 _builtin_converge_all: _builtin_require_environment
