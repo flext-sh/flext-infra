@@ -60,7 +60,7 @@ make tests
 make gen
 ```
 
-Incremental tests use the checkout's native Testmon database. Apply the root
+Tests run only through the retained Testmon cache. Apply the root
 connectivity prerequisite contract (`AGENTS.md`):
 availability skips are unmet prerequisites, not successful runtime validation.
 Warnings, empty collection, missing tools, and suppressed failures remain explicit.
