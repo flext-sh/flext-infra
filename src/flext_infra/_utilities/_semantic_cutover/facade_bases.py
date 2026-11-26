@@ -1374,20 +1374,26 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         if imported.failure:
             return imported
         working = dict(sources)
+        changes: dict[Path, list[str]] = {}
         for edit in imported.value:
             working[edit.file_path] = edit.updated_source
+            changes.setdefault(edit.file_path, []).extend(edit.changes)
         composed = cls.plan_facade_composition(workspace, working)
         if composed.failure:
             return composed
         for edit in composed.value:
             working[edit.file_path] = edit.updated_source
+            changes.setdefault(edit.file_path, []).extend(edit.changes)
+        # One edit per file keeps each law's own evidence; the summary label
+        # only stands in when neither phase reported a change for the file.
         return r[tuple[p.Infra.SemanticMigrationEdit, ...]].ok(
             tuple(
                 m.Infra.SemanticMigrationEdit(
                     file_path=path,
                     original_source=source,
                     updated_source=working[path],
-                    changes=("closed facade import and composition laws",),
+                    changes=tuple(changes.get(path, ()))
+                    or ("closed facade import and composition laws",),
                 )
                 for path, source in sources.items()
                 if working[path] != source

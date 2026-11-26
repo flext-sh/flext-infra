@@ -188,23 +188,23 @@ class FlextInfraWorkspaceRopeQuery(s[p.Infra.RopeWorkspaceSession]):
         root = Path(self.rope_project.root.real_path)
         if not lexical_path.is_relative_to(root):
             return None
-        if self._owns_rope_project:
-            cache_key = str(self._source_path(file_path))
-            cached = self._resource_cache.get(cache_key)
-            if cache_key in self._resource_cache:
-                return cached
-            resource = u.Infra.resolve_resource_from_path(self.rope_project, file_path)
-            self._resource_cache[cache_key] = resource
-            return resource
         path = self._source_path(lexical_path)
-        if not path.is_relative_to(root):
+        cache_key = str(path)
+        if cache_key in self._resource_cache:
+            return self._resource_cache[cache_key]
+        if self._owns_rope_project:
+            resource = u.Infra.resolve_resource_from_path(self.rope_project, file_path)
+        elif not path.is_relative_to(root) or not self.rope_project.source_query(
+            path, "isfile"
+        ):
             return None
-        if not self.rope_project.source_query(path, "isfile"):
-            return None
-        return u.Infra.require_file_resource(
-            self.rope_project.get_resource(path.relative_to(root).as_posix()),
-            path,
-        )
+        else:
+            resource = u.Infra.require_file_resource(
+                self.rope_project.get_resource(path.relative_to(root).as_posix()),
+                path,
+            )
+        self._resource_cache[cache_key] = resource
+        return resource
 
     def semantic(self, file_path: Path) -> p.Infra.ModuleSemanticState:
         """Resolve a module's semantic state through the native Rope query owner.
