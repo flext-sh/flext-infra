@@ -790,18 +790,15 @@ class FlextInfraUtilitiesProjectDiscovery(
         Git owns the inventory of a checkout. The generator materializes a
         candidate workspace beside the mutation lock, inside the repository Git
         directory, and validates it without a checkout of its own; that
-        complete copy is the source scope of a staged preview. An installed
-        distribution under an import-path entry has no checkout either; its
-        own files are its inventory.
+        complete copy is the source scope of a staged preview.
 
         Returns:
-            The Git inventory of the scope, or the staged preview's or installed
-            distribution's own files.
+            The Git inventory of the scope, or the staged preview's own files.
 
         Raises:
             OSError: If the Git inventory of the scope cannot be read.
             RuntimeError: If ``directory`` is neither a Git checkout nor inside a
-                staged preview or an import-path entry.
+                staged preview.
 
         """
         try:
@@ -811,13 +808,9 @@ class FlextInfraUtilitiesProjectDiscovery(
             raise
         if source_paths is not None:
             return source_paths
-        # A member is scoped by the staged preview that contains it; an
-        # installed distribution is scoped by the import-path entry that
-        # holds it, since no checkout owns its files.
-        import_roots = {Path(entry).resolve() for entry in sys.path if entry}
+        # A member is scoped by the staged preview that contains it.
         if not any(
             scope.name.startswith(c.Infra.SOURCE_PREVIEW_PREFIX)
-            or scope.resolve() in import_roots
             for scope in (directory, *directory.parents)
         ):
             msg = f"Python source discovery requires a Git checkout: {directory}"

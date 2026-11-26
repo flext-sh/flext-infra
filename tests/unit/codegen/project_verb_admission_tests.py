@@ -183,8 +183,21 @@ class TestsFlextInfraCodegenProjectVerbAdmission:
             tm.that(process.stderr, has="Refused: 5-minute load average")
 
     @staticmethod
-    def test_gated_check_full_refuses_a_bare_local_check(tmp_path: Path) -> None:
-        """Gating check-full refuses a bare local check under its full-form name."""
+    @c.Tests.MARK.parametrize(
+        ("phase", "refused"),
+        [
+            (None, False),
+            (c.Infra.CheckPhase.PRIMARY, False),
+            (c.Infra.CheckPhase.COMPLETE, True),
+        ],
+    )
+    def test_gated_check_full_refuses_only_the_complete_phase(
+        tmp_path: Path,
+        *,
+        phase: c.Infra.CheckPhase | None,
+        refused: bool,
+    ) -> None:
+        """A bare check is the primary form; only the complete phase is check-full."""
         root, _ = u.Tests.render_make_environment(
             tmp_path,
             c.Infra.MakeProfile.STANDALONE,
@@ -196,10 +209,10 @@ class TestsFlextInfraCodegenProjectVerbAdmission:
                 },
             ),
         )
+        selector = [] if phase is None else [f"CHECK_PHASE={phase.value}"]
         process = tm.ok(
             u.Tests.run_isolated_make(
-                ["--no-print-directory", c.Infra.VERB_CHECK], cwd=root
+                ["--no-print-directory", c.Infra.VERB_CHECK, *selector], cwd=root
             )
         )
-        tm.that(u.Cli.process_succeeded(process.outcome), eq=False)
-        tm.that(process.stderr, has="of 'check-full'")
+        tm.that("of 'check-full'" in process.stderr, eq=refused)

@@ -236,21 +236,17 @@ __all__ = [{self.PARENT_CLASS!r}, 'm']
     def test_facade_classes_derive_every_published_letter(
         self,
         tmp_path: Path,
-        installed_dependency_path: Path,
     ) -> None:
-        """Test facade classes derive every published letter."""
+        """The declaring repository root is the only derivation surface."""
         _child, sources = self._workspace(tmp_path, "")
+        parent = tmp_path / "parent"
         for path, source in sources.items():
-            if "parent_pkg" in path.parts:
-                relative = path.relative_to(tmp_path / "parent/src")
-                target = installed_dependency_path / relative
-                target.parent.mkdir(parents=True, exist_ok=True)
-                target.write_text(source, encoding="utf-8")
+            if path.is_relative_to(parent):
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(source, encoding="utf-8")
+        u.Tests.initialize_git_repo(parent)
         tm.that(
-            u.Infra.facade_classes(
-                "parent_pkg",
-                source_root=installed_dependency_path,
-            ),
+            u.Infra.facade_classes("parent_pkg", source_root=parent),
             eq={"m": self.PARENT_CLASS},
         )
 
@@ -396,14 +392,13 @@ __all__ = [{self.PARENT_CLASS!r}, 'm']
     def test_type_only_self_import_does_not_override_lazy_publication(
         self,
         tmp_path: Path,
-        installed_dependency_path: Path,
         guard_import: str,
         guard: str,
     ) -> None:
         """Static self-imports do not create runtime facade binding cycles."""
         _child, sources = self._workspace(tmp_path, "")
-        parent = tmp_path / "parent/src/parent_pkg"
-        sources[parent / "__init__.py"] = (
+        parent = tmp_path / "parent"
+        sources[parent / "src/parent_pkg/__init__.py"] = (
             f"{guard_import}\n"
             f"{self._lazy_publication('.models', self.PARENT_CLASS, 'm')}"
             f"if {guard}:\n"
@@ -411,18 +406,13 @@ __all__ = [{self.PARENT_CLASS!r}, 'm']
             f"__all__ = [{self.PARENT_CLASS!r}, 'm']\n"
         )
         for path, source in sources.items():
-            if "parent_pkg" in path.parts:
-                target = installed_dependency_path / path.relative_to(
-                    tmp_path / "parent/src",
-                )
-                target.parent.mkdir(parents=True, exist_ok=True)
-                target.write_text(source, encoding="utf-8")
+            if path.is_relative_to(parent):
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(source, encoding="utf-8")
+        u.Tests.initialize_git_repo(parent)
 
         tm.that(
-            u.Infra.facade_classes(
-                "parent_pkg",
-                source_root=installed_dependency_path,
-            ),
+            u.Infra.facade_classes("parent_pkg", source_root=parent),
             eq={"m": self.PARENT_CLASS},
         )
 
