@@ -141,6 +141,10 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
             letter,
             module if is_package else module.rpartition(".")[0],
         )
+        if target == (module, letter):
+            # The runtime binding imports the letter from its own module.
+            msg = f"cyclic facade binding: {module}.{letter}"
+            raise ValueError(msg)
         owner_module, owner_name = target if target is not None else (module, letter)
         facade = runtime.qualified_name(
             project, owner_name, module_name=owner_module
