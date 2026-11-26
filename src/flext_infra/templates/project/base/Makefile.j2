@@ -60,6 +60,9 @@ override SHELL := /bin/sh
 # named mod-full, and a check outside the commit stage without
 # CHECK_PHASE=primary is the full form, named check-full. Overrides apply when
 # the invocation names exactly one verb.
+# The default phase is assigned before admission reads it, so a bare
+# `make check` is the primary form and never the gated check-full.
+CHECK_PHASE ?= primary
 ifeq ($(MAKELEVEL)$(filter {{ make.ci.value }},$({{ make.ci.variable }})),0)
 override ADMISSION_VERB := $(if $(word 2,$(MAKECMDGOALS)),,$(or $(MAKECMDGOALS),$(.DEFAULT_GOAL),help))
 override ADMISSION_VERB := $(if $(filter mod,$(ADMISSION_VERB)),$(if $(strip $(RULES)$(LAWS)),mod,mod-full),$(ADMISSION_VERB))
@@ -172,8 +175,6 @@ WORKSPACE_SUBPROJECTS :={% for subproject in workspace_subprojects %} {{ subproj
 # The Makefile validates no caller input. Every verb
 # always applies; a mistyped variable fails where the verb consumes it, and an
 # unconsumed variable is ignored.
-# Default to the fast primary phase so `make check` is the single gate.
-CHECK_PHASE ?= primary
 export CHECK_PHASE MARKER
 PYTEST_REPORTS_DIR := {{ make.testmon_cache.reports_directory }}
 override PYTEST_RUN_TIMEOUT_SECONDS := {{ pytest.run_timeout_seconds }}
