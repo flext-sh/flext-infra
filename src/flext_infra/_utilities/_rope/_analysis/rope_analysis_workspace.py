@@ -450,8 +450,10 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
     ) -> p.Infra.RopeWorkspaceIndex:
         """Build a Rope workspace index as a view over the run snapshot's listing.
 
-        The root and every member the snapshot holds below it are elected
-        sources unless explicit repository roots bind a scoped query.
+        The root's own sources are elected unless explicit repository roots
+        bind a scoped query; members nested below the root keep their sources
+        in their own listing and stay importable through the Rope project, so
+        planning targets stay local to the called scope.
         ``project`` lists through a planned view instead of the snapshot engine.
         A previously elected index evolves only the supplied changed paths;
         unchanged resources keep their native module-entry identities.
@@ -484,15 +486,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
                 for member in (
                     tuple(project_roots)
                     if project_roots is not None
-                    else (
-                        resolved_root,
-                        *(
-                            other
-                            for other in snapshot.members
-                            if other != resolved_root
-                            and other.is_relative_to(resolved_root)
-                        ),
-                    )
+                    else (resolved_root,)
                 )
                 for path in FlextInfraUtilitiesWorkspaceSnapshot.workspace_python_files(
                     snapshot, member, project=project
