@@ -594,8 +594,12 @@ __all__ = [{self.PARENT_CLASS!r}, 'm']
             The originating immutable result view of semantic migration edits.
 
         """
-        # Git owns the scope's source inventory, and the parent and child are
-        # declared workspace members whose source roots the planner elects.
+        # A real workspace: the members' sources are committed checkout files
+        # (Git owns the inventory) and parent/child are declared members whose
+        # source roots the planner elects.
+        for path, source in sources.items():
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(source, encoding="utf-8")
         u.Tests.initialize_git_repo(tmp_path)
         with (
             u.Infra.facade_source_project(

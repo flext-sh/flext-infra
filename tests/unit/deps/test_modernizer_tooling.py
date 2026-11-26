@@ -693,12 +693,8 @@ class TestsFlextInfraDepsModernizerTooling:
         tm.that(
             sorted(per_file_ignores),
             eq=sorted(
-                pattern
-                for pattern, _ in u.Infra.native_tool_setting(
-                    config.Infra.tooling,
-                    "ruff.lint",
-                    "per-file-ignores",
-                    TypeForm(Sequence[tuple[str, Sequence[str]]]),
+                u.Infra.native_tool_settings(
+                    config.Infra.tooling, "ruff.lint.per-file-ignores"
                 )
             ),
         )
