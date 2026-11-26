@@ -9,10 +9,13 @@ from __future__ import annotations
 import os
 import sys
 from collections.abc import Mapping, MutableMapping, Sequence
-from pathlib import Path
+from typing import TYPE_CHECKING
 
-from flext_infra.workspace import FlextInfraRopeWorkspace
+from flext_infra import infra
 from tests import c, m, p, tm, u
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class TestsFlextInfraFacadeBaseCutover:
@@ -70,6 +73,7 @@ class TestsFlextInfraFacadeBaseCutover:
     def test_rebound_letter_base_extends_the_declared_class(
         self,
         tmp_path: Path,
+        installed_dependency_path: Path,
         statement: str,
         base: str,
         rebind: str,
@@ -79,6 +83,15 @@ class TestsFlextInfraFacadeBaseCutover:
             tmp_path,
             f"{statement}\n\n\nclass ChildModels({base}):\n    pass\n\n\n{rebind}\n",
         )
+        # The parent is a dependency of the child: it resolves installed, as
+        # in a real workspace, never from a sibling tree outside the scope.
+        for path, source in sources.items():
+            if "parent_pkg" in path.parts:
+                target = installed_dependency_path / path.relative_to(
+                    tmp_path / "parent/src",
+                )
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(source, encoding="utf-8")
         edits = self._edits(tmp_path, sources, child)
         tm.that(tuple(edit.file_path for edit in edits), eq=(child.resolve(),))
         updated = edits[0].updated_source
@@ -594,25 +607,9 @@ __all__ = [{self.PARENT_CLASS!r}, 'm']
             The originating immutable result view of semantic migration edits.
 
         """
-        # A real workspace: the members' sources are committed checkout files
-        # (Git owns the inventory) and parent/child are declared members whose
-        # source roots the planner elects.
-        for path, source in sources.items():
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(source, encoding="utf-8")
+        # Git owns the source inventory of the scope (project discovery).
         u.Tests.initialize_git_repo(tmp_path)
-        with (
-            u.Infra.facade_source_project(
-                tmp_path,
-                planned_sources=sources,
-                project_roots=(tmp_path / "parent", tmp_path / "child"),
-            ) as (project, _),
-            FlextInfraRopeWorkspace.open_workspace(
-                tmp_path,
-                rope_repository_root=Path(project.root.real_path),
-                source_project=project,
-            ) as rope,
-        ):
+        with infra.rope_workspace(tmp_path) as rope:
             return u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.FACADE_BASE,
                 rope_workspace=rope,
