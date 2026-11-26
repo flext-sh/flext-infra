@@ -148,6 +148,16 @@ class FlextInfraModelsConfigMake(
             t.NonEmptyStr,
             m.Field(description="Value of remote_variable on a remote runner"),
         ] = "true"
+        converge_variable: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description=(
+                    "Variable make check exports to the generation of its own "
+                    "convergence: the check is the remediation the health refusal "
+                    "asks for, so that generation never needs an earlier green check."
+                ),
+            ),
+        ] = "FLEXT_INFRA_CHECK_CONVERGE"
 
         @m.model_validator(mode="after")
         def _validate_distinct_tokens(self) -> Self:

@@ -335,14 +335,16 @@ class FlextInfraUtilitiesGateAdmission:
         """Refuse a heavy op when the named gates' health is failed or stale.
 
         Missing records are allowed (first-run grace). Exempt contexts (CI,
-        remote, pre-push) bypass. Generation names only ``check``: it projects
-        files and never depends on a green test run (operator 2026-11-22).
+        remote, pre-push, the generation inside ``make check``) bypass.
+        Generation names only ``check``: it projects files and never depends on
+        a green test run (operator 2026-11-22).
 
         Raises:
             SystemExit: When the last recorded health is a failure or stale.
 
         """
-        if cls._repeat_exempt():
+        converge = config.Infra.codegen.make.ci.converge_variable
+        if cls._repeat_exempt() or u.Cli.process_env().get(converge):
             return
         root = cls.gate_admission_root()
         root.mkdir(parents=True, exist_ok=True)
