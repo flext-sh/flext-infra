@@ -695,7 +695,7 @@ class TestsFlextInfraDepsModernizerTooling:
             eq=sorted(
                 pattern
                 for pattern, _ in u.Infra.native_tool_setting(
-                    tool_config_document,
+                    config.Infra.tooling,
                     "ruff.lint",
                     "per-file-ignores",
                     TypeForm(Sequence[tuple[str, Sequence[str]]]),
