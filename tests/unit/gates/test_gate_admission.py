@@ -520,6 +520,28 @@ class TestsFlextInfraGateAdmission:
         tm.that("last make tests failed" in refused.stderr, eq=True)
 
     @classmethod
+    def test_check_convergence_generation_skips_the_check_health(
+        cls, tmp_path: Path
+    ) -> None:
+        """The check is the remediation: its generation needs no earlier green."""
+        environment = cls._environment(tmp_path, None)
+        refused = cls._gate(
+            environment, "gen", TestsFlextInfraGateAdmissionHolder.Mode.CONVERGE_HEALTH
+        )
+        tm.that(
+            tm.ok(refused.wait(timeout=_WAIT_SECONDS)),
+            eq=c.Infra.GATE_ADMISSION_REFUSED_EXIT_CODE,
+        )
+        tm.that("last make check failed" in refused.stderr, eq=True)
+        converge = FlextInfraConfig.fetch_global().Infra.codegen.make.ci
+        admitted = cls._gate(
+            {**environment, converge.converge_variable: "1"},
+            "gen",
+            TestsFlextInfraGateAdmissionHolder.Mode.CONVERGE_HEALTH,
+        )
+        tm.that(tm.ok(admitted.wait(timeout=_WAIT_SECONDS)), eq=0)
+
+    @classmethod
     def test_ci_runner_and_pre_push_hook_are_not_repeat_limited(
         cls, tmp_path: Path
     ) -> None:
