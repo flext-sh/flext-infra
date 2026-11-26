@@ -9,13 +9,10 @@ from __future__ import annotations
 import os
 import sys
 from collections.abc import Mapping, MutableMapping, Sequence
-from typing import TYPE_CHECKING
+from pathlib import Path
 
-from flext_infra import infra
+from flext_infra.workspace import FlextInfraRopeWorkspace
 from tests import c, m, p, tm, u
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 
 class TestsFlextInfraFacadeBaseCutover:
@@ -597,12 +594,21 @@ __all__ = [{self.PARENT_CLASS!r}, 'm']
             The originating immutable result view of semantic migration edits.
 
         """
-        # Git owns the source inventory of a scope: materialize and commit it.
-        for path, source in sources.items():
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(source, encoding="utf-8")
+        # Git owns the scope's source inventory, and the parent and child are
+        # declared workspace members whose source roots the planner elects.
         u.Tests.initialize_git_repo(tmp_path)
-        with infra.rope_workspace(tmp_path) as rope:
+        with (
+            u.Infra.facade_source_project(
+                tmp_path,
+                planned_sources=sources,
+                project_roots=(tmp_path / "parent", tmp_path / "child"),
+            ) as (project, _),
+            FlextInfraRopeWorkspace.open_workspace(
+                tmp_path,
+                rope_repository_root=Path(project.root.real_path),
+                source_project=project,
+            ) as rope,
+        ):
             return u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.FACADE_BASE,
                 rope_workspace=rope,

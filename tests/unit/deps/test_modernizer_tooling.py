@@ -686,7 +686,22 @@ class TestsFlextInfraDepsModernizerTooling:
                 "flext_sample",
             }),
         )
-        tm.that(lint, lacks="per-file-ignores")
+        # The tooling SSOT declares the authorized per-file axioms; the
+        # project's stale local pattern is dropped, never carried forward.
+        per_file_ignores = u.Tests.toml_mapping(lint["per-file-ignores"])
+        tm.that(per_file_ignores, lacks=stale_pattern)
+        tm.that(
+            sorted(per_file_ignores),
+            eq=sorted(
+                pattern
+                for pattern, _ in u.Infra.native_tool_setting(
+                    tool_config_document,
+                    "ruff.lint",
+                    "per-file-ignores",
+                    TypeForm(Sequence[tuple[str, Sequence[str]]]),
+                )
+            ),
+        )
 
     @staticmethod
     def test_project_cannot_declare_its_own_ruff_exemption(
