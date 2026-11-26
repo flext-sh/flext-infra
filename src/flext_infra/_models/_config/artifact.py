@@ -1313,6 +1313,13 @@ class FlextInfraModelsConfigArtifact(
             str | None,
             m.Field(description="Exact package or module for a file-only surface"),
         ] = None
+        check_step: Annotated[
+            bool,
+            m.Field(
+                description="Whether this generation is the check verb's own "
+                "convergence step, which never waits on a green check"
+            ),
+        ] = False
 
         @m.model_validator(mode="after")
         def _validate_lazy_init_scope(self) -> Self:

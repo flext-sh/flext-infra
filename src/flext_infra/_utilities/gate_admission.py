@@ -336,7 +336,9 @@ class FlextInfraUtilitiesGateAdmission:
 
         Missing records are allowed (first-run grace). Exempt contexts (CI,
         remote, pre-push) bypass. Generation names only ``check``: it projects
-        files and never depends on a green test run (operator 2026-11-22).
+        files and never depends on a green test run (operator 2026-11-22). The
+        check verb's own convergence generation never calls this: the run that
+        renews the check health cannot wait on it.
 
         Raises:
             SystemExit: When the last recorded health is a failure or stale.

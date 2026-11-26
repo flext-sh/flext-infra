@@ -875,6 +875,15 @@ class FlextInfraProtocolsConfigArtifact:
             """Exact package or module for a file-only surface."""
             ...
 
+        @property
+        def check_step(self) -> bool:
+            """Structural member projected from the owning model.
+
+            Whether this generation is the check verb's own convergence step, which
+            never waits on a green check.
+            """
+            ...
+
     @runtime_checkable
     class CodegenConformRequest(CodegenGenerateRequest, Protocol):
         """Structural data contract projected from the owning model."""

@@ -6,8 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import os
 import shutil
+from datetime import timedelta
 from pathlib import Path
+
+import pytest
 
 from flext_infra import config, m
 from flext_infra.workspace import FlextInfraWorkspaceDetector
@@ -292,3 +296,101 @@ class TestsFlextInfraMakeGenRootContract:
         )
 
         tm.ok(result)
+
+    @staticmethod
+    @c.Tests.MARK.slow
+    def test_rendered_check_convergence_generates_as_its_own_step(
+        tmp_path: Path,
+    ) -> None:
+        """Only the check convergence marks its generation as the check's step."""
+        root, _ = u.Tests.render_make_environment(
+            tmp_path,
+            c.Infra.MakeProfile.STANDALONE,
+        )
+        rendered = (root / c.Infra.MAKEFILE_FILENAME).read_text(
+            encoding=c.Infra.ENCODING_DEFAULT,
+        )
+        recipes = {
+            target: rendered.split(f"\n{target}:", 1)[1].split("\n\n", 1)[0]
+            for target in (
+                "_builtin_converge_all",
+                "_builtin_gen_all",
+                "_builtin_gen_scope_all",
+            )
+        }
+        tm.that(
+            recipes["_builtin_converge_all"],
+            has="$(SELF_MAKE) _builtin_gen_all GEN_CHECK_STEP=1 &&",
+        )
+        tm.that(
+            recipes["_builtin_gen_all"],
+            has='--scope "$$scope"$(if $(GEN_CHECK_STEP), --check-step);',
+        )
+        tm.that(recipes["_builtin_gen_scope_all"], lacks="--check-step")
+
+    @staticmethod
+    @c.Tests.MARK.slow
+    def test_check_step_generation_never_waits_on_a_stale_check_health(
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """A stale green check refuses standalone generation, never the check's own.
+
+        The check verb generates before its gates run, so its generation is
+        admitted with a stale check health; the health that check then records
+        admits standalone generation again.
+        """
+        ci = config.Infra.codegen.make.ci
+        state_home = Path(
+            os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state")
+        )
+        monkeypatch.setenv(
+            "MISE_STATE_DIR", os.environ.get("MISE_STATE_DIR", str(state_home / "mise"))
+        )
+        monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+        for exempt in (
+            ci.variable,
+            ci.remote_variable,
+            c.Infra.GATE_REPEAT_HOOK_STAGE_ENV,
+        ):
+            monkeypatch.delenv(exempt, raising=False)
+        root = u.Tests.WorktreeFixture.governed_workspace(tmp_path, "stale-ws")
+        member = TestsFlextInfraMakeGenRootContract._attached_member(
+            root, tmp_path, "stale-member"
+        )
+        u.Infra.gate_health_record(member, "check", success=True)
+        window = config.Infra.gate_admission.repeat.check.window_seconds
+        (ledger,) = (
+            u.Infra.gate_admission_root() / c.Infra.GATE_ADMISSION_HISTORY_DIR
+        ).iterdir()
+        green = m.Infra.GateRunRecord.model_validate_json(
+            ledger.read_text(encoding=c.Infra.ENCODING_DEFAULT)
+        )
+        ledger.write_text(
+            green.model_copy(
+                update={
+                    "finished_at": green.finished_at - timedelta(seconds=window + 1)
+                }
+            ).model_dump_json()
+            + "\n",
+            encoding=c.Infra.ENCODING_DEFAULT,
+        )
+
+        def generate(*, check_step: bool) -> None:
+            tm.ok(
+                infra.codegen_generate(
+                    m.Infra.CodegenGenerateRequest(
+                        root=member,
+                        what=c.Infra.CodegenConformSurface.MAKEFILE,
+                        scope=c.Infra.CodegenConformScope.SELF,
+                        check_step=check_step,
+                    )
+                )
+            )
+
+        with pytest.raises(SystemExit) as refused:
+            generate(check_step=False)
+        tm.that(refused.value.code, eq=c.Infra.GATE_ADMISSION_REFUSED_EXIT_CODE)
+        generate(check_step=True)
+        u.Infra.gate_health_record(member, "check", success=True)
+        generate(check_step=False)
