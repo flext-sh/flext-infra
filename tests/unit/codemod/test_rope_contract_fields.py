@@ -9,7 +9,6 @@ from __future__ import annotations
 import runpy
 from typing import TYPE_CHECKING
 
-from flext_infra import infra
 from tests import c, p, tm, u
 
 pytestmark = c.Tests.MARK.slow
@@ -21,7 +20,13 @@ if TYPE_CHECKING:
 class TestsFlextInfraRopeFieldContracts:
     """Preserve Pydantic field factories, validation effects and runtime values."""
 
+    # The Pydantic contract wave is closed over its declared targets: a consumer
+    # outside them matches no rule. One declared target carries each case; the
+    # complete target matrix is exercised by the contract-binding tests.
+    SCOPE = u.Tests.contract_rule_targets("pydantic-annotated-factory")[:1]
+
     @staticmethod
+    @c.Tests.MARK.parametrize("rope_contract_consumer", SCOPE, indirect=True)
     @c.Tests.MARK.parametrize(
         ("declaration", "changes"),
         [
@@ -108,6 +113,7 @@ class TestsFlextInfraRopeFieldContracts:
         )
 
     @staticmethod
+    @c.Tests.MARK.parametrize("rope_contract_consumer", SCOPE, indirect=True)
     @c.Tests.MARK.parametrize(
         "declaration",
         [
@@ -136,6 +142,7 @@ class TestsFlextInfraRopeFieldContracts:
         """Native mutable factories never evaluate an unfinished outer owner."""
         source = (
             "from __future__ import annotations\n"
+            "from collections.abc import MutableSequence\n"
             "from typing import Annotated\n"
             "from flext_core import t\n"
             "from pydantic import BaseModel, Field\n"
@@ -167,6 +174,7 @@ class TestsFlextInfraRopeFieldContracts:
         tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), contains=declaration)
 
     @staticmethod
+    @c.Tests.MARK.parametrize("rope_contract_consumer", SCOPE, indirect=True)
     def test_own_class_contract_keeps_its_native_factory(
         rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
     ) -> None:
@@ -195,6 +203,7 @@ class TestsFlextInfraRopeFieldContracts:
         )
 
     @staticmethod
+    @c.Tests.MARK.parametrize("rope_contract_consumer", SCOPE, indirect=True)
     def test_already_bound_mutable_outer_contract_stays_native(
         rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
     ) -> None:
@@ -219,6 +228,7 @@ class TestsFlextInfraRopeFieldContracts:
         )
 
     @staticmethod
+    @c.Tests.MARK.parametrize("rope_contract_consumer", SCOPE, indirect=True)
     @c.Tests.MARK.parametrize("minimum", [0, 1])
     @c.Tests.MARK.parametrize("alias", [False, True])
     def test_readonly_factory_preserves_full_field_validation_and_freshness(
@@ -291,6 +301,7 @@ class TestsFlextInfraRopeFieldContracts:
         runpy.run_path(str(path))
 
     @staticmethod
+    @c.Tests.MARK.parametrize("rope_contract_consumer", SCOPE, indirect=True)
     @c.Tests.MARK.parametrize(
         ("contract", "factory", "native"),
         [
@@ -354,6 +365,7 @@ class TestsFlextInfraRopeFieldContracts:
         )
 
     @staticmethod
+    @c.Tests.MARK.parametrize("rope_contract_consumer", SCOPE, indirect=True)
     @c.Tests.MARK.parametrize("factory", ["tuple", "frozenset"])
     def test_strict_native_immutable_factory_is_not_a_raw_mutable_violation(
         rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
@@ -374,6 +386,7 @@ class TestsFlextInfraRopeFieldContracts:
         )
 
     @staticmethod
+    @c.Tests.MARK.parametrize("rope_contract_consumer", SCOPE, indirect=True)
     @c.Tests.MARK.parametrize(
         ("origin", "factory", "changes"),
         [
@@ -414,6 +427,7 @@ class TestsFlextInfraRopeFieldContracts:
         )
 
     @staticmethod
+    @c.Tests.MARK.parametrize("rope_contract_consumer", SCOPE, indirect=True)
     @c.Tests.MARK.parametrize("declaration", ["Contract =", "type Contract ="])
     def test_rebound_type_alias_cannot_prove_a_deferred_factory_contract(
         rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
@@ -439,6 +453,7 @@ class TestsFlextInfraRopeFieldContracts:
         )
 
     @staticmethod
+    @c.Tests.MARK.parametrize("rope_contract_consumer", SCOPE, indirect=True)
     @c.Tests.MARK.parametrize("factory", ["list[str]", "lambda: ['consumer']"])
     def test_typed_constructor_and_authored_callback_keep_distinct_behavior(
         rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
@@ -462,6 +477,7 @@ class TestsFlextInfraRopeFieldContracts:
         )
 
     @staticmethod
+    @c.Tests.MARK.parametrize("rope_contract_consumer", SCOPE, indirect=True)
     def test_readonly_deferred_outer_owner_keeps_native_field_resolution(
         rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
     ) -> None:
@@ -487,6 +503,7 @@ class TestsFlextInfraRopeFieldContracts:
         tm.ok("contract_factory=lambda: TypeForm(" in updated)
 
     @staticmethod
+    @c.Tests.MARK.parametrize("rope_contract_consumer", SCOPE, indirect=True)
     @c.Tests.MARK.parametrize(
         "marker",
         [
@@ -578,6 +595,7 @@ class TestsFlextInfraRopeFieldContracts:
         tm.that(runpy.run_path(str(path))["evidence"], eq=before)
 
     @staticmethod
+    @c.Tests.MARK.parametrize("rope_contract_consumer", SCOPE, indirect=True)
     @c.Tests.MARK.parametrize(
         ("definition", "metadata"),
         [
@@ -632,6 +650,7 @@ class TestsFlextInfraRopeFieldContracts:
         u.Tests.prove_contract_migration(rope_contract_consumer, source)
 
     @staticmethod
+    @c.Tests.MARK.parametrize("rope_contract_consumer", SCOPE, indirect=True)
     def test_strict_json_boundary_and_validator_modes_survive_factory_migration(
         rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
     ) -> None:
@@ -667,6 +686,7 @@ class TestsFlextInfraRopeFieldContracts:
         )
 
     @staticmethod
+    @c.Tests.MARK.parametrize("rope_contract_consumer", SCOPE, indirect=True)
     def test_dependent_factory_preserves_call_order_and_instance_isolation(
         rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
     ) -> None:
@@ -693,6 +713,7 @@ class TestsFlextInfraRopeFieldContracts:
     @staticmethod
     # Outer facades from this project's own declared FLEXT dependencies; a
     # library test never imports a downstream consumer it does not install.
+    @c.Tests.MARK.parametrize("rope_contract_consumer", SCOPE, indirect=True)
     @c.Tests.MARK.parametrize("namespace", ["flext_core", "flext_cli"])
     def test_outer_facades_preserve_nested_contracts(
         rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
@@ -714,6 +735,7 @@ class TestsFlextInfraRopeFieldContracts:
         )
 
     @staticmethod
+    @c.Tests.MARK.parametrize("rope_contract_consumer", SCOPE, indirect=True)
     def test_factory_migration_cannot_repeat_annotation_effects(
         rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
     ) -> None:
@@ -742,17 +764,17 @@ class TestsFlextInfraRopeFieldContracts:
         tm.that(runpy.run_path(str(path))["evidence"], eq=before)
 
     @staticmethod
+    @c.Tests.MARK.parametrize("rope_contract_consumer", SCOPE, indirect=True)
     @c.Tests.MARK.parametrize(
         "field_argument",
         ["default=default_value()", "default_factory=factory_value()"],
     )
     def test_metadata_migration_cannot_reorder_authored_effects(
-        tmp_path: Path,
+        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
         field_argument: str,
     ) -> None:
         """Assignment syntax must not reverse callbacks in an Annotated field."""
-        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
-        path = package / "consumer.py"
+        rope, path = rope_contract_consumer
         source = (
             "from typing import Annotated\n"
             "from pydantic import BaseModel, Field\n"
@@ -772,10 +794,7 @@ class TestsFlextInfraRopeFieldContracts:
         )
         path.write_text(source, encoding=c.DEFAULT_ENCODING)
         before = runpy.run_path(str(path))["evidence"]
-        with (
-            infra.rope_workspace(root) as rope,
-            u.Tests.raises(ValueError, match=r"annotation.*reorder"),
-        ):
+        with u.Tests.raises(ValueError, match=r"annotation.*reorder"):
             u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
                 rope_workspace=rope,
@@ -784,28 +803,30 @@ class TestsFlextInfraRopeFieldContracts:
         tm.that(runpy.run_path(str(path))["evidence"], eq=before)
 
     @staticmethod
-    def test_unrelated_field_factory_is_not_a_pydantic_field(tmp_path: Path) -> None:
+    @c.Tests.MARK.parametrize("rope_contract_consumer", SCOPE, indirect=True)
+    def test_unrelated_field_factory_is_not_a_pydantic_field(
+        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
+    ) -> None:
         """Same-spelled functions do not establish a Pydantic identity."""
-        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
-        path = package / "consumer.py"
+        rope, path = rope_contract_consumer
         source = (
             "def Field(*, default_factory):\n"
             "    return default_factory()\n"
             "values: list[str] = Field(default_factory=list)\n"
         )
         path.write_text(source, encoding=c.DEFAULT_ENCODING)
-        with infra.rope_workspace(root) as rope:
-            edits = tm.ok(
-                u.Infra.plan_semantic_cutover(
-                    c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
-                    rope_workspace=rope,
-                    sources={path: source},
-                )
+        edits = tm.ok(
+            u.Infra.plan_semantic_cutover(
+                c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
+                rope_workspace=rope,
+                sources={path: source},
             )
+        )
         tm.that(edits, empty=True)
         tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
 
     @staticmethod
+    @c.Tests.MARK.parametrize("rope_contract_consumer", SCOPE, indirect=True)
     def test_existing_cli_facade_and_unrelated_field_info_are_preserved(
         rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
     ) -> None:

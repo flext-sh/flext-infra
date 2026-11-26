@@ -375,8 +375,8 @@ class _ModelFieldProtocolRewriter(ast.NodeTransformer):
         spec = self._model_spec(node)
         if spec is not None:
             if field:
-                # Simplified: fields use the model directly, not protocol+schema.
-                self.changed = True
+                # A class-body Pydantic field keeps its model (ADR-018,
+                # amendment 2026-11-09): nothing changes, so nothing is marked.
                 return node
             self.changed = True
             self.needs_p = True
@@ -437,7 +437,7 @@ class _ModelFieldProtocolRewriter(ast.NodeTransformer):
         spec = self._model_spec(first)
         if spec is None:
             projected = self._project(first, field=field)
-            if projected is first and not metadata:
+            if projected is first:
                 return node
             elements = [projected, *metadata]
             self.changed = True
@@ -449,15 +449,11 @@ class _ModelFieldProtocolRewriter(ast.NodeTransformer):
                 ctx=ast.Load(),
             )
         if field:
-            # Simplified: keep the model operand, drop protocol+schema.
-            self.changed = True
+            # A class-body field keeps its model operand (ADR-018, amendment
+            # 2026-11-09); only a metadata-free ``Annotated`` wrapper is dropped.
             if metadata:
-                self.needs_annotated = True
-                return ast.Subscript(
-                    value=node.value,
-                    slice=ast.Tuple(elts=[first, *metadata], ctx=ast.Load()),
-                    ctx=ast.Load(),
-                )
+                return node
+            self.changed = True
             return first
         self.needs_p = True
         self.needs_annotated = True

@@ -337,7 +337,10 @@ class FlextInfraUtilitiesGateAdmission:
         Missing records are allowed (first-run grace). Exempt contexts (CI,
         remote, pre-push, the generation inside ``make check``) bypass.
         Generation names only ``check``: it projects files and never depends on
-        a green test run (operator 2026-11-22).
+        a green test run (operator 2026-11-22). A Makefile without the
+        converge variable is a stale projection whose check cannot mark its own
+        generation; regenerating it is the only remediation, so it is admitted
+        and the regenerated check binds from then on.
 
         Raises:
             SystemExit: When the last recorded health is a failure or stale.
@@ -345,6 +348,11 @@ class FlextInfraUtilitiesGateAdmission:
         """
         converge = config.Infra.codegen.make.ci.converge_variable
         if cls._repeat_exempt() or u.Cli.process_env().get(converge):
+            return
+        makefile = repository / c.Infra.MAKEFILE_FILENAME
+        if makefile.is_file() and f"{converge}=1" not in makefile.read_text(
+            encoding="utf-8"
+        ):
             return
         root = cls.gate_admission_root()
         root.mkdir(parents=True, exist_ok=True)

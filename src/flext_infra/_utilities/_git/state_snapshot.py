@@ -166,8 +166,17 @@ class FlextInfraUtilitiesGitStateSnapshot(FlextInfraUtilitiesGitRepo):
         root: Path,
         paths: Sequence[Path],
     ) -> tuple[p.Infra.GitWorktreeIndexEntry, ...]:
+        # Git selects the owned paths through literal pathspecs: one tree walk,
+        # never a per-entry scan of every owned path and its parents.
         rows = (
-            cls._repo(root).git.ls_tree("-r", "--full-tree", "-z", "HEAD")
+            cls._repo(root).git.ls_tree(
+                "-r",
+                "--full-tree",
+                "-z",
+                "HEAD",
+                "--",
+                *(f":(literal){path.as_posix()}" for path in paths),
+            )
             if paths
             else ""
         )
@@ -176,11 +185,10 @@ class FlextInfraUtilitiesGitStateSnapshot(FlextInfraUtilitiesGitRepo):
             if not row:
                 continue
             metadata, raw_path = row.split("\t", 1)
-            path = Path(raw_path)
-            if not any(path == owned or owned in path.parents for owned in paths):
-                continue
             mode, _kind, oid = metadata.split()
-            entries.append(m.Infra.GitWorktreeIndexEntry(path=path, mode=mode, oid=oid))
+            entries.append(
+                m.Infra.GitWorktreeIndexEntry(path=Path(raw_path), mode=mode, oid=oid),
+            )
         return tuple(entries)
 
     @classmethod
