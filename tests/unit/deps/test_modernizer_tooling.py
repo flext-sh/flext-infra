@@ -578,6 +578,7 @@ class TestsFlextInfraDepsModernizerTooling:
             "",
             encoding="utf-8",
         )
+        # Git owns the source inventory: commit the tree the projection reads.
         u.Tests.initialize_git_repo(project_dir)
         stale_pattern = "stale-pattern.py"
         codegen = tm.ok(u.Infra.load_codegen_inputs(project_dir)).spec
@@ -685,7 +686,18 @@ class TestsFlextInfraDepsModernizerTooling:
                 "flext_sample",
             }),
         )
-        tm.that(u.Tests.toml_mapping(lint["per-file-ignores"]), lacks=stale_pattern)
+        # The tooling SSOT declares the authorized per-file axioms; the
+        # project's stale local pattern is dropped, never carried forward.
+        per_file_ignores = u.Tests.toml_mapping(lint["per-file-ignores"])
+        tm.that(per_file_ignores, lacks=stale_pattern)
+        tm.that(
+            sorted(per_file_ignores),
+            eq=sorted(
+                u.Infra.native_tool_settings(
+                    config.Infra.tooling, "ruff.lint.per-file-ignores"
+                )
+            ),
+        )
 
     @staticmethod
     def test_project_cannot_declare_its_own_ruff_exemption(
