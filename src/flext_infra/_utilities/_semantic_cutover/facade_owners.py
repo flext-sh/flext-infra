@@ -105,14 +105,19 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
             FlextInfraUtilitiesRopeRuntimeTypes.require_source_module(module)
         )
 
-    @staticmethod
+    @classmethod
     def _facade_declared_owner(
+        cls,
         module: str,
         letter: str,
         *,
         project: p.Infra.RopeProject,
     ) -> str:
         """Return the class ``letter`` names, or raise with the missing proof.
+
+        The letter is followed through the module's runtime bindings
+        (``_facade_binding_state``): a static-only ``TYPE_CHECKING`` import
+        of the letter never stands for the class its runtime arm binds.
 
         Returns:
             The class ``letter`` names, or raise with the missing proof.
@@ -125,8 +130,21 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         types = FlextInfraUtilitiesRopeRuntimeTypes
-        declared = runtime.qualified_name(project, letter, module_name=module)
-        facade = declared.get_object()
+        declaring = types.require_declared_source_module(project, module)
+        is_package = (
+            types.require_file_resource(declaring.get_resource(), module).name
+            == c.Infra.INIT_PY
+        )
+        target, _declared = cls._facade_binding_state(
+            declaring.source_code,
+            module,
+            letter,
+            module if is_package else module.rpartition(".")[0],
+        )
+        owner_module, owner_name = target if target is not None else (module, letter)
+        facade = runtime.qualified_name(
+            project, owner_name, module_name=owner_module
+        ).get_object()
         if not types.py_class(facade):
             msg = f"{module}.{letter} does not name a native facade class"
             raise ValueError(msg)
