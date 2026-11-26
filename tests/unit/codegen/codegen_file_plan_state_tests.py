@@ -151,6 +151,7 @@ class TestsFlextInfraCodegenFilePlanState:
         """The publication law permits guarded removal, not empty stub replacement."""
         target = tmp_path / "boundary.pyi"
         target.write_bytes(b"value: int\n")
+        u.Tests.initialize_git_repo(tmp_path)
         before = tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True))
         plan = m.Infra.CodegenFilePlan(
             project=tmp_path,
@@ -170,6 +171,7 @@ class TestsFlextInfraCodegenFilePlanState:
         target.parent.mkdir(parents=True)
         target.write_bytes(b"generated\n")
         kept.write_bytes(b"authored\n")
+        u.Tests.initialize_git_repo(tmp_path)
         before = tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True))
         plan = m.Infra.CodegenFilePlan(
             project=tmp_path,
