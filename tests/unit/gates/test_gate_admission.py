@@ -503,13 +503,9 @@ class TestsFlextInfraGateAdmission:
         cls._succeed(tmp_path, environment)
 
     @classmethod
-    def test_generation_health_ignores_a_red_tests_run(cls, tmp_path: Path) -> None:
-        """Generation needs a green check only; other heavy routes need tests too."""
+    def test_heavy_route_health_refuses_a_red_tests_run(cls, tmp_path: Path) -> None:
+        """A heavy route refuses while the last tests run is red."""
         environment = cls._environment(tmp_path, None)
-        generation = cls._gate(
-            environment, "gen", TestsFlextInfraGateAdmissionHolder.Mode.GEN_HEALTH
-        )
-        tm.that(tm.ok(generation.wait(timeout=_WAIT_SECONDS)), eq=0)
         refused = cls._gate(
             environment, "mod", TestsFlextInfraGateAdmissionHolder.Mode.FULL_HEALTH
         )

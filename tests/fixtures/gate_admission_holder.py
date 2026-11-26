@@ -32,7 +32,6 @@ class TestsFlextInfraGateAdmissionHolder:
         HOLD = "hold"
         FAIL = "fail"
         NESTED = "nested"
-        GEN_HEALTH = "gen-health"
         FULL_HEALTH = "full-health"
 
     FAILURE_STATUS = 7
@@ -47,12 +46,9 @@ class TestsFlextInfraGateAdmissionHolder:
         """
         name, root_text, mode_text, budget_text, *repeat = arguments
         root, mode = Path(root_text), cls.Mode(mode_text)
-        if mode in {cls.Mode.GEN_HEALTH, cls.Mode.FULL_HEALTH}:
+        if mode is cls.Mode.FULL_HEALTH:
             u.Infra.gate_health_record(root, "tests", success=False)
-            u.Infra.gate_health_refuse(
-                root,
-                gates=("check",) if mode is cls.Mode.GEN_HEALTH else ("check", "tests"),
-            )
+            u.Infra.gate_health_refuse(root)
             return 0
         budget = m.Infra.RouteBudgetSpec(
             budget_seconds=int(budget_text), grace_seconds=1

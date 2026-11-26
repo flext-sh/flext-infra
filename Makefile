@@ -95,13 +95,19 @@ $(error Current Make executable has no physical path: $(MAKE_COMMAND))
 endif
 .DEFAULT_GOAL := help
 
+# Detect CI environment internally. The runner provides GITHUB_ACTIONS=true;
+# no caller needs to pass CI=Y.
+ifeq ($(GITHUB_ACTIONS),true)
+override CI := Y
+endif
+
 # Contract display never provisions or requires native workspace tools.
 VERB_CONTRACT := $(filter 1 TRUE Y YES true y yes True Yes,$(OPTIONS) $(HELP))
 
 # Capture the selected approval mode before any project-owned include.
 ifeq ($(strip $(CI)),Y)
 override APPROVAL_CONTEXT := Y
-ifneq ($(filter $(if $(VERB_CONTRACT),,upg lock) _upg% _lock% dep propagate,$(MAKECMDGOALS)),)
+ifneq ($(filter $(if $(VERB_CONTRACT),,upg) _upg%,$(MAKECMDGOALS)),)
 $(error Resolution and member propagation are forbidden in CI)
 endif
 endif
@@ -130,7 +136,7 @@ $(eval export GIT_CONFIG_VALUE_$(GIT_CONFIG_ALLOW_INDEX))
 # === SECTION: project identity (managed) ===
 # Source: config:dist / config:make_profile / config:repository_root_rel / config:uv_link_mode
 PROJECT_NAME := flext-infra
-MAKE_PROFILE := workspace
+MAKE_PROFILE := standalone
 REPOSITORY_ROOT_REL := .
 # === SECTION: workspace subprojects (managed) ===
 # Source: config:workspace_subprojects (list), config:workspace_repositories (list)
@@ -142,6 +148,8 @@ WORKSPACE_SUBPROJECTS :=
 # The Makefile validates no caller input. Every verb
 # always applies; a mistyped variable fails where the verb consumes it, and an
 # unconsumed variable is ignored.
+# Default to the fast primary phase so `make check` is the single gate.
+CHECK_PHASE ?= primary
 export CHECK_PHASE MARKER
 PYTEST_REPORTS_DIR := .reports/tests
 override PYTEST_RUN_TIMEOUT_SECONDS := 240
@@ -311,7 +319,7 @@ endif
 # === SECTION: verb dispatch (managed) ===
 # Source: config:make.verbs and the canonical gate vocabulary. A verb exists
 # only in the profiles it declares (make.verbs[].profiles).
-PUBLIC_VERBS := setup upg lock gen gen-scope mod fix fmt check tests tests-full tests-harness help build clean mod-snapshots release-plan release-version release-tag release-build release-publish
+PUBLIC_VERBS := setup upg mod check tests tests-full tests-harness help build clean mod-snapshots release-plan release-version release-tag release-build release-publish
 SCRIPT_VERBS := mod-snapshots
 
 CUSTOM_MAKEFILE := $(MAKEFILE_ROOT)/custom.mk
@@ -618,7 +626,7 @@ _bootstrap_setup_tools: _builtin_require_workspace
 # them to every governed member, processed together in one checker run
 # (operator rulings 2026-10-25: never member by member; 2026-11-22, bead
 # flext-bga5y: members only with ALL=Y). CI evaluates only its own repository.
-GATE_SCOPE := $(if $(filter Y,$(CI)),self,$(if $(filter Y,$(ALL)),all,self))
+GATE_SCOPE := self
 # Local and CI consume the same native project/workspace declarations and lock.
 # Setup always bootstraps: `uv sync --frozen` installs exactly the committed
 # uv.lock without re-resolving or rewriting it, so manifest drift never blocks
@@ -828,10 +836,10 @@ SYNC_UPGRADE_EXECUTOR_WITH = $(call TARGET_ENVIRONMENT,$(FLEXT_INFRA_EXECUTOR_VE
 # the compilation inside a test's time limit.
 
 
-override SETUP_SYNC_ARGS := --all-extras --all-groups --link-mode clone --compile-bytecode --all-packages
+override SETUP_SYNC_ARGS := --all-extras --all-groups --link-mode clone --compile-bytecode
 
 ifeq ($(CI),Y)
-override SETUP_SYNC_ARGS := --all-extras --all-groups --link-mode clone --compile-bytecode --all-packages --no-editable
+override SETUP_SYNC_ARGS := --all-extras --all-groups --link-mode clone --compile-bytecode --no-editable
 endif
 
 # Custom hooks are declared in CI too; load their selected physical Makefile.
@@ -872,23 +880,8 @@ VERB_ARGUMENTS_setup := FLEXT RECREATE
 VERB_DESCRIPTION_upg := Resolve declared dependency and tool updates and publish their resolution metadata and locks.
 VERB_ARGUMENTS_upg :=
 
-VERB_DESCRIPTION_lock := Resolve newly declared dependencies into the locks and keep every existing pin; only upg moves pins.
-VERB_ARGUMENTS_lock :=
-
-VERB_DESCRIPTION_gen := Materialize explicitly declared new projects and publish every applicable generated projection.
-VERB_ARGUMENTS_gen := ROOT
-
-VERB_DESCRIPTION_gen-scope := Run the focal generation surface (WHAT, MODULE for facades, SCOPE) through the same engine, lock and budget as gen.
-VERB_ARGUMENTS_gen-scope := ROOT WHAT MODULE SCOPE
-
 VERB_DESCRIPTION_mod := Refactor declared source structure through the shared pipeline and publish the complete coherent change; LAWS (ENFORCE ids) or RULES (rule ids) diagnose or repair one law (ADR-028 Decision 18 item 2).
 VERB_ARGUMENTS_mod := LAWS RULES
-
-VERB_DESCRIPTION_fix := Apply declared repairs to authored inputs through their canonical owners; in a workspace root ALL=Y includes every governed member.
-VERB_ARGUMENTS_fix := ALL
-
-VERB_DESCRIPTION_fmt := Format authored content through the configured formatters; in a workspace root ALL=Y includes every governed member.
-VERB_ARGUMENTS_fmt := ALL
 
 VERB_DESCRIPTION_check := Validate declarations, projections, environment, documentation and configured gates without repairs or publication.
 VERB_ARGUMENTS_check := CHECK_PHASE
@@ -933,17 +926,13 @@ VERB_HELP_LINE = printf '  %-16s %s\n' '$(1)' '$(VERB_DESCRIPTION_$(1))'$(if $(s
 # OPTIONS=Y (or HELP=Y) displays every public verb's catalog contract without
 # running its prerequisites, hooks, handler or product dispatcher.
 ifeq ($(VERB_CONTRACT),)
-PROFILE_VERBS_PLAIN := gen gen-scope
+PROFILE_VERBS_PLAIN :=
 PROFILE_VERBS_DISPATCH := help clean
-PROFILE_VERBS_ACTIVATED := mod fix fmt check tests tests-full tests-harness build release-plan release-version release-tag release-build release-publish
+PROFILE_VERBS_ACTIVATED := mod check tests tests-full tests-harness build release-plan release-version release-tag release-build release-publish
 PROFILE_VERBS_INTERPRETER :=
 PROFILE_VERBS_HOOKED := $(foreach v,$(filter-out $(PROFILE_VERBS_INTERPRETER),$(PROFILE_VERBS_ACTIVATED)),$(if $(filter pre-$(v) _custom-$(v) post-$(v),$(CUSTOM_DECLARED_TARGETS)),$(v)))
 PROFILE_VERBS_DIRECT := $(filter-out $(PROFILE_VERBS_HOOKED) $(PROFILE_VERBS_INTERPRETER),$(PROFILE_VERBS_ACTIVATED))
 PROFILE_VERBS_ROUTED := $(PROFILE_VERBS_HOOKED) $(PROFILE_VERBS_INTERPRETER)
-
-$(PROFILE_VERBS_PLAIN): %: _builtin_require_workspace _builtin_require_interpreter
-	@printf '==> %s | project=%s | profile=%s\n' '$@' "$(PROJECT_ROOT)" 'workspace'
-	$(call RUN_PUBLIC,$@)
 
 
 $(PROFILE_VERBS_DISPATCH):
@@ -951,7 +940,7 @@ $(PROFILE_VERBS_DISPATCH):
 
 
 $(PROFILE_VERBS_ACTIVATED): %: _builtin_require_workspace
-	@printf '==> %s | project=%s | profile=%s\n' '$@' "$(PROJECT_ROOT)" 'workspace'
+	@printf '==> %s | project=%s | profile=%s\n' '$@' "$(PROJECT_ROOT)" 'standalone'
 	+@$(if $(filter Y,$(CI)),$(MISE) -C "$(RUNTIME_ROOT)" exec -- $(SELF_MAKE) _activated-$@,$(DIRENV) exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-$@)
 .PHONY: $(addprefix _activated-,$(PROFILE_VERBS_ACTIVATED))
 ifneq ($(strip $(PROFILE_VERBS_DIRECT)),)
@@ -1035,15 +1024,6 @@ endif
 
 # Attached members delegate the same operation to their physical workspace owner
 # before resolving anything.
-ifeq ($(PROJECT_ROOT),$(RUNTIME_ROOT))
-
-lock: _builtin_require_workspace _builtin_require_github_credential
-	+@$(SELF_MAKE) _lock_lifecycle
-
-else
-lock: _builtin_require_workspace
-	+@"$(SELF_MAKE_EXECUTABLE)" --no-print-directory -C "$(RUNTIME_ROOT)" -f "$(RUNTIME_ROOT)/Makefile" lock
-endif
 SCRIPT_VERBS_PLAIN :=
 SCRIPT_VERBS_DISPATCH :=
 SCRIPT_VERBS_ACTIVATED := mod-snapshots
@@ -1055,7 +1035,7 @@ SCRIPT_VERBS_ROUTED := $(SCRIPT_VERBS_HOOKED) $(SCRIPT_VERBS_INTERPRETER)
 
 
 $(SCRIPT_VERBS_ACTIVATED): %: _builtin_require_workspace
-	@printf '==> %s | project=%s | profile=%s\n' '$@' "$(PROJECT_ROOT)" 'workspace'
+	@printf '==> %s | project=%s | profile=%s\n' '$@' "$(PROJECT_ROOT)" 'standalone'
 	+@$(if $(filter Y,$(CI)),$(MISE) -C "$(RUNTIME_ROOT)" exec -- $(SELF_MAKE) _activated-$@,$(DIRENV) exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-$@)
 .PHONY: $(addprefix _activated-,$(SCRIPT_VERBS_ACTIVATED))
 ifneq ($(strip $(SCRIPT_VERBS_DIRECT)),)
@@ -1116,7 +1096,7 @@ ifneq ($(CI),Y)
 endif
 
 _builtin-help:
-	@printf '%s\n' 'flext-infra [workspace]' ''
+	@printf '%s\n' 'flext-infra [standalone]' ''
 	@$(foreach verb,$(PUBLIC_VERBS),$(call VERB_HELP_LINE,$(verb));)
 
 # A project owns the sources declared by its manifest. Generated setup
@@ -1474,35 +1454,6 @@ _upg_lifecycle:
 
 # Lock resolves a changed dependency declaration (a newly declared requirement)
 # into the UV locks and keeps every pin they already hold; only upg moves a pin.
-# It runs from the environment setup installed, provisions no tool, and ends with
-# the same frozen installation, so the new requirement is installed.
-.PHONY: _lock_lifecycle
-_lock_lifecycle:
-	+@set -eu; \
-	bootstrap_stage=network-auth; \
-	if git config --global --get-regexp '^url\.https?://[^ /]+:[^ /]+@.*\.insteadof$$' >/dev/null; then \
-		printf 'ERROR: Global Git URL rewrite configuration embeds credentials and shadows the fleet SSH route; correct that configuration at its owner\n' >&2; \
-		exit 2; \
-	else \
-		rewrite_status=$$?; \
-		if [ "$$rewrite_status" -ne 1 ]; then \
-			printf 'ERROR: Cannot inspect the global Git URL rewrite configuration\n' >&2; \
-			exit "$$rewrite_status"; \
-		fi; \
-	fi; \
-	mise_bin="$(MISE)"; \
-	$(RESOLVE_DESIRED_PYTHON); \
-	set -f; \
-	$(GOVERNED_CHECKOUTS); \
-	for checkout in $$checkouts; do \
-		case "$$checkout" in .) continue ;; esac; \
-		[ ! -f "$$root/$$checkout/pyproject.toml" ] || \
-			$(UV) lock --project "$$root/$$checkout" --python "$$desired_python" --no-python-downloads; \
-	done; \
-	set +f; \
-	$(UV) lock --project "$(PROJECT_ROOT)" --python "$$desired_python" --no-python-downloads; \
-	$(INSTALL_RUNTIME_RECIPE)
-
 # Gate, fix and build verbs act on this repository only, with one body per verb
 # in every profile: a workspace root evaluates itself exactly as CI does.
 _builtin_build_artifacts:
@@ -1516,8 +1467,27 @@ _builtin_build_artifacts:
 # make.check_gates_ci, CI=C (the commit hook) runs
 # make.pre_commit_check_gates, CI=N runs
 # make.check_gates_local, and an absent CI token runs every active gate.
+# Outside CI and the commit hook, every phase first converges gen -> fix ->
+# fmt to a fixed point: passes repeat until the working tree, hashed as a git
+# tree through a throwaway index, stops changing; a tree still moving after
+# CHECK_CONVERGE_MAX_PASSES passes fails. CI=Y converges
+# nothing, so its read-only gates fail when any byte would change.
+override CHECK_CONVERGE_MAX_PASSES := 5
 _builtin_check_all: _builtin_require_environment
+	@$(if $(filter Y C,$(CI)),,$(SELF_MAKE) _builtin_converge_all)
 	@$(if $(CHECK_PROFILE),FLEXT_INFRA_PROFILE=$(CHECK_PROFILE) ,)FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/.reports/check/route.pstats" $(PROJECT_FLEXT_INFRA) workspace check --repository-root "$(if $(filter Y,$(CI)),$(PROJECT_ROOT),$(if $(filter primary,$(CHECK_PHASE)),$(RUNTIME_ROOT),$(PROJECT_ROOT)))"$(if $(CHECK_PHASE), --phase "$$CHECK_PHASE")
+
+_builtin_converge_all: _builtin_require_environment
+	@tree() { idx="$$(mktemp -u)"; GIT_INDEX_FILE="$$idx" git -C "$(PROJECT_ROOT)" add -A && GIT_INDEX_FILE="$$idx" git -C "$(PROJECT_ROOT)" write-tree; rc=$$?; rm -f "$$idx"; return $$rc; }; \
+	before="$$(tree)" || exit 1; pass=0; \
+	while :; do \
+		pass=$$((pass + 1)); \
+		if [ "$$pass" -gt $(CHECK_CONVERGE_MAX_PASSES) ]; then printf '%s\n' "❌ check: gen -> fix -> fmt did not reach a fixed point in $(CHECK_CONVERGE_MAX_PASSES) passes" >&2; exit 1; fi; \
+		$(SELF_MAKE) _builtin_gen_all && $(SELF_MAKE) _builtin_fix_all && $(SELF_MAKE) _builtin_fmt_all || exit 1; \
+		after="$$(tree)" || exit 1; \
+		if [ "$$after" = "$$before" ]; then printf '%s\n' "INFO: check: gen -> fix -> fmt fixed point after $$pass pass(es)"; break; fi; \
+		before="$$after"; \
+	done
 
 _builtin_tests_all: _builtin_require_environment
 	@FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/.reports/tests/route.pstats" $(PROJECT_FLEXT_INFRA) workspace tests --repository-root "$(PROJECT_ROOT)" --scope "$(GATE_SCOPE)"
