@@ -503,9 +503,13 @@ class TestsFlextInfraGateAdmission:
         cls._succeed(tmp_path, environment)
 
     @classmethod
-    def test_heavy_route_health_refuses_a_red_tests_run(cls, tmp_path: Path) -> None:
-        """A heavy route refuses while the last tests run is red."""
+    def test_generation_health_ignores_a_red_tests_run(cls, tmp_path: Path) -> None:
+        """Generation needs a green check only; other heavy routes need tests too."""
         environment = cls._environment(tmp_path, None)
+        generation = cls._gate(
+            environment, "gen", TestsFlextInfraGateAdmissionHolder.Mode.GEN_HEALTH
+        )
+        tm.that(tm.ok(generation.wait(timeout=_WAIT_SECONDS)), eq=0)
         refused = cls._gate(
             environment, "mod", TestsFlextInfraGateAdmissionHolder.Mode.FULL_HEALTH
         )
@@ -514,6 +518,28 @@ class TestsFlextInfraGateAdmission:
             eq=c.Infra.GATE_ADMISSION_REFUSED_EXIT_CODE,
         )
         tm.that("last make tests failed" in refused.stderr, eq=True)
+
+    @classmethod
+    def test_check_convergence_generation_skips_the_check_health(
+        cls, tmp_path: Path
+    ) -> None:
+        """The check is the remediation: its generation needs no earlier green."""
+        environment = cls._environment(tmp_path, None)
+        refused = cls._gate(
+            environment, "gen", TestsFlextInfraGateAdmissionHolder.Mode.CONVERGE_HEALTH
+        )
+        tm.that(
+            tm.ok(refused.wait(timeout=_WAIT_SECONDS)),
+            eq=c.Infra.GATE_ADMISSION_REFUSED_EXIT_CODE,
+        )
+        tm.that("last make check failed" in refused.stderr, eq=True)
+        converge = FlextInfraConfig.fetch_global().Infra.codegen.make.ci
+        admitted = cls._gate(
+            {**environment, converge.converge_variable: "1"},
+            "gen",
+            TestsFlextInfraGateAdmissionHolder.Mode.CONVERGE_HEALTH,
+        )
+        tm.that(tm.ok(admitted.wait(timeout=_WAIT_SECONDS)), eq=0)
 
     @classmethod
     def test_ci_runner_and_pre_push_hook_are_not_repeat_limited(

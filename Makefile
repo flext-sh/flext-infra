@@ -136,7 +136,7 @@ $(eval export GIT_CONFIG_VALUE_$(GIT_CONFIG_ALLOW_INDEX))
 # === SECTION: project identity (managed) ===
 # Source: config:dist / config:make_profile / config:repository_root_rel / config:uv_link_mode
 PROJECT_NAME := flext-infra
-MAKE_PROFILE := standalone
+MAKE_PROFILE := workspace
 REPOSITORY_ROOT_REL := .
 # === SECTION: workspace subprojects (managed) ===
 # Source: config:workspace_subprojects (list), config:workspace_repositories (list)
@@ -626,7 +626,7 @@ _bootstrap_setup_tools: _builtin_require_workspace
 # them to every governed member, processed together in one checker run
 # (operator rulings 2026-10-25: never member by member; 2026-11-22, bead
 # flext-bga5y: members only with ALL=Y). CI evaluates only its own repository.
-GATE_SCOPE := self
+GATE_SCOPE := $(if $(filter Y,$(CI)),self,$(if $(filter Y,$(ALL)),all,self))
 # Local and CI consume the same native project/workspace declarations and lock.
 # Setup always bootstraps: `uv sync --frozen` installs exactly the committed
 # uv.lock without re-resolving or rewriting it, so manifest drift never blocks
@@ -836,10 +836,10 @@ SYNC_UPGRADE_EXECUTOR_WITH = $(call TARGET_ENVIRONMENT,$(FLEXT_INFRA_EXECUTOR_VE
 # the compilation inside a test's time limit.
 
 
-override SETUP_SYNC_ARGS := --all-extras --all-groups --link-mode clone --compile-bytecode
+override SETUP_SYNC_ARGS := --all-extras --all-groups --link-mode clone --compile-bytecode --all-packages
 
 ifeq ($(CI),Y)
-override SETUP_SYNC_ARGS := --all-extras --all-groups --link-mode clone --compile-bytecode --no-editable
+override SETUP_SYNC_ARGS := --all-extras --all-groups --link-mode clone --compile-bytecode --all-packages --no-editable
 endif
 
 # Custom hooks are declared in CI too; load their selected physical Makefile.
@@ -940,7 +940,7 @@ $(PROFILE_VERBS_DISPATCH):
 
 
 $(PROFILE_VERBS_ACTIVATED): %: _builtin_require_workspace
-	@printf '==> %s | project=%s | profile=%s\n' '$@' "$(PROJECT_ROOT)" 'standalone'
+	@printf '==> %s | project=%s | profile=%s\n' '$@' "$(PROJECT_ROOT)" 'workspace'
 	+@$(if $(filter Y,$(CI)),$(MISE) -C "$(RUNTIME_ROOT)" exec -- $(SELF_MAKE) _activated-$@,$(DIRENV) exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-$@)
 .PHONY: $(addprefix _activated-,$(PROFILE_VERBS_ACTIVATED))
 ifneq ($(strip $(PROFILE_VERBS_DIRECT)),)
@@ -1035,7 +1035,7 @@ SCRIPT_VERBS_ROUTED := $(SCRIPT_VERBS_HOOKED) $(SCRIPT_VERBS_INTERPRETER)
 
 
 $(SCRIPT_VERBS_ACTIVATED): %: _builtin_require_workspace
-	@printf '==> %s | project=%s | profile=%s\n' '$@' "$(PROJECT_ROOT)" 'standalone'
+	@printf '==> %s | project=%s | profile=%s\n' '$@' "$(PROJECT_ROOT)" 'workspace'
 	+@$(if $(filter Y,$(CI)),$(MISE) -C "$(RUNTIME_ROOT)" exec -- $(SELF_MAKE) _activated-$@,$(DIRENV) exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-$@)
 .PHONY: $(addprefix _activated-,$(SCRIPT_VERBS_ACTIVATED))
 ifneq ($(strip $(SCRIPT_VERBS_DIRECT)),)
@@ -1096,7 +1096,7 @@ ifneq ($(CI),Y)
 endif
 
 _builtin-help:
-	@printf '%s\n' 'flext-infra [standalone]' ''
+	@printf '%s\n' 'flext-infra [workspace]' ''
 	@$(foreach verb,$(PUBLIC_VERBS),$(call VERB_HELP_LINE,$(verb));)
 
 # A project owns the sources declared by its manifest. Generated setup
@@ -1467,27 +1467,9 @@ _builtin_build_artifacts:
 # make.check_gates_ci, CI=C (the commit hook) runs
 # make.pre_commit_check_gates, CI=N runs
 # make.check_gates_local, and an absent CI token runs every active gate.
-# Outside CI and the commit hook, every phase first converges gen -> fix ->
-# fmt to a fixed point: passes repeat until the working tree, hashed as a git
-# tree through a throwaway index, stops changing; a tree still moving after
-# CHECK_CONVERGE_MAX_PASSES passes fails. CI=Y converges
-# nothing, so its read-only gates fail when any byte would change.
-override CHECK_CONVERGE_MAX_PASSES := 5
 _builtin_check_all: _builtin_require_environment
-	@$(if $(filter Y C,$(CI)),,$(SELF_MAKE) _builtin_converge_all)
+	@$(if $(filter Y,$(CI)),,$(if $(filter primary,$(CHECK_PHASE)),,$(SELF_MAKE) _builtin_gen_all && $(SELF_MAKE) _builtin_fix_all && $(SELF_MAKE) _builtin_fmt_all && ))
 	@$(if $(CHECK_PROFILE),FLEXT_INFRA_PROFILE=$(CHECK_PROFILE) ,)FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/.reports/check/route.pstats" $(PROJECT_FLEXT_INFRA) workspace check --repository-root "$(if $(filter Y,$(CI)),$(PROJECT_ROOT),$(if $(filter primary,$(CHECK_PHASE)),$(RUNTIME_ROOT),$(PROJECT_ROOT)))"$(if $(CHECK_PHASE), --phase "$$CHECK_PHASE")
-
-_builtin_converge_all: _builtin_require_environment
-	@tree() { idx="$$(mktemp -u)"; GIT_INDEX_FILE="$$idx" git -C "$(PROJECT_ROOT)" add -A && GIT_INDEX_FILE="$$idx" git -C "$(PROJECT_ROOT)" write-tree; rc=$$?; rm -f "$$idx"; return $$rc; }; \
-	before="$$(tree)" || exit 1; pass=0; \
-	while :; do \
-		pass=$$((pass + 1)); \
-		if [ "$$pass" -gt $(CHECK_CONVERGE_MAX_PASSES) ]; then printf '%s\n' "❌ check: gen -> fix -> fmt did not reach a fixed point in $(CHECK_CONVERGE_MAX_PASSES) passes" >&2; exit 1; fi; \
-		$(SELF_MAKE) _builtin_gen_all && $(SELF_MAKE) _builtin_fix_all && $(SELF_MAKE) _builtin_fmt_all || exit 1; \
-		after="$$(tree)" || exit 1; \
-		if [ "$$after" = "$$before" ]; then printf '%s\n' "INFO: check: gen -> fix -> fmt fixed point after $$pass pass(es)"; break; fi; \
-		before="$$after"; \
-	done
 
 _builtin_tests_all: _builtin_require_environment
 	@FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/.reports/tests/route.pstats" $(PROJECT_FLEXT_INFRA) workspace tests --repository-root "$(PROJECT_ROOT)" --scope "$(GATE_SCOPE)"

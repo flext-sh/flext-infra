@@ -833,6 +833,10 @@ Infra:
         # passes.
         remote_variable: GITHUB_ACTIONS
         remote_value: "true"
+        # make check exports this to the generation inside its own convergence;
+        # that generation skips the health refusal, since the check is the
+        # remediation the refusal asks for.
+        converge_variable: FLEXT_INFRA_CHECK_CONVERGE
         # Gate baseline of the 0.12 line (tracker memory
         # operator-ruling-2026-10-09-gate-baseline-0122). Every gate blocks in
         # every context that runs it; there is no informative gate. No gate

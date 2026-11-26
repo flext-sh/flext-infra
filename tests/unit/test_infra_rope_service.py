@@ -578,6 +578,7 @@ class TestsFlextInfraInfraRopeService:
         scratch = unowned_parent / "scratch"
         (unowned_parent / c.Infra.DEFAULT_SRC_DIR).mkdir(parents=True)
         scratch.mkdir()
+        u.Tests.initialize_git_repo(scratch)
 
         with infra.rope_workspace(scratch) as rope:
             tm.that(rope.rope_repository_root, eq=scratch.resolve())

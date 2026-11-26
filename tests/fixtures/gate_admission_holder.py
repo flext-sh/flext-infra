@@ -32,7 +32,9 @@ class TestsFlextInfraGateAdmissionHolder:
         HOLD = "hold"
         FAIL = "fail"
         NESTED = "nested"
+        GEN_HEALTH = "gen-health"
         FULL_HEALTH = "full-health"
+        CONVERGE_HEALTH = "converge-health"
 
     FAILURE_STATUS = 7
 
@@ -46,9 +48,16 @@ class TestsFlextInfraGateAdmissionHolder:
         """
         name, root_text, mode_text, budget_text, *repeat = arguments
         root, mode = Path(root_text), cls.Mode(mode_text)
-        if mode is cls.Mode.FULL_HEALTH:
+        if mode is cls.Mode.CONVERGE_HEALTH:
+            u.Infra.gate_health_record(root, "check", success=False)
+            u.Infra.gate_health_refuse(root, gates=("check",))
+            return 0
+        if mode in {cls.Mode.GEN_HEALTH, cls.Mode.FULL_HEALTH}:
             u.Infra.gate_health_record(root, "tests", success=False)
-            u.Infra.gate_health_refuse(root)
+            u.Infra.gate_health_refuse(
+                root,
+                gates=("check",) if mode is cls.Mode.GEN_HEALTH else ("check", "tests"),
+            )
             return 0
         budget = m.Infra.RouteBudgetSpec(
             budget_seconds=int(budget_text), grace_seconds=1
