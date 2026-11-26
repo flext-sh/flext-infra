@@ -151,12 +151,13 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
             )
             # A declaration failure of one module is the phase's typed failed
             # result (base.plan_semantic_cutover), never an engine exception.
-            declaring = types.require_declared_source_module(project, module)
+            declaring = types.require_file_resource(
+                types.require_declared_source_module(project, module).get_resource(),
+                module,
+            )
             raise e.ValidationError(
                 msg,
-                context={
-                    c.Infra.MOD_FAILURE_MODULE_KEY: declaring.get_resource().real_path
-                },
+                context={c.Infra.MOD_FAILURE_MODULE_KEY: declaring.real_path},
             )
         return owner
 
