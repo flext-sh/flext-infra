@@ -597,6 +597,8 @@ __all__ = [{self.PARENT_CLASS!r}, 'm']
             The originating immutable result view of semantic migration edits.
 
         """
+        # Git owns the source inventory of a scope (project discovery).
+        u.Tests.initialize_git_repo(tmp_path)
         with infra.rope_workspace(tmp_path) as rope:
             return u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.FACADE_BASE,
