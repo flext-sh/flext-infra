@@ -26,6 +26,8 @@ class TestsFlextInfraInfraRopeService:
         source_path = package / "query_owner.py"
         source = "class QueryOwner:\n    pass\n"
         source_path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        # Git owns the source inventory: commit the module the queries read.
+        u.Tests.initialize_git_repo(root)
         with infra.rope_workspace(root) as workspace:
             project = workspace.rope_project
             resource = tm.not_none(workspace.resource(source_path))

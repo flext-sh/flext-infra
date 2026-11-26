@@ -606,19 +606,18 @@ __all__ = [{self.PARENT_CLASS!r}, 'm']
             The originating immutable result view of semantic migration edits.
 
         """
-        parent_root = tmp_path / "parent/src"
         root = tmp_path / "child"
         consumer: dict[Path, str] = {}
         for path, source in sources.items():
-            target = (
-                self.installed / path.relative_to(parent_root)
-                if path.is_relative_to(parent_root)
-                else path
-            )
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_text(source, encoding=c.DEFAULT_ENCODING)
             if path.is_relative_to(root):
                 consumer[path] = source
+                target = path
+            else:
+                # Every other project is a dependency: install it from its src.
+                dependency = path.relative_to(tmp_path)
+                target = self.installed.joinpath(*dependency.parts[2:])
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(source, encoding=c.DEFAULT_ENCODING)
         package_init = child.parent / c.Infra.INIT_PY
         if package_init not in consumer:
             package_init.write_text("", encoding=c.DEFAULT_ENCODING)
