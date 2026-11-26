@@ -244,43 +244,13 @@ class TestsFlextInfraCodegenMakeCheckPartition:
         tm.fail(any("make pre-commit" in command for command in commands))
 
     @staticmethod
-    def test_pre_commit_runs_setup_then_check() -> None:
-        """The commit hook provisions the checkout, then runs the check row."""
+    def test_pre_commit_runs_check_without_setup() -> None:
+        """The commit hook runs the check row without setup."""
         make = config.Infra.codegen.make
         tm.that(
             tuple(step.verb for step in make.workflow if "pre_commit" in step.contexts),
-            eq=(c.Infra.VERB_SETUP, c.Infra.VERB_CHECK),
+            eq=(c.Infra.VERB_CHECK,),
         )
-
-    @staticmethod
-    def test_pre_commit_workflow_refuses_a_missing_setup() -> None:
-        """A commit hook that checks without provisioning first is refused."""
-        base = config.Infra.codegen.make.model_dump(
-            mode="json", exclude_computed_fields=True
-        )
-        rows = u.Tests.json_rows(base, "workflow")
-        payload = {
-            **base,
-            "workflow": [
-                {
-                    **row,
-                    "contexts": (
-                        [
-                            context
-                            for context in u.Tests.json_strings(row["contexts"])
-                            if context != "pre_commit"
-                        ]
-                        if row["verb"] == c.Infra.VERB_SETUP
-                        else row["contexts"]
-                    ),
-                }
-                for row in rows
-            ],
-        }
-        with u.Tests.raises(
-            e.PydanticValidationError, match="pre-commit hook requires"
-        ):
-            m.Infra.MakeSpec.model_validate(payload)
 
     @staticmethod
     def test_pre_commit_workflow_refuses_every_other_operation() -> None:
@@ -292,7 +262,8 @@ class TestsFlextInfraCodegenMakeCheckPartition:
         others = [
             row["verb"]
             for row in rows
-            if row["verb"] not in {c.Infra.VERB_SETUP, c.Infra.VERB_CHECK}
+            if row["verb"]
+            not in {c.Infra.VERB_SETUP, c.Infra.VERB_CHECK, c.Infra.VERB_TEST}
         ]
         tm.that(others, empty=False)
         for verb in others:

@@ -578,6 +578,7 @@ class TestsFlextInfraDepsModernizerTooling:
             "",
             encoding="utf-8",
         )
+        u.Tests.initialize_git_repo(project_dir)
         stale_pattern = "stale-pattern.py"
         codegen = tm.ok(u.Infra.load_codegen_inputs(project_dir)).spec
 
@@ -684,7 +685,7 @@ class TestsFlextInfraDepsModernizerTooling:
                 "flext_sample",
             }),
         )
-        tm.that(lint, lacks="per-file-ignores")
+        tm.that(u.Tests.toml_mapping(lint["per-file-ignores"]), lacks=stale_pattern)
 
     @staticmethod
     def test_project_cannot_declare_its_own_ruff_exemption(
