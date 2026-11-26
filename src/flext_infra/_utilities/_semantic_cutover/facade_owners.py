@@ -20,7 +20,7 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import TYPE_CHECKING
 
-from flext_infra import c
+from flext_infra import c, e
 from flext_infra._utilities import FlextInfraUtilitiesPrivateImportFacades
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeAnalysis,
@@ -118,7 +118,9 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
             The class ``letter`` names, or raise with the missing proof.
 
         Raises:
-            ValueError: The letter and its class lack a shared public declaration.
+            ValueError: The letter does not name a native facade class.
+            ValidationError: The letter and its class lack a shared public
+                declaration (the declaring module's typed phase failure).
 
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
@@ -147,7 +149,15 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
                 f"{module}.{letter} is not declared with its facade class in the "
                 "__all__ of the module that binds it"
             )
-            raise ValueError(msg)
+            # A declaration failure of one module is the phase's typed failed
+            # result (base.plan_semantic_cutover), never an engine exception.
+            declaring = types.require_declared_source_module(project, module)
+            raise e.ValidationError(
+                msg,
+                context={
+                    c.Infra.MOD_FAILURE_MODULE_KEY: declaring.get_resource().real_path
+                },
+            )
         return owner
 
     @classmethod

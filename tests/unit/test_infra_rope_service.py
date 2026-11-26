@@ -296,6 +296,8 @@ class TestsFlextInfraInfraRopeService:
             nested = repository_root / root / "contracts"
             nested.mkdir(parents=True)
             (nested / "owner.py").write_text(source, encoding=c.DEFAULT_ENCODING)
+        # Git owns the source inventory: commit the modules lazy-init plans.
+        u.Tests.initialize_git_repo(repository_root)
 
         tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
 
