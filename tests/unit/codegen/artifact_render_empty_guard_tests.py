@@ -12,6 +12,8 @@ from flext_infra import FlextInfraConfig, config
 from tests import c, e, m, p, t, tm, u
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraArtifactRenderEmptyGuard:
     """A managed render that produced no content must fail loud, never publish.

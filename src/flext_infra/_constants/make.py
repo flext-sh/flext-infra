@@ -82,6 +82,8 @@ class FlextInfraConstantsMake(FlextInfraConstantsConfig):
     VERB_CHECK: ClassVar[str] = "check"
     VERB_TEST: ClassVar[str] = "tests"
     VERB_TEST_FULL: ClassVar[str] = "tests-full"
+    ADMISSION_FULL_FORMS: ClassVar[tuple[str, ...]] = ("check-full", "mod-full")
+    "Admission names of the full check and mod forms (rendered by the Makefile)."
     VERB_TEST_HARNESS: ClassVar[str] = "tests-harness"
     VERB_NATIVE_GATE: ClassVar[str] = "native-gate"
     RUFF_UNSAFE_FIXES_FLAG: ClassVar[str] = "--unsafe-fixes"
@@ -164,6 +166,13 @@ class FlextInfraConstantsMake(FlextInfraConstantsConfig):
     PYTEST_ENV_TARGET_FILE: ClassVar[str] = "FLEXT_PYTEST_TARGET_FILE"
     PYTEST_ENV_CI: ClassVar[str] = "CI"
     PYTEST_ENV_TESTMON_DATAFILE: ClassVar[str] = "TESTMON_DATAFILE"
+    PYTEST_ENV_PYCACHE_PREFIX: ClassVar[str] = "PYTHONPYCACHEPREFIX"
+    PYTEST_CACHE_DIRECTORY: ClassVar[str] = ".pytest_cache"
+    SQLITE_DATABASE_SIDECAR_SUFFIXES: ClassVar[tuple[str, ...]] = (
+        "-wal",
+        "-shm",
+        "-journal",
+    )
     PYTEST_WARNING_EVENTS_SUFFIX: ClassVar[str] = ".warnings.jsonl"
     PYTEST_INHERITED_ENV_REMOVE_KEYS: ClassVar[Sequence[str]] = (
         "PYTEST_ADDOPTS",

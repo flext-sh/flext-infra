@@ -12,6 +12,8 @@ from flext_infra.codegen import FlextInfraCodegenLayout, FlextInfraCodegenMakeBo
 from tests import FlextInfraConfig, c, config, m, t, tm, u
 from tests.unit.codegen import TestsFlextInfraCodegenLayoutSupport
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraCodegenLayoutGitignore:
     """Test suite for layout gitignore, tracked-file moves, and canonical render."""

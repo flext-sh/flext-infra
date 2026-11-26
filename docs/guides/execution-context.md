@@ -33,7 +33,7 @@
 - [SonarCloud exclusions](#sonarcloud-exclusions)
 - [Bootstrap credentials](#bootstrap-credentials)
 - [Evidence and checkpoints](#evidence-and-checkpoints)
-  - [Publication Receipts, Pytest Profiles, and Testmon Leases](#publication-receipts-pytest-profiles-and-testmon-leases)
+  - [Publication Receipts and Pytest Profiles](#publication-receipts-and-pytest-profiles)
   - [Architecture Checkpoints and AST Rule Catalogs](#architecture-checkpoints-and-ast-rule-catalogs)
   - [Rope Superclass Resolution, Lazy-Init Planners, and Candidate Overlays](#rope-superclass-resolution-lazy-init-planners-and-candidate-overlays)
   - [cProfile Thread Isolation and Performance Diagnosis](#cprofile-thread-isolation-and-performance-diagnosis)
@@ -222,9 +222,9 @@ written. After resolution,
 floor (`floors = [...]`) or pin (`pins = [...]`) from the project's own
 `uv.lock`, so an owned bound is always inside the window, and the locks record
 it without upgrading. Last,
-`flext-infra deps repair-mise-platforms --repository-root <root>` writes only
-the Mise locks of tools missing a declared platform, without generation,
-installation or another resolver.
+`flext-infra deps repair-mise-platforms --repository-root <root>` delegates
+version-3 lock migration to native `mise lock --upgrade`, keeping the locked
+tool versions, before repairing any remaining missing platforms.
 Installed `workspace verify-lock` delegates freshness and closure checks to native
 `uv lock --check`, not an Infra marker evaluator or graph walker. These commands remove
 inherited project/interpreter selectors through `make.native_environment_unset` and
@@ -365,9 +365,11 @@ toolchain nor a corrupt lock stops it:
    then the setup installation of exactly that lock.
 6. Last, the isolated upgrade executor (`make.executor_environment`, a declared
    ignored artifact of the `.gitignore` projection) runs
-   `deps repair-mise-platforms`, which locks the tools missing a platform that
-   `toolchain.mise_lockfile_platforms` declares: Mise reports no preview for that
-   gap. Native uv syncs the executor from the project's frozen lock, only the
+   `deps repair-mise-platforms`. An explicit version-3 lock runs one native
+   format upgrade over the declared platform set. Only tools still missing a
+   platform from `toolchain.mise_lockfile_platforms` are relocked. The earlier
+   version-resolution step can still emit a format warning on the migration run.
+   Native uv syncs the executor from the project's frozen lock, only the
    dependency group that pins flext-infra, without the project and without
    editable installs, and runs it with `python -I`, so the step never imports
    the project's source. Bytecode follows uv's native default: Python compiles
@@ -644,10 +646,9 @@ updated and run to validate it, without mocks, tautologies or policy hardcodes.
 Resolve the test entry from the selected repository's current native help. The
 current catalog declares `make tests` and the explicitly requested `make tests-full`,
 without file or match inputs. The first executes persistent Testmon selection
-once; the second executes the complete applicable population once without
-Testmon, a preliminary incremental run or any cache read, lease or publication.
-The existing database remains untouched. The operator's latest 2026-10-28
-clarification is owned by
+once. The second executes the complete applicable population once and records
+it in the same checkout's Testmon database without an incremental selection
+pass. The current execution contract is owned by
 [ADR-029](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/029-always-working-one-complete-cycle.md).
 Tests execute independently of quality checks; no green check receipt is a
 prerequisite. Both operations retain applicability, original failure and the
@@ -1284,6 +1285,9 @@ configuration snapshots alongside the destination snapshot, including for a
 no-op. Workspace rendering also receives the local topology so its member
 whitelist agrees with conform; the initial `.gitmodules` snapshot authenticates
 that input even when absent. Packaged defaults do not enumerate consumers.
+The configured `.trigger-tree/` pattern keeps the agent's local session history,
+session state and lock outside versioned project content; it does not remove those
+files or exclude product changes from capture.
 
 `make fix-toolchain` repairs one explicitly selected native installation through
 Mise, using the exact version and checksum authority of the current lock. Set
@@ -1984,6 +1988,27 @@ Infra owns the full workspace operation receipt and report. CLI's native qualifi
 receipt and report are non-generic read projections of that original payload; they are
 not base classes for domain fields. Original execution, outcome, stage and completion
 remain observable when CLI reads the shared native-tool evidence.
+
+Fixture qualification requires an explicit workspace profile. A workspace can
+elect it in its [local codegen layer](local-config-overrides.md). A tool
+declaration alone does not elect qualification. An elected profile
+requires the locked native launcher and compiler SDK, the compiler resource from
+the CLI distribution's installed RECORD, the required kernel capabilities and
+successful real subprocess observations. Failure in any of these requirements
+fails setup. A workspace without a fixture profile issues no fixture evidence.
+The elected SDK download and static archive extractor are authenticated by
+their declared digests and lock. Setup copies the exact archive into private
+staging and invokes the extractor inside the authenticated launcher. The
+isolated build reads the extracted sysroot and the exact libseccomp headers
+and archive. A changed SDK, extractor or lock invalidates the previous
+qualification and requires the profile to run setup again.
+Setup validates the compiler's numeric seccomp ABI probe and records the
+native machine name used by CLI to admit the qualified process. Run setup
+again to replace a receipt that records the token as its architecture.
+When a profile is elected, setup installs the locked packages as wheels so
+the qualification reads the original resource entries rather than editable paths.
+Operating-system restrictions in the native toolchain elect eligible tools before
+installation. An eligible tool without a valid lock remains a setup failure.
 
 Upgrade installs the newly resolved lock through its existing frozen provisioning
 owner and verifies its runtime provenance before the next producer. Package election
@@ -2839,9 +2864,10 @@ prefix for these verbs.
   `make tests`, `gen` and `gen-scope` are not limited either; they still queue for a
   slot.
 
-Heavy routes resolve the declared toolchain before entering the queue. When
-`make gen ROOT=...` targets another checkout and needs a provisioned
-environment, generation rejects a missing target interpreter before admission.
+Heavy routes resolve the declared toolchain before entering the queue. Generation
+admits the requested root against its workspace topology first. If the admitted
+root belongs to another checkout and the selected surface requires a provisioned
+environment, generation rejects a missing target interpreter before queueing.
 Run `make setup` and `make gen` in the target checkout so facade resolution
 uses that checkout's own dependencies.
 The per-verb load, processor and memory limits are owned by the Make admission
@@ -3254,9 +3280,13 @@ preserves the backend's native error, without an
 anonymous retry or source switch. CI jobs inject `GITHUB_TOKEN`; containers receive
 the variable or a BuildKit secret explicitly.
 
+The Make test launcher strips inherited GitHub credential aliases. The caller
+credential test supplies one alias explicitly. The host credential test supplies
+only its own `gh` configuration and lets Make select the declared host producer.
+
 ## Evidence and checkpoints
 
-### Publication Receipts, Pytest Profiles, and Testmon Leases
+### Publication Receipts and Pytest Profiles
 
 Each piece of evidence identifies command, directory, observed revision, exit code, and
 decisive result. A run that is in progress, interrupted, or missing its exit code is not
@@ -3322,12 +3352,6 @@ one process-local profiler. Nested profiling subprocesses retain their own profi
 and still execute the original site customization.
 Tests that need sample pstats reuse `native_cprofile`, whose stdlib workload runs
 in a separate process so it cannot compete with the worker's active profiler.
-
-The typed run context is published before waiting for the Testmon lease and
-records whether that lease was acquired. An interrupted wait therefore retains
-its parent profile and authenticated invocation identity without inventing a
-child process outcome. A context with an unacquired lease rejects any selection,
-inventory or suite artifact; it proves no test execution.
 
 Profile reports select the nearest project manifest owning the profile artifact.
 This keeps member reports confined to their member when Make starts at the
@@ -3649,9 +3673,10 @@ when signal registration fails; a cleanup diagnostic cannot replace that cause.
 
 The existing opt-in public CLI form is
 `FLEXT_INFRA_PROFILE=true FLEXT_INFRA_PROFILE_OUTPUT=<file> flext-infra <command> ...`.
-The CLI entry profiles the whole command once. The generated gen, mod and check
-recipes declare the destination through `FLEXT_INFRA_PROFILE_OUTPUT` (make
-`generation_profile_path`, `modification_profile_path` and `check_profile_path`).
+The CLI entry profiles the whole command once. The generated gen, mod, check and
+tests recipes declare the destination through `FLEXT_INFRA_PROFILE_OUTPUT` (make
+`generation_profile_path`, `modification_profile_path`, `check_profile_path` and
+`tests_profile_path`).
 The check route's captured checker child writes its own profile beside its gate
 receipts. The private
 `flext_infra._profile_entry` module survives only as a deprecated pass-through for
@@ -3754,14 +3779,17 @@ filtering must not hide that caller chain from diagnosis. Both views use native 
 and the same complete immutable profile, without running or reconstructing the workload.
 
 The standard Make operations admit the same opt-in setting:
-`FLEXT_INFRA_PROFILE=true make gen`, `FLEXT_INFRA_PROFILE=true make mod` and
-`FLEXT_INFRA_PROFILE=true make check`.
+`FLEXT_INFRA_PROFILE=true make gen`, `FLEXT_INFRA_PROFILE=true make mod`,
+`FLEXT_INFRA_PROFILE=true make check` and `FLEXT_INFRA_PROFILE=true make tests`
+(each pytest child also profiles into the pytest policy's process directory; the
+incremental selection narrows the run to the affected tests).
 `settings.Infra.profile` defaults to false; it never selects a different operation
 or changes source admission, target scope, publication or native failure handling.
 The recipes use the existing shared CLI profiling transport. Their report paths
 come from `Infra.codegen.make.generation_profile_path`,
-`Infra.codegen.make.modification_profile_path` and
-`Infra.codegen.make.check_profile_path`, bound to the selected `PROJECT_ROOT`,
+`Infra.codegen.make.modification_profile_path`,
+`Infra.codegen.make.check_profile_path` and
+`Infra.codegen.make.tests_profile_path`, bound to the selected `PROJECT_ROOT`,
 not the caller's working directory. Disabled capture retains the direct CLI call
 and creates no profile. There is no common profiling verb or legacy alias.
 
@@ -4193,7 +4221,8 @@ repository, never a raw `rumdl` pass, so a declared foreign projected block
 (`tooling.tools.markdown.projected-blocks`) reads the same in the hook as in
 `make check` and `make fmt`. When enabled, the generated pre-push hook
 drops inherited `CI` and runs the workflow's primary check once, then the
-incremental tests, because CI runs setup and the primary check only. The local
+incremental tests; CI runs setup, the primary check and the fast tests, without
+external infrastructure or Docker (operator decision 2026-11-22). The local
 workflow retains the complete check and test steps. Every gate blocks in
 every context that runs it; there is no informative or advisory gate.
 Conflict detection uses the canonical Git inventory, including unpublished files,
@@ -4280,18 +4309,64 @@ resolution and lock publication.
 
 The ordinary `tests` operation uses incremental Testmon selection
 ([ADR-029](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/029-always-working-one-complete-cycle.md)).
-The explicit `tests-full` operation executes the applicable suite once without
-Testmon, an incremental pre-run or database access. Marker applicability remains
-owned by the declared execution context; neither operation invents exclusions.
+The explicit `tests-full` operation executes the applicable suite once and records
+dependencies in Testmon without an incremental pre-run. The declared execution
+context determines which markers apply to each operation.
 The incremental database is Testmon's native `.testmondata` at the checkout root,
-ignored by `.gitignore`; no variable, setting or Make value relocates it, and full
-execution leaves it untouched.
-The explicit single-file operation runs incremental selection followed by complete
-execution of that file, including its declared slow tests, on the same database.
+ignored by `.gitignore`. The runner binds Testmon to that path for selection and
+execution, even when pytest discovers a nested configuration root. The same
+path goes into the run receipt and SQLite integrity inspection. The runner
+discards an inherited `TESTMON_DATAFILE` value.
+The explicit single-file operation runs that file once and records it in the
+same database. The file uses the full execution mode with per-item deadlines,
+including for its declared slow tests. It has no aggregate deadline even when
+the caller originally constructed the runner for incremental execution.
 No empty marker phase is invoked or converted to success. Zero execution is accepted
 only as an integrity-checked cache hit with complete inventory/deselection accounting.
-The SQLite owner checkpoints and checks integrity before the runner releases its
-lease.
+The SQLite owner checkpoints and checks the integrity of that database before
+and after the run.
+
+A caller supplying a qualified fixture to `workspace_tests` elects a single
+source project and a disjoint private working checkout. Testmon uses its
+regular checkout-root database and SQLite sidecars in that working checkout.
+Project identity reads Git status without optionally refreshing the index.
+The fixture supplies authenticated read-only inputs for the child's native
+Git source inventory. Pytest's benchmark plugin initializes its storage in
+the private phase output directory even when benchmarking is disabled.
+The configuration receipt recorder uses its declared directory beside the
+database, preserving configuration dependencies across invocations.
+The runner holds one checkout lease from preflight through native child
+termination, integrity inspection and the run receipt. The complete-suite
+operation takes the same lease. Each isolated fixture uses the elected
+operation deadline to qualify the native policy compiler and child lifecycle.
+
+Each pytest child receives authenticated source and runtime inputs and a
+separate writable report directory. Its home, temporary files and Python
+bytecode output use that private directory. A qualified whole-project fixture
+selects and executes incrementally in one native Testmon invocation with its
+default environment. Native worker observations bind the complete inventory and
+selection to the suite receipt. The original source identity still binds
+the parent receipts. The requested fixture uses the
+bootstrap-qualified launcher and policy compiler from the original setup
+report. The receipt binds their physical identities. A guest that changes
+those identities obtains a fresh receipt from `make setup` before replaying
+the fixture.
+
+A project may elect an independently prepared private fixture with
+`Infra.tooling.tools.pytest.fixture` in its effective `config/tooling.yaml`.
+The declaration identifies its physical `checkout-root`, the original
+`setup-root`, approved repository-relative `git-inputs`, and the admitted
+`runtime-trees` and `runtime-files`. Its optional environment contains only
+executable, loader and terminal inputs. The runner captures the project's
+native Git inventory and the declared head, index, refs and object files
+after the existing Make and systemd admission. The Git metadata belongs to
+the source project itself, with its own object store. The selected checkout
+owns its own Testmon state.
+The launcher authenticates the declared runtime roots on the retained
+read-only mount descriptors for a whole-project incremental run. A scoped
+or complete run captures the elected runtime version before its first phase
+and verifies that version at each launch.
+Projects without this election keep the ordinary checkout database.
 
 Toolchain caches hold one immutable entry per lock state: the key is the OS,
 Python runtime and content hash of `uv.lock`, `mise.lock`, `pyproject.toml` and
@@ -5195,6 +5270,9 @@ to public import routing.
 Native provider capture owns resource addressing and source selection. Route traversal
 consumes that capture and one module/name binding identity, so publication policy does
 not duplicate filesystem discovery or expand the resolver's independent inputs.
+The typing-scaffold cleaner skips Rope's unused-import analysis when the candidate
+contains no import of `typing`: only typing imports are eligible for removal there.
+It still authenticates and removes empty typing guards before that decision.
 Facade collision analysis separates lexical guard provenance from declaration
 collection: only a native import binding to `typing.TYPE_CHECKING` or its
 `typing_extensions` counterpart makes a branch type-only. Runtime redeclarations

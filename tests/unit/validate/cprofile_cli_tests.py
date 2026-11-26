@@ -13,6 +13,8 @@ from pathlib import Path
 
 from tests import c, m, t, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraCProfileCli:
     """Exercise native CLI processes independently of report rendering."""

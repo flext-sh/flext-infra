@@ -1,17 +1,21 @@
 {#- The official installer owns acquisition, platform and checksum handling, and
     places Mise at its default $(BOOTSTRAP_MISE), shared by every checkout. It
-    runs only when that executable is absent; the committed min_version makes
-    Mise itself refuse an older one. The checkout's own config is then trusted,
+    runs when that executable is absent or, under a pinned mise_version, older
+    than the pin (the committed min_version would make it refuse every later
+    command); a newer one is kept. The checkout's own config is then trusted,
     so a new worktree provisions through `make setup`/`make upg` alone. Native
     `mise install` provisions the pinned self-managed release, which execution
     resolves through `mise which`. -#}
 {% macro mise_acquisition(project_root, toolchain) -%}
 	bootstrap_stage=acquisition; \
-	if [ ! -x "$(BOOTSTRAP_MISE)" ]; then \
-	export MISE_INSTALL_FROM_GITHUB=1 MISE_INSTALL_HELP=0; \
-{% if toolchain.mise_version == "latest" %}	unset MISE_VERSION; \
-{% else %}	export MISE_VERSION="{{ toolchain.mise_version }}"; \
-{% endif %}	case "$${OS:-}" in \
+{% if toolchain.mise_version == "latest" %}	if [ ! -x "$(BOOTSTRAP_MISE)" ]; then \
+	unset MISE_VERSION; \
+{% else %}	mise_acquired=; \
+	if [ -x "$(BOOTSTRAP_MISE)" ]; then mise_acquired="$$("$(BOOTSTRAP_MISE)" --version)"; mise_acquired="$${mise_acquired%% *}"; fi; \
+	if [ -z "$${mise_acquired}" ] || [ "$$(printf '%s\n%s\n' "{{ toolchain.mise_version }}" "$${mise_acquired}" | sort -V | head -n 1)" != "{{ toolchain.mise_version }}" ]; then \
+	export MISE_VERSION="{{ toolchain.mise_version }}"; \
+{% endif %}	export MISE_INSTALL_FROM_GITHUB=1 MISE_INSTALL_HELP=0; \
+	case "$${OS:-}" in \
 		(Windows_NT) \
 			powershell.exe -NoProfile -Command '$$ErrorActionPreference = "Stop"; Invoke-RestMethod https://mise.run/powershell | Invoke-Expression' ;; \
 		(*) \
@@ -88,11 +92,24 @@
     locks and never writes them, while upgrade installs the pins its preceding
     resolution published. The caller elects the executable: every lock write
     belongs to the declared self-managed release, never to the host bootstrap. -#}
-{% macro mise_install(project_root, install_tools, bin_dir, mise, locked=true) -%}
-	export MISE_SHIMS_DIR="{{ project_root }}/{{ bin_dir }}/shims"; \
+{% macro mise_tool_arguments(mise, command_root, install_tools, platform_tools) -%}
+	mise_host_os="$$( {{ mise }} -C {{ command_root }} vars flext_host_os )"; \
+	case "$$mise_host_os" in linux|macos|windows) ;; *) printf 'ERROR: Mise reports no supported host OS\n' >&2; exit 2 ;; esac; \
+	set --{% for tool in install_tools %}{% if tool not in platform_tools %} "{{ tool }}"{% endif %}{% endfor %};
+{%- for tool, systems in platform_tools.items() %} \
+	case "$$mise_host_os" in {{ systems | join("|") }}) set -- "$$@" "{{ tool }}";; esac;
+{%- endfor %}
+{%- endmacro %}
+
+{% macro mise_install(project_root, install_tools, mise, locked=true, platform_tools=none) -%}
 	export MISE_LOCKED={{ "1" if locked else "0" }}; \
 	bootstrap_stage=tool-install; \
-	{{ mise }} -C "{{ project_root }}" install --yes{% for tool in install_tools %} "{{ tool }}"{% endfor %};
+	{% if platform_tools -%}
+	{{ mise_tool_arguments(mise, '"' ~ project_root ~ '"', install_tools, platform_tools) }} \
+	{{ mise }} -C "{{ project_root }}" install --yes "$$@";
+{%- else -%}
+{{ mise }} -C "{{ project_root }}" install --yes{% for tool in install_tools %} "{{ tool }}"{% endfor %};
+{%- endif %}
 {%- endmacro %}
 
 {#- Setup never writes a lock: the committed mise.lock is the only authority.
@@ -139,10 +156,10 @@
 
 {#- Setup acquires the declared Mise, provisions the committed self pin, and
     installs the declared toolchain from that pin before the lifecycle. -#}
-{% macro mise_toolchain_provision(project_root, toolchain, install_tools, bin_dir) -%}
+{% macro mise_toolchain_provision(project_root, toolchain, install_tools) -%}
 {{ mise_acquisition(project_root, toolchain) }} \
 	{{ mise_locked_reader(project_root, toolchain) }}
-	{{ mise_install(project_root, install_tools, bin_dir, locked=true, mise='"$$mise_reader"') }}
+	{{ mise_install(project_root, install_tools, locked=true, mise='"$$mise_reader"', platform_tools=toolchain.mise_platform_tools) }}
 {%- endmacro %}
 
 {#- Syntax preflight of one committed TOML lock (a projection never
@@ -173,13 +190,17 @@ if [ -f {{ lock_path }} ]; then \
     entries for tools the configuration no longer declares: the native whole
     `mise lock` (no `--bump`, locked versions kept) prunes them, and a preview
     still not `[]` afterwards stops the upgrade. -#}
-{% macro mise_lock_changed(mise, lock_root, install_tools) -%}
+{% macro mise_lock_changed(mise, lock_root, install_tools, platform_tools=none, bootstrap_root=none) -%}
 if [ "$$("{{ mise }}" -C {{ lock_root }} lock --bump --dry-run --json)" = "[]" ]; then \
 		printf 'upg: %s: no locked version changes\n' {{ lock_root }}; \
 	else \
 		changed_tools=""; \
+		{% if platform_tools -%}
+		{{ mise_tool_arguments('"' ~ mise ~ '"', bootstrap_root, install_tools, platform_tools) }} \
+		for tool in "$$@"; do \
+		{% else -%}
 		for tool in{% for tool in install_tools %} "{{ tool }}"{% endfor %}; do \
-			if [ "$$("{{ mise }}" -C {{ lock_root }} lock --bump --dry-run --json "$$tool")" != "[]" ]; then changed_tools="$$changed_tools $$tool"; fi; \
+		{% endif %}	if [ "$$("{{ mise }}" -C {{ lock_root }} lock --bump --dry-run --json "$$tool")" != "[]" ]; then changed_tools="$$changed_tools $$tool"; fi; \
 		done; \
 		if [ -z "$$changed_tools" ]; then \
 			printf 'upg: %s: pruning lock entries no declared tool owns\n' {{ lock_root }}; \
@@ -204,15 +225,26 @@ if [ "$$("{{ mise }}" -C {{ lock_root }} lock --bump --dry-run --json)" = "[]" ]
 	+@set -eu; \
 	bootstrap_stage=source-identity; bootstrap_completed=false; bootstrap_sha=null; bootstrap_git_status=null; mise_stage=; \
 	bootstrap_report="{{ project_root }}/{{ report_relative_path }}"; \
-	bootstrap_publish_report() { \
+	{% if toolchain.native_isolation -%}
+	bootstrap_pending=; \
+	{% endif %}bootstrap_publish_report() { \
 		if [ -d "$$(dirname "$${bootstrap_report}")" ]; then :; else mkdir -p "$$(dirname "$${bootstrap_report}")" 2>/dev/null || true; fi; \
-		if printf '%s\n' {{ report_literal }} | sed \
+		{% if toolchain.native_isolation -%}
+		if [ -z "$${bootstrap_pending}" ]; then bootstrap_pending="$$(mktemp "$${bootstrap_report}.XXXXXXXX")" || return $$?; fi; \
+		{% endif %}if printf '%s\n' {{ report_literal }} | sed \
 			-e "s/@@SHA@@/$${bootstrap_sha}/" \
 			-e "s/@@GIT_EXIT@@/$${bootstrap_git_status}/" \
 			-e "s/@@EXIT@@/$${bootstrap_status}/" \
 			-e "s/@@STAGE@@/$${bootstrap_stage}/" \
-			-e "s/@@COMPLETE@@/$${bootstrap_completed}/" > "$${bootstrap_report}.pending"; then :; else return $$?; fi; \
-		mv "$${bootstrap_report}.pending" "$${bootstrap_report}"; \
+			-e "s/@@COMPLETE@@/$${bootstrap_completed}/" > "{% if toolchain.native_isolation %}$${bootstrap_pending}{% else %}$${bootstrap_report}.pending{% endif %}"; then :; else return $$?; fi; \
+		{% if toolchain.native_isolation -%}
+		if [ "$${bootstrap_completed}" = true ]; then \
+			if MISE_AUTO_INSTALL=0 "$${mise_binary}" -C "{{ project_root }}" exec -- $(PROJECT_FLEXT_INFRA) workspace qualify-setup --repository-root "{{ project_root }}" --pending-report "$${bootstrap_pending}"; then :; else \
+				bootstrap_status=$$?; bootstrap_stage=native-qualification; bootstrap_completed=false; \
+				bootstrap_publish_report; return $$?; \
+			fi; \
+		fi; \
+		{% endif %}mv "{% if toolchain.native_isolation %}$${bootstrap_pending}{% else %}$${bootstrap_report}.pending{% endif %}" "$${bootstrap_report}"; \
 	}; \
 	trap 'bootstrap_status=$$?; trap - EXIT; \
 		{{ mise_staging_cleanup() }} \
@@ -234,7 +266,7 @@ if [ "$$("{{ mise }}" -C {{ lock_root }} lock --bump --dry-run --json)" = "[]" ]
 		esac; \
 	else bootstrap_git_status=$$?; fi; \
 	{{ mise_network_admission() }} \
-	{{ mise_toolchain_provision(project_root, toolchain, install_tools, make.bootstrap_bin_dir) }} \
+	{{ mise_toolchain_provision(project_root, toolchain, install_tools) }} \
 	mise_active="$$(MISE_LOCKED=1 "$${mise_reader}" -C "{{ project_root }}" tool "{{ mise_selector }}" --active)"; \
 	mise_binary="$${mise_reader}"; \
 	{#- A hosted runner hands later steps only the GITHUB_PATH entries. They are

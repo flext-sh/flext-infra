@@ -12,6 +12,8 @@ from pathlib import Path
 from flext_infra.codemod import FlextInfraApplyRenames
 from tests import c, m, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraRenamePreflight:
     """Observe real native rename events without replacing publication owners."""

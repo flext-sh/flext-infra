@@ -30,6 +30,7 @@ if TYPE_CHECKING:
     from flext_infra.workspace.native_reference import (
         FlextInfraWorkspaceNativeReference,
     )
+    from flext_infra.workspace.native_setup import FlextInfraNativeSetup
     from flext_infra.workspace.propagation import FlextInfraWorkspacePropagation
     from flext_infra.workspace.rope import FlextInfraRopeWorkspace
     from flext_infra.workspace.runtime_dependencies import (
@@ -39,6 +40,7 @@ if TYPE_CHECKING:
 
 __all__: tuple[str, ...] = (
     "FlextInfraBindingService",
+    "FlextInfraNativeSetup",
     "FlextInfraRopeWorkspace",
     "FlextInfraRuntimeDependencyCollector",
     "FlextInfraWorkspaceDetector",
@@ -58,6 +60,7 @@ install_lazy_exports(
     globals(),
     {
         "FlextInfraBindingService": ".flext_binding",
+        "FlextInfraNativeSetup": ".native_setup",
         "FlextInfraRopeWorkspace": ".rope",
         "FlextInfraRuntimeDependencyCollector": ".runtime_dependencies",
         "FlextInfraWorkspaceDetector": ".detector",

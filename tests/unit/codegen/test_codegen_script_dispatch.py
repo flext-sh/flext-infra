@@ -450,10 +450,10 @@ class TestsFlextInfraScriptDispatchMakefile:
         self,
         tmp_path: Path,
     ) -> None:
-        """Public test verbs share one guarded persistent testmon execution path.
+        """Public test verbs share one persistent testmon execution path.
 
-        The persistent database is keyed by the declared distribution, so
-        every checkout of a project shares one testmon history. Complete
+        Make exports no database location, so each checkout owns its native
+        testmon database at its root. Complete
         validation runs incremental then complete through one unbounded
         ``full`` entry, also used by the shipped test-full command.
         """

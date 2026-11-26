@@ -10,6 +10,8 @@ from pathlib import Path
 
 from tests import c, m, p, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsProtocolDomainProjection:
     """Domain projection retains the complete planner's collision contract."""

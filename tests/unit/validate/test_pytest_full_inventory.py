@@ -44,6 +44,7 @@ class TestsFlextInfraPytestFullInventory:
             u.Cli.toml_write_mapping(
                 project / c.PYPROJECT_FILENAME,
                 {
+                    "project": {"name": project.name, "version": "0.1.0"},
                     "tool": {
                         "pytest": {
                             "ini_options": {
@@ -318,7 +319,6 @@ class TestsFlextInfraPytestFullInventory:
             m.Infra.PytestRunContext(
                 execution_mode=mode,
                 testmon_db=tmp_path / "testmon",
-                testmon_lease_acquired=True,
                 deadline_monotonic=deadline,
                 report_directory=tmp_path,
             )

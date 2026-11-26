@@ -235,9 +235,10 @@ class UtilityFacadeOwnerPublication:
                 root,
                 u.Tests.conform_request(
                     root,
-                    what=c.Infra.CodegenConformSurface.ALL,
+                    what=c.Infra.CodegenConformSurface.FACADES,
                     scope=c.Infra.CodegenConformScope.SELF,
                     mode=c.Infra.CodegenConformMode.CHECK,
+                    module=f"{package.name}.{facade.stem}",
                 ),
             )
         )
@@ -653,6 +654,7 @@ class UtilityFacadeOwnerPublication:
                     what=c.Infra.CodegenConformSurface.FACADES,
                     scope=c.Infra.CodegenConformScope.SELF,
                     mode=c.Infra.CodegenConformMode.CHECK,
+                    module=f"{package.name}.{facade.stem}",
                 )
             )
         )

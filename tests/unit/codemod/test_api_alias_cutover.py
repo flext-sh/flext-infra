@@ -58,6 +58,7 @@ class TestsFlextInfraApiAliasCutover:
         return root, sources
 
     @staticmethod
+    @c.Tests.MARK.slow
     @c.Tests.MARK.parametrize(
         ("statement", "base", "expected"),
         [
@@ -77,7 +78,11 @@ class TestsFlextInfraApiAliasCutover:
         base: str,
         expected: str,
     ) -> None:
-        """No scanner finding or filename convention substitutes for real identity."""
+        """No scanner finding or filename convention substitutes for real identity.
+
+        Slow by nature: it ends with a fresh interpreter importing the rewritten
+        consumer, the end-to-end runtime proof of the planned cutover.
+        """
         root, sources = TestsFlextInfraApiAliasCutover._service_workspace(
             tmp_path,
             f"{statement}\nclass Consumer({base}[str]):\n    pass\n"
@@ -147,6 +152,7 @@ class TestsFlextInfraApiAliasCutover:
         tm.ok(u.Cli.process_succeeded(outcome.outcome))
 
     @staticmethod
+    @c.Tests.MARK.slow
     @c.Tests.MARK.parametrize(
         ("consumer", "reason"),
         [
@@ -185,6 +191,7 @@ class TestsFlextInfraApiAliasCutover:
         )
 
     @staticmethod
+    @c.Tests.MARK.slow
     @c.Tests.MARK.parametrize(
         ("owner_file", "owner_module"),
         [
@@ -235,7 +242,10 @@ class TestsFlextInfraApiAliasCutover:
             actionable=False,
             classification=c.Infra.ModScanFindingClass.DETECTION_ONLY,
         )
+        # Source discovery inventories a real Git checkout, as in production.
+        u.Tests.initialize_git_repo(tmp_path)
 
+        u.Tests.initialize_git_repo(tmp_path)
         with infra.rope_workspace(tmp_path) as rope:
             planned = u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.COMPAT_ALIAS,
@@ -257,6 +267,7 @@ class TestsFlextInfraApiAliasCutover:
         tm.that(by_path[consumer], lacks="import sample")
 
     @staticmethod
+    @c.Tests.MARK.slow
     @c.Tests.MARK.parametrize(
         ("module", "receiver"),
         [
@@ -331,7 +342,10 @@ class TestsFlextInfraApiAliasCutover:
             actionable=False,
             classification=c.Infra.ModScanFindingClass.DETECTION_ONLY,
         )
+        # Source discovery inventories a real Git checkout, as in production.
+        u.Tests.initialize_git_repo(tmp_path)
 
+        u.Tests.initialize_git_repo(tmp_path)
         with infra.rope_workspace(tmp_path) as rope:
             planned = u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.COMPAT_ALIAS,
@@ -360,6 +374,7 @@ class TestsFlextInfraApiAliasCutover:
         tm.ok(converged, eq=())
 
     @staticmethod
+    @c.Tests.MARK.slow
     @c.Tests.MARK.parametrize(
         ("consumer_source", "diagnostic"),
         [
@@ -462,7 +477,10 @@ class TestsFlextInfraApiAliasCutover:
             actionable=False,
             classification=c.Infra.ModScanFindingClass.DETECTION_ONLY,
         )
+        # Source discovery inventories a real Git checkout, as in production.
+        u.Tests.initialize_git_repo(tmp_path)
 
+        u.Tests.initialize_git_repo(tmp_path)
         with infra.rope_workspace(tmp_path) as rope:
             planned = u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.COMPAT_ALIAS,
@@ -474,6 +492,7 @@ class TestsFlextInfraApiAliasCutover:
         tm.fail(planned, has=diagnostic)
 
     @staticmethod
+    @c.Tests.MARK.slow
     @c.Tests.MARK.parametrize(
         ("module_import", "receiver"),
         [
@@ -532,7 +551,10 @@ class TestsFlextInfraApiAliasCutover:
             actionable=False,
             classification=c.Infra.ModScanFindingClass.DETECTION_ONLY,
         )
+        # Source discovery inventories a real Git checkout, as in production.
+        u.Tests.initialize_git_repo(tmp_path)
 
+        u.Tests.initialize_git_repo(tmp_path)
         with infra.rope_workspace(tmp_path) as rope:
             planned = u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.COMPAT_ALIAS,

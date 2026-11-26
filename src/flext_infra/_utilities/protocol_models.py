@@ -6051,7 +6051,6 @@ class FlextInfraUtilitiesModelsProtocol:
                 native = self._source_class(native.get_attribute(part))
             scope = native.get_scope()
             member = (tree, model, classes, lexical)
-            self_owner = self
 
             class Project(ast.NodeTransformer):
                 def __init__(self) -> None:

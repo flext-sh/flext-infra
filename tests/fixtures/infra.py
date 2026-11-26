@@ -378,6 +378,7 @@ def cached_runner_project(tmp_path: Path) -> Path:
         u.Cli.toml_write_mapping(
             project_root / c.PYPROJECT_FILENAME,
             {
+                "project": {"name": "runner-sample", "version": "0.1.0"},
                 "tool": {
                     "coverage": {
                         "run": {"omit": ["*/dependency_injector/providers.pyx"]},

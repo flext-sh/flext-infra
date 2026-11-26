@@ -13,6 +13,8 @@ from flext_infra import FlextInfraCli, config, infra
 from flext_infra.codemod import FlextInfraModGateEngine
 from tests import c, m, p, t, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraModEvidenceInputs:
     """Validate public evidence round-trips without duplicated input bodies."""

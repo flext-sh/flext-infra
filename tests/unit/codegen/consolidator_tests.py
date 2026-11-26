@@ -122,7 +122,17 @@ class TestsFlextInfraCodegenConsolidator:
         tm.ok(result)
         tm.that(result.value, has="Found")
 
-    def _build_consolidator_workspace(self, tmp_path: Path) -> Path:
+    def _build_consolidator_workspace(
+        self,
+        tmp_path: Path,
+        constants_body: str = (
+            "from types import SimpleNamespace\n"
+            "from typing import Final\n"
+            "\n"
+            'DEMO_VALUE: Final[str] = "demo"\n'
+            "c = SimpleNamespace(DEMO_VALUE=DEMO_VALUE)\n"
+        ),
+    ) -> Path:
         """Create a workspace with one project whose constants define a demo value.
 
         Returns:
@@ -130,19 +140,12 @@ class TestsFlextInfraCodegenConsolidator:
 
         """
         repository_root, _, package_dir = self._consolidator_layout(tmp_path)
-        (package_dir / "__init__.py").write_text("", encoding="utf-8")
         (package_dir / "__init__.py").write_text(
             "from flext_demo.constants import c\n",
             encoding="utf-8",
         )
         (package_dir / "constants.py").write_text(
-            "from __future__ import annotations\n"
-            "\n"
-            "from types import SimpleNamespace\n"
-            "from typing import Final\n"
-            "\n"
-            'DEMO_VALUE: Final[str] = "demo"\n'
-            "c = SimpleNamespace(DEMO_VALUE=DEMO_VALUE)\n",
+            f"from __future__ import annotations\n\n{constants_body}",
             encoding="utf-8",
         )
         (package_dir / "consumer.py").write_text(
@@ -189,6 +192,33 @@ class TestsFlextInfraCodegenConsolidator:
         updated_source = consumer_path.read_text(encoding="utf-8")
         tm.that(updated_source, has="VALUE = c.DEMO_VALUE")
         tm.that(updated_source, has="from flext_demo import c")
+
+    def test_execute_apply_mode_resolves_class_nested_final(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """A Final nested in the facade class maps to its path below ``c``."""
+        repository_root = self._build_consolidator_workspace(
+            tmp_path,
+            "from typing import Final\n"
+            "\n"
+            "class FlextDemoConstants:\n"
+            "    class Demo:\n"
+            '        DEMO_VALUE: Final[str] = "demo"\n'
+            "\n"
+            "c = FlextDemoConstants\n",
+        )
+        consumer_path = (
+            repository_root / "flext-demo" / "src" / "flext_demo" / "consumer.py"
+        )
+
+        payload = self._execute_consolidator(repository_root, dry_run=False)
+
+        tm.that(payload.total_applied, eq=1)
+        tm.that(
+            consumer_path.read_text(encoding="utf-8"),
+            has="VALUE = c.Demo.DEMO_VALUE",
+        )
 
     @c.Tests.MARK.parametrize("wrapper_segment", ["infra", "scripts", "tests"])
     def test_execute_apply_mode_scans_wrapper_surfaces(

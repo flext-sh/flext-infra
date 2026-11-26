@@ -13,15 +13,11 @@ from flext_infra import config
 from flext_infra.codegen import FlextInfraCodegenConform
 from tests import c, m, p, t, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraCodegenArtifactSsot:
     """Property contracts that remain valid for arbitrary configured artifacts."""
-
-    @staticmethod
-    def test_testmon_policy_cannot_invent_missing_configuration() -> None:
-        """The public boundary rejects absent policy instead of supplying one."""
-        with u.Tests.raises(c.ValidationError):
-            m.Infra.TestmonCachePolicySpec.model_validate({})
 
     @u.Tests.fixture(scope="module")
     @staticmethod

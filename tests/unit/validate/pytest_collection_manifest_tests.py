@@ -12,6 +12,8 @@ from pathlib import Path
 from flext_infra import config
 from tests import c, m, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraPytestCollectionManifest:
     """Exercise the installed collection plugin through a real nested pytest."""

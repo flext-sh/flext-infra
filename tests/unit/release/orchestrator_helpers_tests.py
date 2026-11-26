@@ -14,6 +14,8 @@ from flext_infra.release import FlextInfraReleaseRelease
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, m, p, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraReleaseHelpers:
     """Behavior contract for public release helpers and strict boundaries."""

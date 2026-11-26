@@ -10,10 +10,10 @@ import os
 from pathlib import Path
 
 from flext_cli import u
-from git import GitCommandError, HookExecutionError, InvalidGitRepositoryError, Repo
+from git import GitCommandError, InvalidGitRepositoryError, Repo
 from gitdb.util import LockedFD
 
-from flext_infra import m, p, r
+from flext_infra import c, m, p, r
 from flext_infra._utilities._git import (
     FlextInfraUtilitiesGitStateFiles,
     FlextInfraUtilitiesGitStateSnapshot,
@@ -425,16 +425,67 @@ class FlextInfraUtilitiesGitSemanticPaths(FlextInfraUtilitiesGitStateFiles):
 
         """
         try:
-            repo = cls._repo(request.repo_root)
-            commit = repo.index.commit(request.message)
-        except (GitCommandError, HookExecutionError) as exc:
+            return cls._commit_with_hooks(cls._repo(request.repo_root), request.message)
+        except GitCommandError as exc:
             return r[p.Infra.GitOidReport].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
             return r[p.Infra.GitOidReport].fail(
                 f"git commit failed: {exc}",
                 exception=exc,
             )
-        return r[p.Infra.GitOidReport].ok(m.Infra.GitOidReport(oid=commit.hexsha))
+
+    @classmethod
+    def _commit_with_hooks(
+        cls, repo: Repo, message: str
+    ) -> p.Result[p.Infra.GitOidReport]:
+        """Commit with native hooks and verify the returned commit identity.
+
+        Returns:
+            The committed object identity or an explicit verification failure.
+
+        """
+        expected_ref = cls._commit_head_reference(repo)
+        expected_parent = repo.head.commit.hexsha if repo.head.is_valid() else None
+        output = repo.git(c=("core.abbrev=no", "color.ui=false")).commit(
+            "--allow-empty", "--cleanup=verbatim", "-m", message
+        )
+        oid = cls._commit_output_oid(output)
+        if not oid:
+            return r[p.Infra.GitOidReport].fail(
+                "native Git committed but did not report a full object ID"
+            )
+        commit = repo.commit(oid)
+        parent = commit.parents[0].hexsha if commit.parents else None
+        if (
+            parent != expected_parent
+            or cls._commit_head_reference(repo) != expected_ref
+            or repo.head.commit.hexsha != oid
+        ):
+            return r[p.Infra.GitOidReport].fail(
+                f"native Git committed {oid} but the elected HEAD or parent changed"
+            )
+        return r[p.Infra.GitOidReport].ok(m.Infra.GitOidReport(oid=oid))
+
+    @staticmethod
+    def _commit_head_reference(repo: Repo) -> str:
+        reference = (
+            repo.head.path if repo.head.is_detached else repo.head.reference.path
+        )
+        return str(reference)
+
+    @staticmethod
+    def _commit_output_oid(output: str) -> str:
+        # Git prints the object it wrote, even after the post-commit hook.
+        candidates: list[str] = []
+        for line in output.splitlines():
+            if not line.startswith("["):
+                continue
+            for token in line.split():
+                oid = token.removesuffix("]")
+                if oid != token and c.Infra.GIT_COMMIT_OID_RE.fullmatch(oid):
+                    candidates.append(oid)
+                    break
+        return candidates[0] if len(candidates) == 1 else ""
 
 
 __all__: list[str] = ["FlextInfraUtilitiesGitSemanticPaths"]

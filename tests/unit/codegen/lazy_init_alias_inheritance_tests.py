@@ -12,6 +12,8 @@ from pathlib import Path
 
 from tests import c, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 def _external_parent_child_sources(
     repository_root: Path,

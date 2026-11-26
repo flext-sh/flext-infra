@@ -329,24 +329,41 @@ class FlextInfraUtilitiesGateAdmission:
             ).unwrap()
 
     @classmethod
-    def gate_health_refuse(cls, repository: Path) -> None:
-        """Refuse a heavy op when check/tests health is missing-failed-stale.
+    def gate_health_refuse(
+        cls, repository: Path, *, gates: Sequence[str] = ("check", "tests")
+    ) -> None:
+        """Refuse a heavy op when the named gates' health is failed or stale.
 
         Missing records are allowed (first-run grace). Exempt contexts (CI,
-        remote, pre-push) bypass.
+        remote, pre-push, the generation inside ``make check``) bypass.
+        Generation names only ``check``: it projects files and never depends on
+        a green test run (operator 2026-11-22). A Makefile without the
+        converge variable is a stale projection whose check cannot mark its own
+        generation; regenerating it is the only remediation, so it is admitted
+        and the regenerated check binds from then on.
 
         Raises:
             SystemExit: When the last recorded health is a failure or stale.
 
         """
-        if cls._repeat_exempt():
+        converge = config.Infra.codegen.make.ci.converge_variable
+        if cls._repeat_exempt() or u.Cli.process_env().get(converge):
+            return
+        makefile = repository / c.Infra.MAKEFILE_FILENAME
+        if makefile.is_file() and f"{converge}=1" not in makefile.read_text(
+            encoding="utf-8"
+        ):
             return
         root = cls.gate_admission_root()
         root.mkdir(parents=True, exist_ok=True)
         repeat = config.Infra.gate_admission.repeat
         windows = {
-            "health-check": repeat.check.window_seconds,
-            "health-tests": repeat.tests_full.window_seconds,
+            f"health-{gate}": window
+            for gate, window in (
+                ("check", repeat.check.window_seconds),
+                ("tests", repeat.tests_full.window_seconds),
+            )
+            if gate in gates
         }
         remediation = {
             "health-check": "make check",

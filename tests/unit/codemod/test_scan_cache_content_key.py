@@ -16,6 +16,8 @@ if TYPE_CHECKING:
 from flext_infra.codemod import FlextInfraModGateEngine
 from tests import c, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraCodemodScanCacheContentKey:
     """The scan cache key authenticates the content of every scanned source."""

@@ -12,6 +12,8 @@ from flext_infra import config
 from flext_infra.codemod import FlextInfraModTextGateEngine
 from tests import c, m, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraModTextPublication:
     """Exercise text-phase publication, rewrite receipts, and scope election."""

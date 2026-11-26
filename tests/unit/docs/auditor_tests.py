@@ -11,6 +11,8 @@ from typing import TYPE_CHECKING
 from flext_infra.docs import FlextInfraDocAuditor
 from tests import c, m, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 if TYPE_CHECKING:
     from collections.abc import Callable
     from pathlib import Path

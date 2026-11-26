@@ -12,6 +12,8 @@ from typing import TYPE_CHECKING, ClassVar
 from flext_infra.workspace import FlextInfraRopeWorkspace
 from tests import c, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 if TYPE_CHECKING:
     from pathlib import Path
 
@@ -189,8 +191,21 @@ class TestsFlextInfraFacadeComponentSource:
                 '        """Domain namespace."""'
             ),
             'class FlextSampleConstants(FlextConstants):\n    """Sample constants."""',
+            (
+                "class FlextSampleConstants(\n"
+                "    FlextConstants,\n"
+                "    FlextSampleConstantsBase,\n"
+                "    FlextSampleConstantsExtra,\n"
+                "):\n"
+                '    """Sample constants."""\n\n'
+                "    class Sample(\n"
+                "        FlextSampleConstantsBase,\n"
+                "        FlextSampleConstantsExtra,\n"
+                "    ):\n"
+                '        """Domain namespace."""'
+            ),
         ],
-        ids=["flat", "root-and-multiline-nested", "family-only"],
+        ids=["flat", "root-and-multiline-nested", "family-only", "trailing-run"],
     )
     def test_own_parts_compose_the_nested_domain_namespace(
         self, tmp_path: Path, facade: str

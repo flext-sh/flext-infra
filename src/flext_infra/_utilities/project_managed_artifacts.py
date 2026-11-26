@@ -626,7 +626,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
             # ADR-032: a tracked project layer never disables or bypasses the
             # host load gate; only the packaged SSOT and an untracked local
             # layer declare it (operator decision 2026-11-19, flext-lgbai).
-            for gate_key in ("host_load_gate", "ungated_verbs"):
+            for gate_key in ("host_load_gate", "gated_verbs"):
                 gate_path = ("Infra", "codegen", "make", "admission", gate_key)
                 if (
                     len(sources) > 1

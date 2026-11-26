@@ -20,6 +20,8 @@ from flext_infra.deps.phases import FlextInfraToolTablesPhase
 from flext_infra.workspace import FlextInfraRuntimeDependencyCollector
 from tests import c, m, p, t, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraDepsGate:
     """Undeclared imports fail at check time, never deep inside generation."""

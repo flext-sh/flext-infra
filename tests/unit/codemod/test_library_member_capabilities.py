@@ -10,6 +10,8 @@ from pathlib import Path
 
 from tests import c, config, p, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraCodemodLibraryMemberCapabilities:
     """A distribution the project itself names is a capability, not a leak."""

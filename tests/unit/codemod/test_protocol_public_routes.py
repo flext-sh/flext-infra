@@ -9,7 +9,9 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import infra
-from tests import p, tm, u
+from tests import c, p, tm, u
+
+pytestmark = c.Tests.MARK.slow
 
 
 class TestsFlextInfraProtocolPublicRoutes:

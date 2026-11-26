@@ -9,10 +9,9 @@ from __future__ import annotations
 import re
 import time
 from collections.abc import Generator, Sequence
-from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from pathlib import Path
-from threading import Barrier, Event, Thread
+from threading import Event, Thread
 
 from typing_extensions import TypeForm
 
@@ -26,15 +25,11 @@ class TestsFlextInfraPytestRunnerZeroTest:
 
     @staticmethod
     @contextmanager
-    def _held_elsewhere(
-        lock: Path, *, release_after: float | None = None
-    ) -> Generator[None]:
+    def _held_elsewhere(lock: Path) -> Generator[None]:
         """Hold the shared lock from another thread, as a concurrent run would.
 
         The shared lock is reentrant within its holding thread, so contention
-        is only observable from a different thread or process. With
-        ``release_after`` the holder finishes on its own after that many
-        seconds, as a concurrent run that completes its suite.
+        is only observable from a different thread or process.
 
         Yields:
             Control while the lock is held by the other thread.
@@ -46,7 +41,7 @@ class TestsFlextInfraPytestRunnerZeroTest:
         def hold() -> None:
             with u.Cli.file_changes_lock(lock):
                 acquired.set()
-                release.wait(timeout=release_after)
+                release.wait()
 
         holder = Thread(target=hold)
         holder.start()
@@ -182,41 +177,6 @@ class TestsFlextInfraPytestRunnerZeroTest:
         tm.fail(accounting.owns_no_tests)
         tm.that(self._read(summary), has=["outcome=cache_hit\n", "exit=0\n"])
 
-    def test_held_testmon_database_lease_refuses_a_concurrent_run(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """A blocked run records its identity without touching the leased database."""
-        project = self._zero_test_project(tmp_path)
-        runner = self._runner(
-            project,
-            tmp_path,
-            elapsed_seconds=config.Infra.tooling.tools.pytest.run_timeout_seconds,
-        )
-
-        database = tm.not_none(runner.testmon_db)
-        lock = database.with_name(f"{database.name}.lock")
-        with (
-            self._held_elsewhere(lock),
-            u.Tests.raises(TimeoutError, match=re.escape(str(lock))),
-        ):
-            runner.execute()
-
-        reports_root = (
-            project / config.Infra.codegen.make.testmon_cache.reports_directory
-        )
-        receipts = tuple(reports_root.glob("*/run-context.json"))
-        tm.that(len(receipts), eq=1)
-        context = m.Infra.PytestRunContext.model_validate_json(receipts[0].read_bytes())
-        tm.that(context.testmon_db, eq=runner.testmon_db)
-        tm.that(context.testmon_lease_acquired, eq=False)
-        tm.that(context.report_directory, eq=receipts[0].parent)
-        tm.that(
-            tuple(path.name for path in receipts[0].parent.iterdir()),
-            eq=("run-context.json",),
-        )
-        tm.fail(database.exists())
-
     def test_held_latest_pointer_lease_preserves_context_and_deadline(
         self,
         tmp_path: Path,
@@ -243,7 +203,6 @@ class TestsFlextInfraPytestRunnerZeroTest:
                 receipts[0].read_bytes(),
             )
             tm.that(context.testmon_db, eq=runner.testmon_db)
-            tm.that(context.testmon_lease_acquired, eq=False)
             tm.that(context.report_directory, eq=receipts[0].parent)
             tm.that(context.deadline_monotonic, none=False)
             tm.that(self._read(latest), eq="previous-run\n")
@@ -258,95 +217,6 @@ class TestsFlextInfraPytestRunnerZeroTest:
                 eq=(before.st_dev, before.st_ino),
             )
         tm.fail(tm.not_none(runner.testmon_db).exists())
-
-    def test_concurrent_context_publication_precedes_shared_cache_timeout(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Contenders publish unique contexts before waiting for the shared cache."""
-        project = self._zero_test_project(tmp_path)
-        policy = config.Infra.tooling.tools.pytest
-        runners = tuple(
-            self._runner(
-                project,
-                tmp_path,
-                elapsed_seconds=(
-                    policy.run_timeout_seconds - policy.termination_grace_seconds
-                ),
-            )
-            for _ in range(2)
-        )
-        reports = project / runners[0].reports
-        latest = reports / "latest.txt"
-        database = tm.not_none(runners[0].testmon_db)
-        cache_lock = database.with_name(f"{database.name}.lock")
-        pointer_lock = latest.with_name(f"{latest.name}.lock")
-        with u.Cli.file_changes_lock(pointer_lock):
-            pointer_before = pointer_lock.stat()
-        start = Barrier(len(runners))
-
-        def contend(runner: FlextInfraPytestRunner) -> None:
-            start.wait(timeout=policy.run_timeout_seconds)
-            with u.Tests.raises(TimeoutError, match=re.escape(str(cache_lock))):
-                runner.execute()
-
-        with u.Cli.file_changes_lock(cache_lock):
-            cache_before = cache_lock.stat()
-            with ThreadPoolExecutor(max_workers=len(runners)) as executor:
-                tuple(executor.map(contend, runners))
-        receipts = tuple(reports.glob("*/run-context.json"))
-        tm.that(len(receipts), eq=len(runners))
-        contexts = tuple(
-            m.Infra.PytestRunContext.model_validate_json(path.read_bytes())
-            for path in receipts
-        )
-        tm.that(
-            {context.testmon_db for context in contexts},
-            eq={runners[0].testmon_db},
-        )
-        tm.that({context.testmon_lease_acquired for context in contexts}, eq={False})
-        tm.that(
-            {context.report_directory for context in contexts},
-            eq={path.parent for path in receipts},
-        )
-        tm.ok(self._read(latest).strip() in {path.parent.name for path in receipts})
-        for lock, before in (
-            (pointer_lock, pointer_before),
-            (cache_lock, cache_before),
-        ):
-            after = lock.stat()
-            tm.that(
-                (after.st_dev, after.st_ino),
-                eq=(before.st_dev, before.st_ino),
-            )
-        tm.fail(database.exists())
-
-    @c.Tests.MARK.slow
-    def test_testmon_lease_wait_does_not_consume_the_suite_budget(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """The lease is admission: the suite deadline is armed once it is held."""
-        project = self._zero_test_project(tmp_path)
-        runner = self._runner(project, tmp_path)
-        entered_at = runner.started_at_monotonic
-        policy = config.Infra.tooling.tools.pytest
-        held_seconds = 0.5
-        database = tm.not_none(runner.testmon_db)
-        lock = database.with_name(f"{database.name}.lock")
-        with self._held_elsewhere(lock, release_after=held_seconds):
-            outcome = tm.ok(runner.execute())
-
-        tm.that(outcome, eq=c.Tests.ExitCode.NO_TESTS_COLLECTED.value)
-        summary = self._latest_summary(project / runner.reports)
-        context = m.Infra.PytestRunContext.model_validate_json(
-            self._read(summary.parent / "run-context.json"),
-        )
-        tm.that(context.testmon_lease_acquired, eq=True)
-        tm.that(
-            context.deadline_monotonic,
-            gte=entered_at + policy.run_timeout_seconds + held_seconds,
-        )
 
     @c.Tests.MARK.slow
     def test_empty_slow_scope_remains_red_with_accounting(
@@ -402,7 +272,6 @@ class TestsFlextInfraPytestRunnerZeroTest:
         context = m.Infra.PytestRunContext.model_validate_json(
             self._read(summary.parent / "run-context.json"),
         )
-        tm.that(context.testmon_lease_acquired, eq=True)
         tm.that(context.testmon_db, eq=runner.testmon_db)
         tm.that(self._read(reports_root / "latest.txt"), eq=f"{summary.parent.name}\n")
         accounting = m.Infra.TestmonRunAccounting.model_validate_json(
@@ -419,7 +288,7 @@ class TestsFlextInfraPytestRunnerZeroTest:
         self,
         tmp_path: Path,
     ) -> None:
-        """One bounded full execution preserves the native empty-suite status.
+        """One full execution preserves the native empty-suite status.
 
         FULL derives its inventory from the suite's single collection and must
         execute a nonempty inventory, so an empty project keeps pytest's
@@ -439,12 +308,7 @@ class TestsFlextInfraPytestRunnerZeroTest:
         )
         tm.that(context.execution_mode, eq=c.Infra.PytestExecutionMode.FULL)
         tm.that(context.testmon_db, eq=runner.testmon_db)
-        tm.that(context.testmon_lease_acquired, eq=True)
-        tm.that(
-            context.deadline_monotonic,
-            eq=runner.started_at_monotonic
-            + config.Infra.tooling.tools.pytest.run_timeout_seconds,
-        )
+        tm.that(context.deadline_monotonic, none=True)
         tm.that(len(tuple(reports_root.glob("*/run-context.json"))), eq=1)
         suite = m.Cli.ProcessOutcome.model_validate_json(
             self._read(report_dir / "suite-outcome.json"),
@@ -519,12 +383,7 @@ class TestsFlextInfraPytestRunnerZeroTest:
         )
         tm.that(context.execution_mode, eq=c.Infra.PytestExecutionMode.FULL)
         tm.that(context.testmon_db, eq=runner.testmon_db)
-        tm.that(context.testmon_lease_acquired, eq=True)
-        tm.that(
-            context.deadline_monotonic,
-            eq=runner.started_at_monotonic
-            + config.Infra.tooling.tools.pytest.run_timeout_seconds,
-        )
+        tm.that(context.deadline_monotonic, none=True)
         # FULL has no separate inventory phase: its one suite collection owns
         # the startup failure, the raw log and the native outcome.
         for phase in ("inventory", "selection"):

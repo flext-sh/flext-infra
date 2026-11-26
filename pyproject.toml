@@ -36,7 +36,7 @@ dependencies = [
   "pymdown-extensions>=11.0.1",
   "pytest>=9.1.1",
   "pytest-markdown-docs>=0.9.2",
-  "rope @ git+https://github.com/marlon-costa-dc/rope.git@09806ca918b69994ac3a880c92cde9689f480f46",
+  "rope @ git+https://github.com/marlon-costa-dc/rope.git@ecdee0efcbfa1bbdbd070218de3c39716b0299aa",
   "typing-extensions>=4.16.0",
 ]
 description = "FLEXT Infrastructure Tooling - Build automation, code generation, and workspace management"
@@ -182,27 +182,6 @@ source = ["src"]
 [tool.deptry]
 known_first_party = ["flext_infra"]
 optional_dependencies_dev_groups = []
-
-[tool.mypy]
-allow_redefinition = true
-check_untyped_defs = true
-extra_checks = true
-follow_imports = "normal"
-follow_untyped_imports = true
-local_partial_types = true
-no_implicit_reexport = true
-plugins = ["pydantic.mypy"]
-show_traceback = true
-strict_equality = true
-warn_redundant_casts = true
-warn_return_any = true
-warn_unreachable = true
-warn_unused_ignores = true
-
-[tool.pydantic-mypy]
-init_forbid_extra = true
-init_typed = true
-warn_required_dynamic_aliases = true
 
 [tool.pyrefly]
 disable-project-excludes-heuristics = true
@@ -351,25 +330,6 @@ untyped-import = "error"
 unused-coroutine = "error"
 unused-ignore = "error"
 variance-mismatch = "error"
-
-[tool.pyright]
-pythonPlatform = "Linux"
-reportCallIssue = "error"
-reportConstantRedefinition = "error"
-reportIncompatibleMethodOverride = "error"
-reportInconsistentConstructor = "error"
-reportMissingImports = "error"
-reportMissingModuleSource = "error"
-reportPrivateUsage = "error"
-reportUnnecessaryCast = "error"
-reportUnnecessaryComparison = "error"
-reportUnnecessaryIsInstance = "error"
-reportUnusedClass = "error"
-reportUnusedFunction = "error"
-reportUnusedImport = "error"
-reportUnusedVariable = "error"
-typeCheckingMode = "strict"
-useLibraryCodeForTypes = true
 
 [tool.pytest.ini_options]
 addopts = [
@@ -584,7 +544,7 @@ environments = ["sys_platform == 'linux'", "sys_platform == 'darwin'"]
 exclude-newer = "P10D"
 link-mode = "clone"
 override-dependencies = [
-  "rope @ git+https://github.com/marlon-costa-dc/rope.git@09806ca918b69994ac3a880c92cde9689f480f46",
+  "rope @ git+https://github.com/marlon-costa-dc/rope.git@ecdee0efcbfa1bbdbd070218de3c39716b0299aa",
   "flext-cli @ git+https://github.com/flext-sh/flext-cli.git@0.12.0-dev",
   "flext-core @ git+https://github.com/flext-sh/flext-core.git@0.12.0-dev",
   "flext-tests @ git+https://github.com/flext-sh/flext-tests.git@0.12.0-dev",

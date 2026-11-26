@@ -13,6 +13,8 @@ from flext_infra.codemod import FlextInfraModGateEngine
 from flext_infra.refactor import FlextInfraNamespaceEnforcer
 from tests import c, m, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 if TYPE_CHECKING:
     from pathlib import Path
 

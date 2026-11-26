@@ -13,6 +13,8 @@ from pathlib import Path
 from flext_infra import codemod, transformers
 from tests import c, m, p, r, t, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraSemanticPublicationPlans:
     """Admit complete semantic file plans and refuse stale or foreign identity."""

@@ -160,6 +160,25 @@ class TestsFlextInfraRefactorImportNormalizationRuntimeReads(
         )
 
     @classmethod
+    def test_type_checking_else_branch_is_a_runtime_read(cls, tmp_path: Path) -> None:
+        """The ``else`` of a ``TYPE_CHECKING`` guard runs at import time."""
+        project, module, source = cls._family_module(
+            tmp_path,
+            "t",
+            "class DemoDeclaration:\n"
+            "    if TYPE_CHECKING:\n"
+            "        RECORD: type\n"
+            "    else:\n"
+            "        RECORD = m.DemoRecord\n",
+        )
+        tm.fail(
+            u.Infra.normalize_import_source(
+                project_root=project, file_path=module, source=source
+            ),
+            has="forbidden reverse namespace import",
+        )
+
+    @classmethod
     def test_lazy_loader_typing_import_is_outside_its_boundary(
         cls, tmp_path: Path
     ) -> None:
