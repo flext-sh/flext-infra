@@ -584,30 +584,54 @@ __all__ = [{self.PARENT_CLASS!r}, 'm']
             classification=c.Infra.ModScanFindingClass.DETECTION_ONLY,
         )
 
-    @classmethod
+    @u.Tests.fixture(autouse=True)
+    def _installed(self, installed_dependency_path: Path) -> None:
+        """Expose the import root where the parent package is installed."""
+        self.installed = installed_dependency_path
+
     def _plan(
-        cls,
+        self,
         tmp_path: Path,
         sources: Mapping[Path, str],
         child: Path,
     ) -> p.ResultView[tuple[p.Infra.SemanticMigrationEdit, ...]]:
         """Plan the facade-base phase for the detector finding in ``child``.
 
+        The child project is the scope, as in production: its sources are
+        committed checkout files (Git owns the inventory) and the parent is an
+        installed dependency, never a sibling tree inside the scope.
+
         Returns:
             The originating immutable result view of semantic migration edits.
 
         """
-        with infra.rope_workspace(tmp_path) as rope:
+        parent_root = tmp_path / "parent/src"
+        root = tmp_path / "child"
+        consumer: dict[Path, str] = {}
+        for path, source in sources.items():
+            target = (
+                self.installed / path.relative_to(parent_root)
+                if path.is_relative_to(parent_root)
+                else path
+            )
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(source, encoding=c.DEFAULT_ENCODING)
+            if path.is_relative_to(root):
+                consumer[path] = source
+        package_init = child.parent / c.Infra.INIT_PY
+        if package_init not in consumer:
+            package_init.write_text("", encoding=c.DEFAULT_ENCODING)
+        u.Tests.initialize_git_repo(root)
+        with infra.rope_workspace(root) as rope:
             return u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.FACADE_BASE,
                 rope_workspace=rope,
-                sources=sources,
-                findings=(cls._finding(child.relative_to(tmp_path)),),
+                sources=consumer,
+                findings=(self._finding(child.relative_to(root)),),
             )
 
-    @classmethod
     def _edits(
-        cls,
+        self,
         tmp_path: Path,
         sources: Mapping[Path, str],
         child: Path,
@@ -618,6 +642,6 @@ __all__ = [{self.PARENT_CLASS!r}, 'm']
             The successful plan's edits.
 
         """
-        planned = cls._plan(tmp_path, sources, child)
+        planned = self._plan(tmp_path, sources, child)
         tm.ok(planned)
         return planned.value
