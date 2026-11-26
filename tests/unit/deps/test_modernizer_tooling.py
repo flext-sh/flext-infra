@@ -572,12 +572,14 @@ class TestsFlextInfraDepsModernizerTooling:
     ) -> None:
         """Render Ruff policy, drop stale sections, and converge on second apply."""
         ruff_policy = tool_config_document.tools.ruff
-        project_dir = u.Tests.git_repository(tmp_path, "flext-sample")
+        project_dir = tmp_path / "flext-sample"
         (project_dir / "src" / "flext_sample").mkdir(parents=True)
         (project_dir / "src" / "flext_sample" / "__init__.py").write_text(
             "",
             encoding="utf-8",
         )
+        # Git owns the source inventory: commit the tree the projection reads.
+        u.Tests.initialize_git_repo(project_dir)
         stale_pattern = "stale-pattern.py"
         codegen = tm.ok(u.Infra.load_codegen_inputs(project_dir)).spec
 

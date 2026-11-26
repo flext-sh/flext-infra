@@ -597,7 +597,10 @@ __all__ = [{self.PARENT_CLASS!r}, 'm']
             The originating immutable result view of semantic migration edits.
 
         """
-        # Git owns the source inventory of a scope (project discovery).
+        # Git owns the source inventory of a scope: materialize and commit it.
+        for path, source in sources.items():
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(source, encoding="utf-8")
         u.Tests.initialize_git_repo(tmp_path)
         with infra.rope_workspace(tmp_path) as rope:
             return u.Infra.plan_semantic_cutover(
