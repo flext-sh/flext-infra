@@ -21,6 +21,7 @@ if TYPE_CHECKING:
 class TestsFlextInfraFacadeBaseCutover:
     """Exercise the facade-base phase only through ``u.Infra``."""
 
+    installed: Path
     PARENT_CLASS = "ParentDeclaredModelFacade"
     OTHER_CLASS = "OtherDeclaredModelFacade"
 
