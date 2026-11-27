@@ -392,7 +392,7 @@ class TestsFlextInfraRuntimeRoot:
             u.Infra.workspace_dependency_order(tmp_path, (consumer, provider))
         if invalid:
             messages = {
-                "malformed": "invalid planned manifest",
+                "malformed": "invalid workspace manifest",
                 "duplicate": "duplicate planned manifest paths",
                 "cycle": "cyclic dependency graph",
                 "foreign": "planned manifest has no owning payload",
