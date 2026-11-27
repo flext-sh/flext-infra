@@ -125,6 +125,7 @@ class TestsFlextInfraFreshImportPublication:
             f'packages = ["src/{package.name}"]\n',
             encoding=c.DEFAULT_ENCODING,
         )
+        u.Tests.initialize_git_repo(tmp_path)
         tm.not_none(u.Infra.layout(tmp_path))
         report = _probe_report(
             tmp_path,

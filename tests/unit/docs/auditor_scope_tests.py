@@ -28,6 +28,7 @@ class TestsFlextInfraAuditorScope:
             path=tmp_path,
             report_dir=tmp_path / "reports",
         )
+        u.Tests.initialize_git_repo(tmp_path)
         issues = auditor.forbidden_term_issues(scope)
         tm.that(len(issues), gte=0)
 
@@ -43,6 +44,7 @@ class TestsFlextInfraAuditorScope:
             path=tmp_path,
             report_dir=tmp_path / "reports",
         )
+        u.Tests.initialize_git_repo(tmp_path)
         issues = auditor.forbidden_term_issues(scope)
         tm.that(len(issues), gte=0)
 
@@ -58,6 +60,7 @@ class TestsFlextInfraAuditorScope:
             path=tmp_path,
             report_dir=tmp_path / "reports",
         )
+        u.Tests.initialize_git_repo(tmp_path)
         issues = auditor.forbidden_term_issues(scope)
         tm.that(len(issues), gte=0)
 
@@ -73,6 +76,7 @@ class TestsFlextInfraAuditorScope:
             path=tmp_path,
             report_dir=tmp_path / "reports",
         )
+        u.Tests.initialize_git_repo(tmp_path)
         issues = auditor.forbidden_term_issues(scope)
         tm.that(len(issues), gte=0)
 
@@ -86,6 +90,7 @@ class TestsFlextInfraAuditorScope:
             path=tmp_path,
             report_dir=tmp_path / "reports",
         )
+        u.Tests.initialize_git_repo(tmp_path)
         issues = auditor.forbidden_term_issues(scope)
         tm.that(len(issues), gte=0)
 
@@ -278,6 +283,7 @@ class TestsFlextInfraAuditorScope:
             path=tmp_path,
             report_dir=tmp_path / "reports",
         )
+        u.Tests.initialize_git_repo(tmp_path)
         issues = auditor.machine_path_issues(scope)
         tm.that(len(issues), eq=2)
         tm.that({issue.issue_type for issue in issues}, eq={"machine-path"})
@@ -305,6 +311,7 @@ class TestsFlextInfraAuditorScope:
             path=tmp_path,
             report_dir=tmp_path / "reports",
         )
+        u.Tests.initialize_git_repo(tmp_path)
         issues = auditor.machine_path_issues(scope)
         tm.that(
             {issue.file for issue in issues},
@@ -328,6 +335,7 @@ class TestsFlextInfraAuditorScope:
             report_dir=tmp_path / "reports",
         )
         auditor = FlextInfraDocAuditor()
+        u.Tests.initialize_git_repo(tmp_path)
         tm.that(auditor.placeholder_issues(scope), eq=[])
         (docs / "guide.md").write_text("TODOS are reviewed.\nTODO: finish me.\n")
         issues = auditor.placeholder_issues(scope)
@@ -369,6 +377,7 @@ class TestsFlextInfraAuditorScope:
             report_dir=tmp_path / "reports",
         )
         auditor = FlextInfraDocAuditor()
+        u.Tests.initialize_git_repo(tmp_path)
         tm.that(auditor.placeholder_issues(scope), eq=[])
         tm.that(auditor.forbidden_term_issues(scope), eq=[])
         (docs / "guide.md").write_text(f"{marker}\n")
@@ -394,5 +403,6 @@ class TestsFlextInfraAuditorScope:
             path=tmp_path,
             report_dir=tmp_path / "reports",
         )
+        u.Tests.initialize_git_repo(tmp_path)
         with u.Tests.raises(ValueError, match="historical evidence"):
             FlextInfraDocAuditor().machine_path_issues(scope)
