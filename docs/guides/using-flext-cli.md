@@ -1,4 +1,4 @@
-<!-- AUTO-GENERATED FILE — regenerate through `make gen` from the workspace root. -->
+<!-- AUTO-GENERATED FILE — regenerate through `make check` from the workspace root. -->
 <!-- Source of truth: `<workspace-root>/docs/guides/using-flext-cli.md`; adjust that workspace source, never this member projection. -->
 
 # flext-infra - Using flext-cli
@@ -124,8 +124,9 @@ directly. This independent example constructs and invokes a real model-backed co
 handlers return their value but do not automatically print it.
 
 ```python
-from flext_cli import FlextCliCli
 from tests import c, m, tm
+
+from flext_cli import FlextCliCli
 
 
 class GreetInput(m.BaseModel):
