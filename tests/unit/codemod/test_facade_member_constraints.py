@@ -464,6 +464,7 @@ class TestsFlextInfraFacadeMemberConstraints:
         return found
 
     @classmethod
+    @c.Tests.MARK.slow
     def test_relocations_name_only_foreign_references(cls, core_project: Path) -> None:
         """Each census reference is a non-owner reference bound to its owner."""
         project = core_project
