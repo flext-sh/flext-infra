@@ -105,8 +105,8 @@ owns the task-only direct-CLI route and final Make integration sequence.
 
 ## Generation and recovery
 
-Use canonical `make setup`, `make upg`, and `make gen`. Setup installs existing
-locks; upgrade resolves them; generation projects the declared artifacts. Generated
+Use canonical `make setup`, `make upg`, and `make check`. Setup installs existing
+locks; upgrade resolves them; check projects the declared artifacts locally. Generated
 files are changed through their owning renderer and native conform surface.
 
 `Infra.codegen.templates.entries` is one mapping keyed by repository-relative
@@ -149,14 +149,14 @@ and publisher; it does not repeat whole-tree lazy planning after publication or
 invoke another public verb.
 
 The preferred creation path is a declared new member, with its Git checkout
-prepared, consumed by the workspace's `make gen`. A standalone target without a
+prepared, consumed by the workspace's `make check`. A standalone target without a
 Makefile uses the internal `codegen init` adapter from an already provisioned
 generation tool runtime. After the same detector positively admits its own
 declarations and new-tree identity, that adapter selects the existing complete
 generation planner and publisher. An existing project retains the bounded
 Makefile recovery surface. A project-metadata symlink is an existing input, never
 evidence of a new tree.
-The cold sequence is `codegen init`, `make upg`, `make setup`, then `make gen`.
+The cold sequence is `codegen init`, `make upg`, `make setup`, then `make check`.
 The generation tool runtime supplies its own declared native Mise, Python and UV
 prerequisites; it is not the destination's product runtime. Upgrade resolves the
 generated manifests, setup creates the destination's physical environment from
@@ -185,7 +185,7 @@ projection with native `direnv allow`; it never renders, replaces, or removes
 environment files. `make check` verifies the selected repository's projection
 against its current declaration. A fresh clone with a valid committed `.envrc`
 needs no local generation journal. A missing or divergent projection fails
-without repair; `make gen` owns its regeneration.
+without repair; local `make check` owns its regeneration.
 
 The publication owner authenticates each file's captured destination and declared
 inputs. A changed dependency rejects its affected file with a causal issue while

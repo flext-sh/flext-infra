@@ -262,8 +262,7 @@ class TestsFlextInfraCodegenMakeCheckPartition:
         others = [
             row["verb"]
             for row in rows
-            if row["verb"]
-            not in {c.Infra.VERB_CHECK, c.Infra.VERB_TEST}
+            if row["verb"] not in {c.Infra.VERB_CHECK, c.Infra.VERB_TEST}
         ]
         tm.that(others, empty=False)
         for verb in others:
