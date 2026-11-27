@@ -241,7 +241,6 @@ class FlextInfraUtilitiesDocsGuides:
 
     @staticmethod
     def _owned_destinations(
-        scope: p.Infra.DocScope,
         destinations: Mapping[Path, str],
     ) -> set[Path]:
         """Collect destination guides still carrying a canonical ownership header.
@@ -253,40 +252,26 @@ class FlextInfraUtilitiesDocsGuides:
         owned: set[Path] = set()
         for path, content in destinations.items():
             lines = content.splitlines()
-            generated = c.Infra.DOCS_PROJECTION_MARKER
             source_headers = {
                 (
                     f"<!-- Source of truth: `docs/guides/{path.name}`; "
                     "adjust that source, never this projection. -->"
                 ),
                 (
+                    f"<!-- Source of truth: `docs/guides/{path.name}`; "
+                    "adjust that workspace source, never this member projection. -->"
+                ),
+                (
                     f"<!-- Source of truth: `<workspace-root>/docs/guides/{path.name}`"
                     "; adjust that workspace source, never this member projection. -->"
                 ),
             }
+            # The source-of-truth declaration names the owning guide; the
+            # regeneration marker above it is rewritten on every projection.
             if (
                 len(lines) >= c.Infra.DOCS_OWNED_HEADER_LINES
-                and lines[0] == generated
                 and lines[1] in source_headers
             ):
-                owned.add(path)
-                continue
-            ownership = FlextInfraUtilitiesDocsGuides.docs_project_guide_content(
-                "",
-                scope.name,
-                path.name,
-            ).partition("\n\n")[0]
-            previous_ownership = ownership.replace("`<workspace-root>/", "`")
-            legacy_ownership = (
-                f"{c.Infra.DOCS_PROJECTION_MARKER}\n"
-                f"<!-- Source of truth: `docs/guides/{path.name}`; "
-                "adjust that workspace source, never this member projection. -->"
-            )
-            if content.startswith((
-                ownership + "\n\n",
-                previous_ownership + "\n\n",
-                legacy_ownership + "\n\n",
-            )):
                 owned.add(path)
         return owned
 
@@ -399,7 +384,7 @@ class FlextInfraUtilitiesDocsGuides:
         sources, destinations = cls._classified_guide_sources(
             source_root, destination_root, scope.declared_files
         )
-        owned = cls._owned_destinations(scope, destinations)
+        owned = cls._owned_destinations(destinations)
         artifacts = cls._rendered_guide_artifacts(
             scope,
             workspace.value,
