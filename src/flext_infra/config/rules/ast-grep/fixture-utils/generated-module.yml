@@ -7,4 +7,4 @@ rule:
   has:
     kind: comment
     nthChild: 1
-    regex: "^\\#\\ AUTO\\-GENERATED\\ FILE\\ —\\ Regenerate\\ with:\\ make\\ gen$"
+    regex: "^\\#\\ AUTO\\-GENERATED\\ FILE\\ —\\ Regenerate\\ with:\\ make\\ check$"
