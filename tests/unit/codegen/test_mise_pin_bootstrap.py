@@ -601,7 +601,8 @@ class TestsFlextInfraMisePinBootstrap:
             '\t{{ mise_acquisition("$(PROJECT_ROOT)", toolchain) }} \\\n'
             '\t{{ mise_declared_reader("$(PROJECT_ROOT)", toolchain) }}\n'
             "\t{{ mise_lock_changed('$$mise_reader', "
-            "'\"$(PROJECT_ROOT)\"', install_tools) }}\n",
+            "'\"$(PROJECT_ROOT)\"', install_tools, "
+            f"'{c.Infra.MISE_TOML_FILENAME}') }}}}\n",
             encoding="utf-8",
         )
         recipe = tm.ok(
