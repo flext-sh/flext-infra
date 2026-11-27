@@ -32,4 +32,4 @@ message: >-
 note: >-
   Where: this assignment. Why: generator law points 1-3 -- an initializer
   propagates and never declares. How: declare `<alias> = <Class>` in the owning
-  module, export it in that module's `__all__`, and run `make gen`.
+  module, export it in that module's `__all__`, and run `make check`.

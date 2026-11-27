@@ -10,7 +10,7 @@ Dependency lists remain CUSTOM after scaffolding. -#}
 requirement makes the native workspace unable to elect the member source: uv
 then sees two URLs for the same package (file:///... editable from the workspace
 source and git+... from this line) and refuses the resolution, which is what
-blocked `make upg`/`make gen` for flext-infra. The source is elected once by
+blocked `make upg`/`make check` for flext-infra. The source is elected once by
 `[tool.uv.sources]`/the lock, so standalone consumers keep the locked git
 source and the workspace keeps the editable one. -#}
 {{ item | tojson }}

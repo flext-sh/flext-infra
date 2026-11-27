@@ -98,7 +98,7 @@ class TestsFlextInfraCodegenCiCustomSteps:
         )
 
         tm.that(rendered.count(self.block), eq=1)
-        tm.ok(rendered.index(self.block) < rendered.index("run: make gen"))
+        tm.ok(rendered.index(self.block) < rendered.index("run: make build"))
 
     def test_a_project_declaring_nothing_changes_nothing(self) -> None:
         """Without a custom-steps file the workflow carries no project block."""

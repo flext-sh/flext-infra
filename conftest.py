@@ -1,8 +1,8 @@
-# AUTO-GENERATED FILE — Regenerate with: make gen
+# AUTO-GENERATED FILE — Regenerate with: make check
 """Pytest bootstrap for flext_infra local package resolution.
 
 Rendered from flext-infra ``templates/project/base/conftest.py.j2``: change the
-template or the shared ``install_local_packages`` owner, then run ``make gen``.
+template or the shared ``install_local_packages`` owner, then run ``make check``.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT

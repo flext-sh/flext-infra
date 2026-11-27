@@ -60,6 +60,8 @@ def _probe_report(
         The resulting validated ``m.Infra.ValidationReport``.
 
     """
+    # Git owns the source inventory: the probe checkout is committed first.
+    u.Tests.initialize_git_repo(tmp_path)
     return tm.ok(
         FlextInfraValidateFreshImport(
             repository_root=tmp_path,
@@ -123,6 +125,7 @@ class TestsFlextInfraFreshImportPublication:
             f'packages = ["src/{package.name}"]\n',
             encoding=c.DEFAULT_ENCODING,
         )
+        u.Tests.initialize_git_repo(tmp_path)
         tm.not_none(u.Infra.layout(tmp_path))
         report = _probe_report(
             tmp_path,
@@ -263,6 +266,7 @@ class TestsFlextInfraFreshImportPublication:
             f'[project.{script_group}]\nprobe = "{package.name}.cli:main"\n',
             encoding="utf-8",
         )
+        u.Tests.initialize_git_repo(tmp_path)
         publication = _probe_publication(package, init_path=initializer)
         report = _probe_report(
             tmp_path,
