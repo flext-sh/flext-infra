@@ -474,6 +474,7 @@ class TestsFlextInfraFreshImportPublication:
             '[project]\nname = "flext-import-probe"\nversion = "1.0"\n',
             encoding=c.DEFAULT_ENCODING,
         )
+        u.Tests.git_bootstrap(tmp_path, ("init", "--quiet"))
         publication = _probe_publication(
             package,
             init_path=initializer,

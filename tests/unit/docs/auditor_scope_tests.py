@@ -19,6 +19,12 @@ if TYPE_CHECKING:
 class TestsFlextInfraAuditorScope:
     """Tests for FlextInfraDocAuditor scope, forbidden terms, and audit_scope."""
 
+    @u.Tests.fixture(autouse=True)
+    @staticmethod
+    def _git_checkout(tmp_path: Path) -> None:
+        """Every audited scope is a real checkout, like every project."""
+        u.Tests.git_bootstrap(tmp_path, ("init", "--quiet"))
+
     @staticmethod
     def test_forbidden_term_issues_empty_scope(tmp_path: Path) -> None:
         """Test forbidden_term_issues with no markdown files."""
@@ -270,6 +276,9 @@ class TestsFlextInfraAuditorScope:
             "or on macOS from /Users/someone/flext\n"
             "the image installs to /home/runner/.local/bin\n"
             "the tilde form ~/flext is portable\n",
+        )
+        (docs_dir / "docs_config.json").write_text(
+            '{"audit": {"container_home_identities": ["runner"]}}\n'
         )
         scope = m.Infra.DocScope(
             name="root",
