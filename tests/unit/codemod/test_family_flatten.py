@@ -126,8 +126,9 @@ class TestsFlextInfraFamilyFlatten:
                 edit.file_path: edit.updated_source for edit in result.value
             })
             tm.that(proposed[consumer], has="class Consumer(u.Tests):")
-            tm.that(proposed[consumer], has="VALUE = u.Tests.Entity.VALUE")
-            tm.that(proposed[declaration], has="class Entity:")
+            # The moved single wrapper then follows the family flatten law.
+            tm.that(proposed[consumer], has="VALUE = u.Tests.EntityVALUE")
+            tm.that(proposed[declaration], has="EntityVALUE = 'payload'")
             tm.that(proposed[path], lacks="class Support:")
         for item, original in sources.items():
             tm.that(item.read_text(encoding="utf-8"), eq=original)

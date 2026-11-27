@@ -486,9 +486,7 @@ class TestsFlextInfraFacadeMemberConstraints:
             for owner, references in relocations.items():
                 for reference in references:
                     letter, member = reference.split(".")
-                    value = u.Infra.source_member_binding(
-                        snapshot.engine, f"{cls.PACKAGE}.{owner}.{member}"
-                    )
+                    value = resolver_factory()(f"{cls.PACKAGE}.{owner}.{member}")
                     tm.that(
                         u.Infra.facade_member_owner(
                             value,
@@ -497,7 +495,7 @@ class TestsFlextInfraFacadeMemberConstraints:
                         ),
                         eq=owner,
                     )
-                    tm.that(letter, ne=owner)
+                    tm.that(letter, ne=owner, msg=f"{owner}: {reference}")
                     tm.that(f"{owner}.{member}" in references, eq=False)
 
     @classmethod
@@ -544,9 +542,7 @@ class TestsFlextInfraFacadeMemberConstraints:
             for letter, names in misplaced.items():
                 for name in names:
                     owner = u.Infra.facade_member_owner(
-                        u.Infra.source_member_binding(
-                            snapshot.engine, f"{cls.PACKAGE}.{letter}.{name}"
-                        ),
+                        resolver_factory()(f"{cls.PACKAGE}.{letter}.{name}"),
                         resolver_factory=resolver_factory,
                         source_project=snapshot.engine,
                     )
