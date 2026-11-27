@@ -278,6 +278,17 @@ class TestsFlextInfraAuditorScope:
             "the image installs to /home/runner/.local/bin\n"
             "the tilde form ~/flext is portable\n",
         )
+        # The repository's projected docs policy declares the container
+        # identities, as the generator projects them from the codegen SSOT.
+        audit_policy = config.Infra.codegen.repository.docs_audit
+        identities = audit_policy.container_home_identities
+        (docs_dir / c.Infra.DOCS_CONFIG_FILENAME).write_bytes(
+            tm.ok(
+                u.Cli.json_dumps(
+                    {"audit": {"container_home_identities": list(identities)}},
+                ),
+            ).encode(),
+        )
         scope = m.Infra.DocScope(
             name="root",
             path=tmp_path,
