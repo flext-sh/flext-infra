@@ -43,7 +43,7 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
         "```python\nx = 1\n```\n"
     )
     # rumdl fmt reads the generated .rumdl.toml; the fixtures
-    # materialize that projection the way `make gen` does.
+    # materialize that projection the way `make check` generation does.
     RULES_CONFIG = u.Infra.markdown_native_configuration(
         config.Infra.tooling.tools.markdown,
         config.Infra.codegen.markdown_exclude_globs,
@@ -128,7 +128,7 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
         tm.fail(result.result.passed)
 
     def test_format_gate_fix_is_the_single_writer(self, tmp_path: Path) -> None:
-        """`make fmt` drives `rumdl fmt` once and the tree reaches green."""
+        """`make check` drives `rumdl fmt` once and the tree reaches green."""
         project_dir = self._project(
             tmp_path,
             "markdown-format-fix",
@@ -172,7 +172,7 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
 
         tm.fail(result.result.passed)
         tm.that(len(result.issues), eq=1)
-        tm.that(result.issues[0].message, has="make gen")
+        tm.that(result.issues[0].message, has="make check")
 
     def test_code_gate_clean_block_passes(self, tmp_path: Path) -> None:
         """Test code gate clean block passes."""
@@ -282,7 +282,7 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
         tm.that(result.issues, empty=True)
 
     def test_code_gate_fix_splices_formatted_block_back(self, tmp_path: Path) -> None:
-        """`make fix` formats fenced blocks whose round-trip recompiles cleanly."""
+        """`make check` formats fenced blocks whose round-trip recompiles cleanly."""
         project_dir = u.Tests.mk_project(tmp_path, "markdown-code-fix")
         readme = project_dir / "README.md"
         readme.write_text(self.UNFORMATTED, encoding="utf-8")

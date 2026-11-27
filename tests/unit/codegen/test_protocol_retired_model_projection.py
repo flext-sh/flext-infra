@@ -1,6 +1,6 @@
 """Generation retires the protocol projection of a deleted model.
 
-``make gen`` is the single writer of model protocol projections, so it must
+``make check`` is the single writer of model protocol projections, so it must
 stay idempotent under deletions too: once a source model disappears, the same
 stage removes its projected contract from an authored protocol module and
 retires a generated protocol module whose models are all gone, so the protocol

@@ -2801,8 +2801,12 @@ class FlextInfraUtilitiesFacadeComponents:
             class_name=actual.get_name(),
             base_class=None,
             base_module=None,
+            # The managed header is always the canonical one: a previous
+            # generation's header line (e.g. a retired verb) is replaced.
             module_prefix=cls._facade_prune_dropped_imports(
-                prefix,
+                prefix.partition("\n")[2]
+                if prefix.startswith(c.Infra.AUTOGEN_MARKER)
+                else prefix,
                 dropped,
                 source[layout.region[0] :].replace(
                     source[layout.region[0] : layout.header_end], ""
@@ -2827,9 +2831,7 @@ class FlextInfraUtilitiesFacadeComponents:
             indentation=" " * step,
             body_source=body_source,
             publications=publications,
-            managed_header=None
-            if source.startswith(c.Infra.AUTOGEN_MARKER)
-            else c.Infra.AUTOGEN_HEADER,
+            managed_header=c.Infra.AUTOGEN_HEADER,
         )
         return cls.generate_module_skeleton(context=context)
 

@@ -30,7 +30,7 @@ class TestsFlextInfraCodegenCiMatrixAnalysis(TestsFlextInfraCodegenCiMatrixSuppo
             if item.destination == c.Infra.SONARCLOUD_PROPERTIES_FILENAME
         )
         header = rendered.split("\n\n", 1)[0]
-        tm.ok(header.startswith("# @flext-regenerate: make gen\n"))
+        tm.ok(header.startswith("# @flext-regenerate: make check\n"))
         tm.that(header, has=tm.not_none(entry.source).as_posix())
         properties = {
             key: value

@@ -164,7 +164,7 @@ class TestsFlextInfraCodegenLayoutGitignore:
         """The public ignore renderer satisfies the layout consumer.
 
         The planner used to render ``base/ignore.j2`` from its own section list
-        without the layout override, so ``make gen`` never satisfied the layout gate
+        without the layout override, so generation never satisfied the layout gate
         and a governed member ended up hand-editing the projection. One owner now
         derives the sections for every renderer: after conform, the layout engine
         finds no missing ignore pattern for a project declared in the SSOT.

@@ -2,7 +2,7 @@
 
 Premise (flext-axg1k): the steps loop of ``ci-template/ci.yml.j2`` rendered a
 double blank line after the checkout step and a blank line at EOF, so a
-workspace consumer's own pre-commit whitespace check rejected its ``make gen``
+workspace consumer's own pre-commit whitespace check rejected its generated
 output with "new blank line at EOF" and the consumer could not commit it.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
