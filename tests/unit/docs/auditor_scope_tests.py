@@ -98,6 +98,7 @@ class TestsFlextInfraAuditorScope:
             path=tmp_path,
             report_dir=tmp_path / "reports",
         )
+        u.Tests.initialize_git_repo(tmp_path)
         report = auditor.audit_scope(
             scope,
             params=m.Infra.AuditScopeParams(check="links"),
