@@ -45,7 +45,7 @@ class FlextInfraUtilitiesSemanticFamilyFlatten(
                 path.relative_to(workspace.repository_root),
             )
             is not None
-            and not sources[path].startswith(c.Infra.AUTOGEN_HEADER)
+            and not sources[path].startswith(c.Infra.AUTOGEN_MARKER)
         )
         if not candidates:
             return ()
@@ -262,7 +262,7 @@ class FlextInfraUtilitiesSemanticFamilyFlatten(
         root = Path(project.root.real_path)
         candidate_rewrites: MutableMapping[Path, list[p.Infra.SourceRewrite]] = {}
         for consumer, source in sources.items():
-            if source.startswith(c.Infra.AUTOGEN_HEADER):
+            if source.startswith(c.Infra.AUTOGEN_MARKER):
                 continue
             resource = project.get_resource(consumer.relative_to(root).as_posix())
             blocked, changes = cls._family_consumer_rewrites(
@@ -352,7 +352,7 @@ class FlextInfraUtilitiesSemanticFamilyFlatten(
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         root = Path(project.root.real_path)
         for path, source in sources.items():
-            if source.startswith(c.Infra.AUTOGEN_HEADER):
+            if source.startswith(c.Infra.AUTOGEN_MARKER):
                 continue
             resource = project.get_resource(path.relative_to(root).as_posix())
             module = FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource)
