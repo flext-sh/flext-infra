@@ -1286,7 +1286,7 @@ class FlextInfraUtilitiesModelsProtocol:
                         for node in holder.body
                         if isinstance(node, ast.ClassDef)
                     ]
-                    generated = source.startswith(c.Infra.AUTOGEN_HEADER)
+                    generated = source.startswith(c.Infra.AUTOGEN_MARKER)
                     retired[relative] = (
                         None
                         if generated and not contracts
@@ -3395,7 +3395,7 @@ class FlextInfraUtilitiesModelsProtocol:
                         None if target is None else target.get_object(),
                     ))
                     continue
-                if not module.source_code.startswith(c.Infra.AUTOGEN_HEADER):
+                if not module.source_code.startswith(c.Infra.AUTOGEN_MARKER):
                     resource = module.get_resource()
                     msg = (
                         f"{resource.path if resource is not None else name}:"
@@ -4078,12 +4078,12 @@ class FlextInfraUtilitiesModelsProtocol:
                 if self.project.source_query(destination, "isfile")
                 else None
             )
-            if existing is not None and not existing.startswith(c.Infra.AUTOGEN_HEADER):
+            if existing is not None and not existing.startswith(c.Infra.AUTOGEN_MARKER):
                 owner = self._source_authored_protocol_holder(destination, package_name)
             generated = self._source_generated_module(
                 destination, owner, classes, package_name
             )
-            if existing is None or existing.startswith(c.Infra.AUTOGEN_HEADER):
+            if existing is None or existing.startswith(c.Infra.AUTOGEN_MARKER):
                 return generated
             return self._source_extend_authored(
                 (existing, generated), owner, classes, (destination, package_name)
@@ -4281,7 +4281,7 @@ class FlextInfraUtilitiesModelsProtocol:
 
             """
             if self.project.source_query(destination, "isfile") and not (
-                self.project.source_text(destination).startswith(c.Infra.AUTOGEN_HEADER)
+                self.project.source_text(destination).startswith(c.Infra.AUTOGEN_MARKER)
             ):
                 return self._source_authored_protocol_holder(
                     destination, self.source_package_name
@@ -4709,7 +4709,7 @@ class FlextInfraUtilitiesModelsProtocol:
                 or (
                     self.project.source_query(destination, "isfile")
                     and not self.project.source_text(destination).startswith(
-                        c.Infra.AUTOGEN_HEADER
+                        c.Infra.AUTOGEN_MARKER
                     )
                 )
                 else {self._source_generated_holder(destination)}
@@ -6999,7 +6999,7 @@ class FlextInfraUtilitiesModelsProtocol:
             authored = self.project.source_query(
                 destination, "isfile"
             ) and not self.project.source_text(destination).startswith(
-                c.Infra.AUTOGEN_HEADER
+                c.Infra.AUTOGEN_MARKER
             )
             return (
                 self.source_model_protocols[routes[0]],
@@ -8546,7 +8546,7 @@ class FlextInfraUtilitiesModelsProtocol:
             if resource is None:
                 return content
             existing = self.project.source_text(destination)
-            if existing.startswith(c.Infra.AUTOGEN_HEADER):
+            if existing.startswith(c.Infra.AUTOGEN_MARKER):
                 # A general generation marker alone never proves this owner.
                 if not existing.startswith(content.split('"""', maxsplit=1)[0]) or (
                     '"""Source-derived structural model contracts.' not in existing
@@ -9553,7 +9553,7 @@ class FlextInfraUtilitiesModelsProtocol:
                         route not in self.references
                         and port is not None
                         and self.source_module(owner)
-                        and not owner.source_code.startswith(c.Infra.AUTOGEN_HEADER)
+                        and not owner.source_code.startswith(c.Infra.AUTOGEN_MARKER)
                     ):
                         return self._declared_port(port, route)
                     if route not in self.references:

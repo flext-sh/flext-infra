@@ -354,7 +354,7 @@ class FlextInfraModGateFindings(FlextInfraModGateRunner):
                     if snapshot is not None
                     and snapshot.content is not None
                     and snapshot.content.startswith(
-                        c.Infra.AUTOGEN_HEADER.encode(c.DEFAULT_ENCODING)
+                        c.Infra.AUTOGEN_MARKER.encode(c.DEFAULT_ENCODING)
                     )
                     else "authored"
                 ),

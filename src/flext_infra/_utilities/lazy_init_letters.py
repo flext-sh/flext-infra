@@ -424,7 +424,7 @@ class FlextInfraUtilitiesLazyInitLetters:
         provider, name = imported.rpartition(".")[::2]
         if not provider:
             text = cls.lazy_init_text(run, path)
-            if text is not None and text.startswith(c.Infra.AUTOGEN_HEADER):
+            if text is not None and text.startswith(c.Infra.AUTOGEN_MARKER):
                 return ("", False), target
             msg = f"lazy-init published name has no static binding: {target}"
             raise ValueError(msg)
@@ -733,7 +733,7 @@ class FlextInfraUtilitiesLazyInitLetters:
         init_path = package_dir / c.Infra.INIT_PY
         text = cls.lazy_init_text(run, init_path)
         names: Sequence[str] = ()
-        generated = text is not None and text.startswith(c.Infra.AUTOGEN_HEADER)
+        generated = text is not None and text.startswith(c.Infra.AUTOGEN_MARKER)
         if text is not None and not (
             indexed
             and generated
