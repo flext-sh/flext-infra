@@ -303,7 +303,7 @@ class FlextInfraCodemodDuplicateApply(
         """
         checks: Sequence[tuple[bool, str]] = (
             (
-                definition.source.startswith(c.Infra.AUTOGEN_HEADER),
+                definition.source.startswith(c.Infra.AUTOGEN_MARKER),
                 "a definition lives in a generated module",
             ),
             (
@@ -583,7 +583,7 @@ class FlextInfraCodemodDuplicateApply(
                     in_module_uses += 1
                     continue
                 generated = rope_workspace.source(path).startswith(
-                    c.Infra.AUTOGEN_HEADER
+                    c.Infra.AUTOGEN_MARKER
                 )
                 if generated or c.Infra.GENERATED_EXPORT_SIDECAR_RE.match(path.name):
                     return f"a consumer is generated: {path}"

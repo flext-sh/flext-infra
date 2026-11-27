@@ -435,7 +435,7 @@ class FlextInfraUtilitiesSemanticComposition(
         for family in cls.facade_families().values():
             path = layout.package_dir / f"{family.module}.py"
             source = sources.get(path)
-            if source is None or source.startswith(c.Infra.AUTOGEN_HEADER):
+            if source is None or source.startswith(c.Infra.AUTOGEN_MARKER):
                 continue
             name = f"{layout.class_stem}{family.suffix}"
             module = cls._composition_module(project, path)

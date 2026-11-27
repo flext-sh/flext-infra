@@ -122,7 +122,7 @@ class FlextInfraModelsConfigBeads:
         The marker carries portable storage and database identity plus the
         checkout's ledger identity. ``project_id`` is NOT invented here: it is
         read back from the checkout's own ``.beads/identity.toml`` so a
-        regeneration preserves it. Omitting it made every ``make gen`` strip the
+        regeneration preserves it. Omitting it made every ``make check`` strip the
         key, and Beads then minted a fresh identity on next access — observed in
         a consumer rig, where the ledger identity changed on regeneration.
         ``None`` means the checkout has no ledger

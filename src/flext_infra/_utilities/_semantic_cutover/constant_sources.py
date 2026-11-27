@@ -256,7 +256,7 @@ class FlextInfraUtilitiesSemanticConstantSources:
                 binding.imported_name == "c"
                 and declared is not None
                 and declared.name == c.Infra.INIT_PY
-                and module.source_code.startswith(c.Infra.AUTOGEN_HEADER)
+                and module.source_code.startswith(c.Infra.AUTOGEN_MARKER)
             ):
                 module = cls._generated_route_module(
                     project, module, binding.imported_name, qualified
