@@ -1,4 +1,4 @@
-# AUTO-GENERATED FILE — Regenerate with: make gen
+# AUTO-GENERATED FILE — Regenerate with: make check
 """Type aliases for flext-infra.
 
 Re-exports and extends flext-cli typings for infrastructure services.

@@ -252,6 +252,32 @@ class TestsFlextInfraFacadeComponentSource:
             eq=["FlextSampleConstantsBase.Sample"],
         )
 
+    def test_earlier_generated_header_is_rewritten(self, tmp_path: Path) -> None:
+        """A facade still carrying the pre-ADR-037 header gets the current one.
+
+        Premise: the facade kept its whole prefix, so a header naming the
+        retired ``make gen`` verb survived every ``make check``. The marker
+        keeps the file generated; the line is rewritten to
+        ``c.Infra.AUTOGEN_HEADER`` and a second render is byte-identical.
+        """
+        root, directory, path = self._sample_family(
+            tmp_path,
+            self.PARTS,
+            "class FlextSampleConstants(FlextConstants, "
+            + ", ".join(sorted(self.PARTS))
+            + "):\n"
+            '    """Sample constants."""',
+        )
+        path.write_text(
+            f"{c.Infra.AUTOGEN_MARKER}Regenerate with: make gen\n"
+            + path.read_text(encoding=c.DEFAULT_ENCODING),
+            encoding=c.DEFAULT_ENCODING,
+        )
+        rendered = self._render(root, directory, path)
+        tm.that(rendered.partition("\n")[0], eq=c.Infra.AUTOGEN_HEADER)
+        path.write_text(rendered, encoding=c.DEFAULT_ENCODING)
+        tm.that(self._render(root, directory, path), eq=rendered)
+
     def test_part_declaring_the_domain_beside_members_composes_whole(
         self, tmp_path: Path
     ) -> None:
