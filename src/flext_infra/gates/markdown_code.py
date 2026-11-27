@@ -4,7 +4,7 @@ The code inside documentation is still code — parseable embedded sources are
 held to the ruff-format contract. This gate extracts fenced ``python`` blocks
 and doctest examples into one temporary source tree and runs ONE ruff format
 invocation per verb (single-pass law): ``check`` renders the format verdict
-read-only, ``fix`` — reached from ``make fix`` — writes formatting back into
+read-only, ``fix`` — reached from ``make check`` — writes formatting back into
 fenced blocks when every block of a file round-trips cleanly. Invalid Python
 fences fail loudly; docstring write-back stays a human decision.
 
@@ -46,7 +46,7 @@ class FlextInfraGatesMarkdownCode(FlextInfraGates):
 
         The project's own ``pyproject.toml`` is the format contract owner: embedded
         blocks must satisfy the exact same configuration (notably ``preview``) that
-        ``make fmt`` and ``refactor mod`` apply to authored source. ``--isolated``
+        ``make check`` and ``refactor mod`` apply to authored source. ``--isolated``
         ignored that contract and produced a second, divergent formatting, so a
         documented block could never satisfy both surfaces at once.
 
@@ -258,7 +258,7 @@ class FlextInfraGatesMarkdownCode(FlextInfraGates):
                         formatted,
                         origin,
                         default_message=(
-                            "embedded code is not ruff-formatted (fix via `make fmt`)"
+                            "embedded code is not ruff-formatted (fix via `make check`)"
                         ),
                     ),
                 )

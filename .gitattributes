@@ -1,4 +1,4 @@
-# Repository-owned Git policy; make gen does not render this file.
+# Repository-owned Git policy; make check does not render this file.
 # Automatic text detection keeps binary contents unchanged.
 * text=auto eol=lf
 *.bat text eol=crlf

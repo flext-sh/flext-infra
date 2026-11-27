@@ -15,7 +15,7 @@
 # every `<facade>.<Project>.Tests` path to the flat `<facade>.Tests`; both run
 # in the same `make mod` transaction, so no reference outlives its declaration.
 # ast-grep re-indents the moved class and leaves its blank lines indented;
-# `make fmt` and `make fix` normalize them with the shortened lines in the
+# `make check` normalize them with the shortened lines in the
 # same slice cycle (a Ruff-excluded path such as `tests/fixtures/` is
 # normalized by hand in its member slice). An owner that also declares other
 # members, whose base is not composed by the facade (its removal would drop

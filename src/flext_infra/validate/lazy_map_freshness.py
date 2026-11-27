@@ -4,7 +4,7 @@ Drives the existing ROPE-backed ``FlextInfraCodegenLazyInit`` generator
 in check-only mode. Any ``__init__.py`` whose rendered content differs
 from the current on-disk content is a stale lazy-map violation. This
 closes the recurring failure mode where developers add ``models/x.py``
-(or similar) but skip ``make gen``, leaving the lazy map incomplete
+(or similar) but skip ``make check``, leaving the lazy map incomplete
 until first attribute access trips a cycle.
 
 The check delegates to the codegen pipeline, which resolves imports
@@ -57,7 +57,7 @@ class FlextInfraValidateLazyMapFreshness(FlextInfraProjectSelectionServiceBase[b
         summary = (
             "all __init__.py files are fresh (lazy maps in sync with siblings)"
             if passed
-            else f"{len(violations)} stale __init__.py file(s) — run 'make gen'"
+            else f"{len(violations)} stale __init__.py file(s) — run 'make check'"
         )
         return r[p.Infra.ValidationReport].ok(
             m.Infra.ValidationReport(

@@ -236,7 +236,7 @@ class TestsFlextInfraScriptDispatchMakefile:
         self,
         tmp_path: Path,
     ) -> None:
-        """``make gen`` is THE conform verb; ``codegen`` no longer exists.
+        """``make check`` is THE conform verb; ``codegen`` no longer exists.
 
         The convergence spine fuses codegen+conform under the
         single short ``gen`` verb: one verb, one meaning. The old ``codegen``
@@ -321,7 +321,7 @@ class TestsFlextInfraScriptDispatchMakefile:
         )
         tm.that(gen_init_body, lacks=["codegen conform", "REPOSITORY_ROOT", "bd"])
         # The regeneration contract published on every projection speaks gen.
-        tm.ok("# @flext-regenerate: make gen" in rendered)
+        tm.ok("# @flext-regenerate: make check" in rendered)
         # The custom-surface policy names gen (not codegen) for hooks/handlers.
         handler_policies: MutableMapping[str, p.Infra.CustomHandlerPolicy] = dict(
             config.Infra.codegen.make.custom_handler_policies,

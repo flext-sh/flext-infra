@@ -21,7 +21,9 @@ class FlextInfraConstantsCodegenLazy:
 
     MAX_ALIAS_LENGTH: ClassVar[int] = 2
     "Maximum length of a public facade alias."
-    AUTOGEN_HEADER: ClassVar[str] = "# AUTO-GENERATED FILE — Regenerate with: make gen"
+    AUTOGEN_HEADER: ClassVar[str] = (
+        "# AUTO-GENERATED FILE — Regenerate with: make check"
+    )
     "Header opening every generator projection; it identifies generated files."
     LAZY_IMPORTS: ClassVar[str] = "_LAZY_IMPORTS"
     "Mapping name every generated initializer publishes its lazy exports through."

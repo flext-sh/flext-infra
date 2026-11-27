@@ -1,0 +1,11 @@
+id: rewire-regenerate-banner-make-check
+snapshots:
+  "# @flext-regenerate: make gen\nvalue = 1\n":
+    fixed: |
+      # @flext-regenerate: make check
+      value = 1
+    labels:
+    - source: "# @flext-regenerate: make gen"
+      style: primary
+      start: 0
+      end: 29

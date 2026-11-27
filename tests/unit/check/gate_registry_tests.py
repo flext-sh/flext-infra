@@ -53,7 +53,7 @@ class TestsFlextInfraGateRegistry:
     def test_fixable_gate_vocabulary_matches_the_registry() -> None:
         """The Make fixable-gate vocabulary equals the gates that declare can_fix.
 
-        `make fix` routes through `check run --fix`. Without a
+        `make check` routes through `check run --fix`. Without a
         gate selector that run executes EVERY gate, including the type
         checker, which cannot fix anything -- the verb timed out (exit 124).
 
@@ -69,7 +69,7 @@ class TestsFlextInfraGateRegistry:
             for gate_id in c.Infra.ALLOWED_GATES
             if (gate_cls := registry.get(gate_id)) is not None and gate_cls.can_fix
         }
-        # `make fix` owns every mutating check-gate EXCEPT the fmt-owned
+        # `make check` owns every mutating check-gate EXCEPT the fmt-owned
         # formatters (single-pass verb law: one operation per tool per verb).
         fmt_owned = set(config.Infra.codegen.make.fmt_gates)
         tm.that(
@@ -77,7 +77,7 @@ class TestsFlextInfraGateRegistry:
         )
         tm.ok(fmt_owned & set(c.Infra.CANONICAL_GATE_IDS) <= mutating)
         tm.ok(fmt_owned <= mutating)
-        # `format` applies only through `make fmt`; check runs its read-only
+        # `format` applies only through `make check`; check runs its read-only
         # side, and fix never formats.
         tm.ok(c.Infra.FORMAT not in c.Infra.CANONICAL_FIXABLE_GATE_IDS)
         tm.ok(c.Infra.FORMAT in c.Infra.CANONICAL_GATE_IDS)

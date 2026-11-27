@@ -42,7 +42,7 @@ Infra:
     # rvben.rumdl editor extension reads .rumdl.toml: markdownlint is retired
     # from CLI and editor alike, so its ignore projection is too.
     - path: .markdownlintignore
-      evidence: '# @flext-regenerate: make gen'
+      evidence: '# @flext-regenerate:'
     # Pre-marker generations carry no banner; the retired installer's own
     # header proves machine provenance so consumers keep no stale copy.
     - path: .github/scripts/install-git-hooks.sh

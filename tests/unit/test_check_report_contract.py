@@ -1,7 +1,7 @@
 """Public contract of the ``check`` verb: read-only gates and a readable report.
 
 ``make check`` renders ``check run`` without ``--apply`` so validation never
-rewrites the tree; ``make fix`` keeps ``--apply``. Findings survive the run in
+rewrites the tree; ``make check`` keeps ``--apply``. Findings survive the run in
 the SARIF report, which validates back into ``m.Infra.SarifReport`` and is read
 through ``u.Infra.check_report_findings``.
 

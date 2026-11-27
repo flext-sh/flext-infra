@@ -54,7 +54,7 @@ PEP 723 `# /// script` block holding the `[tool.flext.command]` table, with `par
 `[[tool.flext.command.params]]`, and are reached only through `make <verb>
 WHAT=<action>` when the repository declares `script_dispatch`. Ruff exempts that block
 from commented-out-code; `u.Infra.promoted_render_header` lays it out within the
-configured Ruff line length, and `make fix` never wraps a `# /// <type>` block. The
+configured Ruff line length, and `make check` never wraps a `# /// <type>` block. The
 parser reads only that block: a consumer converts each retired `# /// flext-command`
 block once, after `make upg`, with `make mod RULES=promoted-command-header-pep723`.
 A shell command's file stem is its WHAT; a Python command is a module, so its stem is

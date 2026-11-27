@@ -162,7 +162,7 @@ class TestsFlextInfraDocsGeneratorGuides:
         destination = workspace / "flext-a/docs/guides/operator.md"
         destination.parent.mkdir(parents=True)
         destination.write_text(
-            "<!-- AUTO-GENERATED FILE — regenerate through `make gen`"
+            "<!-- AUTO-GENERATED FILE — regenerate through `make check`"
             " from the workspace root. -->\n"
             "<!-- Source of truth: `docs/guides/operator.md`;"
             " adjust that source, never this projection. -->\n\n"
