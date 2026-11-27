@@ -1008,11 +1008,16 @@ class FlextInfraUtilitiesProtectedEditLinting:
         # the alias-stripping pass would return the proposal byte for byte.
         if not lost:
             return proposed
-        return cls._strip_lost_import_aliases(
+        stripped = cls._strip_lost_import_aliases(
             proposed,
             after,
             frozenset(lost),
         )
+        # Removing an emptied guard (``if TYPE_CHECKING:``) loses the guard's
+        # own use, so the removal repeats until it changes nothing.
+        if stripped == proposed:
+            return stripped
+        return cls.remove_orphaned_text_imports(original, stripped)
 
     @classmethod
     def _strip_lost_import_aliases(
@@ -1035,8 +1040,27 @@ class FlextInfraUtilitiesProtectedEditLinting:
             return (alias.asname or alias.name.split(".")[0]) in lost
 
         lines = proposed.splitlines(keepends=True)
-        plans: list[tuple[int, int, str | None]] = []
+        # A guard whose whole body is orphaned imports leaves with them; an
+        # emptied block would not parse.
+        guards = [
+            node
+            for node in ast.walk(tree)
+            if isinstance(node, ast.If)
+            and not node.orelse
+            and node.end_lineno is not None
+            and all(
+                isinstance(statement, c.Infra.AST_IMPORT_TYPES)
+                and all(selected_alias(alias) for alias in statement.names)
+                for statement in node.body
+            )
+        ]
+        plans: list[tuple[int, int, str | None]] = [
+            (guard.lineno, guard.end_lineno or guard.lineno, None) for guard in guards
+        ]
+        guarded = {id(statement) for guard in guards for statement in guard.body}
         for imported in ast.walk(tree):
+            if id(imported) in guarded:
+                continue
             if not isinstance(imported, c.Infra.AST_IMPORT_TYPES):
                 continue
             selected = [alias for alias in imported.names if selected_alias(alias)]
