@@ -100,6 +100,9 @@ class FlextInfraUtilitiesProjectDiscoveryShape:
                     str(root),
                     save_objectdb=False,
                     filter_lists=(config.Infra.codegen.source_scan_ignored, ("",)),
+                    # The probe reads import statements only; it never resolves
+                    # a compiled module, so no installed distribution is scanned.
+                    extension_modules=(),
                 )
             )
         )

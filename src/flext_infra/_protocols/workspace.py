@@ -678,15 +678,6 @@ class FlextInfraProtocolsWorkspace:
             ...
 
         @property
-        def superproject_gitlinks(self) -> t.StrTuple:
-            """Structural member projected from the owning model.
-
-            Paths the superproject index records as gitlinks; a member checkout at
-            one of them is an attached submodule.
-            """
-            ...
-
-        @property
         def declared_member(
             self,
         ) -> FlextInfraProtocolsConfigRepository.RepositoryRef | None:
