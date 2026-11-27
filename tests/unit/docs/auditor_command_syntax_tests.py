@@ -150,10 +150,9 @@ Make surfaces and documentation are changed at their canonical owner.
     @staticmethod
     def test_rejects_invented_make_selectors() -> None:
         """Test rejects invented make selectors."""
-        content = """```bash
-make test PROJECT=flext-demo MATCH=unit
-```
-"""
+        content = (
+            f"```bash\nmake {c.Infra.VERB_TEST} PROJECT=flext-demo MATCH=unit\n```\n"
+        )
 
         issues = u.Infra.docs_command_contract_content_issues(
             content,

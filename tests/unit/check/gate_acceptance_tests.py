@@ -530,6 +530,7 @@ class TestsFlextInfraGateAcceptance:
         project: Path = u.Tests.mk_project(
             tmp_path, "p1", pyproject='[project]\nname = "p1"\nversion = "0.1.0"\n'
         )
+        u.Tests.initialize_git_repo(tmp_path)
         results = tm.ok(
             check.FlextInfraWorkspaceChecker(repository_root=tmp_path).run_projects(
                 (project.name,),
