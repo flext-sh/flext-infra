@@ -1,4 +1,4 @@
-# AUTO-GENERATED FILE — Regenerate with: make gen
+# AUTO-GENERATED FILE — Regenerate with: make check
 """Protocol definitions for FLEXT infra tests.
 
 Provides TestsFlextInfraProtocols, extending TestsFlextProtocols with

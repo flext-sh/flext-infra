@@ -1,4 +1,4 @@
-# AUTO-GENERATED FILE — Regenerate with: make gen
+# AUTO-GENERATED FILE — Regenerate with: make check
 """Utilities facade for flext-infra.
 
 Re-exports flext_core utilities and adds infrastructure-specific
