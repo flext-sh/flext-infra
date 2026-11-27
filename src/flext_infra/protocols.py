@@ -1,4 +1,4 @@
-# AUTO-GENERATED FILE — Regenerate with: make gen
+# AUTO-GENERATED FILE — Regenerate with: make check
 """Structural contracts projected from source model declarations.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
