@@ -1,4 +1,4 @@
-# AUTO-GENERATED FILE — Regenerate with: make gen
+# AUTO-GENERATED FILE — Regenerate with: make check
 """Constants facade for flext-infra — c.Infra project namespace.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.

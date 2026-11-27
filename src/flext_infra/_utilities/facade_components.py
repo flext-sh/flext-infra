@@ -2801,13 +2801,15 @@ class FlextInfraUtilitiesFacadeComponents:
             class_name=actual.get_name(),
             base_class=None,
             base_module=None,
-            module_prefix=cls._facade_prune_dropped_imports(
-                prefix,
-                dropped,
-                source[layout.region[0] :].replace(
-                    source[layout.region[0] : layout.header_end], ""
+            module_prefix=cls._facade_current_header(
+                cls._facade_prune_dropped_imports(
+                    prefix,
+                    dropped,
+                    source[layout.region[0] :].replace(
+                        source[layout.region[0] : layout.header_end], ""
+                    )
+                    + " ".join(desired_bases),
                 )
-                + " ".join(desired_bases),
             ),
             module_suffix=source[end:],
             class_bases=desired_bases,
@@ -2832,6 +2834,18 @@ class FlextInfraUtilitiesFacadeComponents:
             else c.Infra.AUTOGEN_HEADER,
         )
         return cls.generate_module_skeleton(context=context)
+
+    @staticmethod
+    def _facade_current_header(prefix: str) -> str:
+        """Rewrite an earlier generated header line to the current one.
+
+        Returns:
+            The prefix led by ``c.Infra.AUTOGEN_HEADER`` when it was generated.
+
+        """
+        if not prefix.startswith(c.Infra.AUTOGEN_MARKER):
+            return prefix
+        return c.Infra.AUTOGEN_HEADER + "\n" + prefix.partition("\n")[2]
 
     @staticmethod
     def _facade_prune_dropped_imports(
