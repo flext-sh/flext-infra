@@ -870,7 +870,7 @@ Infra:
       workflow:
       # Setup provisions locally and in CI; the commit hook runs only the
       # converging check row (3f92d28eed: no setup row in pre_commit).
-      - { identity: setup, verb: setup, contexts: [ local, ci ] }
+      - { identity: setup, verb: setup, contexts: [ local, ci, pre_commit ] }
       # Initial behavioral admission requires global source evidence, not full check.
       - { identity: check-primary, verb: check, phase: primary, contexts: [ local, ci, pre_commit, pre_push ] }
       # Operator decision 2026-11-22 (supersedes the 2026-11-12 ruling): CI runs
