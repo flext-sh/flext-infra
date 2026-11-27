@@ -22,6 +22,8 @@ import pytest
 from flext_infra import config
 from tests import c, t, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 def _member_search_paths() -> Sequence[str]:
     """Resolve every governed workspace member's own source directory.
@@ -464,7 +466,6 @@ class TestsFlextInfraFacadeMemberConstraints:
         return found
 
     @classmethod
-    @c.Tests.MARK.slow
     def test_relocations_name_only_foreign_references(cls, core_project: Path) -> None:
         """Each census reference is a non-owner reference bound to its owner."""
         project = core_project
