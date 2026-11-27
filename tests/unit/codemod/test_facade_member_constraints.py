@@ -98,15 +98,10 @@ class TestsFlextInfraFacadeMemberConstraints:
             )
 
     @staticmethod
-    def test_lazy_facade_import_keeps_source_kind() -> None:
+    @c.Tests.MARK.parametrize("core_project", ["flext_cli"], indirect=True)
+    def test_lazy_facade_import_keeps_source_kind(core_project: Path) -> None:
         """Classify a real lazy export through its declared source class."""
-        package_dir = tm.not_none(
-            u.Infra.declared_package_dir(
-                "flext_cli",
-                search_paths=_member_search_paths(),
-            )
-        )
-        with u.Infra.codemod_workspace_snapshot(package_dir.parent.parent) as snapshot:
+        with u.Infra.codemod_workspace_snapshot(core_project) as snapshot:
             resolver_factory = u.Infra.source_member_resolver_factory(
                 snapshot.engine, sources={}
             )

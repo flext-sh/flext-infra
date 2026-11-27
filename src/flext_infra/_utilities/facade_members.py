@@ -338,6 +338,11 @@ class FlextInfraUtilitiesFacadeMembers:
         assigned = runtime.annotation_assignment_outer_type(source_project, value)
         if assigned is not None:
             origin, from_value = assigned
+            if not from_value and runtime.same_name(
+                runtime.qualified_name(source_project, "typing.TypeAlias"), origin
+            ):
+                # An explicit alias declares no value: its target owns the kind.
+                return None
             if not from_value:
                 # An annotated callable instance (``fail: _Fail = _Fail()``)
                 # takes its value's kind; any other annotated value is a constant.

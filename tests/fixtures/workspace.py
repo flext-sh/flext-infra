@@ -266,8 +266,10 @@ def rope_project(tmp_path: Path) -> Iterator[t.Infra.RopeProject]:
 
 
 @pytest.fixture(scope="module")
-def core_project(tmp_path_factory: pytest.TempPathFactory) -> Path:
-    """Copy the declared ``flext_core`` package into one committed project.
+def core_project(
+    tmp_path_factory: pytest.TempPathFactory, request: pytest.FixtureRequest
+) -> Path:
+    """Copy one declared package (``flext_core`` unless parametrized) into a project.
 
     The package comes from the sibling member sources in a workspace checkout or
     from this repository's own runtime in a standalone checkout; either way the
@@ -287,7 +289,9 @@ def core_project(tmp_path_factory: pytest.TempPathFactory) -> Path:
         sysconfig.get_paths()["purelib"],
     )
     package_dir = tm.not_none(
-        u.Infra.declared_package_dir("flext_core", search_paths=search_paths)
+        u.Infra.declared_package_dir(
+            getattr(request, "param", "flext_core"), search_paths=search_paths
+        )
     )
     root = tmp_path_factory.mktemp("facade-census")
     shutil.copytree(
