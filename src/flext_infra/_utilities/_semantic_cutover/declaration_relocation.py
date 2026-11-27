@@ -134,7 +134,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                     working,
                 )
             for path in sorted(sources):
-                if sources[path].startswith(c.Infra.AUTOGEN_HEADER):
+                if sources[path].startswith(c.Infra.AUTOGEN_MARKER):
                     continue
                 policy = workspace.convention(path).module_policy
                 family = cls._source_family(path)
@@ -280,7 +280,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             ),
         )
         for path, source in sources.items():
-            if source.startswith(c.Infra.AUTOGEN_HEADER):
+            if source.startswith(c.Infra.AUTOGEN_MARKER):
                 continue
             located = layers.import_namespace(root, path)
             if located is None:
@@ -617,7 +617,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         targets: list[tuple[Path, str, str]] = []
         for path, source in sources.items():
             if path.parent.parent != package or source.startswith(
-                c.Infra.AUTOGEN_HEADER,
+                c.Infra.AUTOGEN_MARKER,
             ):
                 continue
             family = FlextInfraUtilitiesCodegenNamespace.facade_family_of_directory(
@@ -1085,7 +1085,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
     ) -> str:
         if content[0] == content[1]:
             return content[0]
-        if content[0].startswith(c.Infra.AUTOGEN_HEADER):
+        if content[0].startswith(c.Infra.AUTOGEN_MARKER):
             msg = f"declaration-relocation: generated consumer {resource.path}"
             raise ValueError(msg)
         runtime = FlextInfraUtilitiesRopeRuntimeModules

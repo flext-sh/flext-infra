@@ -1,6 +1,6 @@
 """compat: flext_infra._profile.entry -> the canonical flext-infra CLI.
 
-fix: regenerate the consumer Makefile with ``make gen``; its gen and mod recipes
+fix: regenerate the consumer Makefile with ``make check``; its gen and mod recipes
 then call ``python -m flext_infra`` with ``FLEXT_INFRA_PROFILE_OUTPUT``. This
 pass-through exists only while generated Makefiles still invoke it, and is
 deleted when none does.
@@ -18,7 +18,7 @@ import warnings
 if __name__ == "__main__":
     warnings.warn(
         "compat: flext_infra._profile.entry -> python -m flext_infra with "
-        "FLEXT_INFRA_PROFILE_OUTPUT; fix: run make gen to regenerate the Makefile",
+        "FLEXT_INFRA_PROFILE_OUTPUT; fix: run make check to regenerate the Makefile",
         DeprecationWarning,
         stacklevel=1,
     )

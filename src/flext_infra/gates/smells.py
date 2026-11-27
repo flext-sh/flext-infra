@@ -215,7 +215,8 @@ class FlextInfraGatesSmells(FlextInfraGates):
         )
         if not config_path.is_file():
             return self._unrunnable_scan_output(
-                f"generated qlty configuration is absent: {config_path}; run make gen",
+                f"generated qlty configuration is absent: {config_path}; run make "
+                f"check",
             )
         return self._run(
             self._scan_command(binary, project_dir),
