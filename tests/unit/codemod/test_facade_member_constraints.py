@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import re
 import sys
+import sysconfig
 from collections.abc import Mapping, Sequence
 from contextlib import closing
 from pathlib import Path
@@ -24,18 +25,23 @@ from tests import c, t, tm, u
 
 
 def _member_search_paths() -> Sequence[str]:
-    """Resolve every governed workspace member's own source directory.
+    """Resolve the members' source directories and the runtime's installed root.
+
+    A workspace checkout carries the members' sources beside this repository; a
+    standalone checkout (CI) carries them installed in this repository's own
+    runtime, whose ``purelib`` is the explicit search path.
 
     Returns:
         The resulting ``Sequence[str]``.
 
     """
     workspace = Path(__file__).resolve().parents[4]
-    return tuple(
+    members = tuple(
         str(path / c.Infra.DEFAULT_SRC_DIR)
         for path in sorted(workspace.iterdir())
         if (path / c.Infra.DEFAULT_SRC_DIR).is_dir()
     )
+    return (*members, sysconfig.get_paths()["purelib"])
 
 
 class TestsFlextInfraFacadeMemberConstraints:
