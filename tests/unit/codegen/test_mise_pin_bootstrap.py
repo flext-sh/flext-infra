@@ -563,8 +563,35 @@ class TestsFlextInfraMisePinBootstrap:
         tm.that(entry["version"], is_=str)
         tm.that(entry["specifiers"], eq=["latest"])
 
+    def test_lock_stage_skips_tools_the_checkout_does_not_declare(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """A tool only another checkout declares is never previewed or locked."""
+        undeclared = "kubectl"
+        self._writer_project(tmp_path, extra_tools=(undeclared,))
+        upgrade = tm.ok(
+            u.Tests.run_isolated_make(
+                ["upg"], cwd=tmp_path, env=self.environment(tmp_path)
+            )
+        )
+        tm.that(
+            u.Cli.process_succeeded(upgrade.outcome),
+            eq=True,
+            msg=upgrade.stdout + upgrade.stderr,
+        )
+        tools = u.Tests.toml_mapping(
+            u.Tests.toml_payload(
+                (tmp_path / "mise.lock").read_text(encoding=c.DEFAULT_ENCODING)
+            )["tools"]
+        )
+        tm.that(undeclared in tools, eq=False)
+
     @staticmethod
-    def _writer_project(tmp_path: Path) -> None:
+    def _writer_project(
+        tmp_path: Path,
+        extra_tools: tuple[str, ...] = (),
+    ) -> None:
         """Render only the upgrade lock stage over a committed tree."""
         u.Tests.initialize_git_repo(tmp_path)
         (tmp_path / "home").mkdir()
@@ -610,7 +637,7 @@ class TestsFlextInfraMisePinBootstrap:
                 template,
                 TestsFlextInfraMisePinBootstrap.WriterRenderContext(
                     toolchain=toolchain,
-                    install_tools=toolchain.mise_install_keys,
+                    install_tools=(*toolchain.mise_install_keys, *extra_tools),
                 ),
             ),
         )
