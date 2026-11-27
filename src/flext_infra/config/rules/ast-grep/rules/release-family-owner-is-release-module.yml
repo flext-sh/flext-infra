@@ -7,7 +7,7 @@
 # public facade `m.Infra.*` binds the release copy. Config data then validates
 # into one class and reaches a consumer annotated with the other, and Pydantic
 # rejects every item: "Input should be a valid dictionary or instance of
-# BuildConstraintSpec". That is what kills `make gen` fleet-wide.
+# BuildConstraintSpec". That is what kills `make check` fleet-wide.
 #
 # The release module is the elected owner: it is named for the domain, it holds
 # the whole family, and the generated facade already points at it. This rule

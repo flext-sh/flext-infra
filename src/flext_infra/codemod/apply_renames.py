@@ -182,7 +182,7 @@ class FlextInfraApplyRenames:
 
         """
         return (
-            text.startswith(c.Infra.AUTOGEN_HEADER)
+            text.startswith(c.Infra.AUTOGEN_MARKER)
             and path.resolve() not in exclusions[2]
         )
 
