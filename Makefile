@@ -139,7 +139,7 @@ $(eval export GIT_CONFIG_VALUE_$(GIT_CONFIG_ALLOW_INDEX))
 # === SECTION: project identity (managed) ===
 # Source: config:dist / config:make_profile / config:repository_root_rel / config:uv_link_mode
 PROJECT_NAME := flext-infra
-MAKE_PROFILE := standalone
+MAKE_PROFILE := workspace
 REPOSITORY_ROOT_REL := .
 # === SECTION: workspace subprojects (managed) ===
 # Source: config:workspace_subprojects (list), config:workspace_repositories (list)
@@ -627,7 +627,7 @@ _bootstrap_setup_tools: _builtin_require_workspace
 # them to every governed member, processed together in one checker run
 # (operator rulings 2026-10-25: never member by member; 2026-11-22, bead
 # flext-bga5y: members only with ALL=Y). CI evaluates only its own repository.
-GATE_SCOPE := self
+GATE_SCOPE := $(if $(filter Y,$(CI)),self,$(if $(filter Y,$(ALL)),all,self))
 # Local and CI consume the same native project/workspace declarations and lock.
 # Setup always bootstraps: `uv sync --frozen` installs exactly the committed
 # uv.lock without re-resolving or rewriting it, so manifest drift never blocks
@@ -837,10 +837,10 @@ SYNC_UPGRADE_EXECUTOR_WITH = $(call TARGET_ENVIRONMENT,$(FLEXT_INFRA_EXECUTOR_VE
 # the compilation inside a test's time limit.
 
 
-override SETUP_SYNC_ARGS := --all-extras --all-groups --link-mode clone --compile-bytecode
+override SETUP_SYNC_ARGS := --all-extras --all-groups --link-mode clone --compile-bytecode --all-packages
 
 ifeq ($(CI),Y)
-override SETUP_SYNC_ARGS := --all-extras --all-groups --link-mode clone --compile-bytecode --no-editable
+override SETUP_SYNC_ARGS := --all-extras --all-groups --link-mode clone --compile-bytecode --all-packages --no-editable
 endif
 
 # Custom hooks are declared in CI too; load their selected physical Makefile.
@@ -872,7 +872,6 @@ endef
 
 
 .PHONY: $(PUBLIC_VERBS) $(addprefix _builtin-,$(PUBLIC_VERBS))
-.PHONY: _builtin_gen_all
 
 
 VERB_DESCRIPTION_setup := Install the declared frozen locks, synchronize the physical environment and configure local integrations; FLEXT=<path> reinstalls the FLEXT distributions that workspace provides as editable (local only).
@@ -884,7 +883,7 @@ VERB_ARGUMENTS_upg :=
 VERB_DESCRIPTION_mod := Refactor declared source structure through the shared pipeline and publish the complete coherent change; LAWS (ENFORCE ids) or RULES (rule ids) diagnose or repair one law (ADR-028 Decision 18 item 2).
 VERB_ARGUMENTS_mod := LAWS RULES
 
-VERB_DESCRIPTION_check := Validate declarations, projections, environment, documentation and configured gates without repairs or publication.
+VERB_DESCRIPTION_check := Outside CI, converge generation, repairs and formatting to a fixed point and publish them; then validate declarations, projections, environment, documentation and configured gates. In CI it changes nothing and fails when any byte would change (ADR-037).
 VERB_ARGUMENTS_check := CHECK_PHASE
 
 VERB_DESCRIPTION_tests := Run native incremental tests through the persistent Testmon selection; in a workspace root ALL=Y includes every governed member.
@@ -941,7 +940,7 @@ $(PROFILE_VERBS_DISPATCH):
 
 
 $(PROFILE_VERBS_ACTIVATED): %: _builtin_require_workspace
-	@printf '==> %s | project=%s | profile=%s\n' '$@' "$(PROJECT_ROOT)" 'standalone'
+	@printf '==> %s | project=%s | profile=%s\n' '$@' "$(PROJECT_ROOT)" 'workspace'
 	+@$(if $(filter Y,$(CI)),$(MISE) -C "$(RUNTIME_ROOT)" exec -- $(SELF_MAKE) _activated-$@,$(DIRENV) exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-$@)
 .PHONY: $(addprefix _activated-,$(PROFILE_VERBS_ACTIVATED))
 ifneq ($(strip $(PROFILE_VERBS_DIRECT)),)
@@ -1036,7 +1035,7 @@ SCRIPT_VERBS_ROUTED := $(SCRIPT_VERBS_HOOKED) $(SCRIPT_VERBS_INTERPRETER)
 
 
 $(SCRIPT_VERBS_ACTIVATED): %: _builtin_require_workspace
-	@printf '==> %s | project=%s | profile=%s\n' '$@' "$(PROJECT_ROOT)" 'standalone'
+	@printf '==> %s | project=%s | profile=%s\n' '$@' "$(PROJECT_ROOT)" 'workspace'
 	+@$(if $(filter Y,$(CI)),$(MISE) -C "$(RUNTIME_ROOT)" exec -- $(SELF_MAKE) _activated-$@,$(DIRENV) exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-$@)
 .PHONY: $(addprefix _activated-,$(SCRIPT_VERBS_ACTIVATED))
 ifneq ($(strip $(SCRIPT_VERBS_DIRECT)),)
@@ -1097,7 +1096,7 @@ ifneq ($(CI),Y)
 endif
 
 _builtin-help:
-	@printf '%s\n' 'flext-infra [standalone]' ''
+	@printf '%s\n' 'flext-infra [workspace]' ''
 	@$(foreach verb,$(PUBLIC_VERBS),$(call VERB_HELP_LINE,$(verb));)
 
 # A project owns the sources declared by its manifest. Generated setup
@@ -1483,10 +1482,13 @@ _builtin_converge_all: _builtin_require_environment
 	before="$$(tree)" || exit 1; pass=0; \
 	while :; do \
 		pass=$$((pass + 1)); \
-		if [ "$$pass" -gt $(CHECK_CONVERGE_MAX_PASSES) ]; then printf '%s\n' "❌ check: gen -> fix -> fmt did not reach a fixed point in $(CHECK_CONVERGE_MAX_PASSES) passes" >&2; exit 1; fi; \
-		FLEXT_INFRA_CHECK_CONVERGE=1 $(SELF_MAKE) _builtin_gen_all && $(SELF_MAKE) _builtin_fix_all && $(SELF_MAKE) _builtin_fmt_all || exit 1; \
+		if [ "$$pass" -gt $(CHECK_CONVERGE_MAX_PASSES) ]; then printf '%s\n' "❌ check: convergence did not reach a fixed point in $(CHECK_CONVERGE_MAX_PASSES) passes" >&2; exit 1; fi; \
+		FLEXT_INFRA_CHECK_CONVERGE=1 $(PROJECT_FLEXT_INFRA) codegen generate --root "$(PROJECT_ROOT)" --scope "$(if $(filter Y,$(CI)),self,all)" && \
+		$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gate-set fix --scope $(GATE_SCOPE) --apply && \
+		$(PROJECT_FLEXT_INFRA) docs fix --repository-root "$(PROJECT_ROOT)" --output-dir ".reports/docs" --projects . --apply && \
+		$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gate-set fmt --scope $(GATE_SCOPE) --apply || exit 1; \
 		after="$$(tree)" || exit 1; \
-		if [ "$$after" = "$$before" ]; then printf '%s\n' "INFO: check: gen -> fix -> fmt fixed point after $$pass pass(es)"; break; fi; \
+		if [ "$$after" = "$$before" ]; then printf '%s\n' "INFO: check: fixed point after $$pass pass(es)"; break; fi; \
 		before="$$after"; \
 	done
 
@@ -1499,62 +1501,16 @@ _builtin_tests_full_all: _builtin_require_environment
 _builtin_tests_harness_all: _builtin_require_environment
 	@FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/.reports/tests/route.pstats" $(PROJECT_FLEXT_INFRA) workspace tests-harness --repository-root "$(PROJECT_ROOT)" --scope "$(GATE_SCOPE)"$(if $(MARKER), --marker "$$MARKER")
 
-# fmt is format-only (single-pass verb law): ruff formats Python, the
-# fmt_gates formatters run once through the checker's apply mode, and every
-# lint repair belongs to `make check`. Every repair requires read-only native
-# verification; remaining findings and tool failures both fail the verb.
-_builtin_fmt_all: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gate-set fmt --scope $(GATE_SCOPE) --apply
-
-_builtin_fix_all: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gate-set fix --scope $(GATE_SCOPE) --apply
-	@$(PROJECT_FLEXT_INFRA) docs fix --repository-root "$(PROJECT_ROOT)" --output-dir ".reports/docs" --projects . --apply
-
 _builtin_clean_generated: _builtin_require_interpreter
 	@$(PROJECT_FLEXT_INFRA) maintenance clean --repository-root "$(PROJECT_ROOT)" --apply
 
-# Heavy verbs (check, tests, tests-full, tests-harness, gen, gen-scope, mod)
+# Heavy verbs (check, tests, tests-full, tests-harness, mod)
 # admit themselves into the per-host FIFO queue and arm their wall-time budget only once
 # admitted (FLEXT ADR-032, config Infra.gate_admission): queue time never
-# counts against a budget. GEN_PROFILE=1 / MOD_PROFILE=1 capture cProfile.
-GEN_PROFILE ?=
+# counts against a budget. MOD_PROFILE=1 captures cProfile.
 MOD_PROFILE ?=
 # Check profiling is opt-in like generation (CHECK_PROFILE=1 make check).
 CHECK_PROFILE ?=
-
-# Generation rewrites .envrc projections, so on a host it re-authorizes direnv
-# for every governed checkout exactly as setup and upg do.
-_builtin_gen_all: _builtin_require_interpreter
-	@set -eu; \
-	root="$(abspath $(or $(strip $(ROOT)),$(PROJECT_ROOT)))"; \
-	what="$(strip $(WHAT))"; \
-	if [ -n "$$what" ] && [ "$$what" != "ALL" ]; then \
-		scope="$(or $(strip $(SCOPE)),self)"; \
-		module_args=""; \
-		if [ -n "$(strip $(MODULE))" ]; then module_args=" --module $(strip $(MODULE))"; fi; \
-		$(if $(GEN_PROFILE),FLEXT_INFRA_PROFILE=$(GEN_PROFILE) ,)FLEXT_INFRA_PROFILE_OUTPUT="$$root/.reports/codegen/gen-scope.pstats" $(PROJECT_FLEXT_INFRA) codegen generate --root "$$root" --what "$$what" --scope "$$scope"$$module_args; \
-	else \
-		scope=all; \
-		if [ "$$root" != "$(PROJECT_ROOT)" ] || [ "$(strip $(CI))" = "Y" ]; then scope=self; fi; \
-		$(if $(GEN_PROFILE),FLEXT_INFRA_PROFILE=$(GEN_PROFILE) ,)FLEXT_INFRA_PROFILE_OUTPUT="$$root/.reports/codegen/gen.pstats" $(PROJECT_FLEXT_INFRA) codegen generate --root "$$root" --scope "$$scope"; \
-	fi; \
-	$(if $(filter Y,$(CI)),:,set -f; \
-	$(GOVERNED_CHECKOUTS); \
-	for checkout in $$checkouts; do \
-		if [ "$$checkout" = . ]; then allow_root="$$root"; else allow_root="$$root/$$checkout"; fi; \
-		[ ! -f "$$allow_root/.envrc" ] || $(DIRENV) allow "$$allow_root"; \
-	done; \
-	set +f)
-
-# Focal generation is the bounded diagnosis vehicle: one surface (and, for
-# facades, one module) through the identical engine, lock and budget.
-_builtin_gen_scope_all: _builtin_require_interpreter
-	@set -eu; \
-	root="$(abspath $(or $(strip $(ROOT)),$(PROJECT_ROOT)))"; \
-	scope="$(or $(strip $(SCOPE)),self)"; \
-	module_args=""; \
-	if [ -n "$(strip $(MODULE))" ]; then module_args=" --module $(strip $(MODULE))"; fi; \
-	$(if $(GEN_PROFILE),FLEXT_INFRA_PROFILE=$(GEN_PROFILE) ,)FLEXT_INFRA_PROFILE_OUTPUT="$$root/.reports/codegen/gen-scope.pstats" $(PROJECT_FLEXT_INFRA) codegen generate --root "$$root" --what "$(strip $(WHAT))" --scope "$$scope"$$module_args
 
 # Structural rewrites run one theme at a time (ADR-028 Decision 18 item 2):
 # LAWS selects ENFORCE law ids, RULES selects exact rule ids; the engine refuses
@@ -1575,11 +1531,7 @@ _builtin-check: _builtin_check_all
 _builtin-tests: _builtin_tests_all
 _builtin-tests-full: _builtin_tests_full_all
 _builtin-tests-harness: _builtin_tests_harness_all
-_builtin-fmt: _builtin_fmt_all
-_builtin-fix: _builtin_fix_all
 _builtin-clean: _builtin_clean_generated
-_builtin-gen: _builtin_gen_all
-_builtin-gen-scope: _builtin_gen_scope_all
 _builtin-mod: _builtin_mod_apply
 # The repository's release capability elects these product operations.
 # Operator values cross the shell boundary as environment data.

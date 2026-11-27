@@ -267,7 +267,7 @@ class TestsFlextInfraUtilitiesformatting:
             eq=preserved,
         )
         # Premise: a rewrite of authored bytes carrying format debt repairs
-        # only what it introduced; the debt stays for ``make fmt``.
+        # only what it introduced; the debt stays for ``make check`` formatting.
         values_line = "values = [" + ", ".join(map(str, values)) + "]"
         normalized = tm.ok(
             u.Infra.normalize_source(
@@ -322,11 +322,11 @@ class TestsFlextInfraUtilitiesformatting:
     ) -> None:
         """An authored module with lint and format findings is published as is.
 
-        Premise (measured on a consumer ``make gen``): a source rewrite that
+        Premise (measured on a consumer ``make check``): a source rewrite that
         only reorders imports reached publication, where the normalization
         repaired its own ``I001`` and then reformatted the whole authored
         module. Publication repairs only what a rewrite introduced; authored
-        format debt and lint findings belong to ``make fmt``/``make fix``.
+        format debt and lint findings belong to ``make check``.
         A generated projection is still formatted in full. Both sources are
         scenario data under ``tests/fixtures/authored-publication``.
         """

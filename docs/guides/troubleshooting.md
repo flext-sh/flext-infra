@@ -1,4 +1,4 @@
-<!-- AUTO-GENERATED FILE — regenerate through `make gen` from the workspace root. -->
+<!-- AUTO-GENERATED FILE — regenerate through `make check` from the workspace root. -->
 <!-- Source of truth: `<workspace-root>/docs/guides/troubleshooting.md`; adjust that workspace source, never this member projection. -->
 
 # flext-infra - Troubleshooting
@@ -43,9 +43,15 @@ changed-only, fix, or phase selectors.
 After correcting the source, use only the applicable canonical verbs:
 
 ```bash
+make check
 make mod
 make check
+make check
+make check repair
+make check formatting
+make check
 make tests
+make check
 ```
 
 Test diagnosis still runs through `make tests`, with the retained Testmon cache. Direct
@@ -53,10 +59,9 @@ or cache-clearing test runs do not count as evidence.
 
 ## Documentation failures
 
-For stale member guides, change the matching root file under `docs/guides/` and run
-`make check`. Generated member guides carry their source and exact regeneration command
-in
-the header; never patch those projections.
+For stale member guides, change the matching root file under `docs/guides/` and
+run `make check`. Generated member guides carry their source and exact regeneration
+command in the header; never patch those projections.
 
 For a docs audit failure, remove the invalid command or test-double example at the
 canonical root source. Do not add an allowlist or weaken the audit.
@@ -68,7 +73,7 @@ TODO followed by a colon while ordinary prose remains valid. A dated document th
 records a real machine path may be listed by its exact Markdown path under
 `docs_audit.historical_evidence_files`; a directory prefix does not exempt later
 documents. Add only files whose observed path is necessary to preserve the
-historical record, then run `make check` to verify the projection.
+historical record, then run `make check` and `make check` to verify the projection.
 
 ## Test failures
 

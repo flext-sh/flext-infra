@@ -1,4 +1,4 @@
-<!-- AUTO-GENERATED FILE — regenerate through `make gen` from the workspace root. -->
+<!-- AUTO-GENERATED FILE — regenerate through `make check` from the workspace root. -->
 <!-- Source of truth: `<workspace-root>/docs/guides/onboarding.md`; adjust that workspace source, never this member projection. -->
 
 # flext-infra - Onboarding
@@ -53,7 +53,11 @@ Never enter a member directory to run a parallel tool command.
 
 ```bash
 make check
+make check repair
+make check formatting
+make check
 make tests
+make check
 ```
 
 Tests run only through the retained Testmon cache. Apply the root
@@ -78,7 +82,9 @@ Warnings, empty collection, missing tools, and suppressed failures remain explic
 Change the source owner, then regenerate and prove the fixed point:
 
 ```bash
+make check
 make mod
+make check
 make check
 ```
 

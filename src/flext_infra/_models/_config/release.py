@@ -194,7 +194,8 @@ class FlextInfraModelsConfigRelease:
                 min_length=1,
                 description=(
                     "Hash-pinned build-backend requirements every release artifact "
-                    "is built with; projected to config/build-constraints.txt"
+                    "is built with; rendered into the release policy directory at "
+                    "build time"
                 ),
             ),
         ]

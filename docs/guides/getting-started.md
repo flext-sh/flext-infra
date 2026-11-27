@@ -1,4 +1,4 @@
-<!-- AUTO-GENERATED FILE — regenerate through `make gen` from the workspace root. -->
+<!-- AUTO-GENERATED FILE — regenerate through `make check` from the workspace root. -->
 <!-- Source of truth: `<workspace-root>/docs/guides/getting-started.md`; adjust that workspace source, never this member projection. -->
 
 # flext-infra - Getting Started
@@ -39,13 +39,18 @@ parallel command surface.
 4. Regenerate managed surfaces and run the complete native gates.
 
 ```bash
+make check
 make mod
 make check
+make check
+make check repair
+make check formatting
+make check
 make tests
+make check
 ```
 
-`make check` converges generation, fixes and formatting to a fixed point. Test execution
-remains inside
+The final generation pass proves the fixed point. Test execution remains inside
 `make tests`, which owns selection and the retained Testmon cache.
 
 ## Command boundaries

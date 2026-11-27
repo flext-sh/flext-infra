@@ -548,7 +548,7 @@ class TestsFlextInfraCodegenCatalogExtensions:
     def test_setup_provisions_only_and_gen_owns_conformance(
         tmp_path: Path,
     ) -> None:
-        """``make setup`` provisions tooling; ``make gen`` owns conformance."""
+        """``make setup`` provisions tooling; ``make check`` owns conformance."""
         plan = u.Tests.scaffold_plan(tmp_path / "fixture-project")
         content = tm.not_none(u.Tests.planned_text(plan, c.Infra.MAKEFILE_FILENAME))
         tm.that(content, lacks="_builtin_setup_conform")

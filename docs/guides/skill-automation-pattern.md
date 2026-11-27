@@ -1,4 +1,4 @@
-<!-- AUTO-GENERATED FILE — regenerate through `make gen` from the workspace root. -->
+<!-- AUTO-GENERATED FILE — regenerate through `make check` from the workspace root. -->
 <!-- Source of truth: `<workspace-root>/docs/guides/skill-automation-pattern.md`; adjust that workspace source, never this member projection. -->
 
 # flext-infra - Skill Automation Pattern
@@ -52,13 +52,18 @@ Run only from the workspace root:
 ```bash
 make setup
 make help
+make check
 make mod
 make check
+make check
+make check repair
+make check formatting
+make check
 make tests
+make check
 ```
 
-`make check` converges generation, fixes and formatting to a fixed point. `make mod`
-owns structural
+The final generation run proves the fixed point. `make mod` owns structural
 transformations; no direct script or tool invocation is valid. `make tests` always
 retains Testmon.
 

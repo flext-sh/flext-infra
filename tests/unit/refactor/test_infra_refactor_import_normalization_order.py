@@ -24,7 +24,7 @@ class TestsFlextInfraRefactorImportNormalizationOrder(
 ):
     """Observe module-level import ordering through ``normalize_import_source``.
 
-    Premise (measured on a consumer ``make gen``): the import law sorted
+    Premise (measured on a consumer ``make check``): the import law sorted
     ``from x import y`` among ``import x`` statements and merged ``__future__``
     into the standard library, so every formatter-sorted authored module
     received a rewrite that the formatter's ``I001`` repair then undid. The

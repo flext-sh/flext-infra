@@ -2,7 +2,7 @@
 # call hides a dependency from the module graph the import law
 # (operator-ruling-2026-10-08-import-law) orders. Function-body imports are
 # owned by Ruff `import-outside-top-level` and repaired by the import-law engine
-# (`make fix` recipe normalize-imports, `make mod` import normalization), so this
+# (`make check` repair recipe normalize-imports, `make mod` import normalization), so this
 # rule detects only the dynamic form Ruff cannot see.
 #
 # No path is exempt (generator law p.12/p.13): src and tests are scanned alike.

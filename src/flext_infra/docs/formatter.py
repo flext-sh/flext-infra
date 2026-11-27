@@ -19,7 +19,7 @@ class FlextInfraDocFormatter(FlextInfraDocServiceBase):
 
     The service never builds its own rumdl invocation: configuration,
     ignore handling, and command construction stay owned by the gate, so
-    ``docs fmt`` and ``make fmt`` can never disagree about the formatting
+    ``docs fmt`` and ``make check`` formatting can never disagree about the formatting
     contract. The gate is another service family, so the facade binds it
     (``FlextInfra.docs_format``) and the formatter only consumes the port. The
     single-pass verb law holds: one operation per scope — the mutating pass

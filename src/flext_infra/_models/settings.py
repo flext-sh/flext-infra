@@ -96,7 +96,7 @@ class FlextInfraModelsSettings:
             None,
             validation_alias="FLEXT_INFRA_TOOLCHAIN_REPAIR_TOOL",
             description=(
-                "Explicit declared tool selected by fix-toolchain; unset refuses "
+                "Explicit declared tool selected by codegen mise-repair; unset refuses "
                 "installation repair before effects."
             ),
         )

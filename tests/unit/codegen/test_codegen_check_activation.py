@@ -1,4 +1,4 @@
-"""Real Make generation repairs activation before consuming its own output.
+"""Real make check generation repairs activation before consuming its own output.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -16,11 +16,11 @@ from tests import c, tm, u
 pytestmark = [c.Tests.MARK.slow, c.Tests.MARK.remote]
 
 
-class TestsFlextInfraCodegenGenActivation:
+class TestsFlextInfraCodegenCheckActivation:
     """Exercise the generated dispatcher with its real producer and activation."""
 
     @staticmethod
-    def test_gen_without_environment_fails_before_effects(tmp_path: Path) -> None:
+    def test_check_without_environment_fails_before_effects(tmp_path: Path) -> None:
         """A checkout that setup never provisioned stops before any hook."""
         root = u.Tests.infra_source_checkout(tmp_path)
         envrc = root / c.Infra.ENVRC_FILENAME
@@ -28,45 +28,45 @@ class TestsFlextInfraCodegenGenActivation:
         envrc.write_text(broken_activation, encoding="utf-8")
 
         process = tm.ok(
-            u.Tests.run_isolated_make(["--no-print-directory", "gen"], cwd=root),
+            u.Tests.run_isolated_make(["--no-print-directory", "check"], cwd=root),
         )
 
         tm.fail(u.Cli.process_succeeded(process.outcome))
         tm.that(process.stderr, has="missing environment interpreter")
-        tm.fail((root / "gen-lifecycle.log").exists())
+        tm.fail((root / "check-lifecycle.log").exists())
         tm.fail((root / ".venv").exists())
         tm.that(envrc.read_text(encoding="utf-8"), eq=broken_activation)
 
     @staticmethod
-    def test_gen_recovers_activation_and_orders_hooks(
+    def test_check_recovers_activation_and_orders_hooks(
         provisioned_infra_checkout: tuple[str, Path],
     ) -> None:
         """Native failures stop post hooks; a valid producer activates only once."""
         scenario, root = provisioned_infra_checkout
-        receipt = root / "gen-lifecycle.log"
+        receipt = root / "check-lifecycle.log"
         envrc = root / c.Infra.ENVRC_FILENAME
         broken_activation = envrc.read_text(encoding="utf-8") + "\nreturn 73\n"
         envrc.write_text(broken_activation, encoding="utf-8")
         (root / c.Infra.ENVRC_LOCAL_RELPATH).write_text(
-            "printf 'activated\\n' >> gen-lifecycle.log\n"
+            "printf 'activated\\n' >> check-lifecycle.log\n"
             'export MAKE_GEN_ACTIVATION_PROOF="$PROJECT_ROOT"\n'
             + ("return 43\n" if scenario == "activation-failure" else ""),
             encoding="utf-8",
         )
         (root / c.Infra.CUSTOM_MAKE_FILENAME).write_text(
-            ".PHONY: pre-gen post-gen\n"
-            "pre-gen:\n"
+            ".PHONY: pre-check post-check\n"
+            "pre-check:\n"
             '\t@test -x "$(RUNTIME_PYTHON)"\n'
             '\t@test -z "$$MAKE_GEN_ACTIVATION_PROOF"\n'
-            "\t@printf 'pre\\n' >> gen-lifecycle.log\n"
-            "post-gen:\n"
+            "\t@printf 'pre\\n' >> check-lifecycle.log\n"
+            "post-check:\n"
             '\t@test "$$MAKE_GEN_ACTIVATION_PROOF" = "$(PROJECT_ROOT)"\n'
-            "\t@printf 'post\\n' >> gen-lifecycle.log\n"
+            "\t@printf 'post\\n' >> check-lifecycle.log\n"
             + (
-                ".PHONY: _custom-gen\n"
-                "_custom-gen:\n"
-                "\t@printf 'custom\\n' >> gen-lifecycle.log\n"
-                "\t+@$(SELF_MAKE) _builtin-gen\n"
+                ".PHONY: _custom-check\n"
+                "_custom-check:\n"
+                "\t@printf 'custom\\n' >> check-lifecycle.log\n"
+                "\t+@$(SELF_MAKE) _builtin-check\n"
                 if scenario == "custom"
                 else ""
             ),
@@ -91,7 +91,7 @@ class TestsFlextInfraCodegenGenActivation:
         before = {path: path.read_bytes() for path in locks}
         process = tm.ok(
             u.Tests.run_isolated_make(
-                ["--no-print-directory", "gen"],
+                ["--no-print-directory", "check"],
                 cwd=root,
                 env={"MAKE_GEN_ACTIVATION_PROOF": ""},
             ),

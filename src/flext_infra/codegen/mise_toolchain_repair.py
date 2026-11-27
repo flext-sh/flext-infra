@@ -66,7 +66,7 @@ class FlextInfraCodegenMiseToolchainRepair(FlextInfraCodegenExecution[bool]):
                 .validation_alias,
             )
             return r[bool].fail(
-                f"fix-toolchain requires {alias} to name one declared tool",
+                f"codegen mise-repair requires {alias} to name one declared tool",
             )
         plan = self._prepare(requested)
         if not self.effective_dry_run:

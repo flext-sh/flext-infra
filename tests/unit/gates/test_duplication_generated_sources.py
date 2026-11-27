@@ -27,7 +27,7 @@ class TestsDuplicationGeneratedSources(FlextInfraDuplicationReport):
         """The generator's first-line marker identifies a generated source."""
         generated = tmp_path / "generated.py"
         generated.write_text(
-            "# AUTO-GENERATED FILE — Regenerate with: make gen\nvalue = 1\n",
+            "# AUTO-GENERATED FILE — Regenerate with: make check\nvalue = 1\n",
             encoding="utf-8",
         )
         authored = tmp_path / "authored.py"
@@ -44,7 +44,7 @@ class TestsDuplicationGeneratedSources(FlextInfraDuplicationReport):
         """A clone touching a generated projection is not a finding."""
         generated = tmp_path / "generated.py"
         generated.write_text(
-            "# AUTO-GENERATED FILE — Regenerate with: make gen\nvalue = 1\n",
+            "# AUTO-GENERATED FILE — Regenerate with: make check\nvalue = 1\n",
             encoding="utf-8",
         )
         authored = tmp_path / "authored.py"

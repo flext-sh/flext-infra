@@ -384,7 +384,7 @@ class FlextInfraGatesDeps(FlextInfraGates):
         The repair planner retains a requirement used through a console script
         or a pytest plugin entry point and resolves an import whose supplier is
         unique and locked. A read-only verdict must apply the same facts, or
-        ``make check`` reports what ``make fix`` deliberately keeps and the two
+        ``make check`` reports what ``make check`` repair deliberately keeps and the two
         owners disagree on the same declaration.
 
         Returns:

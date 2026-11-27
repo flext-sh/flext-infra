@@ -1,4 +1,4 @@
-# AUTO-GENERATED FILE — Regenerate with: make gen
+# AUTO-GENERATED FILE — Regenerate with: make check
 """Constants for FLEXT infra tests.
 
 Provides TestsFlextInfraConstants, extending FlextTestsConstants with

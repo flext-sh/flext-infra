@@ -159,14 +159,16 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
         fix_recipes: Mapping[t.Infra.RuffRule, c.Infra.LintFixRecipe] = m.Field(
             alias="fix-recipes",
             description=(
-                "Ruff rule name -> repair make fix applies to the findings Ruff reports"
+                "Ruff rule name -> repair make check repair applies to the "
+                "findings Ruff reports"
                 " without a fix of its own."
             ),
         )
         fix_recipe_phases: tuple[tuple[c.Infra.LintFixRecipe, ...], ...] = m.Field(
             alias="fix-recipe-phases",
             description=(
-                "Recipe phases make fix applies in order; Ruff re-reads the tree after "
+                "Recipe phases make check repair applies in order; Ruff "
+                "re-reads the tree after "
                 "each phase so a later phase sees the findings an earlier one created "
                 "or cured."
             ),

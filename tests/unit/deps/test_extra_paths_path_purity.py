@@ -85,7 +85,7 @@ class TestsFlextInfraExtraPathsArePure:
         """The same project alone on disk yields the same entries.
 
         A `make work` lane materializes one project without its siblings. Entries
-        derived from sibling existence differ there, so `make gen` in the lane
+        derived from sibling existence differ there, so `make check` in the lane
         would rewrite what the primary just generated.
         """
         with_siblings = TestsFlextInfraExtraPathsSupport.project(

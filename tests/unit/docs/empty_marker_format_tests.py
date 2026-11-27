@@ -2,7 +2,7 @@
 
 The generator and the formatter each own half of one text: a marker the
 generator writes must already be the emphasis the formatter demands, or
-``make gen`` and ``make fmt`` rewrite each other forever.
+``make check`` and ``make check`` formatting rewrite each other forever.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT

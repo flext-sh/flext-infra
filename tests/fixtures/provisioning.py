@@ -210,7 +210,7 @@ def _provision_consumer_template(
     for verb, receipt in (
         ("upg", _CONSUMER_UPGRADE_RECEIPT),
         ("setup", _INFRA_SETUP_RECEIPT),
-        ("gen", "generation-receipt.json"),
+        ("check", "generation-receipt.json"),
         ("build", _CONSUMER_BUILD_RECEIPT),
     ):
         output = tm.ok(
@@ -238,10 +238,10 @@ def _provision_consumer_template(
                 ),
             )
             u.Tests.git_bootstrap(root, ("commit", "-q", "-m", "upg: resolved locks"))
-        if verb == "gen":
+        if verb == "check":
             u.Tests.git_bootstrap(root, ("add", "--", c.Infra.DIR_DOCS))
             u.Tests.git_bootstrap(
-                root, ("commit", "-q", "-m", "gen: materialize consumer documentation")
+                root, ("commit", "-q", "-m", "check: materialize consumer documentation")
             )
     environment = u.Infra.runtime_environment_dir(root)
     tm.fail(environment.is_symlink())

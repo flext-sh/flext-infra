@@ -1,9 +1,9 @@
-"""FLEXT markdown formatting gate: ``rumdl fmt``, owned by ``make fmt``.
+"""FLEXT markdown formatting gate: ``rumdl fmt``, owned by ``make check`` formatting.
 
 rumdl is the fleet's markdown linter and formatter (ADR-025). The read-only
 side (``rumdl fmt --check``) validates inside ``make check``; the mutating
 side (``rumdl fmt``) is reached only through the gate's fix contract from
-``make fmt`` — the gate deliberately never appears in
+``make check`` formatting — the gate deliberately never appears in
 ``CANONICAL_FIXABLE_GATE_IDS``, so every tool runs exactly one operation per
 verb and no verb repeats another's work. Both sides read the generated
 ``.rumdl.toml`` the ``markdown`` gate reads: one rule set, one owner.
@@ -75,7 +75,7 @@ class FlextInfraGatesMarkdownFormat(FlextInfraMarkdownGateBase):
                 project_dir,
                 (
                     f"generated {c.Infra.MARKDOWN_CONFIG_FILENAME} is absent: "
-                    f"{config_path}; run make gen"
+                    f"{config_path}; run make check"
                 ),
                 ctx,
                 time.monotonic(),
@@ -169,7 +169,8 @@ class FlextInfraGatesMarkdownFormat(FlextInfraMarkdownGateBase):
             line=1,
             column=1,
             code=self.gate_id,
-            message="file is not rumdl-formatted (repair belongs to `make fmt`)",
+            message="file is not rumdl-formatted (repair belongs to the fmt phase of "
+            "`make check`)",
         )
 
     @override

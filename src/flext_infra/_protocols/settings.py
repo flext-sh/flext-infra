@@ -1,4 +1,4 @@
-# AUTO-GENERATED FILE — Regenerate with: make gen
+# AUTO-GENERATED FILE — Regenerate with: make check
 """Source-derived structural model contracts.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
@@ -92,7 +92,7 @@ class FlextInfraProtocolsSettings:
         def toolchain_repair_tool(self) -> t.NonEmptyStr | None:
             """Structural member projected from the owning model.
 
-            Explicit declared tool selected by fix-toolchain; unset refuses
+            Explicit declared tool selected by codegen mise-repair; unset refuses
             installation repair before effects.
             """
             ...

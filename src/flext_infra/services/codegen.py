@@ -121,7 +121,7 @@ class FlextInfraCodegenHandlers:
         ):
             return r[p.Infra.CodegenResult].fail(
                 f"generation target {requested} has no provisioned Python "
-                "environment; run make setup and make gen in the target checkout"
+                "environment; run make setup and make check in the target checkout"
             )
         u.Infra.gate_health_refuse(requested, gates=("check",))
         with u.Infra.gate_admitted(

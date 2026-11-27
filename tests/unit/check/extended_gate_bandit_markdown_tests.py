@@ -532,11 +532,11 @@ class TestsFlextInfraBanditAndMarkdownGates:
 
     @staticmethod
     def test_markdown_fix_applies_the_auto_fixable_rules(tmp_path: Path) -> None:
-        """`make fix` repairs the markdown findings that check blocks on.
+        """`make check` repair repairs the markdown findings that check blocks on.
 
         The markdown gate reports MD009/MD012 with the linter's own
         `[*]` auto-fixable marker, but declared can_fix=False. So `make check`
-        blocked on findings while `make fmt` and `make fix` both exited 0
+        blocked on findings while the formatting and repair passes both exited 0
         without repairing any of them. The gate uses the tool's formatter so a
         successful repair exits zero and leaves the file clean for `check`. A
         finding the linter cannot repair (a broken link, MD057) stays for

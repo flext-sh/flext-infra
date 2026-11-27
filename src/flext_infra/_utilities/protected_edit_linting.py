@@ -59,7 +59,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
         generated projection (``c.Infra.AUTOGEN_HEADER``) is always formatted,
         but an authored module with existing format debt receives only native
         range formatting of changed lines. Ruff owns logical-line expansion;
-        untouched authored format debt remains for ``make fmt``.
+        untouched authored format debt remains for ``make check`` formatting.
         ``settings`` carry the staged pyproject's Ruff table when the same
         plan set rewrites it.
 
@@ -224,7 +224,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
         """
         before_source, source = rewrite
         arguments = (c.Infra.FORMAT, *config.Infra.codegen.make.ruff.format_apply)
-        if source.startswith(c.Infra.AUTOGEN_HEADER):
+        if source.startswith(c.Infra.AUTOGEN_MARKER):
             return cls._ruff_stdin_pass(path, source, arguments, settings=settings)
         formatted = cls._ruff_stdin_pass(
             path, before_source, arguments, settings=settings

@@ -39,7 +39,7 @@ class TestsFlextInfraFreshImportCompleteness:
 
         The scenario's model module is placed in a generation-eligible
         workspace and its package initializer is produced by the lazy-init
-        generator, exactly as ``make gen`` would.
+        generator, exactly as ``make check`` would.
 
         Returns:
             The first violation, or ``None`` when the probe passes.

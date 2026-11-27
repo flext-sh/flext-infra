@@ -470,7 +470,7 @@ class TestsFlextInfraCodegenBeadsProjection:
         """Regenerating must not strip the checkout's own ledger identity.
 
         Rendering the marker without `project_id` stripped the key on every
-        `make gen`, and Beads then minted a fresh identity on next access —
+        `make check`, and Beads then minted a fresh identity on next access —
         rig `gmn` lost 2b1a0582-… that way (commit 3e7ba1e).
         """
         root = self._project(

@@ -1289,8 +1289,8 @@ The configured `.trigger-tree/` pattern keeps the agent's local session history,
 session state and lock outside versioned project content; it does not remove those
 files or exclude product changes from capture.
 
-`make fix-toolchain` repairs one explicitly selected native installation through
-Mise, using the exact version and checksum authority of the current lock. Set
+`flext-infra codegen mise-repair` repairs one explicitly selected native installation
+through Mise, using the exact version and checksum authority of the current lock. Set
 `FLEXT_INFRA_TOOLCHAIN_REPAIR_TOOL` to a tool name already declared by the project.
 Missing or undeclared selections fail before installation. The operation
 revalidates its captured configuration and lock, streams the native installer
@@ -2266,7 +2266,7 @@ each declared destination through its own template and project overlays;
 `.qlty/qlty.toml` therefore remains TOML and never receives VS Code JSON.
 Consumed declarations remain inputs to the atomic file plans.
 The root public Make interface
-owns generation; the retired `make gen-editor` spelling is not an execution route.
+owns generation; the retired `make check-editor` spelling is not an execution route.
 Its `${workspaceFolder}` environment tokens remain
 portable in workspace members, independent checkouts and linked worktrees.
 The declared generation-time environment token resolves through the runtime

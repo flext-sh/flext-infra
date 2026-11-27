@@ -1,4 +1,4 @@
-<!-- AUTO-GENERATED FILE — regenerate through `make gen` from the workspace root. -->
+<!-- AUTO-GENERATED FILE — regenerate through `make check` from the workspace root. -->
 <!-- Source of truth: `<workspace-root>/docs/guides/development.md`; adjust that workspace source, never this member projection. -->
 
 # flext-infra - Development
@@ -45,13 +45,18 @@ fix, or phase selectors to narrow a standard verb.
 5. Run the native gates without bypassing their orchestration.
 
 ```bash
+make check
 make mod
 make check
+make check
+make check repair
+make check formatting
+make check
 make tests
+make check
 ```
 
-`make check` converges generation, fixes and formatting to a fixed point. The test verb
-always retains and uses
+The final generation run proves the fixed point. The test verb always retains and uses
 Testmon; a direct test-runner invocation is invalid evidence.
 
 ## Architecture and tests

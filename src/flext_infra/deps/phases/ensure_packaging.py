@@ -550,7 +550,7 @@ class FlextInfraEnsurePackagingPhase:
             topology.packaged_data_excludes,
         )
         # The pyproject ownership SSOT decides which packaging tables the
-        # generator owns; this phase replaces exactly those, like make gen.
+        # generator owns; this phase replaces exactly those, like make check.
         owned = frozenset(u.Infra.pyproject_managed_file().unwrap().managed_tool_tables)
         cache_keys = self.uv_cache_key_files(
             package=True,
