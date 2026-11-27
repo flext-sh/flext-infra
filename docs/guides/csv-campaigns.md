@@ -39,7 +39,7 @@ declared recovery surface without importing the candidate package. A candidate
 worktree may appear only once per invocation. Recover a conflicted pyproject with
 `what: pyproject`, then use the internal `codegen init` adapter from its
 preinstalled generation tool runtime to regenerate the existing candidate's
-Makefile and run `make gen` to complete generation. The bootstrap authenticates the
+Makefile and run `make check` to complete generation. The bootstrap authenticates the
 consulted codegen declarations through publication; it requires no retired
 `config/workspace.yaml`.
 Use `what: workflows` to regenerate only the declared GitHub Actions workflows.
@@ -124,8 +124,8 @@ symbolic link fail during public composition before source publication.
 publisher used by `make mod`. It exists for recovery when a text rule has left an
 authored Python file unparsable and the Rope phases cannot start. Every future Python
 replacement is parsed before the atomic batch publishes, so a malformed block-scalar
-replacement leaves all source files unchanged. After recovery, rerun `make mod`,
-`make gen`, and the native checks; `mod-text` is not a substitute for the full circuit.
+replacement leaves all source files unchanged. After recovery, rerun `make mod`
+and `make check`; `mod-text` is not a substitute for the full circuit.
 
 The public `infra.mod` operation resolves the typed campaign declarations and composes
 the real CSV runner and Rope workspace through `p.Infra` ports. The mod service receives

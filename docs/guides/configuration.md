@@ -152,7 +152,7 @@ belong to the existing catalog and `make upg`, subject to ADR-030's lock guard.
 3. Change documentation policy at its typed configuration owner and the shared
    `mkdocs_macros.j2` template. Root/member templates consume that macro; never edit
    generated `mkdocs.yml` or duplicate the plugin block in a member.
-4. Generate through the root `make gen`, complete the native validation cycle, and
+4. Generate through the root `make check`, complete the native validation cycle, and
    build through `make build`. The build runs ProperDocs in strict mode and
    publishes its local site under the generated `site_dir`.
 
@@ -201,7 +201,7 @@ environment. For example:
 
 ```bash
 rtk proxy timeout --signal=TERM --kill-after=5s 60s direnv exec . make setup
-rtk proxy timeout --signal=TERM --kill-after=5s 60s direnv exec . make gen
+rtk proxy timeout --signal=TERM --kill-after=5s 60s direnv exec . make check
 rtk proxy timeout --signal=TERM --kill-after=5s 60s direnv exec . make build
 ```
 
@@ -214,11 +214,10 @@ llms artifacts with the real site consumer before claiming documentation deliver
 Run configuration propagation and validation from the workspace root:
 
 ```bash
-make gen
-make gen
+make mod
+make mod
 make check
 make tests
-make gen
 ```
 
 The second generation run must be a fixed point. Test validation retains the canonical

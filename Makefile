@@ -3,7 +3,7 @@
 # @flext-generated: continuous
 # @flext-owner: flext-infra/config/codegen.yaml + flext-infra/src/flext_infra/templates/project/base/Makefile.j2
 # @flext-adjust: edit the owner configuration or template; never this projection
-# @flext-regenerate: make gen
+# @flext-regenerate: make check
 # flext-infra — generated project interface.
 # Managed by flext-infra codegen conform for new and existing repositories.
 # === SECTION: header (managed) ===
@@ -23,6 +23,9 @@ override SHELL := /bin/sh
 # named mod-full, and a check outside the commit stage without
 # CHECK_PHASE=primary is the full form, named check-full. Overrides apply when
 # the invocation names exactly one verb.
+# The default phase is assigned before admission reads it, so a bare
+# `make check` is the primary form and never the gated check-full.
+CHECK_PHASE ?= primary
 ifeq ($(MAKELEVEL)$(filter Y,$(CI)),0)
 override ADMISSION_VERB := $(if $(word 2,$(MAKECMDGOALS)),,$(or $(MAKECMDGOALS),$(.DEFAULT_GOAL),help))
 override ADMISSION_VERB := $(if $(filter mod,$(ADMISSION_VERB)),$(if $(strip $(RULES)$(LAWS)),mod,mod-full),$(ADMISSION_VERB))
@@ -136,7 +139,7 @@ $(eval export GIT_CONFIG_VALUE_$(GIT_CONFIG_ALLOW_INDEX))
 # === SECTION: project identity (managed) ===
 # Source: config:dist / config:make_profile / config:repository_root_rel / config:uv_link_mode
 PROJECT_NAME := flext-infra
-MAKE_PROFILE := workspace
+MAKE_PROFILE := standalone
 REPOSITORY_ROOT_REL := .
 # === SECTION: workspace subprojects (managed) ===
 # Source: config:workspace_subprojects (list), config:workspace_repositories (list)
@@ -148,8 +151,6 @@ WORKSPACE_SUBPROJECTS :=
 # The Makefile validates no caller input. Every verb
 # always applies; a mistyped variable fails where the verb consumes it, and an
 # unconsumed variable is ignored.
-# Default to the fast primary phase so `make check` is the single gate.
-CHECK_PHASE ?= primary
 export CHECK_PHASE MARKER
 PYTEST_REPORTS_DIR := .reports/tests
 override PYTEST_RUN_TIMEOUT_SECONDS := 240
@@ -626,7 +627,7 @@ _bootstrap_setup_tools: _builtin_require_workspace
 # them to every governed member, processed together in one checker run
 # (operator rulings 2026-10-25: never member by member; 2026-11-22, bead
 # flext-bga5y: members only with ALL=Y). CI evaluates only its own repository.
-GATE_SCOPE := $(if $(filter Y,$(CI)),self,$(if $(filter Y,$(ALL)),all,self))
+GATE_SCOPE := self
 # Local and CI consume the same native project/workspace declarations and lock.
 # Setup always bootstraps: `uv sync --frozen` installs exactly the committed
 # uv.lock without re-resolving or rewriting it, so manifest drift never blocks
@@ -836,10 +837,10 @@ SYNC_UPGRADE_EXECUTOR_WITH = $(call TARGET_ENVIRONMENT,$(FLEXT_INFRA_EXECUTOR_VE
 # the compilation inside a test's time limit.
 
 
-override SETUP_SYNC_ARGS := --all-extras --all-groups --link-mode clone --compile-bytecode --all-packages
+override SETUP_SYNC_ARGS := --all-extras --all-groups --link-mode clone --compile-bytecode
 
 ifeq ($(CI),Y)
-override SETUP_SYNC_ARGS := --all-extras --all-groups --link-mode clone --compile-bytecode --all-packages --no-editable
+override SETUP_SYNC_ARGS := --all-extras --all-groups --link-mode clone --compile-bytecode --no-editable
 endif
 
 # Custom hooks are declared in CI too; load their selected physical Makefile.
@@ -940,7 +941,7 @@ $(PROFILE_VERBS_DISPATCH):
 
 
 $(PROFILE_VERBS_ACTIVATED): %: _builtin_require_workspace
-	@printf '==> %s | project=%s | profile=%s\n' '$@' "$(PROJECT_ROOT)" 'workspace'
+	@printf '==> %s | project=%s | profile=%s\n' '$@' "$(PROJECT_ROOT)" 'standalone'
 	+@$(if $(filter Y,$(CI)),$(MISE) -C "$(RUNTIME_ROOT)" exec -- $(SELF_MAKE) _activated-$@,$(DIRENV) exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-$@)
 .PHONY: $(addprefix _activated-,$(PROFILE_VERBS_ACTIVATED))
 ifneq ($(strip $(PROFILE_VERBS_DIRECT)),)
@@ -1035,7 +1036,7 @@ SCRIPT_VERBS_ROUTED := $(SCRIPT_VERBS_HOOKED) $(SCRIPT_VERBS_INTERPRETER)
 
 
 $(SCRIPT_VERBS_ACTIVATED): %: _builtin_require_workspace
-	@printf '==> %s | project=%s | profile=%s\n' '$@' "$(PROJECT_ROOT)" 'workspace'
+	@printf '==> %s | project=%s | profile=%s\n' '$@' "$(PROJECT_ROOT)" 'standalone'
 	+@$(if $(filter Y,$(CI)),$(MISE) -C "$(RUNTIME_ROOT)" exec -- $(SELF_MAKE) _activated-$@,$(DIRENV) exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-$@)
 .PHONY: $(addprefix _activated-,$(SCRIPT_VERBS_ACTIVATED))
 ifneq ($(strip $(SCRIPT_VERBS_DIRECT)),)
@@ -1096,7 +1097,7 @@ ifneq ($(CI),Y)
 endif
 
 _builtin-help:
-	@printf '%s\n' 'flext-infra [workspace]' ''
+	@printf '%s\n' 'flext-infra [standalone]' ''
 	@$(foreach verb,$(PUBLIC_VERBS),$(call VERB_HELP_LINE,$(verb));)
 
 # A project owns the sources declared by its manifest. Generated setup
@@ -1204,7 +1205,7 @@ _builtin_require_github_credential:
 _builtin_require_mise:
 	@set -eu; \
 	if [ ! -f "$(RUNTIME_ROOT)/.mise.toml" ]; then \
-		printf 'ERROR: missing project mise config %s; run make gen\n' "$(RUNTIME_ROOT)/.mise.toml" >&2; \
+		printf 'ERROR: missing project mise config %s; run make check\n' "$(RUNTIME_ROOT)/.mise.toml" >&2; \
 		exit 2; \
 	fi; \
 	if [ ! -f "$(RUNTIME_ROOT)/mise.lock" ]; then \
@@ -1232,7 +1233,7 @@ _builtin_require_environment: _builtin_require_interpreter
 # === SECTION: setup environment (managed) ===
 # Source: computed (MAKE_PROFILE routing)
 # Setup provisions tooling and the native project's declared dependencies.
-# It never generates or mutates project source; `make gen` owns source generation.
+# It never generates or mutates project source; `make check` owns source generation.
 # The lifecycle above owns the single native toolchain installation.
 # Attached members delegate publicly before entering it; there is no second
 # private installer or alternative source-selection pipeline.
@@ -1467,9 +1468,27 @@ _builtin_build_artifacts:
 # make.check_gates_ci, CI=C (the commit hook) runs
 # make.pre_commit_check_gates, CI=N runs
 # make.check_gates_local, and an absent CI token runs every active gate.
+# Outside CI and the commit hook, every phase first converges gen -> fix ->
+# fmt to a fixed point: passes repeat until the working tree, hashed as a git
+# tree through a throwaway index, stops changing; a tree still moving after
+# CHECK_CONVERGE_MAX_PASSES passes fails. CI=Y converges
+# nothing, so its read-only gates fail when any byte would change.
+override CHECK_CONVERGE_MAX_PASSES := 5
 _builtin_check_all: _builtin_require_environment
-	@$(if $(filter Y,$(CI)),,$(if $(filter primary,$(CHECK_PHASE)),,$(SELF_MAKE) _builtin_gen_all && $(SELF_MAKE) _builtin_fix_all && $(SELF_MAKE) _builtin_fmt_all && ))
+	@$(if $(filter Y C,$(CI)),,$(SELF_MAKE) _builtin_converge_all)
 	@$(if $(CHECK_PROFILE),FLEXT_INFRA_PROFILE=$(CHECK_PROFILE) ,)FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/.reports/check/route.pstats" $(PROJECT_FLEXT_INFRA) workspace check --repository-root "$(if $(filter Y,$(CI)),$(PROJECT_ROOT),$(if $(filter primary,$(CHECK_PHASE)),$(RUNTIME_ROOT),$(PROJECT_ROOT)))"$(if $(CHECK_PHASE), --phase "$$CHECK_PHASE")
+
+_builtin_converge_all: _builtin_require_environment
+	@tree() { idx="$$(mktemp -u)"; GIT_INDEX_FILE="$$idx" git -C "$(PROJECT_ROOT)" add -A && GIT_INDEX_FILE="$$idx" git -C "$(PROJECT_ROOT)" write-tree; rc=$$?; rm -f "$$idx"; return $$rc; }; \
+	before="$$(tree)" || exit 1; pass=0; \
+	while :; do \
+		pass=$$((pass + 1)); \
+		if [ "$$pass" -gt $(CHECK_CONVERGE_MAX_PASSES) ]; then printf '%s\n' "❌ check: gen -> fix -> fmt did not reach a fixed point in $(CHECK_CONVERGE_MAX_PASSES) passes" >&2; exit 1; fi; \
+		FLEXT_INFRA_CHECK_CONVERGE=1 $(SELF_MAKE) _builtin_gen_all && $(SELF_MAKE) _builtin_fix_all && $(SELF_MAKE) _builtin_fmt_all || exit 1; \
+		after="$$(tree)" || exit 1; \
+		if [ "$$after" = "$$before" ]; then printf '%s\n' "INFO: check: gen -> fix -> fmt fixed point after $$pass pass(es)"; break; fi; \
+		before="$$after"; \
+	done
 
 _builtin_tests_all: _builtin_require_environment
 	@FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/.reports/tests/route.pstats" $(PROJECT_FLEXT_INFRA) workspace tests --repository-root "$(PROJECT_ROOT)" --scope "$(GATE_SCOPE)"
@@ -1482,7 +1501,7 @@ _builtin_tests_harness_all: _builtin_require_environment
 
 # fmt is format-only (single-pass verb law): ruff formats Python, the
 # fmt_gates formatters run once through the checker's apply mode, and every
-# lint repair belongs to `make fix`. Every repair requires read-only native
+# lint repair belongs to `make check`. Every repair requires read-only native
 # verification; remaining findings and tool failures both fail the verb.
 _builtin_fmt_all: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gate-set fmt --scope $(GATE_SCOPE) --apply

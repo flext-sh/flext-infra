@@ -52,18 +52,13 @@ Run only from the workspace root:
 ```bash
 make setup
 make help
-make gen
 make mod
-make gen
-make gen
-make fix
-make fmt
 make check
 make tests
-make gen
 ```
 
-The final generation run proves the fixed point. `make mod` owns structural
+`make check` converges generation, fixes and formatting to a fixed point. `make mod`
+owns structural
 transformations; no direct script or tool invocation is valid. `make tests` always
 retains Testmon.
 

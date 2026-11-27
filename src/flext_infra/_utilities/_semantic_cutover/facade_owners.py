@@ -117,9 +117,9 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
     ) -> str:
         """Return the class ``letter`` names, or raise with the missing proof.
 
-        Rope infers an alias from every module-scope binding, TYPE_CHECKING
-        arms and superseded bindings included; the last runtime binding
-        (``_facade_binding_state``) names the declaration Rope then reads.
+        The letter is followed through the module's runtime bindings
+        (``_facade_binding_state``): a static-only ``TYPE_CHECKING`` import
+        of the letter never stands for the class its runtime arm binds.
 
         Returns:
             The class ``letter`` names, or raise with the missing proof.

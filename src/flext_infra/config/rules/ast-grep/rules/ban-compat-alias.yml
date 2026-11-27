@@ -72,7 +72,11 @@ metadata:
 files:
   - "**/*.py"
 ignores:
+  # Namespace-root facade modules bind a family letter: a package root
+  # (`src/<package>/<module>.py`) or a tier root (`<tier>/<module>.py`, for
+  # example `tests/base.py` binding `s`).
   - "src/*/*.py"
+  - "*/*.py"
   - "**/__init__.py"
   # Family facade modules own the short alias their namespace root imports,
   # matching the add-facade-module-* declarations regardless of depth.

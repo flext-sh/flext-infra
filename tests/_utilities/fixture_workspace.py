@@ -60,6 +60,8 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
                 sources={path: source},
             ),
         )
+        if not expect_change:
+            tm.that(tuple(edit.updated_source for edit in edits), empty=True)
         tm.that(len(edits), eq=int(expect_change))
         tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
         updated = edits[0].updated_source if edits else source

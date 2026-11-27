@@ -542,6 +542,35 @@ class TestsFlextInfraGateAdmission:
         tm.that(tm.ok(admitted.wait(timeout=_WAIT_SECONDS)), eq=0)
 
     @classmethod
+    def test_stale_makefile_projection_admits_its_regenerating_check(
+        cls, tmp_path: Path
+    ) -> None:
+        """A Makefile without the converge variable is healed by its own check."""
+        environment = cls._environment(tmp_path, None)
+        converge = FlextInfraConfig.fetch_global().Infra.codegen.make.ci
+        makefile = tmp_path / c.Infra.MAKEFILE_FILENAME
+        makefile.write_text(
+            "_builtin_converge_all:\n\t$(SELF_MAKE) _builtin_gen_all\n",
+            encoding="utf-8",
+        )
+        admitted = cls._gate(
+            environment, "gen", TestsFlextInfraGateAdmissionHolder.Mode.CONVERGE_HEALTH
+        )
+        tm.that(tm.ok(admitted.wait(timeout=_WAIT_SECONDS)), eq=0)
+        makefile.write_text(
+            "_builtin_converge_all:\n"
+            f"\t{converge.converge_variable}=1 $(SELF_MAKE) _builtin_gen_all\n",
+            encoding="utf-8",
+        )
+        refused = cls._gate(
+            environment, "gen", TestsFlextInfraGateAdmissionHolder.Mode.CONVERGE_HEALTH
+        )
+        tm.that(
+            tm.ok(refused.wait(timeout=_WAIT_SECONDS)),
+            eq=c.Infra.GATE_ADMISSION_REFUSED_EXIT_CODE,
+        )
+
+    @classmethod
     def test_ci_runner_and_pre_push_hook_are_not_repeat_limited(
         cls, tmp_path: Path
     ) -> None:
