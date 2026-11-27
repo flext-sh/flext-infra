@@ -1258,8 +1258,8 @@ class FlextInfraWorkspaceDetector(
         if topology.failure:
             return result_type.from_failure(topology)
         subprojects, external, pending = topology.value
-        # ADR-038 decision 9: the role is the repository's own topology; being
-        # attached to a superproject never changes what it generates.
+        # ADR-038 decision 9: the role is the repository's own topology;
+        # running attached to a workspace is an execution mode Make decides.
         observed_repository = repository.value.model_copy(
             update={
                 "role": (

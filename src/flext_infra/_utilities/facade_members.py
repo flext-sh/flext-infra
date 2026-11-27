@@ -323,6 +323,36 @@ class FlextInfraUtilitiesFacadeMembers:
             return c.Infra.FacadeMemberKind.TYPE
         return cls._annotation_assignment_kind(value, source_project=source_project)
 
+    @staticmethod
+    def _written_annotation_kind(
+        value: p.Infra.RopePyName,
+        origin: p.Infra.RopePyName,
+        *,
+        source_project: p.Infra.RopeProject,
+    ) -> c.Infra.FacadeMemberKind | None:
+        """Classify an assignment from the annotation written on it.
+
+        An explicit ``TypeAlias`` declares no value, so its target owns the kind;
+        an annotated callable instance (``fail: _Fail = _Fail()``) takes its
+        value's kind; any other annotated value is a constant.
+
+        Returns:
+            The constant kind, or None when the value decides.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        if runtime.same_name(
+            runtime.qualified_name(source_project, "typing.TypeAlias"), origin
+        ):
+            return None
+        owner_class = value.get_object().get_type()
+        return (
+            None
+            if FlextInfraUtilitiesRopeRuntimeTypes.py_class(owner_class)
+            and "__call__" in owner_class.get_attributes()
+            else c.Infra.FacadeMemberKind.CONSTANT
+        )
+
     @classmethod
     def _annotation_assignment_kind(
         cls, value: p.Infra.RopePyName, *, source_project: p.Infra.RopeProject
@@ -334,19 +364,12 @@ class FlextInfraUtilitiesFacadeMembers:
 
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        types = FlextInfraUtilitiesRopeRuntimeTypes
         assigned = runtime.annotation_assignment_outer_type(source_project, value)
         if assigned is not None:
             origin, from_value = assigned
             if not from_value:
-                # An annotated callable instance (``fail: _Fail = _Fail()``)
-                # takes its value's kind; any other annotated value is a constant.
-                owner_class = value.get_object().get_type()
-                return (
-                    None
-                    if types.py_class(owner_class)
-                    and "__call__" in owner_class.get_attributes()
-                    else c.Infra.FacadeMemberKind.CONSTANT
+                return cls._written_annotation_kind(
+                    value, origin, source_project=source_project
                 )
             if runtime.same_name(
                 runtime.qualified_name(source_project, "typing.Literal"), origin

@@ -22,6 +22,8 @@ import pytest
 from flext_infra import config
 from tests import c, t, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 def _member_search_paths() -> Sequence[str]:
     """Resolve every governed workspace member's own source directory.
@@ -98,15 +100,10 @@ class TestsFlextInfraFacadeMemberConstraints:
             )
 
     @staticmethod
-    def test_lazy_facade_import_keeps_source_kind() -> None:
+    @c.Tests.MARK.parametrize("core_project", ["flext_cli"], indirect=True)
+    def test_lazy_facade_import_keeps_source_kind(core_project: Path) -> None:
         """Classify a real lazy export through its declared source class."""
-        package_dir = tm.not_none(
-            u.Infra.declared_package_dir(
-                "flext_cli",
-                search_paths=_member_search_paths(),
-            )
-        )
-        with u.Infra.codemod_workspace_snapshot(package_dir.parent.parent) as snapshot:
+        with u.Infra.codemod_workspace_snapshot(core_project) as snapshot:
             resolver_factory = u.Infra.source_member_resolver_factory(
                 snapshot.engine, sources={}
             )
@@ -132,9 +129,9 @@ class TestsFlextInfraFacadeMemberConstraints:
             )
 
     @classmethod
-    def test_binary_stub_exception_keeps_source_kind(cls) -> None:
+    def test_binary_stub_exception_keeps_source_kind(cls, core_project: Path) -> None:
         """Use the installed Pydantic core stub, not the binary's unknown Rope type."""
-        with u.Infra.codemod_workspace_snapshot(cls._project()) as snapshot:
+        with u.Infra.codemod_workspace_snapshot(core_project) as snapshot:
             resolver_factory = u.Infra.source_member_resolver_factory(
                 snapshot.engine, sources={}
             )
@@ -161,9 +158,11 @@ class TestsFlextInfraFacadeMemberConstraints:
             )
 
     @classmethod
-    def test_source_exception_alias_keeps_native_ancestor(cls) -> None:
+    def test_source_exception_alias_keeps_native_ancestor(
+        cls, core_project: Path
+    ) -> None:
         """Follow the source alias and the original native builtin exception."""
-        with u.Infra.codemod_workspace_snapshot(cls._project()) as snapshot:
+        with u.Infra.codemod_workspace_snapshot(core_project) as snapshot:
             resolver_factory = u.Infra.source_member_resolver_factory(
                 snapshot.engine, sources={}
             )
@@ -190,9 +189,9 @@ class TestsFlextInfraFacadeMemberConstraints:
             )
 
     @classmethod
-    def test_pep695_validation_error_keeps_type_owner(cls) -> None:
+    def test_pep695_validation_error_keeps_type_owner(cls, core_project: Path) -> None:
         """Keep the source alias kind without confusing its runtime exception class."""
-        with u.Infra.codemod_workspace_snapshot(cls._project()) as snapshot:
+        with u.Infra.codemod_workspace_snapshot(core_project) as snapshot:
             resolver_factory = u.Infra.source_member_resolver_factory(
                 snapshot.engine, sources={}
             )
@@ -221,9 +220,11 @@ class TestsFlextInfraFacadeMemberConstraints:
             )
 
     @classmethod
-    def test_value_origin_classification_preserves_declarations(cls) -> None:
+    def test_value_origin_classification_preserves_declarations(
+        cls, core_project: Path
+    ) -> None:
         """Keep value bindings while classifying their authenticated declarations."""
-        with u.Infra.codemod_workspace_snapshot(cls._project()) as snapshot:
+        with u.Infra.codemod_workspace_snapshot(core_project) as snapshot:
             resolver_factory = u.Infra.source_member_resolver_factory(
                 snapshot.engine, sources={}
             )
@@ -247,9 +248,11 @@ class TestsFlextInfraFacadeMemberConstraints:
                 )
 
     @classmethod
-    def test_installed_strict_string_keeps_its_annotation_owner(cls) -> None:
+    def test_installed_strict_string_keeps_its_annotation_owner(
+        cls, core_project: Path
+    ) -> None:
         """The real Pydantic Annotated assignment keeps its configured type owner."""
-        with u.Infra.codemod_workspace_snapshot(cls._project()) as snapshot:
+        with u.Infra.codemod_workspace_snapshot(core_project) as snapshot:
             resolver_factory = u.Infra.source_member_resolver_factory(
                 snapshot.engine, sources={}
             )
@@ -276,9 +279,11 @@ class TestsFlextInfraFacadeMemberConstraints:
             )
 
     @classmethod
-    def test_facade_strict_string_alias_keeps_its_annotation_owner(cls) -> None:
+    def test_facade_strict_string_alias_keeps_its_annotation_owner(
+        cls, core_project: Path
+    ) -> None:
         """Classify the real facade alias through its imported Annotated assignment."""
-        with u.Infra.codemod_workspace_snapshot(cls._project()) as snapshot:
+        with u.Infra.codemod_workspace_snapshot(core_project) as snapshot:
             resolver_factory = u.Infra.source_member_resolver_factory(
                 snapshot.engine, sources={}
             )
@@ -428,18 +433,7 @@ class TestsFlextInfraFacadeMemberConstraints:
                 )
 
     @classmethod
-    def _project(cls) -> Path:
-        package_dir = tm.not_none(
-            u.Infra.declared_package_dir(
-                cls.PACKAGE,
-                search_paths=_member_search_paths(),
-            )
-        )
-        return package_dir.parent.parent
-
-    @classmethod
-    def _ownership_rules(cls) -> Mapping[str, t.JsonMapping]:
-        project = cls._project()
+    def _ownership_rules(cls, project: Path) -> Mapping[str, t.JsonMapping]:
         with u.Infra.codemod_workspace_snapshot(project) as snapshot:
             return u.Infra.codemod_facade_member_ownership_rules(
                 snapshot,
@@ -454,8 +448,8 @@ class TestsFlextInfraFacadeMemberConstraints:
         return tuple(re.sub(r"\\(.)", r"\1", text) for text in body.split("|"))
 
     @classmethod
-    def _by_shape(cls, shape: str) -> dict[str, tuple[str, ...]]:
-        rules = cls._ownership_rules()
+    def _by_shape(cls, project: Path, shape: str) -> dict[str, tuple[str, ...]]:
+        rules = cls._ownership_rules(project)
         separator = c.Infra.CODEMOD_GENERATED_ID_SEPARATOR
         found: dict[str, tuple[str, ...]] = {}
         for rule_id, rule in rules.items():
@@ -472,9 +466,9 @@ class TestsFlextInfraFacadeMemberConstraints:
         return found
 
     @classmethod
-    def test_relocations_name_only_foreign_references(cls) -> None:
+    def test_relocations_name_only_foreign_references(cls, core_project: Path) -> None:
         """Each census reference is a non-owner reference bound to its owner."""
-        project = cls._project()
+        project = core_project
         with u.Infra.codemod_workspace_snapshot(project) as snapshot:
             resolver_factory = u.Infra.source_member_resolver_factory(
                 snapshot.engine,
@@ -489,9 +483,7 @@ class TestsFlextInfraFacadeMemberConstraints:
             for owner, references in relocations.items():
                 for reference in references:
                     letter, member = reference.split(".")
-                    value = u.Infra.source_member_binding(
-                        snapshot.engine, f"{cls.PACKAGE}.{owner}.{member}"
-                    )
+                    value = resolver_factory()(f"{cls.PACKAGE}.{owner}.{member}")
                     tm.that(
                         u.Infra.facade_member_owner(
                             value,
@@ -500,17 +492,17 @@ class TestsFlextInfraFacadeMemberConstraints:
                         ),
                         eq=owner,
                     )
-                    tm.that(letter, ne=owner)
+                    tm.that(letter, ne=owner, msg=f"{owner}: {reference}")
                     tm.that(f"{owner}.{member}" in references, eq=False)
 
     @classmethod
-    def test_retirements_match_their_relocations(cls) -> None:
+    def test_retirements_match_their_relocations(cls, core_project: Path) -> None:
         """Every retired name of the package is a relocated reference of its letter.
 
         Relocation also covers receivers that bind no object under the
         owner's name, so retirements are a subset of the references.
         """
-        project = cls._project()
+        project = core_project
         with u.Infra.codemod_workspace_snapshot(project) as snapshot:
             resolver_factory = u.Infra.source_member_resolver_factory(
                 snapshot.engine,
@@ -524,7 +516,7 @@ class TestsFlextInfraFacadeMemberConstraints:
         references = {
             reference for found in relocations.values() for reference in found
         }
-        retirements = cls._by_shape(c.Infra.FACADE_MEMBER_RETIRE_SHAPE)
+        retirements = cls._by_shape(core_project, c.Infra.FACADE_MEMBER_RETIRE_SHAPE)
         retired = {
             f"{letter}.{name}"
             for letter, names in retirements.items()
@@ -534,20 +526,20 @@ class TestsFlextInfraFacadeMemberConstraints:
         tm.that(retired - references, empty=True)
 
     @classmethod
-    def test_wrong_layer_names_are_unbound_by_their_owner(cls) -> None:
+    def test_wrong_layer_names_are_unbound_by_their_owner(
+        cls, core_project: Path
+    ) -> None:
         """A wrong-layer name is declared by its letter and absent from its owner."""
-        misplaced = cls._by_shape(c.Infra.FACADE_MEMBER_WRONG_LAYER_SHAPE)
-        retirements = cls._by_shape(c.Infra.FACADE_MEMBER_RETIRE_SHAPE)
-        with u.Infra.codemod_workspace_snapshot(cls._project()) as snapshot:
+        misplaced = cls._by_shape(core_project, c.Infra.FACADE_MEMBER_WRONG_LAYER_SHAPE)
+        retirements = cls._by_shape(core_project, c.Infra.FACADE_MEMBER_RETIRE_SHAPE)
+        with u.Infra.codemod_workspace_snapshot(core_project) as snapshot:
             resolver_factory = u.Infra.source_member_resolver_factory(
                 snapshot.engine, sources={}
             )
             for letter, names in misplaced.items():
                 for name in names:
                     owner = u.Infra.facade_member_owner(
-                        u.Infra.source_member_binding(
-                            snapshot.engine, f"{cls.PACKAGE}.{letter}.{name}"
-                        ),
+                        resolver_factory()(f"{cls.PACKAGE}.{letter}.{name}"),
                         resolver_factory=resolver_factory,
                         source_project=snapshot.engine,
                     )
@@ -558,9 +550,9 @@ class TestsFlextInfraFacadeMemberConstraints:
                     tm.that(name in retirements.get(letter, ()), eq=False)
 
     @classmethod
-    def test_documents_scope_their_letter_family(cls) -> None:
+    def test_documents_scope_their_letter_family(cls, core_project: Path) -> None:
         """Every document lists only files of its declaring letter's family."""
-        rules = cls._ownership_rules()
+        rules = cls._ownership_rules(core_project)
         tm.that(rules, empty=False)
         for rule_id, rule in rules.items():
             letter = rule_id.rsplit(c.Infra.CODEMOD_GENERATED_ID_SEPARATOR, 1)[1]
@@ -569,11 +561,11 @@ class TestsFlextInfraFacadeMemberConstraints:
                 tm.that(u.Infra.facade_family_of_source(relative), eq=letter)
 
     @classmethod
-    def test_derivation_is_a_fixed_point(cls) -> None:
+    def test_derivation_is_a_fixed_point(cls, core_project: Path) -> None:
         """Two derivations publish identical rules and census."""
-        first = cls._ownership_rules()
-        tm.that(cls._ownership_rules(), eq=first)
-        project = cls._project()
+        first = cls._ownership_rules(core_project)
+        tm.that(cls._ownership_rules(core_project), eq=first)
+        project = core_project
         with u.Infra.codemod_workspace_snapshot(project) as snapshot:
             sources = u.Infra.project_captured_sources(snapshot.engine)
             census = u.Infra.facade_member_census(

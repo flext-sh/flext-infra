@@ -170,8 +170,12 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
         save_objectdb: bool,
         filter_lists: tuple[Sequence[str], Sequence[str]],
         fscommands: p.Infra.RopeProjectFiles | None = None,
+        extension_modules: Sequence[str] | None = None,
     ) -> t.Infra.RopeProject:
         """Create one Rope project.
+
+        ``extension_modules`` declares the compiled modules directly; when
+        omitted the project derives them from the installed distributions.
 
         ``filter_lists`` carries the Rope filter sequences in order:
         ignored resources, source folders. The project itself declares the
@@ -203,6 +207,11 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
             save_history=False,
             ignored_resources=list(ignored_resources),
             source_folders=list(source_folders),
+            **(
+                {"extension_modules": tuple(extension_modules)}
+                if extension_modules is not None
+                else {}
+            ),
         )
         if not isinstance(project, p.Infra.RopeProject):
             msg = "rope Project does not satisfy p.Infra.RopeProject"

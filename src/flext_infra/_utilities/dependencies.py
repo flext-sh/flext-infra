@@ -741,8 +741,7 @@ class FlextInfraUtilitiesDependencies(
             The captured bytes when observations exist, else the physical bytes.
 
         Raises:
-            ValueError: If the manifest has no captured input, cannot be read,
-                or is absent.
+            ValueError: If the manifest has no captured input or cannot be read.
 
         """
         if observations is not None:

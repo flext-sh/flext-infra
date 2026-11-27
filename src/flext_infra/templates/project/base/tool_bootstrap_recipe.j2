@@ -184,13 +184,15 @@ if [ -f {{ lock_path }} ]; then \
 {#- Native changed-tool Mise relock of one governed repository. `mise lock
     --bump --dry-run --json` prints exactly `[]` when no locked version would
     change (a documented native result compared for equality, never parsed).
-    Otherwise each declared tool previews alone and only the tools whose own
+    Otherwise each tool the checkout's own Mise config declares previews
+    alone (a member declares a subset of the root toolchain, and previewing
+    a tool it does not declare is a native error, not a change) and only the tools whose own
     preview is not `[]` are locked, so provenance artifacts are fetched for
     the changed tools only. A change no declared tool owns is the removal of
     entries for tools the configuration no longer declares: the native whole
     `mise lock` (no `--bump`, locked versions kept) prunes them, and a preview
     still not `[]` afterwards stops the upgrade. -#}
-{% macro mise_lock_changed(mise, lock_root, install_tools, platform_tools=none, bootstrap_root=none) -%}
+{% macro mise_lock_changed(mise, lock_root, install_tools, mise_config_filename, platform_tools=none, bootstrap_root=none) -%}
 if [ "$$("{{ mise }}" -C {{ lock_root }} lock --bump --dry-run --json)" = "[]" ]; then \
 		printf 'upg: %s: no locked version changes\n' {{ lock_root }}; \
 	else \
@@ -200,7 +202,8 @@ if [ "$$("{{ mise }}" -C {{ lock_root }} lock --bump --dry-run --json)" = "[]" ]
 		for tool in "$$@"; do \
 		{% else -%}
 		for tool in{% for tool in install_tools %} "{{ tool }}"{% endfor %}; do \
-		{% endif %}	if [ "$$("{{ mise }}" -C {{ lock_root }} lock --bump --dry-run --json "$$tool")" != "[]" ]; then changed_tools="$$changed_tools $$tool"; fi; \
+		{% endif %}	"{{ mise }}" config get -f {{ lock_root }}/{{ mise_config_filename }} "tools.\"$$tool\"" >/dev/null 2>&1 || continue; \
+			if [ "$$("{{ mise }}" -C {{ lock_root }} lock --bump --dry-run --json "$$tool")" != "[]" ]; then changed_tools="$$changed_tools $$tool"; fi; \
 		done; \
 		if [ -z "$$changed_tools" ]; then \
 			printf 'upg: %s: pruning lock entries no declared tool owns\n' {{ lock_root }}; \

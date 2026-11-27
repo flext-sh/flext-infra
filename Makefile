@@ -1351,6 +1351,7 @@ _upg_toolchain: _builtin_require_workspace _builtin_require_github_credential
 	else \
 		changed_tools=""; \
 		for tool in "python" "github:jdx/mise" "uv" "github:direnv/direnv" "taplo" "aqua:ast-grep/ast-grep" "gitleaks" "aqua:boyter/scc" "github:qltysh/qlty" "github:kucherenko/jscpd" "github:microsoft/waza" "aqua:j178/prek" "gh"; do \
+			"$$mise_reader" config get -f "$$lock_root"/.mise.toml "tools.\"$$tool\"" >/dev/null 2>&1 || continue; \
 			if [ "$$("$$mise_reader" -C "$$lock_root" lock --bump --dry-run --json "$$tool")" != "[]" ]; then changed_tools="$$changed_tools $$tool"; fi; \
 		done; \
 		if [ -z "$$changed_tools" ]; then \
