@@ -6,7 +6,9 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import shutil
 import sys
+import sysconfig
 from collections.abc import Iterator, Mapping
 from functools import partial
 from pathlib import Path
@@ -261,3 +263,37 @@ def rope_project(tmp_path: Path) -> Iterator[t.Infra.RopeProject]:
     project = u.Infra.init_rope_project(tmp_path)
     yield project
     project.close()
+
+
+@pytest.fixture(scope="module")
+def core_project(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """Copy the declared ``flext_core`` package into one committed project.
+
+    The package comes from the sibling member sources in a workspace checkout or
+    from this repository's own runtime in a standalone checkout; either way the
+    census reads an isolated project holding only that package.
+
+    Returns:
+        The committed project root.
+
+    """
+    workspace = Path(__file__).resolve().parents[3]
+    search_paths = (
+        *(
+            str(path / c.Infra.DEFAULT_SRC_DIR)
+            for path in sorted(workspace.iterdir())
+            if (path / c.Infra.DEFAULT_SRC_DIR).is_dir()
+        ),
+        sysconfig.get_paths()["purelib"],
+    )
+    package_dir = tm.not_none(
+        u.Infra.declared_package_dir("flext_core", search_paths=search_paths)
+    )
+    root = tmp_path_factory.mktemp("facade-census")
+    shutil.copytree(
+        package_dir,
+        root / c.Infra.DEFAULT_SRC_DIR / package_dir.name,
+        ignore=shutil.ignore_patterns("__pycache__"),
+    )
+    u.Tests.initialize_git_repo(root)
+    return root
