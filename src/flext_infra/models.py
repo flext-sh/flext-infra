@@ -1,4 +1,4 @@
-# AUTO-GENERATED FILE — Regenerate with: make gen
+# AUTO-GENERATED FILE — Regenerate with: make check
 """Domain models for flext-infra.
 
 Defines data models and domain entities for infrastructure services including
