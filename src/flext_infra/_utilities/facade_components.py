@@ -736,7 +736,7 @@ class FlextInfraUtilitiesFacadeComponents:
                 text,
                 before_source=(
                     None
-                    if text.startswith(c.Infra.AUTOGEN_HEADER)
+                    if text.startswith(c.Infra.AUTOGEN_MARKER)
                     else module.source_code
                 ),
             )
@@ -850,7 +850,7 @@ class FlextInfraUtilitiesFacadeComponents:
         """
         resource = module.get_resource()
         if not (
-            module.source_code.startswith(c.Infra.AUTOGEN_HEADER)
+            module.source_code.startswith(c.Infra.AUTOGEN_MARKER)
             and resource is not None
             and Path(resource.real_path).parent == directory.parent
             and FlextInfraUtilitiesRopeRuntimeTypes.py_class(target)
@@ -1501,7 +1501,7 @@ class FlextInfraUtilitiesFacadeComponents:
         barrel = directory / c.Infra.INIT_PY
         generated = project.source_query(barrel, "isfile") and project.source_text(
             barrel
-        ).startswith(c.Infra.AUTOGEN_HEADER)
+        ).startswith(c.Infra.AUTOGEN_MARKER)
         admitted = (
             frozenset({directory.resolve(), barrel.resolve()})
             if generated
@@ -1512,7 +1512,7 @@ class FlextInfraUtilitiesFacadeComponents:
         # this run re-derives from the family declarations: a base it no longer
         # resolves awaits that re-render instead of blocking it. A facade the
         # generator scaffolds in this run is the same kind of projection.
-        rendered = project.source_text(path).startswith(c.Infra.AUTOGEN_HEADER) or any(
+        rendered = project.source_text(path).startswith(c.Infra.AUTOGEN_MARKER) or any(
             plan.path == path
             and plan.before.content is None
             and plan.desired_content is not None
@@ -1663,7 +1663,7 @@ class FlextInfraUtilitiesFacadeComponents:
         """
         types = FlextInfraUtilitiesRopeRuntimeTypes
         payload = FlextInfraUtilitiesDeclarationPayload
-        rendered = owner.get_module().source_code.startswith(c.Infra.AUTOGEN_HEADER)
+        rendered = owner.get_module().source_code.startswith(c.Infra.AUTOGEN_MARKER)
         nested: list[p.Infra.RopeSourceClass] = []
         storage: set[p.Infra.RopeSourceClass] = set()
         for scope in owner.get_scope().get_scopes():
@@ -1807,7 +1807,7 @@ class FlextInfraUtilitiesFacadeComponents:
         source = module.source_code
         # A generated facade's base list is the previous projection; a base it
         # no longer resolves is re-derived from the family providers.
-        rendered = source.startswith(c.Infra.AUTOGEN_HEADER)
+        rendered = source.startswith(c.Infra.AUTOGEN_MARKER)
         bases: list[tuple[str, p.Infra.RopePyObject]] = []
         for (start, end), binding in layout.base_bindings:
             if binding is None:
@@ -2248,7 +2248,7 @@ class FlextInfraUtilitiesFacadeComponents:
             # A generated facade's own imports are the previous projection the
             # render replaces; only a non-import binding is an occupation there.
             stale_import = module.source_code.startswith(
-                c.Infra.AUTOGEN_HEADER
+                c.Infra.AUTOGEN_MARKER
             ) and FlextInfraUtilitiesRopeRuntimeTypes.imported_name(occupied)
             if (
                 occupied is not None
@@ -2678,7 +2678,7 @@ class FlextInfraUtilitiesFacadeComponents:
         if (
             owner is None
             or owner.get_kind() != "Class"
-            or not current.source_code.startswith(c.Infra.AUTOGEN_HEADER)
+            or not current.source_code.startswith(c.Infra.AUTOGEN_MARKER)
         ):
             return prefix, dropped
         layout = current.get_source_binding_index().class_layout(owner)
@@ -2828,7 +2828,7 @@ class FlextInfraUtilitiesFacadeComponents:
             body_source=body_source,
             publications=publications,
             managed_header=None
-            if source.startswith(c.Infra.AUTOGEN_HEADER)
+            if source.startswith(c.Infra.AUTOGEN_MARKER)
             else c.Infra.AUTOGEN_HEADER,
         )
         return cls.generate_module_skeleton(context=context)
@@ -2914,7 +2914,7 @@ class FlextInfraUtilitiesFacadeComponents:
         index = current.get_source_binding_index()
         retired = (
             cls._facade_retired_publications((current, scope), retained)
-            if source.startswith(c.Infra.AUTOGEN_HEADER)
+            if source.startswith(c.Infra.AUTOGEN_MARKER)
             else frozenset[tuple[int, int]]()
         ) | cls._facade_retired_bindings(index, actual, source, retained)
         body_source = cls._facade_retained_body(

@@ -46,7 +46,7 @@ class FlextInfraUtilitiesSemanticModelAliases:
             (path, node.name)
             for path, source in sources.items()
             if path.is_relative_to(workspace.repository_root)
-            and not source.startswith(c.Infra.AUTOGEN_HEADER)
+            and not source.startswith(c.Infra.AUTOGEN_MARKER)
             and (
                 family
                 := FlextInfraUtilitiesCodegenNamespace.facade_family_of_directory(
@@ -139,7 +139,7 @@ class FlextInfraUtilitiesSemanticModelAliases:
             organizer = runtime.import_organizer(snapshot)
             for changed in consumers | {path}:
                 source = working[changed]
-                if source.startswith(c.Infra.AUTOGEN_HEADER):
+                if source.startswith(c.Infra.AUTOGEN_MARKER):
                     continue
                 native = organizer.organize_imports(
                     FlextInfraUtilitiesRopeRuntimeModules.file_resource_at(
@@ -271,7 +271,7 @@ class FlextInfraUtilitiesSemanticModelAliases:
                             snapshot, item
                         )
                         for item, source in working.items()
-                        if not source.startswith(c.Infra.AUTOGEN_HEADER)
+                        if not source.startswith(c.Infra.AUTOGEN_MARKER)
                     ),
                     remove=False,
                 )
@@ -424,7 +424,7 @@ class FlextInfraUtilitiesSemanticModelAliases:
             path = Path(resource.real_path).resolve()
             if path not in observed:
                 source = resource.read()
-                if not source.startswith(c.Infra.AUTOGEN_HEADER):
+                if not source.startswith(c.Infra.AUTOGEN_MARKER):
                     msg = (
                         "model alias proof requires complete workspace "
                         f"source inventory: {path}"
@@ -533,14 +533,14 @@ class FlextInfraUtilitiesSemanticModelAliases:
                 ).find_occurrences(resource=resource)
             )
             for occurrence in occurrences:
-                if editable and not source.startswith(c.Infra.AUTOGEN_HEADER):
+                if editable and not source.startswith(c.Infra.AUTOGEN_MARKER):
                     consumer = True
                 if occurrence.is_defined() or any(
                     item.lineno <= occurrence.lineno <= (item.end_lineno or item.lineno)
                     for item in imports
                 ):
                     continue
-                if source.startswith(c.Infra.AUTOGEN_HEADER):
+                if source.startswith(c.Infra.AUTOGEN_MARKER):
                     msg = (
                         "model alias has generated behavior, "
                         f"not just exports: {path}:{occurrence.lineno}"
@@ -644,7 +644,7 @@ class FlextInfraUtilitiesSemanticModelAliases:
         )
         if rewritten == source:
             return False
-        if path not in sources or source.startswith(c.Infra.AUTOGEN_HEADER):
+        if path not in sources or source.startswith(c.Infra.AUTOGEN_MARKER):
             msg = f"model alias annotation is outside editable source inventory: {path}"
             raise ValueError(msg)
         module = runtime.build_string_module(project, rewritten, resource=resource)
