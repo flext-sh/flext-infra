@@ -1,4 +1,4 @@
-# AUTO-GENERATED FILE — Regenerate with: make gen
+# AUTO-GENERATED FILE — Regenerate with: make check
 """Flext Infra.workspace. Environment package.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.

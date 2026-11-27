@@ -277,14 +277,14 @@ Infra:
         default-enabled: true
         # MD060 (aligned tables, repaired by `rumdl fmt`) is opt-in in rumdl.
         extend-enable: [ MD060 ]
-        # rumdl is the ONE Markdown engine: CLI (make fmt/fix/check) and editor
+        # rumdl is the ONE Markdown engine: CLI (make check) and editor
         # (rvben.rumdl reads the generated .rumdl.toml for diagnostics and
         # formatting). It implements every markdownlint rule (MD001-MD060)
         # plus MD061+, so markdownlint is retired everywhere (codegen.yaml
         # retires .markdownlintignore and silences the extension).
         rules:
         # Wave 1 (active): every rule here is either repaired by `rumdl fmt`
-        # (`make fmt`) or was already enforced, so the policy lands together
+        # (`make check`) or was already enforced, so the policy lands together
         # with its automatic repair and no consumer is left red. Measured on
         # the fleet (2026-11-04): 18040 findings, 15573 repaired by rumdl fmt.
         # Wave 2 (disabled below, per-repo text migration, bead flext-5yu64):
@@ -294,8 +294,8 @@ Infra:
         - [ MD004, { style: dash } ]
         - [ MD007, { indent: 2 } ]
           # MD013 prose and code lengths are THE markdown line contract for
-          # both rumdl surfaces: `rumdl check` (markdown gate, `make fix`) and
-          # `rumdl fmt` (markdown-format gate, `make fmt`) read this one rule
+          # both rumdl surfaces: `rumdl check` (markdown gate, `make check`) and
+          # `rumdl fmt` (markdown-format gate, `make check`) read this one rule
           # set through the generated .rumdl.toml. Headings use
           # MD013.heading_line_length because no tool can reflow a heading.
           #
@@ -398,7 +398,7 @@ Infra:
           # canonical projection shape, so the rule is structurally
           # incompatible with the architecture.
           - non-empty-init-module
-          # make fix never deletes information. The lint
+          # make check never deletes information. The lint
           # repair applies safe fixes only (make.ruff.lint_fix rejects
           # --unsafe-fixes), and these rules are never auto-fixed at all,
           # because their fixes delete a diagnostic print, an assignment, a
@@ -407,7 +407,7 @@ Infra:
           # script and turned its failures silent). Ruff keeps reporting them;
           # the author decides. Also guards direct and IDE Ruff runs.
           # OPERATOR LAW 2026-10-05 (direct order, OBLIGATORY, NEVER DISABLED
-          # AGAIN): `make fix` ALWAYS applies Ruff's unsafe fixes — the
+          # AGAIN): `make check` ALWAYS applies Ruff's unsafe fixes — the
           # mandatory lint_fix surface carries --unsafe-fix in codegen.yaml
           # and MakeRuffSpec fails validation without it. This list keeps its
           # historical evidence records for the rules whose fixes were proven
@@ -428,7 +428,7 @@ Infra:
           # copyright year. The fix recipe writes the module's project-relative
           # path, without its shared suffix, between that sentence and the
           # SPDX line so the notice is not one stamp.
-          # Repairs make fix applies after Ruff's own fixes, to findings Ruff
+          # Repairs make check applies after Ruff's own fixes, to findings Ruff
           # reports without a fix: each Ruff rule name maps to one recipe the
           # lint gate derives from the source (docstring sections from the
           # signature, summary and raise statement; a documented exception the

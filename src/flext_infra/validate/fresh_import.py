@@ -501,7 +501,7 @@ class FlextInfraValidateFreshImport(s[bool]):
             msg = (
                 f"stand-in {klass.__module__}.{klass.__qualname__} differs from "
                 f"its real class: missing {sorted(real_names - standin_names)}, "
-                f"extra {sorted(standin_names - real_names)}; fix: run make gen "
+                f"extra {sorted(standin_names - real_names)}; fix: run make check "
                 "(ADR-018 stand-in composition law, rule 2)"
             )
             raise AttributeError(msg)

@@ -1,4 +1,4 @@
-# AUTO-GENERATED FILE — Regenerate with: make gen
+# AUTO-GENERATED FILE — Regenerate with: make check
 """Source-derived structural model contracts.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
@@ -308,7 +308,7 @@ class FlextInfraProtocolsConfigMake:
             """Structural member projected from the owning model.
 
             Flags for ruff check --fix; MANDATORY unsafe-fix channel (operator law
-            2026-10-05): the lint gate's apply mode (make fix) always applies safe
+            2026-10-05): the lint gate's apply mode (make check) always applies safe
             and unsafe fixes.
             """
             ...
@@ -341,9 +341,9 @@ class FlextInfraProtocolsConfigMake:
         def fmt_gates(self) -> tuple[t.NonEmptyStr, ...]:
             """Structural member projected from the owning model.
 
-            Gates whose mutating side `make fmt` drives (formatters). The read-only
-            side runs in `make check`; `make fix` never repeats them (single-pass
-            verb law).
+            Gates whose mutating side `make check` drives (formatters). The read-
+            only side runs in `make check`; the fix phase of `make check` never
+            repeats them (single-pass verb law).
             """
             ...
 

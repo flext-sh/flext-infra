@@ -119,7 +119,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
             else source_project.source_text(file_path)
         )
         return source.startswith(
-            c.Infra.AUTOGEN_HEADER,
+            c.Infra.AUTOGEN_MARKER,
         )
 
     @classmethod

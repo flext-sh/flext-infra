@@ -649,7 +649,7 @@ class FlextInfraRefactorCensusObjects:
         shortest: list[p.Infra.ShortestFormCensus] = []
         for path, source in sorted(sources.items()):
             if path.name == c.Infra.INIT_PY or source.lstrip().startswith(
-                c.Infra.AUTOGEN_HEADER
+                c.Infra.AUTOGEN_MARKER
             ):
                 continue
             try:

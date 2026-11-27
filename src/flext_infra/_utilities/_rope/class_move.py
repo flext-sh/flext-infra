@@ -185,7 +185,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
                     not resource_move
                     and state.content is not None
                     and state.content.decode(c.DEFAULT_ENCODING).startswith(
-                        c.Infra.AUTOGEN_HEADER
+                        c.Infra.AUTOGEN_MARKER
                     )
                 ):
                     if path.name != c.Infra.INIT_PY:
@@ -1676,7 +1676,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
                     if (
                         path in virtual_paths
                         or path == request.source_file
-                        or sources[path].startswith(c.Infra.AUTOGEN_HEADER)
+                        or sources[path].startswith(c.Infra.AUTOGEN_MARKER)
                     ):
                         continue
                     updated = FlextInfraUtilitiesRopeImports.plan_from_import_aliases(

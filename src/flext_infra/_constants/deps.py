@@ -42,7 +42,7 @@ class FlextInfraConstantsDeps(FlextInfraConstantsConfig):
         "# @flext-adjust: MANAGED=conflict_sections + overwrite_project_keys."
         " CUSTOM=preserve_project_keys and [tool.*] outside conflict_sections."
         " Never edit this projection.\n"
-        "# @flext-regenerate: make gen\n"
+        "# @flext-regenerate: make check\n"
     )
     # Render provenance: the composition owner appends the running generator's
     # identity so every emitted artifact names the motor that rendered it.
