@@ -1274,21 +1274,13 @@ class FlextInfraWorkspaceDetector(
         if topology.failure:
             return result_type.from_failure(topology)
         subprojects, external, pending = topology.value
-        # An attached checkout (a superproject gitlink) renders the workspace
-        # profile from its own root too, exactly as its parent renders it. A
-        # linked worktree of that repository is attached to no superproject
-        # and keeps the profile of its own topology.
-        identity = u.Infra.git_identity(
-            m.Infra.GitRepoRequest(repo_root=resolved_root),
-            include_status=False,
-        )
-        if identity.failure:
-            return result_type.from_failure(identity)
+        # ADR-038 decision 9: the role is the repository's own topology;
+        # running attached to a workspace is an execution mode Make decides.
         observed_repository = repository.value.model_copy(
             update={
                 "role": (
                     c.Infra.MakeProfile.WORKSPACE
-                    if subprojects or pending or identity.value.is_attached_submodule
+                    if subprojects or pending
                     else c.Infra.MakeProfile.STANDALONE
                 ),
             },
