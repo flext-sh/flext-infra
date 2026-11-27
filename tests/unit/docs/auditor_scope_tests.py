@@ -285,7 +285,7 @@ class TestsFlextInfraAuditorScope:
         )
         u.Tests.initialize_git_repo(tmp_path)
         issues = auditor.machine_path_issues(scope)
-        tm.that(len(issues), eq=2)
+        tm.that(len(issues), eq=2, msg=str([issue.message for issue in issues]))
         tm.that({issue.issue_type for issue in issues}, eq={"machine-path"})
         tm.that(issues[0].message, has="line 1")
         tm.that(issues[0].message, has="/home/someone")
