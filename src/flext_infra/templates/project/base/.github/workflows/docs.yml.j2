@@ -33,7 +33,7 @@ jobs:
       group: {% raw %}${{ github.workflow }}-${{ github.ref }}{% endraw %}
       cancel-in-progress: true
     # packages: read only for distributions declared in codegen
-    # ci_package_registry_read: make build/check resolve their GitHub Packages.
+    # ci_package_registry_read: make check resolves their GitHub Packages.
     permissions:
       contents: read
 {%- if packages_read %}
