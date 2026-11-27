@@ -60,6 +60,8 @@ def _probe_report(
         The resulting validated ``m.Infra.ValidationReport``.
 
     """
+    # Git owns the source inventory: the probe checkout is committed first.
+    u.Tests.initialize_git_repo(tmp_path)
     return tm.ok(
         FlextInfraValidateFreshImport(
             repository_root=tmp_path,
