@@ -92,7 +92,6 @@ class TestsFlextInfraAuditorScope:
     @staticmethod
     def test_audit_scope_with_links_check(tmp_path: Path) -> None:
         """Test audit_scope runs links check."""
-        u.Tests.initialize_git_repo(tmp_path)
         auditor = FlextInfraDocAuditor()
         scope = m.Infra.DocScope(
             name="test",
@@ -110,7 +109,6 @@ class TestsFlextInfraAuditorScope:
     @staticmethod
     def test_audit_scope_with_forbidden_terms_check(tmp_path: Path) -> None:
         """Test audit_scope runs forbidden-terms check."""
-        u.Tests.initialize_git_repo(tmp_path)
         auditor = FlextInfraDocAuditor()
         scope = m.Infra.DocScope(
             name="test",
@@ -135,6 +133,7 @@ class TestsFlextInfraAuditorScope:
         )
         summary_path = scope.report_dir / c.Infra.DOCS_AUDIT_SUMMARY_FILENAME
         summary_path.mkdir(parents=True)
+        u.Tests.initialize_git_repo(tmp_path)
         with u.Tests.raises(
             OSError,
             match="atomic destination is not a regular file",
@@ -186,6 +185,7 @@ class TestsFlextInfraAuditorScope:
             path=tmp_path,
             report_dir=tmp_path / "reports",
         )
+        u.Tests.initialize_git_repo(tmp_path)
         report = auditor.audit_scope(
             scope,
             params=m.Infra.AuditScopeParams(check="links"),
@@ -225,6 +225,7 @@ class TestsFlextInfraAuditorScope:
             report_dir=tmp_path / "reports",
         )
         (tmp_path / "README.md").write_text(markdown, encoding="utf-8")
+        u.Tests.initialize_git_repo(tmp_path)
         report = auditor.audit_scope(
             scope,
             params=m.Infra.AuditScopeParams(check=check),
@@ -248,6 +249,7 @@ class TestsFlextInfraAuditorScope:
             report_dir=tmp_path / "reports",
         )
         (tmp_path / "README.md").write_text("[Broken](missing.md)\n", encoding="utf-8")
+        u.Tests.initialize_git_repo(tmp_path)
         report = auditor.audit_scope(
             scope,
             params=m.Infra.AuditScopeParams(check="links"),
