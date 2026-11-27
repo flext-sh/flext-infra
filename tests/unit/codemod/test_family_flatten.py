@@ -177,15 +177,17 @@ class TestsFlextInfraFamilyFlatten:
         module = ".".join(path.relative_to(package).with_suffix("").parts)
         references = (
             f"from {package.name}.{module} import {owner} as Part\n\n"
-            "class Public(Part):\n    pass\n\n"
-            "VALUE = Public.Wrapper.Entity.VALUE\n"
-            "TEXT = Part.Wrapper.TEXT\n"
+            "class Public(Part):\n"
+            "    TEXT = Part.Wrapper.TEXT\n\n"
+            "    @staticmethod\n"
+            "    def value() -> str:\n"
+            "        return Public.Wrapper.Entity.VALUE\n"
         )
         consumer.write_text(references, encoding="utf-8")
         homonym = package / "unrelated.py"
         unrelated = (
             "class Other:\n    class Wrapper:\n        TEXT = 'unrelated'\n"
-            "VALUE = Other.Wrapper.TEXT\n"
+            "    VALUE = Wrapper.TEXT\n"
         )
         homonym.write_text(unrelated, encoding="utf-8")
         return WrapperFamilyFixture(
@@ -300,7 +302,7 @@ class TestsFlextInfraFamilyFlatten:
                 proposed[path],
                 has="'''first\n        literal indentation\n        last'''",
             )
-            tm.that(proposed[consumer], has=f"VALUE = Public.{expected_member}.VALUE")
+            tm.that(proposed[consumer], has=f"return Public.{expected_member}.VALUE")
             tm.that(proposed[consumer], has="TEXT = Part.GroupingTEXT")
             tm.that(proposed[homonym], eq=unrelated)
             remaining = u.Infra.plan_semantic_cutover(
