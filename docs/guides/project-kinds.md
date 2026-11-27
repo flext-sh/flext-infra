@@ -86,7 +86,7 @@ package, module, data or console script. Every other kind declares its `package_
 
 ### What is generated
 
-`make gen` projects the same governed surface as for any project, without the package
+Local `make check` projects the same governed surface as for any project, without the package
 parts:
 
 - `pyproject.toml` is an unpackaged uv project: no `[build-system]`, no Hatch targets,
@@ -121,10 +121,7 @@ flext-infra codegen init --repository-root .   # generate the project surface
 make upg                                       # first lock and toolchain
 make setup                                     # install the locked environment
 flext-infra codegen scaffold --repository-root .   # seed the test facades
-make gen
 make mod
-make fix
-make fmt
 make check
 ```
 
@@ -134,7 +131,6 @@ test facades: those compose the distribution's facades and are seeded by
 
 ### Adding a dependency
 
-Declare the new requirement in the repository declaration and run `make lock`. It
-resolves the new requirement into the locks and keeps every pin the locks already hold;
-`make upg` is the only verb that moves a pin. Both verbs end with the frozen
-installation.
+Declare the new requirement in the repository declaration and run `make upg`. It
+resolves the new requirement into the locks; `make upg` is the only verb that writes
+locks or moves a pin. It ends with the frozen installation.

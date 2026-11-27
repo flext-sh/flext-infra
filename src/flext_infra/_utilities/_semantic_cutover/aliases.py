@@ -148,7 +148,9 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
                 raise ValueError(message)
             for path, declaration in candidates.items():
                 value = cls._published_service_declaration(project, path, declaration)
-                if value is not None and cls._inherits_service_kernel(value, kernel):
+                if value is not None and cls._inherits_service_kernel(
+                    value, kernel, declaration
+                ):
                     selected[path] = {"s": declaration.name}
             graph, _modules = FlextInfraUtilitiesCodemodProject.snapshot_import_graph(
                 project
@@ -261,17 +263,35 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
 
     @staticmethod
     def _inherits_service_kernel(
-        value: p.Infra.RopePyObject, kernel: p.Infra.RopePyObject
+        value: p.Infra.RopePyObject,
+        kernel: p.Infra.RopePyObject,
+        declaration: ast.ClassDef,
     ) -> bool:
         """Traverse native bases breadth-first without revisiting ancestry cycles.
 
-        Declared bases are tested in order before any of their ancestry, so a
-        class naming the kernel directly never analyses its other bases' MROs.
+        Declared bases are resolved one at a time, in order, before any of their
+        ancestry, so a class naming the kernel directly never evaluates its other
+        bases, whose MROs can span a whole facade.
 
         Returns:
             Whether the service class derives from the upstream kernel.
 
         """
+        scope = (
+            value.get_scope().parent
+            if FlextInfraUtilitiesRopeRuntimeTypes.py_class(value)
+            else None
+        )
+        for base in declaration.bases:
+            symbol = (
+                FlextInfraUtilitiesRopeRuntimeModules.resolve_symbol(
+                    scope, base.value if isinstance(base, ast.Subscript) else base
+                )
+                if scope is not None
+                else None
+            )
+            if symbol is not None and symbol.get_object() == kernel:
+                return True
         pending = deque(FlextInfraUtilitiesDeclarationPayload.direct_bases(value))
         visited: list[p.Infra.RopePyObject] = []
         while pending:

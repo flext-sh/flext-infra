@@ -12,6 +12,8 @@ from pathlib import Path
 from flext_infra import infra
 from tests import c, m, p, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsRopeContractFamilyRoutes:
     """Exercise real lazy publication, function identity and cold composition."""

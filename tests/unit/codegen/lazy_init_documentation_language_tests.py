@@ -13,6 +13,8 @@ from pathlib import Path
 
 from tests import c, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraLazyInitDocumentationLanguage:
     """Exercise declared locales through isolated real file plans."""

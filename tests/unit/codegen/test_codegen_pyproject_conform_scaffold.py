@@ -15,6 +15,8 @@ from tests.unit.codegen.pyproject_conform_support import (
     TestsFlextInfraPyprojectConformSupport,
 )
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraCodegenPyprojectConformScaffold(
     TestsFlextInfraPyprojectConformSupport

@@ -21,6 +21,8 @@ from flext_infra.codegen import (
 )
 from tests import c, m, p, t, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraMiseToolchainProof:
     """Public behavior of the npm-free toolchain and its reality proof."""

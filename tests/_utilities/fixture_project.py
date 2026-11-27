@@ -129,6 +129,7 @@ class TestsFlextInfraUtilitiesProjectFixture:
         return m.Infra.WorkspaceIntegrationSpec(
             provider=provider.name,
             branch=TestsFlextInfraUtilitiesProjectFixture.provider_branch(),
+            base_url=provider.base_url,
         )
 
     @staticmethod

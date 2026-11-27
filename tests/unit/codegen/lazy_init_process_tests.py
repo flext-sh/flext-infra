@@ -11,6 +11,8 @@ from pathlib import Path
 
 from tests import c, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraLazyInitProcessing:
     """Validate recursive generation through the public service surface."""

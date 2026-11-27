@@ -19,6 +19,8 @@ from flext_infra.workspace import (
 )
 from tests import c, m, p, t, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraWorkspaceEnvironmentProvenance:
     """Validate real PEP 610 and distribution file metadata."""

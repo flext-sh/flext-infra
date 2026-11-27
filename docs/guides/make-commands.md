@@ -30,7 +30,7 @@
   - [Workspace vs. Member Scope Dispatch](#workspace-vs-member-scope-dispatch)
   - [Scaffolding, Codemod Census, and Template Ownership](#scaffolding-codemod-census-and-template-ownership)
   - [Convergence, Dirty Inputs, and Clean Rules](#convergence-dirty-inputs-and-clean-rules)
-  - [Git Lane and Worktree Hygiene Verification](#git-lane-and-worktree-hygiene-verification)
+  - [Worktree Registry](#worktree-registry)
 - [Related guides](#related-guides)
 
 <!-- TOC END -->
@@ -128,10 +128,8 @@ Run each required operation explicitly from the workspace root:
 
 ```bash
 make setup
-make gen
-make fmt
-make fix
 make mod
+make check
 make build
 # Exercise the selected public consumer before the final tests.
 make check
@@ -231,23 +229,18 @@ Each verb enters its existing domain owner. Generation and conformance share the
 same projection planner and transaction publisher; they do not share permission
 to repair authored declarations.
 
-| Verb            | Owned operation                                                                                                                                                                                             | Inputs                    |
-| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- |
-| `setup`         | Install the declared frozen locks, synchronize the physical environment and configure local integrations; FLEXT=<path> reinstalls the FLEXT distributions that workspace provides as editable (local only). | FLEXT, RECREATE           |
-| `upg`           | Resolve declared dependency and tool updates and publish their resolution metadata and locks.                                                                                                               | —                         |
-| `lock`          | Resolve newly declared dependencies into the locks and keep every existing pin; only upg moves pins.                                                                                                        | —                         |
-| `gen`           | Materialize explicitly declared new projects and publish every applicable generated projection.                                                                                                             | ROOT                      |
-| `gen-scope`     | Run the focal generation surface (WHAT, MODULE for facades, SCOPE) through the same engine, lock and budget as gen.                                                                                         | ROOT, WHAT, MODULE, SCOPE |
-| `mod`           | Refactor declared source structure through the shared pipeline and publish the complete coherent change; LAWS (ENFORCE ids) or RULES (rule ids) diagnose or repair one law (ADR-028 Decision 18 item 2).    | LAWS, RULES               |
-| `fix`           | Apply declared repairs to authored inputs through their canonical owners.                                                                                                                                   | —                         |
-| `fmt`           | Format authored content through the configured formatters.                                                                                                                                                  | —                         |
-| `check`         | Validate declarations, projections, environment, documentation and configured gates without repairs or publication.                                                                                         | CHECK_PHASE               |
-| `tests`         | Run native incremental tests through the persistent Testmon selection.                                                                                                                                      | —                         |
-| `tests-full`    | Run the complete selected inventory once without Testmon.                                                                                                                                                   | —                         |
-| `tests-harness` | Run only the harness gate tests, through the persistent Testmon selection, under the harness that provides their inputs; MARKER=<harness gate marker> narrows the run to one.                               | MARKER                    |
-| `help`          | Discover the declared public interface without effects.                                                                                                                                                     | —                         |
-| `build`         | Build local distribution and documentation artifacts without publishing them.                                                                                                                               | —                         |
-| `clean`         | Remove only declared disposable resources owned by the selected target.                                                                                                                                     | —                         |
+| Verb            | Owned operation                                                                                                                                                                                                                         | Inputs          |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- |
+| `setup`         | Install the declared frozen locks, synchronize the physical environment and configure local integrations; FLEXT=<path> reinstalls the FLEXT distributions that workspace provides as editable (local only).                             | FLEXT, RECREATE |
+| `upg`           | Resolve declared dependency and tool updates and publish their resolution metadata and locks.                                                                                                                                           | —               |
+| `mod`           | Refactor declared source structure through the shared pipeline and publish the complete coherent change; LAWS (ENFORCE ids) or RULES (rule ids) diagnose or repair one law (ADR-028 Decision 18 item 2).                                | LAWS, RULES     |
+| `check`         | Validate declarations, projections, environment, documentation and configured gates without repairs or publication.                                                                                                                     | CHECK_PHASE     |
+| `tests`         | Run native incremental tests through the persistent Testmon selection; in a workspace root ALL=Y includes every governed member.                                                                                                        | ALL             |
+| `tests-full`    | Run the complete selected inventory once and record it in Testmon; in a workspace root ALL=Y includes every governed member.                                                                                                            | ALL             |
+| `tests-harness` | Run only the harness gate tests, through the persistent Testmon selection, under the harness that provides their inputs; MARKER=<harness gate marker> narrows the run to one; in a workspace root ALL=Y includes every governed member. | ALL, MARKER     |
+| `help`          | Discover the declared public interface without effects.                                                                                                                                                                                 | —               |
+| `build`         | Build local distribution and documentation artifacts without publishing them.                                                                                                                                                           | —               |
+| `clean`         | Remove only declared disposable resources owned by the selected target.                                                                                                                                                                 | —               |
 
 ### Profiling and Semantic Publication Boundaries
 
@@ -315,8 +308,8 @@ configuration values or fallback execution.
 
 ### Conformance, Environment, and Runtime Bindings
 
-The generated dispatcher invokes conformance checking only through `make check`
-and conformance repair only through `make fix`. Installing, generating,
+The generated dispatcher invokes conformance checking and repair only through
+`make check`. Installing, generating,
 upgrading, rewriting or formatting does not implicitly run a global conformance
 check. Each operation still proves the prerequisites and effects it actually
 consumes. Native environment verification, input authentication and publication
@@ -509,7 +502,7 @@ or checking; `upg` owns changes to the resolved release.
 ## Markdown quality pipeline
 
 The markdown standard lives once in `flext-infra/src/flext_infra/config/tooling.yaml`
-(`Infra.tooling.tools.markdown`) and is projected to every repository by `make gen`:
+(`Infra.tooling.tools.markdown`) and is projected to every repository by `make check`:
 
 - Common `MD*` rules, native options and additional rules generate one
   `.rumdl.toml`. The former markdownlint JSON projection is retired through the
@@ -517,10 +510,11 @@ The markdown standard lives once in `flext-infra/src/flext_infra/config/tooling.
   caused native configuration warnings. `.markdownlintignore` and native
   exclusions derive from the same governed scope.
 - `rumdl` is the command-line linter and reads generated `.rumdl.toml`, including
-  the MkDocs dialect used by the documentation renderer. `make fix` applies its
+  the MkDocs dialect used by the documentation renderer. `make check` applies its
   supported repairs; unresolved findings remain failures, not accepted exceptions.
 - `rumdl fmt` is the formatter and reads the same `.rumdl.toml`:
-  `rumdl fmt --check` in `make check`, `rumdl fmt` in `make fmt`. rumdl is locked in
+  `rumdl fmt --check` in `make check`, `rumdl fmt` also inside its convergence. rumdl is
+  locked in
   `uv.lock`; the Mise npm backend remains retired (ADR-025). The amended Bun
   project contract for distributed JavaScript tools does not change this formatter.
 - `make check` validates without rewriting. Run generation before repair and
@@ -546,7 +540,7 @@ consume their declared operation.
 The execution receipt preserves the collected inventory, applicability decisions,
 executed counts and original subprocess outcomes. Zero collection and an absent
 manifest remain failures. An empty incremental selection is accepted only as a typed
-Testmon cache hit with database integrity and complete inventory/deselection
+Testmon cache hit with native database integrity and complete inventory/deselection
 accounting; it is never reported as tests passed. The native inventory and manifest
 must agree; neither may silently expand into another target. Warnings remain visible
 in the native result.
@@ -616,15 +610,18 @@ The source template
 `flext-infra/src/flext_infra/templates/project/base/Makefile.j2`, in its derived-paths
 and repository-root sections, binds `PROJECT_ROOT` to the selected Makefile's
 checkout rather than CWD. Attached members share the containing workspace's runtime
-environment. Standalone checkouts and member worktrees without a containing
-superproject own their runtime environment and run `make <verb>` from their own
-root.
+environment. A standalone checkout owns its runtime environment and runs
+`make <verb>` from its own root. A workspace member's dev group never declares
+`flext-infra`, so a member worktree without a containing superproject has no
+runtime supplier: its `setup`, `upg` and `lock` refuse before any effect with
+exit 2 and point to a workspace-shaped lane that attaches the member.
 Manifest exclusions remain authoritative. Generated Make surfaces and documentation
-are changed at their template or configuration owner, then regenerated with `make gen`.
+are changed at their template or configuration owner, then regenerated with `make
+check`.
 
 ### Scaffolding, Codemod Census, and Template Ownership
 
-Explicit new-project declarations let `make gen` reuse the existing scaffold service.
+Explicit new-project declarations let `make check` reuse the existing scaffold service.
 The target's project identity, kind, integration and provenance are validated before
 effects; its Git/worktree is prepared separately. A missing package manifest in an
 established repository is not permission to initialize Git or create a new project.
@@ -682,8 +679,8 @@ observations do not cover every generated artifact. Repeated `mod`, `fix`
 and `fmt` also require zero relevant effects. Generated projections are
 gate-clean by construction (ADR-028
 Decision 8):
-`make gen` followed directly by `make check` is green and `make fmt` / `make fix`
-are no-ops, with zero post-adjustment, manual or automated — the engine never
+`make check` converges directly: generation, fix and format are no-ops, with zero
+post-adjustment, manual or automated — the engine never
 runs a fixer or formatter over its own output. A later effective change invalidates the
 affected runtime and gate receipts and requires their renewed validation, never a hidden
 retry or a whole-workspace quiet window.
@@ -710,48 +707,7 @@ their physical superproject runtime, so attached validation does not substitute
 for standalone consumer proof. Ordinary root verbs remain repository-local and
 cannot, by themselves, establish a fleet-wide result.
 
-### Git Lane and Worktree Hygiene Verification
-
-The generated local `make check` includes the public
-`flext-infra workspace verify-lanes --repo-root <checkout>` gate. A workspace
-invocation covers its declared members as well as the root. This is detection only:
-it does not fetch, prune, merge, stash, delete refs, remove worktrees, or publish
-receipts. The coordinator synchronizes integration outside the guard. The guard
-compares the explicit live remote integration OID to the available tracking object
-and checks that the current lane consumes it.
-
-`FlextInfraGitService.verify_lanes` resolves to the single `FlextInfraGitLanes`
-evaluator. Its utility input, `u.Infra.git_lane_facts`, collects native stash OIDs
-and local/configured-remote refs only; it neither elects a base nor judges lanes.
-Partial native reads retain explicit errors which keep the evaluator red. The
-public request is `GitLaneVerificationRequest` and the response is `GitLaneReport`,
-including structured violation classes and complete textual findings. Clean linked
-worktrees already contained in the same live integration are reported as residue,
-never automatically retired. Checked-out refs are not exempted from that proof.
-
-Failures include the full exact refs, stash OIDs, and registered worktrees. A branch
-already contained in integration is residue; integration refs and symbolic remote
-HEAD are protected. Unknown ownership is inconclusive, never inferred from commit
-age or directory mtime. Open PRs and fresh, explicitly owned Bead lanes are allowed.
-Inactive owned work requires correlated tracker, ref activity, and worktree evidence;
-the activity window comes from the global governance SSOT configured by
-`BranchPolicySpec.lane_governance_file`, never a copied threshold. The public
-`--governance-file` option selects an explicit coordinator policy. Without valid
-policy evidence, ownership/activity is inconclusive rather than assumed safe.
-Optional `--evidence-file` selects a typed,
-repository-bound coordinator receipt and requires freshness under that same policy.
-Provider, tracker, policy, and Git read errors remain failures, not empty inventories.
-
-Live auxiliary reads require explicit `--read-pull-requests` and/or `--read-beads`
-selection. Installation never selects a capability. Dormant sources remain typed
-unknowns and appear as `NOT EXECUTED` in the inventory; any artifact needing that
-missing ownership proof remains inconclusive. Git facts still run independently.
-Selected Beads reads consume `BeadsProjectSpec.ownership_command_prefix` and
-`ownership_command_cwd` from the repository's `config/beads.yaml`, through the public
-city/rig wrapper declared there. An undeclared or failed selected route fails;
-the service appends the immutable read-only list protocol. There is no bare `bd`,
-alternate database, runtime startup, or retry fallback.
-An ownership receipt and live sources cannot be selected together.
+### Worktree Registry
 
 A storage-only primary registry row is bound to a checkout only when native Git
 proves the caller's Git directory equals shared storage and its top-level agrees
@@ -759,12 +715,8 @@ with GitPython's working-tree identity. The raw porcelain remains available as
 evidence. An unprovable storage/checkout mapping fails rather than substituting
 the request path.
 
-The same Git service rejects stash entries and stale effective bases before a
-worktree ADD creates directories or refs. REMOVE proves that the lane tip is an
-ancestor of the live integration tip before delegating to the existing clean/index/
-untracked preservation boundary. Neither ancestry nor a green inventory grants
-retirement authorization. Direct shell/session/sweep enforcement is the separate
-governance consumer of this owner, not a second Git hygiene engine.
+Worktree ADD creates the lane with the native Git operation, and REMOVE delegates
+to the clean, index and untracked preservation boundary without forcing removal.
 
 ## Related guides
 

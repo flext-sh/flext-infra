@@ -18,6 +18,8 @@ from tests.unit.codemod.declaration_relocation_support import (
     TestsFlextInfraDeclarationRelocationSupport,
 )
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraDeclarationRelocation:
     """Exercise real Rope bindings and preserve the original source inventory."""

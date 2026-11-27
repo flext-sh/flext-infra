@@ -782,11 +782,13 @@ class FlextInfraModelsConfigArtifact(
                 ValueError: If an override names an undeclared verb.
 
             """
-            declared = {verb.name for verb in self.make.verbs} | {
-                verb.name for verb in self.repository.extra_verbs
+            declared = {
+                *(verb.name for verb in self.make.verbs),
+                *(verb.name for verb in self.repository.extra_verbs),
+                *c.Infra.ADMISSION_FULL_FORMS,
             }
             admission = self.make.admission
-            named = {*admission.overrides, *admission.ungated_verbs}
+            named = {*admission.overrides, *admission.gated_verbs}
             unknown = sorted(named - declared)
             if unknown:
                 msg = f"make.admission names undeclared verbs: {unknown}"

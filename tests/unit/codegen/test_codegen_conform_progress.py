@@ -12,6 +12,8 @@ from flext_infra import config, infra
 from tests import c, m, t, tm, u
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraCodegenConformProgress:
     """Prove conform emits stage and repository progress on stdout."""

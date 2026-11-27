@@ -1,4 +1,4 @@
-# AUTO-GENERATED FILE — Regenerate with: make gen
+# AUTO-GENERATED FILE — Regenerate with: make check
 """Source-derived structural model contracts.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
@@ -130,6 +130,16 @@ class FlextInfraProtocolsConfigMake:
         @property
         def remote_value(self) -> t.NonEmptyStr:
             """Value of remote_variable on a remote runner."""
+            ...
+
+        @property
+        def converge_variable(self) -> t.NonEmptyStr:
+            """Structural member projected from the owning model.
+
+            Variable make check exports to the generation of its own convergence:
+            the check is the remediation the health refusal asks for, so that
+            generation never needs an earlier green check.
+            """
             ...
 
     @runtime_checkable
@@ -298,7 +308,7 @@ class FlextInfraProtocolsConfigMake:
             """Structural member projected from the owning model.
 
             Flags for ruff check --fix; MANDATORY unsafe-fix channel (operator law
-            2026-10-05): the lint gate's apply mode (make fix) always applies safe
+            2026-10-05): the lint gate's apply mode (make check) always applies safe
             and unsafe fixes.
             """
             ...
@@ -331,9 +341,9 @@ class FlextInfraProtocolsConfigMake:
         def fmt_gates(self) -> tuple[t.NonEmptyStr, ...]:
             """Structural member projected from the owning model.
 
-            Gates whose mutating side `make fmt` drives (formatters). The read-only
-            side runs in `make check`; `make fix` never repeats them (single-pass
-            verb law).
+            Gates whose mutating side `make check` drives (formatters). The read-
+            only side runs in `make check`; the fix phase of `make check` never
+            repeats them (single-pass verb law).
             """
             ...
 
@@ -479,6 +489,24 @@ class FlextInfraProtocolsConfigMake:
             """Repository-relative pytest reports root."""
             ...
 
+        @property
+        def config_receipts_directory(self) -> t.NonEmptyStr:
+            """Structural member projected from the owning model.
+
+            Checkout-root directory of the typed config receipts Testmon
+            fingerprints as per-test dependencies.
+            """
+            ...
+
+        @property
+        def config_insensitive_executables(self) -> tuple[t.NonEmptyStr, ...]:
+            """Structural member projected from the owning model.
+
+            Programs whose child processes never read project config; any other
+            child makes its test depend on every config file.
+            """
+            ...
+
     @runtime_checkable
     class MakeHarnessSpecExecutorEnvironmentSpec(
         FlextInfraProtocolsConfigContract.ConfigContract, Protocol
@@ -565,11 +593,11 @@ class FlextInfraProtocolsConfigMake:
             ...
 
         @property
-        def ungated_verbs(self) -> tuple[t.NonEmptyStr, ...]:
+        def gated_verbs(self) -> tuple[t.NonEmptyStr, ...]:
             """Structural member projected from the owning model.
 
-            Bootstrap verbs the load gate never refuses; they still run inside the
-            run limits.
+            Heavy verb forms the load gate refuses above max_load5; every other verb
+            always starts inside the run limits.
             """
             ...
 

@@ -12,6 +12,8 @@ from pathlib import Path
 from flext_infra.codemod import FlextInfraModGateEngine
 from tests import c, m, t, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraCodemodOwnPackageScans:
     """An import between a project's own namespaces never crosses an owner."""

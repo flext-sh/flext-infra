@@ -236,6 +236,10 @@ class FlextInfraConstantsCodegenProject(FlextInfraConstantsConfig):
     """
     MISE_LOCK_PLATFORM_KEY: ClassVar[str] = "platforms.{platform}"
     "mise.lock per-platform table key of one locked tool version."
+    MISE_LOCK_VERSION_KEY: ClassVar[str] = "lockfile_version"
+    "mise.lock format version key."
+    MISE_LOCK_MIGRATION_SOURCE_VERSION: ClassVar[int] = 3
+    "Existing explicit format whose migration is owned by make upg."
     MISE_PLATFORM_BY_HOST: ClassVar[Mapping[tuple[str, str], str]] = MappingProxyType({
         ("Linux", "x86_64"): "linux-x64",
         ("Linux", "aarch64"): "linux-arm64",

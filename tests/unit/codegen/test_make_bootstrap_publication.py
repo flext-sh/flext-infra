@@ -14,6 +14,8 @@ from flext_infra import config, infra
 from flext_infra.workspace import FlextInfraBindingService
 from tests import c, p, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsMakeBootstrapPublication:
     """Bootstrap preserves operation coverage across actual member transactions."""

@@ -143,7 +143,6 @@ class TestsFlextInfraCodegenMakeEnvironment:
         runtime = project_root / ".mise"
         return {
             config.Infra.codegen.make.ci.variable: "",
-            "MISE_GITHUB_TOKEN": "",
             "XDG_CONFIG_HOME": str(host_config),
             "GH_CONFIG_DIR": str(gh_config),
             "PATH": os.pathsep.join((str(shims), os.environ["PATH"])),
@@ -196,15 +195,11 @@ class TestsFlextInfraCodegenMakeEnvironment:
             encoding="utf-8",
         )
         credential = "caller-selected-test-credential"
-        unset = ""
         process = tm.ok(
             u.Tests.run_isolated_make(
                 ["--no-print-directory", "status"],
                 cwd=project_root,
                 env={
-                    "GITHUB_TOKEN": unset,
-                    "GH_TOKEN": unset,
-                    "MISE_GITHUB_TOKEN": credential,
                     "EXPECTED_CREDENTIAL": credential,
                     **(
                         TestsFlextInfraCodegenMakeEnvironment._lane_scope_over_host_gh(
@@ -213,7 +208,7 @@ class TestsFlextInfraCodegenMakeEnvironment:
                             credential,
                         )
                         if host_command
-                        else {}
+                        else {"MISE_GITHUB_TOKEN": credential}
                     ),
                 },
             ),

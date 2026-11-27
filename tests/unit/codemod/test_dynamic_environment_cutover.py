@@ -15,6 +15,8 @@ from flext_infra import FlextInfraConfig, FlextInfraSettings, config, infra
 from flext_infra.workspace import FlextInfraRopeWorkspace
 from tests import c, m, p, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraDynamicEnvironmentCutover:
     """Preserve unset, empty, and populated values without default normalization."""

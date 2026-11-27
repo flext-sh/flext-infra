@@ -301,7 +301,7 @@ class FlextInfraUtilitiesLazyInitPlan:
                 ).declaration_only
             ):
                 continue
-            generated = text is not None and text.startswith(c.Infra.AUTOGEN_HEADER)
+            generated = text is not None and text.startswith(c.Infra.AUTOGEN_MARKER)
             if any(
                 module.suffix == c.Infra.EXT_PYTHON
                 and module.name != c.Infra.INIT_PY
@@ -354,7 +354,7 @@ class FlextInfraUtilitiesLazyInitPlan:
                 current_pkg=name,
                 surface=name.split(".", maxsplit=1)[0],
                 generated_init=init is not None
-                and init.startswith(c.Infra.AUTOGEN_HEADER),
+                and init.startswith(c.Infra.AUTOGEN_MARKER),
                 importable=bool(name)
                 and all(
                     part.isidentifier() and not iskeyword(part)
@@ -914,7 +914,7 @@ class FlextInfraUtilitiesLazyInitPlan:
                     else ""
                 )
                 published = source.startswith(
-                    c.Infra.AUTOGEN_HEADER
+                    c.Infra.AUTOGEN_MARKER
                 ) and name in FlextInfraUtilitiesLazyInitPlan._lazy_import_names(source)
             return (provider, name) if published else None
 
@@ -1267,7 +1267,7 @@ class FlextInfraUtilitiesLazyInitPlan:
             )
             is not None
             and text.strip()
-            and not text.startswith(c.Infra.AUTOGEN_HEADER)
+            and not text.startswith(c.Infra.AUTOGEN_MARKER)
             for candidate in (pkg_dir, *entry.descendant_child_dirs)
             if str(candidate) in run.index.packages_by_dir
         )

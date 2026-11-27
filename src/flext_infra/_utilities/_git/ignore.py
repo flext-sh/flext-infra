@@ -380,7 +380,7 @@ class FlextInfraUtilitiesGitignore:
         the layout override additions and the repository-owned patterns. Every
         renderer of ``base/gitignore.j2`` (conform planning, the layout engine,
         ``codegen new``) consumes this projection, so the layout gate can never
-        demand a pattern that ``make gen`` does not materialize.
+        demand a pattern that ``make check`` does not materialize.
 
         Returns:
             The resulting ``tuple[p.Infra.ScaffoldGitignoreSectionSpec, ...],``.

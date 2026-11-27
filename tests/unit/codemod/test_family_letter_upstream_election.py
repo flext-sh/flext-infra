@@ -20,6 +20,8 @@ from pathlib import Path
 
 from tests import c, config, t, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraCodemodFamilyLetterUpstreamElection:
     """The `u` family of a multi-upstream package binds `u` upstream."""

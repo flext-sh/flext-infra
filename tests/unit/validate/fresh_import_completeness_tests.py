@@ -19,6 +19,8 @@ import flext_infra
 from flext_infra.validate import FlextInfraValidateFreshImport
 from tests import c, m, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 if TYPE_CHECKING:
     from collections.abc import Callable
     from pathlib import Path

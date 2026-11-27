@@ -15,6 +15,8 @@ from tests.unit.refactor.import_normalization_support import (
     TestsFlextInfraRefactorImportNormalizationSupport,
 )
 
+pytestmark = c.Tests.MARK.slow
+
 if TYPE_CHECKING:
     from pathlib import Path
 

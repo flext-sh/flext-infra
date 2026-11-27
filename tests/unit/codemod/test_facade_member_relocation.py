@@ -17,6 +17,8 @@ from pathlib import Path
 from flext_infra.codemod import FlextInfraModGateEngine, FlextInfraModReplacements
 from tests import c, p, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraFacadeMemberRelocation:
     """The native scan and publisher preserve noncanonical source expressions."""

@@ -11,6 +11,8 @@ from pathlib import Path
 from tests import c, m, t, tm, u
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraCodegenDocumentationLanguage:
     """Validate the sole authorial key before activating any real repository."""

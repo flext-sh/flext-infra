@@ -125,6 +125,7 @@ class TestsFlextInfraRopeAnalysis:
     def test_namespace_policy_retains_inherited_public_payload(tmp_path: Path) -> None:
         """The real policy consumer publishes inherited names without changing MRO."""
         project, package = u.Tests.demo_project(tmp_path)
+        u.Tests.git_bootstrap(project, ("init", "-b", c.Infra.GIT_MAIN))
         alias = next(iter(sorted(c.Infra.ALIAS_NAMES)))
         source = package / "api.py"
         content = (

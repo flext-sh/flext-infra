@@ -786,7 +786,7 @@ class FlextInfraModTextGateEngine:
             entries.extend(found)
             if updated == source:
                 continue
-            if source.startswith(c.Infra.AUTOGEN_HEADER):
+            if source.startswith(c.Infra.AUTOGEN_MARKER):
                 return outcome.fail(
                     f"generated findings require canonical generator repair: {path}",
                     error_code=c.Infra.ToolOutcome.ERROR.value,

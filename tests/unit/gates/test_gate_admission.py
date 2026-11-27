@@ -23,6 +23,8 @@ from flext_infra import FlextInfraConfig
 from tests import c, m, p, tm, u
 from tests.fixtures import TestsFlextInfraGateAdmissionHolder
 
+pytestmark = c.Tests.MARK.slow
+
 _WAIT_SECONDS = 180.0
 
 
@@ -516,6 +518,57 @@ class TestsFlextInfraGateAdmission:
             eq=c.Infra.GATE_ADMISSION_REFUSED_EXIT_CODE,
         )
         tm.that("last make tests failed" in refused.stderr, eq=True)
+
+    @classmethod
+    def test_check_convergence_generation_skips_the_check_health(
+        cls, tmp_path: Path
+    ) -> None:
+        """The check is the remediation: its generation needs no earlier green."""
+        environment = cls._environment(tmp_path, None)
+        refused = cls._gate(
+            environment, "gen", TestsFlextInfraGateAdmissionHolder.Mode.CONVERGE_HEALTH
+        )
+        tm.that(
+            tm.ok(refused.wait(timeout=_WAIT_SECONDS)),
+            eq=c.Infra.GATE_ADMISSION_REFUSED_EXIT_CODE,
+        )
+        tm.that("last make check failed" in refused.stderr, eq=True)
+        converge = FlextInfraConfig.fetch_global().Infra.codegen.make.ci
+        admitted = cls._gate(
+            {**environment, converge.converge_variable: "1"},
+            "gen",
+            TestsFlextInfraGateAdmissionHolder.Mode.CONVERGE_HEALTH,
+        )
+        tm.that(tm.ok(admitted.wait(timeout=_WAIT_SECONDS)), eq=0)
+
+    @classmethod
+    def test_stale_makefile_projection_admits_its_regenerating_check(
+        cls, tmp_path: Path
+    ) -> None:
+        """A Makefile without the converge variable is healed by its own check."""
+        environment = cls._environment(tmp_path, None)
+        converge = FlextInfraConfig.fetch_global().Infra.codegen.make.ci
+        makefile = tmp_path / c.Infra.MAKEFILE_FILENAME
+        makefile.write_text(
+            "_builtin_converge_all:\n\t$(SELF_MAKE) _builtin_gen_all\n",
+            encoding="utf-8",
+        )
+        admitted = cls._gate(
+            environment, "gen", TestsFlextInfraGateAdmissionHolder.Mode.CONVERGE_HEALTH
+        )
+        tm.that(tm.ok(admitted.wait(timeout=_WAIT_SECONDS)), eq=0)
+        makefile.write_text(
+            "_builtin_converge_all:\n"
+            f"\t{converge.converge_variable}=1 $(SELF_MAKE) _builtin_gen_all\n",
+            encoding="utf-8",
+        )
+        refused = cls._gate(
+            environment, "gen", TestsFlextInfraGateAdmissionHolder.Mode.CONVERGE_HEALTH
+        )
+        tm.that(
+            tm.ok(refused.wait(timeout=_WAIT_SECONDS)),
+            eq=c.Infra.GATE_ADMISSION_REFUSED_EXIT_CODE,
+        )
 
     @classmethod
     def test_ci_runner_and_pre_push_hook_are_not_repeat_limited(

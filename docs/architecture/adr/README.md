@@ -35,7 +35,7 @@ The current implementation supersedes the divergent ADR text on these points:
 
 - `APPLY` is removed from every producer and consumer.
 - Configuration declares `latest`. Only `make upg` resolves newer releases and writes
-  the committed `uv.lock` and `mise.lock`; `make setup`, `make gen` and `make fmt`
+  the committed `uv.lock` and `mise.lock`; `make setup` and `make check`
   install frozen from those locks.
 - Mise manages itself through the `[tools]` entry `mise.lock` pins. The fleet toolchain
   has no npm-backed tool; `make setup` installs only the declared tools and proves each

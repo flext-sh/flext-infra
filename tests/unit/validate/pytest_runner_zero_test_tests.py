@@ -288,7 +288,7 @@ class TestsFlextInfraPytestRunnerZeroTest:
         self,
         tmp_path: Path,
     ) -> None:
-        """One bounded full execution preserves the native empty-suite status.
+        """One full execution preserves the native empty-suite status.
 
         FULL derives its inventory from the suite's single collection and must
         execute a nonempty inventory, so an empty project keeps pytest's
@@ -308,11 +308,7 @@ class TestsFlextInfraPytestRunnerZeroTest:
         )
         tm.that(context.execution_mode, eq=c.Infra.PytestExecutionMode.FULL)
         tm.that(context.testmon_db, eq=runner.testmon_db)
-        tm.that(
-            context.deadline_monotonic,
-            eq=runner.started_at_monotonic
-            + config.Infra.tooling.tools.pytest.run_timeout_seconds,
-        )
+        tm.that(context.deadline_monotonic, none=True)
         tm.that(len(tuple(reports_root.glob("*/run-context.json"))), eq=1)
         suite = m.Cli.ProcessOutcome.model_validate_json(
             self._read(report_dir / "suite-outcome.json"),
@@ -387,11 +383,7 @@ class TestsFlextInfraPytestRunnerZeroTest:
         )
         tm.that(context.execution_mode, eq=c.Infra.PytestExecutionMode.FULL)
         tm.that(context.testmon_db, eq=runner.testmon_db)
-        tm.that(
-            context.deadline_monotonic,
-            eq=runner.started_at_monotonic
-            + config.Infra.tooling.tools.pytest.run_timeout_seconds,
-        )
+        tm.that(context.deadline_monotonic, none=True)
         # FULL has no separate inventory phase: its one suite collection owns
         # the startup failure, the raw log and the native outcome.
         for phase in ("inventory", "selection"):

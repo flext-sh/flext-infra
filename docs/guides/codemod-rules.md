@@ -236,7 +236,7 @@ canonical cure, applied at the origin and never by suppression or rule change
   found by source search; never recreate the removed attribute.
 - **`missing-module-attribute` / `missing-import` on generated packages** — a
   stale generated lazy `__init__.py` re-exports modules or letters that moved.
-  Cure: regenerate at the owner (`make gen`); hand-editing a managed
+  Cure: regenerate at the owner (`make check`); hand-editing a managed
   projection is prohibited.
 - **`invalid-annotation` on test fixtures** — a fixture declares
   `self: SomeSettings` while its test class does not subclass that settings

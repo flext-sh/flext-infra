@@ -10,6 +10,8 @@ from pathlib import Path
 
 from tests import c, p, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsNestedProtocolFacade:
     """Exercise qualified imports and rendering convergence through public utilities."""

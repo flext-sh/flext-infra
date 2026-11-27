@@ -18,6 +18,13 @@ class TestsFlextInfraOrphanImport:
     """Strip the guard import only when no read of the name survives."""
 
     @staticmethod
+    @c.Tests.MARK.slow
+    def test_unrelated_imports_remain_untouched(tmp_path: Path) -> None:
+        """A module without typing imports retains its exact source."""
+        source = "import os\n\nvalue = 1\n"
+        tm.that(TestsFlextInfraOrphanImport._strip(tmp_path, source), eq=source)
+
+    @staticmethod
     def _strip(tmp_path: Path, source: str) -> str:
         """Strip one real module's scaffold through its native source module.
 
@@ -45,8 +52,12 @@ class TestsFlextInfraOrphanImport:
     ) -> None:
         """A populated TYPE_CHECKING block keeps its guarded import intact."""
         source = (
-            "from typing import TYPE_CHECKING\n"
-            "\n"
+            (
+                "import typing\n"
+                if guard.startswith("typing.")
+                else "from typing import TYPE_CHECKING\n"
+            )
+            + "\n"
             f"if {guard}:\n"
             "    from collections.abc import Sequence\n"
             "\n"
@@ -97,3 +108,21 @@ class TestsFlextInfraOrphanImport:
         stripped = TestsFlextInfraOrphanImport._strip(tmp_path, source)
         tm.that(stripped, lacks="TYPE_CHECKING")
         tm.that(stripped, has="from typing import ClassVar")
+
+    @staticmethod
+    def test_ellipsis_guard_disappears_without_removing_other_guards(
+        tmp_path: Path,
+    ) -> None:
+        """Only the empty typing guard is removed by the native rewrite."""
+        source = (
+            "from typing import TYPE_CHECKING\n"
+            "\n"
+            "if TYPE_CHECKING:\n"
+            "    ...\n"
+            "\n"
+            "if True:\n"
+            "    pass\n"
+        )
+        stripped = TestsFlextInfraOrphanImport._strip(tmp_path, source)
+        tm.that(stripped, lacks="TYPE_CHECKING")
+        tm.that(stripped, has="if True:\n    pass")

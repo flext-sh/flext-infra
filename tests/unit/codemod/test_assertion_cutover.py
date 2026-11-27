@@ -11,6 +11,8 @@ from pathlib import Path
 from flext_infra import FlextInfraCli, transformers
 from tests import c, m, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraTestAssertionCutover:
     """Rewrite every bare assert through the public semantic planner."""

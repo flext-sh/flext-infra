@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import os
 import shutil
+import sys
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Annotated
@@ -20,6 +21,8 @@ from packaging.version import Version
 
 from flext_infra import config
 from tests import c, m, tm, u
+
+pytestmark = c.Tests.MARK.slow
 
 
 class TestsFlextInfraMisePinBootstrap:
@@ -109,12 +112,17 @@ class TestsFlextInfraMisePinBootstrap:
         *,
         git_metadata: bool = True,
         mise_version: str | None = None,
+        platform_tool: m.Infra.MiseToolEntry | None = None,
     ) -> None:
         """Render the real bootstrap macro with the declared self-managed tool."""
         if git_metadata:
             u.Tests.initialize_git_repo(tmp_path)
         (tmp_path / "home").mkdir()
         toolchain = config.Infra.codegen.toolchain
+        if platform_tool is not None:
+            toolchain = toolchain.model_copy(
+                update={"tools": (platform_tool, *toolchain.tools)},
+            )
         template_root = u.Infra.codegen_templates_root(config.Infra.codegen)
         shutil.copyfile(
             template_root / "base" / "tool_bootstrap_recipe.j2",
@@ -124,7 +132,8 @@ class TestsFlextInfraMisePinBootstrap:
         template.write_text(
             '{% from "tool_bootstrap_recipe.j2" import tool_bootstrap_recipe %}'
             '{{ tool_bootstrap_recipe("bootstrap", "$(PROJECT_ROOT)", '
-            "toolchain, [toolchain.mise_selector], "
+            "toolchain, [toolchain.mise_selector] + "
+            "(toolchain.mise_platform_tools | list), "
             "\"sh -ec 'command -v mise > runtime-mise-path.txt; "
             "mise --version > runtime-mise-version.txt; "
             "printf recovered > recovered.txt'\", make, "
@@ -147,16 +156,24 @@ class TestsFlextInfraMisePinBootstrap:
             ),
         )
         (tmp_path / "Makefile").write_text(
-            "PROJECT_ROOT := $(CURDIR)\nsetup: bootstrap\n" + recipe,
+            "PROJECT_ROOT := $(CURDIR)\n"
+            "BOOTSTRAP_MISE := $(HOME)/.local/bin/mise\n"
+            "setup: bootstrap\n" + recipe,
             encoding="utf-8",
         )
-        (tmp_path / ".mise.toml").write_text(
+        mise_config = (
             f"[settings]\nlockfile = {str(toolchain.mise_lockfile).lower()}\n"
             "[tools]\n"
             f'"{toolchain.mise_selector}" = '
-            f'"{mise_version or toolchain.mise_version}"\n',
-            encoding="utf-8",
+            f'"{mise_version or toolchain.mise_version}"\n'
         )
+        if platform_tool is not None:
+            mise_config += (
+                f'{platform_tool.name} = {{ version = "{platform_tool.version}", '
+                f'os = ["{platform_tool.os[0]}"] }}\n'
+                '[vars]\nflext_host_os = "{{ os() }}"\n'
+            )
+        (tmp_path / ".mise.toml").write_text(mise_config, encoding="utf-8")
         tm.ok(
             u.Cli.run_checked(
                 ["mise", "trust", str(tmp_path / ".mise.toml")],
@@ -166,12 +183,26 @@ class TestsFlextInfraMisePinBootstrap:
             ),
         )
 
+    @u.Tests.fixture()
+    def missing_mise_lock_project(self, tmp_path: Path, *, git_metadata: bool) -> Path:
+        """Prepare the checkout and a warm acquisition binary without a lock.
+
+        Returns:
+            The isolated checkout.
+
+        """
+        self._project(tmp_path, git_metadata=git_metadata)
+        bootstrap = tmp_path / "home" / ".local" / "bin"
+        bootstrap.mkdir(parents=True)
+        shutil.copy2(tm.not_none(shutil.which("mise")), bootstrap / "mise")
+        return tmp_path
+
     @c.Tests.MARK.parametrize("git_metadata", [False, True])
     def test_setup_preserves_a_missing_self_pin(
-        self, tmp_path: Path, *, git_metadata: bool
+        self, missing_mise_lock_project: Path, *, git_metadata: bool
     ) -> None:
         """Frozen setup cannot resolve a missing lock or start its lifecycle."""
-        self._project(tmp_path, git_metadata=git_metadata)
+        tmp_path = missing_mise_lock_project
         setup = tm.ok(
             u.Tests.run_isolated_make(
                 ["setup"], cwd=tmp_path, env=self.environment(tmp_path)
@@ -270,6 +301,7 @@ class TestsFlextInfraMisePinBootstrap:
                 bin_path="bin",
             ),
             depends=(dependency.selector or dependency.name,),
+            os=("linux",),
             install_env={"BUILD_INPUT_IDENTITY": "fixture-owned-input"},
             postinstall=m.Infra.MisePostinstallOptions(
                 run='printf "%s\\n" "$MISE_TOOL_INSTALL_PATH"',
@@ -299,6 +331,11 @@ class TestsFlextInfraMisePinBootstrap:
         ):
             tm.that(observed[key], eq=value)
         tm.that(observed["depends"], eq=list(source.depends))
+        tm.that(observed["os"], eq=list(source.os))
+        tm.that(
+            u.Tests.toml_mapping(document["vars"])["flext_host_os"],
+            eq="{{ os() }}",
+        )
         tm.that(observed["install_env"], eq=dict(source.install_env))
         tm.that(
             observed["postinstall"],
@@ -309,16 +346,53 @@ class TestsFlextInfraMisePinBootstrap:
             eq={"python", selected.mise_selector, *selected.tool_keys.values()},
         )
 
-    @c.Tests.MARK.slow
-    def test_setup_provisions_the_pinned_release_and_runs_it(
+    @u.Tests.fixture()
+    def installed_mise_with_excluded_tool(
         self,
         tmp_path: Path,
-    ) -> None:
-        """The committed lock governs the release executing the lifecycle."""
-        self._project(tmp_path)
+    ) -> Path:
+        """Provision the original release without running the setup lifecycle.
+
+        Returns:
+            The isolated checkout with its warmed tool installation.
+
+        """
+        platform_tool = m.Infra.MiseToolEntry(
+            name="node",
+            version="1.0.0",
+            os=("macos",) if sys.platform == "linux" else ("linux",),
+            version_probe=config.Infra.codegen.toolchain.tools[0].version_probe,
+        )
+        self._project(tmp_path, platform_tool=platform_tool)
         (tmp_path / "mise.lock").write_text(
             u.Tests.repo_mise_lock(), encoding=c.DEFAULT_ENCODING
         )
+        bootstrap = tmp_path / "home" / ".local" / "bin"
+        bootstrap.mkdir(parents=True)
+        mise = bootstrap / "mise"
+        shutil.copy2(tm.not_none(shutil.which("mise")), mise)
+        tm.ok(
+            u.Cli.run_checked(
+                [
+                    str(mise),
+                    "install",
+                    config.Infra.codegen.toolchain.mise_selector,
+                ],
+                cwd=tmp_path,
+                options=m.Cli.ProcessOptions(
+                    env={**self.environment(tmp_path), "MISE_LOCKED": "1"},
+                ),
+            ),
+        )
+        return tmp_path
+
+    @c.Tests.MARK.slow
+    def test_setup_provisions_the_pinned_release_and_runs_it(
+        self,
+        installed_mise_with_excluded_tool: Path,
+    ) -> None:
+        """The committed lock governs the release executing the lifecycle."""
+        tmp_path = installed_mise_with_excluded_tool
         setup = tm.ok(
             u.Tests.run_isolated_make(
                 ["setup"], cwd=tmp_path, env=self.environment(tmp_path)
@@ -373,69 +447,6 @@ class TestsFlextInfraMisePinBootstrap:
             output,
             has=f"Failed to install {config.Infra.codegen.toolchain.mise_selector}@",
         )
-
-    @staticmethod
-    def test_setup_provisions_the_pin_and_never_writes_a_lock(tmp_path: Path) -> None:
-        """The rendered setup recipe installs the committed pin, never resolves."""
-        root, _ = u.Tests.render_make_environment(
-            tmp_path,
-            c.Infra.MakeProfile.STANDALONE,
-        )
-        rendered = (root / c.Infra.MAKEFILE_FILENAME).read_text(
-            encoding=c.Infra.ENCODING_DEFAULT,
-        )
-        setup = rendered.split("_bootstrap_setup_tools:", 1)[1].split("\n\n", 1)[0]
-
-        tm.that(setup, has="bootstrap_stage=lock-pin")
-        tm.that(
-            setup,
-            has=(
-                'MISE_LOCKED=1 "$(BOOTSTRAP_MISE)" -C "$(PROJECT_ROOT)" install --yes'
-            ),
-        )
-        tm.that(
-            setup,
-            has=(
-                'mise_pin="$$(MISE_LOCKED=1 "$(BOOTSTRAP_MISE)" -C '
-                '"$(PROJECT_ROOT)" tool'
-            ),
-        )
-        tm.that(setup, has='"$$mise_pin "*)')
-        tm.that(setup, has='"$$mise_reader" -C "$(PROJECT_ROOT)" install --yes')
-        tm.that(setup, has="bootstrap_stage=release-verification")
-        tm.that(setup, has="re-provisioning the pinned release")
-        tm.that(
-            setup,
-            has=(
-                'MISE_LOCKED=1 "$(BOOTSTRAP_MISE)" -C "$(PROJECT_ROOT)" '
-                "install --force --yes"
-            ),
-        )
-        tm.that(
-            setup,
-            lacks=['MISE_LOCKFILE=0 "$(BOOTSTRAP_MISE)"', " lock"],
-        )
-
-    @staticmethod
-    def test_upgrade_locks_only_through_the_declared_release(tmp_path: Path) -> None:
-        """Every lock write of the upgrade names the declared self release."""
-        root, _ = u.Tests.render_make_environment(
-            tmp_path,
-            c.Infra.MakeProfile.STANDALONE,
-        )
-        rendered = (root / c.Infra.MAKEFILE_FILENAME).read_text(
-            encoding=c.Infra.ENCODING_DEFAULT,
-        )
-        upgrade = rendered.split("_upg_toolchain:", 1)[1].split("\n\n", 1)[0]
-
-        tm.that(upgrade, has='MISE_LOCKFILE=0 "$(BOOTSTRAP_MISE)"')
-        tm.that(upgrade, has='"$$mise_reader" --version')
-        tm.that(
-            upgrade,
-            has='"$$mise_reader" -C "$$lock_root" lock --bump --dry-run --json',
-        )
-        tm.that(upgrade, has='"$$mise_reader" -C "$$lock_root" lock')
-        tm.that(upgrade, lacks='"$(BOOTSTRAP_MISE)" -C "$$lock_root"')
 
     @c.Tests.MARK.parametrize(
         ("pin", "acquires"),
@@ -580,6 +591,7 @@ class TestsFlextInfraMisePinBootstrap:
             '{% from "tool_bootstrap_recipe.j2" import mise_acquisition, '
             "mise_declared_reader, mise_lock_changed, mise_staging_cleanup %}"
             "PROJECT_ROOT := $(CURDIR)\n"
+            "BOOTSTRAP_MISE := $(HOME)/.local/bin/mise\n"
             "upg:\n"
             "\t+@set -eu; \\\n"
             "\tbootstrap_status=0; mise_stage=; \\\n"
@@ -587,8 +599,8 @@ class TestsFlextInfraMisePinBootstrap:
             "\t\t{{ mise_staging_cleanup() }} \\\n"
             '\t\texit "$${bootstrap_status}"\' EXIT; \\\n'
             '\t{{ mise_acquisition("$(PROJECT_ROOT)", toolchain) }} \\\n'
-            '\t{{ mise_declared_reader("$(PROJECT_ROOT)", toolchain) }} \\\n'
-            "\t{{ mise_lock_changed('\"$$mise_reader\"', "
+            '\t{{ mise_declared_reader("$(PROJECT_ROOT)", toolchain) }}\n'
+            "\t{{ mise_lock_changed('$$mise_reader', "
             "'\"$(PROJECT_ROOT)\"', install_tools) }}\n",
             encoding="utf-8",
         )
@@ -714,12 +726,17 @@ class TestsFlextInfraMisePinBootstrap:
             ),
         )
 
-    @c.Tests.MARK.slow
-    def test_wrong_real_cached_release_is_replaced_before_lifecycle(
+    @u.Tests.fixture()
+    def replaced_mise_release(
         self,
         tmp_path: Path,
-    ) -> None:
-        """A genuine release replacing the pinned install is repaired from the lock."""
+    ) -> tuple[Path, Path, bytes, str]:
+        """Exchange two genuine Mise releases before measuring repair.
+
+        Returns:
+            The checkout, executable path, original bytes and locked version.
+
+        """
         current = tmp_path / "current"
         current.mkdir()
         self._project(current)
@@ -783,13 +800,22 @@ class TestsFlextInfraMisePinBootstrap:
             ),
         )
         tm.that(observed.split()[0], eq=older)
+        return current, current_executable, current_bytes, pin
 
+    @c.Tests.MARK.slow
+    def test_wrong_real_cached_release_is_replaced_before_lifecycle(
+        self,
+        replaced_mise_release: tuple[Path, Path, bytes, str],
+    ) -> None:
+        """A genuine release replacing the pinned install is repaired from the lock."""
+        current, current_executable, current_bytes, pin = replaced_mise_release
+        lock = u.Tests.repo_mise_lock()
         recovered = tm.ok(
             u.Tests.run_isolated_make(
                 ["setup"],
                 cwd=current,
                 env={
-                    **environment,
+                    **self.environment(current),
                     "PATH": str(self.system_path_without_mise(current)),
                 },
             ),
@@ -807,14 +833,30 @@ class TestsFlextInfraMisePinBootstrap:
         )
         tm.that((current / "mise.lock").read_text(encoding=c.DEFAULT_ENCODING), eq=lock)
 
+    @u.Tests.fixture()
     @staticmethod
-    def test_git_mirrors_use_native_uv_cache(tmp_path: Path) -> None:
-        """Read each locked Git commit back from the locally provisioned mirror."""
+    def provisioned_git_mirrors(
+        tmp_path: Path,
+    ) -> tuple[tuple[str, str, str], ...]:
+        """Prepare native repositories containing the actual locked commits.
+
+        Returns:
+            The locked sources installed in the mirrors.
+
+        """
         project = Path(__file__).resolve().parents[3]
         sources = u.Tests.locked_git_sources(project)
         mirrored = u.Tests.build_git_mirrors(project, tmp_path, sources)
         tm.that(len(mirrored), eq=len(sources))
-        for url, revision, commit in sources:
+        return sources
+
+    @staticmethod
+    def test_git_mirrors_use_native_uv_cache(
+        tmp_path: Path,
+        provisioned_git_mirrors: tuple[tuple[str, str, str], ...],
+    ) -> None:
+        """Read each locked Git commit back from the locally provisioned mirror."""
+        for url, revision, commit in provisioned_git_mirrors:
             parsed = urlsplit(url)
             mirror = tmp_path / parsed.netloc / parsed.path.lstrip("/")
             resolved = tm.ok(

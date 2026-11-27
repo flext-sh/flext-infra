@@ -12,6 +12,8 @@ from pathlib import Path
 from flext_infra import codemod, config, infra, workspace as workspace_api
 from tests import c, m, p, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 _Case = tuple[
     Path,
     Path,

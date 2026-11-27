@@ -4,7 +4,7 @@ ast-grep matches one file's syntax; a rule whose meaning depends on the
 project it runs in (its own package, the standard library, the runtime
 dependency closure) reads that fact as a native utility rule the rule
 references through ``matches``. Each producer derives one family of those
-utilities from an existing source of truth; ``make gen`` writes them into the
+utilities from an existing source of truth; ``make check`` writes them into the
 project's catalog overlay, so a native ``ast-grep scan`` and the engine see
 the same rule semantics.
 
@@ -173,7 +173,7 @@ class FlextInfraUtilitiesCodemodNative:
                 "has": {
                     "kind": "comment",
                     "nthChild": 1,
-                    "regex": rf"^{re.escape(c.Infra.AUTOGEN_HEADER)}$",
+                    "regex": rf"^{re.escape(c.Infra.AUTOGEN_MARKER)}",
                 },
             },
         }

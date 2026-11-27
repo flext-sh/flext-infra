@@ -9,7 +9,9 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra.docs import FlextInfraDocGenerator
-from tests import m, p, tm, u
+from tests import c, m, p, tm, u
+
+pytestmark = c.Tests.MARK.slow
 
 _DOCS_CONSUMER_SOURCE = r"""sys.path.insert(0, sys.argv[1])
 from flext_infra.docs import FlextInfraDocGenerator

@@ -3,7 +3,7 @@
 # @flext-generated: continuous
 # @flext-owner: flext-infra/config/codegen.yaml + flext-infra/src/flext_infra/templates/project/base/Makefile.j2
 # @flext-adjust: edit the owner configuration or template; never this projection
-# @flext-regenerate: make gen
+# @flext-regenerate: make check
 # flext-infra — generated project interface.
 # Managed by flext-infra codegen conform for new and existing repositories.
 # === SECTION: header (managed) ===
@@ -18,11 +18,14 @@ override SHELL := /bin/sh
 # a cgroup scope of the user's systemd manager at idle CPU and IO weight,
 # bounded by MemoryMax and CPUQuota; children and nested Make inherit the
 # scope, and PYTHON_CPU_COUNT sizes Python worker pools to the same CPUs. A
-# verb refuses to start while the 5-minute load average exceeds its limit,
-# except the ungated verbs; a mod without RULES or LAWS is the full form,
+# gated heavy form refuses to start while the 5-minute load average exceeds
+# its limit and every other verb always starts; a mod without RULES or LAWS is the full form,
 # named mod-full, and a check outside the commit stage without
 # CHECK_PHASE=primary is the full form, named check-full. Overrides apply when
 # the invocation names exactly one verb.
+# The default phase is assigned before admission reads it, so a bare
+# `make check` is the primary form and never the gated check-full.
+CHECK_PHASE ?= primary
 ifeq ($(MAKELEVEL)$(filter Y,$(CI)),0)
 override ADMISSION_VERB := $(if $(word 2,$(MAKECMDGOALS)),,$(or $(MAKECMDGOALS),$(.DEFAULT_GOAL),help))
 override ADMISSION_VERB := $(if $(filter mod,$(ADMISSION_VERB)),$(if $(strip $(RULES)$(LAWS)),mod,mod-full),$(ADMISSION_VERB))
@@ -30,7 +33,7 @@ override ADMISSION_VERB := $(if $(filter check,$(ADMISSION_VERB)),$(if $(filter 
 override ADMISSION_MAX_LOAD5 := 20.0
 override ADMISSION_MEMORY_LIMIT_BYTES := 5368709120
 override ADMISSION_MAX_PROCESSES := 2
-ifeq ($(filter $(ADMISSION_VERB),setup check tests mod),)
+ifneq ($(filter $(ADMISSION_VERB),check-full tests-full mod-full),)
 override ADMISSION_LOAD5 := $(shell awk -v limit=$(ADMISSION_MAX_LOAD5) '$$2 > limit { print $$2 }' /proc/loadavg)
 ifneq ($(.SHELLSTATUS),0)
 $(error Cannot read the 5-minute load average from /proc/loadavg)
@@ -95,50 +98,30 @@ $(error Current Make executable has no physical path: $(MAKE_COMMAND))
 endif
 .DEFAULT_GOAL := help
 
+# Detect CI environment internally. The runner provides GITHUB_ACTIONS=true;
+# no caller needs to pass CI=Y.
+ifeq ($(GITHUB_ACTIONS),true)
+override CI := Y
+endif
+
 # Contract display never provisions or requires native workspace tools.
 VERB_CONTRACT := $(filter 1 TRUE Y YES true y yes True Yes,$(OPTIONS) $(HELP))
 
 # Capture the selected approval mode before any project-owned include.
 ifeq ($(strip $(CI)),Y)
 override APPROVAL_CONTEXT := Y
-ifneq ($(filter $(if $(VERB_CONTRACT),,upg lock) _upg% _lock% dep propagate,$(MAKECMDGOALS)),)
+ifneq ($(filter $(if $(VERB_CONTRACT),,upg) _upg%,$(MAKECMDGOALS)),)
 $(error Resolution and member propagation are forbidden in CI)
 endif
 endif
 
-# One GitHub credential from declared sources, each selected once before any
-# effect (config make.github_credential_command): the caller's exported token,
-# else, outside CI, the declared command when its executable is installed, else
-# anonymous. A selected command that fails or prints nothing stops the network
-# verbs (_builtin_require_github_credential), never degrading to anonymous.
-# The value stays in the environment and is never printed. The command is a
-# Mise-managed executable, refused in a checkout whose .mise.toml is not trusted
-# yet, so a bare `make setup` resolves it only after trusting the checkout.
-# It runs in the host Mise scope, where the runtime-scoped Mise variables a
-# parent Make exported cannot hide the host's own declaration of the command.
-override HOST_MISE_SCOPE := env -u MISE_CONFIG_DIR -u MISE_OVERRIDE_CONFIG_FILENAMES -u MISE_GLOBAL_CONFIG_FILE -u MISE_SYSTEM_CONFIG_DIR -u MISE_CEILING_PATHS -u MISE_AUTO_INSTALL
-GITHUB_TOKEN := $(firstword $(GITHUB_TOKEN) $(GH_TOKEN) $(MISE_GITHUB_TOKEN))
-GITHUB_CREDENTIAL_SOURCE := $(if $(GITHUB_TOKEN),environment,anonymous)
-ifeq ($(GITHUB_TOKEN),)
-ifneq ($(strip $(CI)),Y)
-ifneq ($(MAKECMDGOALS),setup)
-GITHUB_CREDENTIAL_EXECUTABLE := $(shell command -v gh)
-ifneq ($(GITHUB_CREDENTIAL_EXECUTABLE),)
-GITHUB_CREDENTIAL_SOURCE := command
-GITHUB_TOKEN := $(shell $(HOST_MISE_SCOPE) "$(GITHUB_CREDENTIAL_EXECUTABLE)" auth token)
-GITHUB_CREDENTIAL_STATUS := $(.SHELLSTATUS)
-endif
-endif
-endif
-endif
-ifneq ($(GITHUB_TOKEN),)
-GH_TOKEN := $(GITHUB_TOKEN)
-MISE_GITHUB_TOKEN := $(GITHUB_TOKEN)
-export GITHUB_TOKEN GH_TOKEN MISE_GITHUB_TOKEN
+# The acquisition Mise is the official installer's default executable, shared by
+# every checkout; the committed min_version makes Mise refuse an older one.
+ifeq ($(OS),Windows_NT)
+override BOOTSTRAP_MISE := $(HOME)/.local/bin/mise.exe
 else
-unexport GITHUB_TOKEN GH_TOKEN MISE_GITHUB_TOKEN
+override BOOTSTRAP_MISE := $(HOME)/.local/bin/mise
 endif
-unexport GITHUB_API_TOKEN
 
 # Git 2.38+ refuses the local file protocol uv uses to materialize its cached
 # git checkouts (`git clone --no-hardlinks <uv cache db> <checkout>`). Admit it
@@ -285,7 +268,9 @@ endif
 # When attached to a workspace (BOOTSTRAP_ROOT != PROJECT_ROOT), all verbs use
 # the workspace root so they share the workspace's .venv. Standalone checkouts
 # use the native uv workspace reader for non-setup/upg/help verbs.
-ifneq ($(strip $(VERB_CONTRACT) $(filter setup _setup_provision upg,$(MAKECMDGOALS))),)
+override BOOTSTRAP_VERBS := setup _setup_provision upg
+
+ifneq ($(strip $(VERB_CONTRACT) $(filter $(BOOTSTRAP_VERBS),$(MAKECMDGOALS))),)
 override REPOSITORY_ROOT := $(BOOTSTRAP_ROOT)
 else ifeq ($(strip $(filter-out help _builtin-help _setup_native_prepare pre-upg post-upg,$(MAKECMDGOALS))),)
 override REPOSITORY_ROOT := $(BOOTSTRAP_ROOT)
@@ -331,18 +316,11 @@ ifneq ($(.SHELLSTATUS),0)
 $(error Cannot resolve the physical workspace for $(MAKEFILE_ROOT))
 endif
 endif
-# The acquisition Mise is the official installer's default executable, shared by
-# every checkout; the committed min_version makes Mise refuse an older one.
-ifeq ($(OS),Windows_NT)
-override BOOTSTRAP_MISE := $(HOME)/.local/bin/mise.exe
-else
-override BOOTSTRAP_MISE := $(HOME)/.local/bin/mise
-endif
 # End SECTION: REPOSITORY_ROOT isolation
 # === SECTION: verb dispatch (managed) ===
 # Source: config:make.verbs and the canonical gate vocabulary. A verb exists
 # only in the profiles it declares (make.verbs[].profiles).
-PUBLIC_VERBS := setup upg lock gen gen-scope mod fix fmt check tests tests-full tests-harness help build clean mod-snapshots release-plan release-version release-tag release-build release-publish
+PUBLIC_VERBS := setup upg mod check tests tests-full tests-harness help build clean mod-snapshots release-plan release-version release-tag release-build release-publish
 SCRIPT_VERBS := mod-snapshots
 
 CUSTOM_MAKEFILE := $(MAKEFILE_ROOT)/custom.mk
@@ -356,7 +334,7 @@ ifneq ($(.SHELLSTATUS),0)
 $(error Failed to inspect custom Make targets in $(CUSTOM_MAKEFILE))
 endif
 ifeq ($(APPROVAL_CONTEXT),Y)
-ifneq ($(filter setup check,$(CUSTOM_DECLARED_TARGETS)),)
+ifneq ($(filter setup check tests,$(CUSTOM_DECLARED_TARGETS)),)
 $(error Approval stages cannot be replaced by custom targets)
 endif
 
@@ -377,6 +355,16 @@ $(error Failed to inspect custom approval reference in $(CUSTOM_MAKEFILE))
 endif
 ifeq ($(CUSTOM_WRAPPER_REFERENCE_COUNT),0)
 $(error Approval stage _custom-check must chain _builtin-check (wrapper parity; replacements are forbidden))
+endif
+endif
+
+ifneq ($(filter _custom-tests,$(CUSTOM_DECLARED_TARGETS)),)
+override CUSTOM_WRAPPER_REFERENCE_COUNT := $(shell awk -v reference="_builtin-tests" 'index($$0, reference) { count++ } END { print count + 0 }' "$(CUSTOM_MAKEFILE)")
+ifneq ($(.SHELLSTATUS),0)
+$(error Failed to inspect custom approval reference in $(CUSTOM_MAKEFILE))
+endif
+ifeq ($(CUSTOM_WRAPPER_REFERENCE_COUNT),0)
+$(error Approval stage _custom-tests must chain _builtin-tests (wrapper parity; replacements are forbidden))
 endif
 endif
 
@@ -409,6 +397,37 @@ CALLER_VIRTUAL_ENV := $(patsubst %/,%,$(VIRTUAL_ENV))
 ifneq ($(origin RUNTIME_ROOT),command line)
 override RUNTIME_ROOT := $(REPOSITORY_ROOT)
 endif
+
+
+# Resolve the approved invocation's GitHub credential before network effects.
+# Outside CI, an absent caller token selects the configured command when
+# installed. A failing command is surfaced by _builtin_require_github_credential.
+# Bare setup trusts the checkout before its provisioning rerun selects a token.
+# Use the acquisition Mise in host scope to avoid runtime-scoped config and shims.
+override HOST_MISE_SCOPE := env -u MISE_CONFIG_DIR -u MISE_OVERRIDE_CONFIG_FILENAMES -u MISE_GLOBAL_CONFIG_FILE -u MISE_SYSTEM_CONFIG_DIR -u MISE_CEILING_PATHS -u MISE_AUTO_INSTALL
+GITHUB_TOKEN := $(firstword $(GITHUB_TOKEN) $(GH_TOKEN) $(MISE_GITHUB_TOKEN))
+GITHUB_CREDENTIAL_SOURCE := $(if $(GITHUB_TOKEN),environment,anonymous)
+ifeq ($(GITHUB_TOKEN),)
+ifneq ($(strip $(CI)),Y)
+ifneq ($(MAKECMDGOALS),setup)
+GITHUB_CREDENTIAL_EXECUTABLE := $(shell command -v gh)
+ifneq ($(GITHUB_CREDENTIAL_EXECUTABLE),)
+GITHUB_CREDENTIAL_SOURCE := command
+GITHUB_TOKEN := $(shell $(HOST_MISE_SCOPE) "$(BOOTSTRAP_MISE)" exec -- gh auth token)
+GITHUB_CREDENTIAL_STATUS := $(.SHELLSTATUS)
+endif
+endif
+endif
+endif
+ifneq ($(GITHUB_TOKEN),)
+GH_TOKEN := $(GITHUB_TOKEN)
+MISE_GITHUB_TOKEN := $(GITHUB_TOKEN)
+export GITHUB_TOKEN GH_TOKEN MISE_GITHUB_TOKEN
+else
+unexport GITHUB_TOKEN GH_TOKEN MISE_GITHUB_TOKEN
+endif
+unexport GITHUB_API_TOKEN
+
 # Git and Mise discovery share the runtime boundary: an attached member's
 # verbs read workspace paths through the workspace runtime.
 override export GIT_CEILING_DIRECTORIES := $(shell cd "$(RUNTIME_ROOT)/.." && pwd -P)
@@ -420,6 +439,10 @@ override export MISE_CEILING_PATHS := $(GIT_CEILING_DIRECTORIES)
 # override (mise.local.toml and siblings) never selects a tool outside the lock.
 override export MISE_OVERRIDE_CONFIG_FILENAMES := .mise.toml
 override export MISE_CONFIG_DIR := $(RUNTIME_ROOT)/.mise
+# Every Mise run here reshims the checkout's own farm: a reshim binds shims to
+# the first non-shim `mise` on PATH (this checkout's pinned release), which must
+# never rebind the shared host farm other checkouts resolve through.
+override export MISE_SHIMS_DIR := $(PROJECT_ROOT)/.bin/shims
 # The project manifest remains in native project scope. An optional global
 # configuration has its own explicit runtime-scoped path; when absent, Mise
 # reads no global file. Reusing .mise.toml here classifies every project tool
@@ -586,7 +609,6 @@ _bootstrap_setup_tools:
 				*) printf 'ERROR: installed Mise %s still does not report the locked %s after the locked reinstall\n' "$$mise_reader" "$$mise_pin" >&2; exit 2 ;; \
 			esac ;; \
 	esac; \
-	export MISE_SHIMS_DIR="$(PROJECT_ROOT)/.bin/shims"; \
 	export MISE_LOCKED=1; \
 	bootstrap_stage=tool-install; \
 	"$$mise_reader" -C "$(PROJECT_ROOT)" install --yes "python" "github:jdx/mise" "uv" "github:direnv/direnv" "taplo" "aqua:ast-grep/ast-grep" "gitleaks" "aqua:boyter/scc" "github:qltysh/qlty" "github:kucherenko/jscpd" "github:microsoft/waza" "aqua:j178/prek" "gh"; \
@@ -859,23 +881,8 @@ VERB_ARGUMENTS_setup := FLEXT RECREATE
 VERB_DESCRIPTION_upg := Resolve declared dependency and tool updates and publish their resolution metadata and locks.
 VERB_ARGUMENTS_upg :=
 
-VERB_DESCRIPTION_lock := Resolve newly declared dependencies into the locks and keep every existing pin; only upg moves pins.
-VERB_ARGUMENTS_lock :=
-
-VERB_DESCRIPTION_gen := Materialize explicitly declared new projects and publish every applicable generated projection.
-VERB_ARGUMENTS_gen := ROOT
-
-VERB_DESCRIPTION_gen-scope := Run the focal generation surface (WHAT, MODULE for facades, SCOPE) through the same engine, lock and budget as gen.
-VERB_ARGUMENTS_gen-scope := ROOT WHAT MODULE SCOPE
-
 VERB_DESCRIPTION_mod := Refactor declared source structure through the shared pipeline and publish the complete coherent change; LAWS (ENFORCE ids) or RULES (rule ids) diagnose or repair one law (ADR-028 Decision 18 item 2).
 VERB_ARGUMENTS_mod := LAWS RULES
-
-VERB_DESCRIPTION_fix := Apply declared repairs to authored inputs through their canonical owners; in a workspace root ALL=Y includes every governed member.
-VERB_ARGUMENTS_fix := ALL
-
-VERB_DESCRIPTION_fmt := Format authored content through the configured formatters; in a workspace root ALL=Y includes every governed member.
-VERB_ARGUMENTS_fmt := ALL
 
 VERB_DESCRIPTION_check := Validate declarations, projections, environment, documentation and configured gates without repairs or publication.
 VERB_ARGUMENTS_check := CHECK_PHASE
@@ -920,17 +927,13 @@ VERB_HELP_LINE = printf '  %-16s %s\n' '$(1)' '$(VERB_DESCRIPTION_$(1))'$(if $(s
 # OPTIONS=Y (or HELP=Y) displays every public verb's catalog contract without
 # running its prerequisites, hooks, handler or product dispatcher.
 ifeq ($(VERB_CONTRACT),)
-PROFILE_VERBS_PLAIN := gen gen-scope
+PROFILE_VERBS_PLAIN :=
 PROFILE_VERBS_DISPATCH := help clean
-PROFILE_VERBS_ACTIVATED := mod fix fmt check tests tests-full tests-harness build release-plan release-version release-tag release-build release-publish
+PROFILE_VERBS_ACTIVATED := mod check tests tests-full tests-harness build release-plan release-version release-tag release-build release-publish
 PROFILE_VERBS_INTERPRETER :=
 PROFILE_VERBS_HOOKED := $(foreach v,$(filter-out $(PROFILE_VERBS_INTERPRETER),$(PROFILE_VERBS_ACTIVATED)),$(if $(filter pre-$(v) _custom-$(v) post-$(v),$(CUSTOM_DECLARED_TARGETS)),$(v)))
 PROFILE_VERBS_DIRECT := $(filter-out $(PROFILE_VERBS_HOOKED) $(PROFILE_VERBS_INTERPRETER),$(PROFILE_VERBS_ACTIVATED))
 PROFILE_VERBS_ROUTED := $(PROFILE_VERBS_HOOKED) $(PROFILE_VERBS_INTERPRETER)
-
-$(PROFILE_VERBS_PLAIN): %: _builtin_require_workspace _builtin_require_interpreter
-	@printf '==> %s | project=%s | profile=%s\n' '$@' "$(PROJECT_ROOT)" 'standalone'
-	$(call RUN_PUBLIC,$@)
 
 
 $(PROFILE_VERBS_DISPATCH):
@@ -963,7 +966,6 @@ endif
 # A fresh checkout is trusted first; the provisioning half then reruns Make so
 # the credential command resolves inside the trusted checkout, in the host
 # Mise scope (the rerun re-exports the runtime-scoped Mise variables itself).
-
 ifeq ($(PROJECT_ROOT),$(RUNTIME_ROOT))
 
 .PHONY: _setup_trust _setup_provision
@@ -1023,15 +1025,6 @@ endif
 
 # Attached members delegate the same operation to their physical workspace owner
 # before resolving anything.
-ifeq ($(PROJECT_ROOT),$(RUNTIME_ROOT))
-
-lock: _builtin_require_workspace _builtin_require_github_credential
-	+@$(SELF_MAKE) _lock_lifecycle
-
-else
-lock: _builtin_require_workspace
-	+@"$(SELF_MAKE_EXECUTABLE)" --no-print-directory -C "$(RUNTIME_ROOT)" -f "$(RUNTIME_ROOT)/Makefile" lock
-endif
 SCRIPT_VERBS_PLAIN :=
 SCRIPT_VERBS_DISPATCH :=
 SCRIPT_VERBS_ACTIVATED := mod-snapshots
@@ -1212,7 +1205,7 @@ _builtin_require_github_credential:
 _builtin_require_mise:
 	@set -eu; \
 	if [ ! -f "$(RUNTIME_ROOT)/.mise.toml" ]; then \
-		printf 'ERROR: missing project mise config %s; run make gen\n' "$(RUNTIME_ROOT)/.mise.toml" >&2; \
+		printf 'ERROR: missing project mise config %s; run make check\n' "$(RUNTIME_ROOT)/.mise.toml" >&2; \
 		exit 2; \
 	fi; \
 	if [ ! -f "$(RUNTIME_ROOT)/mise.lock" ]; then \
@@ -1240,7 +1233,7 @@ _builtin_require_environment: _builtin_require_interpreter
 # === SECTION: setup environment (managed) ===
 # Source: computed (MAKE_PROFILE routing)
 # Setup provisions tooling and the native project's declared dependencies.
-# It never generates or mutates project source; `make gen` owns source generation.
+# It never generates or mutates project source; `make check` owns source generation.
 # The lifecycle above owns the single native toolchain installation.
 # Attached members delegate publicly before entering it; there is no second
 # private installer or alternative source-selection pipeline.
@@ -1374,7 +1367,6 @@ _upg_toolchain: _builtin_require_workspace _builtin_require_github_credential
 	fi; \
 	done; \
 	set +f; \
-	export MISE_SHIMS_DIR="$(PROJECT_ROOT)/.bin/shims"; \
 	export MISE_LOCKED=1; \
 	bootstrap_stage=tool-install; \
 	"$$mise_reader" -C "$(PROJECT_ROOT)" install --yes "python" "github:jdx/mise" "uv" "github:direnv/direnv" "taplo" "aqua:ast-grep/ast-grep" "gitleaks" "aqua:boyter/scc" "github:qltysh/qlty" "github:kucherenko/jscpd" "github:microsoft/waza" "aqua:j178/prek" "gh"; \
@@ -1463,35 +1455,6 @@ _upg_lifecycle:
 
 # Lock resolves a changed dependency declaration (a newly declared requirement)
 # into the UV locks and keeps every pin they already hold; only upg moves a pin.
-# It runs from the environment setup installed, provisions no tool, and ends with
-# the same frozen installation, so the new requirement is installed.
-.PHONY: _lock_lifecycle
-_lock_lifecycle:
-	+@set -eu; \
-	bootstrap_stage=network-auth; \
-	if git config --global --get-regexp '^url\.https?://[^ /]+:[^ /]+@.*\.insteadof$$' >/dev/null; then \
-		printf 'ERROR: Global Git URL rewrite configuration embeds credentials and shadows the fleet SSH route; correct that configuration at its owner\n' >&2; \
-		exit 2; \
-	else \
-		rewrite_status=$$?; \
-		if [ "$$rewrite_status" -ne 1 ]; then \
-			printf 'ERROR: Cannot inspect the global Git URL rewrite configuration\n' >&2; \
-			exit "$$rewrite_status"; \
-		fi; \
-	fi; \
-	mise_bin="$(MISE)"; \
-	$(RESOLVE_DESIRED_PYTHON); \
-	set -f; \
-	$(GOVERNED_CHECKOUTS); \
-	for checkout in $$checkouts; do \
-		case "$$checkout" in .) continue ;; esac; \
-		[ ! -f "$$root/$$checkout/pyproject.toml" ] || \
-			$(UV) lock --project "$$root/$$checkout" --python "$$desired_python" --no-python-downloads; \
-	done; \
-	set +f; \
-	$(UV) lock --project "$(PROJECT_ROOT)" --python "$$desired_python" --no-python-downloads; \
-	$(INSTALL_RUNTIME_RECIPE)
-
 # Gate, fix and build verbs act on this repository only, with one body per verb
 # in every profile: a workspace root evaluates itself exactly as CI does.
 _builtin_build_artifacts:
@@ -1505,8 +1468,27 @@ _builtin_build_artifacts:
 # make.check_gates_ci, CI=C (the commit hook) runs
 # make.pre_commit_check_gates, CI=N runs
 # make.check_gates_local, and an absent CI token runs every active gate.
+# Outside CI and the commit hook, every phase first converges gen -> fix ->
+# fmt to a fixed point: passes repeat until the working tree, hashed as a git
+# tree through a throwaway index, stops changing; a tree still moving after
+# CHECK_CONVERGE_MAX_PASSES passes fails. CI=Y converges
+# nothing, so its read-only gates fail when any byte would change.
+override CHECK_CONVERGE_MAX_PASSES := 5
 _builtin_check_all: _builtin_require_environment
+	@$(if $(filter Y C,$(CI)),,$(SELF_MAKE) _builtin_converge_all)
 	@$(if $(CHECK_PROFILE),FLEXT_INFRA_PROFILE=$(CHECK_PROFILE) ,)FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/.reports/check/route.pstats" $(PROJECT_FLEXT_INFRA) workspace check --repository-root "$(if $(filter Y,$(CI)),$(PROJECT_ROOT),$(if $(filter primary,$(CHECK_PHASE)),$(RUNTIME_ROOT),$(PROJECT_ROOT)))"$(if $(CHECK_PHASE), --phase "$$CHECK_PHASE")
+
+_builtin_converge_all: _builtin_require_environment
+	@tree() { idx="$$(mktemp -u)"; GIT_INDEX_FILE="$$idx" git -C "$(PROJECT_ROOT)" add -A && GIT_INDEX_FILE="$$idx" git -C "$(PROJECT_ROOT)" write-tree; rc=$$?; rm -f "$$idx"; return $$rc; }; \
+	before="$$(tree)" || exit 1; pass=0; \
+	while :; do \
+		pass=$$((pass + 1)); \
+		if [ "$$pass" -gt $(CHECK_CONVERGE_MAX_PASSES) ]; then printf '%s\n' "❌ check: gen -> fix -> fmt did not reach a fixed point in $(CHECK_CONVERGE_MAX_PASSES) passes" >&2; exit 1; fi; \
+		FLEXT_INFRA_CHECK_CONVERGE=1 $(SELF_MAKE) _builtin_gen_all && $(SELF_MAKE) _builtin_fix_all && $(SELF_MAKE) _builtin_fmt_all || exit 1; \
+		after="$$(tree)" || exit 1; \
+		if [ "$$after" = "$$before" ]; then printf '%s\n' "INFO: check: gen -> fix -> fmt fixed point after $$pass pass(es)"; break; fi; \
+		before="$$after"; \
+	done
 
 _builtin_tests_all: _builtin_require_environment
 	@FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/.reports/tests/route.pstats" $(PROJECT_FLEXT_INFRA) workspace tests --repository-root "$(PROJECT_ROOT)" --scope "$(GATE_SCOPE)"
@@ -1519,7 +1501,7 @@ _builtin_tests_harness_all: _builtin_require_environment
 
 # fmt is format-only (single-pass verb law): ruff formats Python, the
 # fmt_gates formatters run once through the checker's apply mode, and every
-# lint repair belongs to `make fix`. Every repair requires read-only native
+# lint repair belongs to `make check`. Every repair requires read-only native
 # verification; remaining findings and tool failures both fail the verb.
 _builtin_fmt_all: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gate-set fmt --scope $(GATE_SCOPE) --apply

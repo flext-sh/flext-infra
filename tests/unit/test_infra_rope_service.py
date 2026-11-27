@@ -26,6 +26,8 @@ class TestsFlextInfraInfraRopeService:
         source_path = package / "query_owner.py"
         source = "class QueryOwner:\n    pass\n"
         source_path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        # Git owns the source inventory: commit the module the queries read.
+        u.Tests.initialize_git_repo(root)
         with infra.rope_workspace(root) as workspace:
             project = workspace.rope_project
             resource = tm.not_none(workspace.resource(source_path))
@@ -294,6 +296,8 @@ class TestsFlextInfraInfraRopeService:
             nested = repository_root / root / "contracts"
             nested.mkdir(parents=True)
             (nested / "owner.py").write_text(source, encoding=c.DEFAULT_ENCODING)
+        # Git owns the source inventory: commit the modules lazy-init plans.
+        u.Tests.initialize_git_repo(repository_root)
 
         tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
 
@@ -574,6 +578,7 @@ class TestsFlextInfraInfraRopeService:
         scratch = unowned_parent / "scratch"
         (unowned_parent / c.Infra.DEFAULT_SRC_DIR).mkdir(parents=True)
         scratch.mkdir()
+        u.Tests.initialize_git_repo(scratch)
 
         with infra.rope_workspace(scratch) as rope:
             tm.that(rope.rope_repository_root, eq=scratch.resolve())

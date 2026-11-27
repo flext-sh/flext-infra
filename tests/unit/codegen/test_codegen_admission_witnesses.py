@@ -10,6 +10,8 @@ from pathlib import Path
 
 from tests import c, m, p, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraCodegenAdmissionWitnesses:
     """Exercise native verification and publication with authenticated file reads."""

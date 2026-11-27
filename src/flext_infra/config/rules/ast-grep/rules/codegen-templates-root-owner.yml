@@ -7,7 +7,7 @@
 # helper: the commit deleted the helper and moved the whole composition into
 # the owner. Two consumers in codegen/_conform/plan.py kept the old
 # composition, so after the rename they call a method that no longer exists and
-# `make gen` dies with AttributeError across the whole fleet.
+# `make check` dies with AttributeError across the whole fleet.
 #
 # This is the "renamed owner, missed consumer" class: the rule states the
 # contract structurally so every lane and branch that still carries the old

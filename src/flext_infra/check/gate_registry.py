@@ -15,6 +15,7 @@ from flext_infra.gates import (
     FlextInfraGatesBandit,
     FlextInfraGatesCodemod,
     FlextInfraGatesConflictMarkers,
+    FlextInfraGatesCubic,
     FlextInfraGatesDeps,
     FlextInfraGatesDirenv,
     FlextInfraGatesDuplication,
@@ -139,6 +140,7 @@ class FlextInfraGateRegistry:
             FlextInfraGatesCodemod,
             FlextInfraGatesDirenv,
             FlextInfraGatesDuplication,
+            FlextInfraGatesCubic,
         )
 
     def get(self, gate_id: str) -> type[FlextInfraGates] | None:

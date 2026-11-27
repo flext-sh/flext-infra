@@ -14,6 +14,8 @@ from typing import Literal
 from flext_infra.gates import FlextInfraGatesPyrefly
 from tests import c, m, p, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraProtocolNamespaceProjection:
     """Check namespace MRO and nested contracts through a fresh public import."""

@@ -1,4 +1,4 @@
-# AUTO-GENERATED FILE — Regenerate with: make gen
+# AUTO-GENERATED FILE — Regenerate with: make check
 """Source-derived structural model contracts.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
@@ -9,9 +9,12 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from pathlib import Path
 from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
 from flext_cli import FlextCliProtocols
+
+from flext_infra._protocols import FlextInfraProtocolsMiseToolchainBase
 
 if TYPE_CHECKING:
     from flext_cli import p
@@ -73,6 +76,44 @@ class FlextInfraProtocolsDepsToolConfig:
         cpu_fraction: str | None
 
     @runtime_checkable
+    class PytestFixtureConfig(
+        FlextInfraProtocolsMiseToolchainBase.SchemaRecord, Protocol
+    ):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def checkout_root(self) -> Path:
+            """Physical private checkout owning the native Testmon state."""
+            ...
+
+        @property
+        def setup_root(self) -> Path:
+            """Repository that issued the current native tool setup receipt."""
+            ...
+
+        @property
+        def git_inputs(self) -> tuple[Path, ...]:
+            """Approved repository-relative Git metadata for native discovery."""
+            ...
+
+        @property
+        def runtime_trees(self) -> tuple[Path, ...]:
+            """Disjoint physical executable runtime roots."""
+            ...
+
+        @property
+        def runtime_files(self) -> tuple[Path, ...]:
+            """Individual qualified executable and loader inputs."""
+            ...
+
+        @property
+        def environment(
+            self,
+        ) -> Mapping[Literal["PATH", "LD_LIBRARY_PATH", "TERM", "TERMINFO"], str]:
+            """Explicit executable, loader and terminal environment."""
+            ...
+
+    @runtime_checkable
     class PytestConfig(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
@@ -81,6 +122,14 @@ class FlextInfraProtocolsDepsToolConfig:
         slow_marker: t.NonEmptyStr
         item_deadline_call_only: bool
         run_timeout_seconds: int
+
+        @property
+        def fixture(
+            self,
+        ) -> FlextInfraProtocolsDepsToolConfig.PytestFixtureConfig | None:
+            """Prepared private fixture selected for this project's tests."""
+            ...
+
         harness_run_timeout_seconds: int
         termination_grace_seconds: int
         max_failures: int

@@ -18,9 +18,11 @@ from functools import lru_cache
 from importlib.util import resolve_name
 from pathlib import Path
 from types import MappingProxyType
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NoReturn
 
-from flext_infra import c
+from rope.base import exceptions as rope_exceptions
+
+from flext_infra import c, e
 from flext_infra._utilities import FlextInfraUtilitiesPrivateImportFacades
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeAnalysis,
@@ -105,8 +107,9 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
             FlextInfraUtilitiesRopeRuntimeTypes.require_source_module(module)
         )
 
-    @staticmethod
+    @classmethod
     def _facade_declared_owner(
+        cls,
         module: str,
         letter: str,
         *,
@@ -114,17 +117,27 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
     ) -> str:
         """Return the class ``letter`` names, or raise with the missing proof.
 
+        The letter is followed through the module's runtime bindings
+        (``_facade_binding_state``): a static-only ``TYPE_CHECKING`` import
+        of the letter never stands for the class its runtime arm binds.
+
         Returns:
             The class ``letter`` names, or raise with the missing proof.
 
         Raises:
-            ValueError: The letter and its class lack a shared public declaration.
+            ValueError: The letter does not name a native facade class.
 
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         types = FlextInfraUtilitiesRopeRuntimeTypes
-        declared = runtime.qualified_name(project, letter, module_name=module)
-        facade = declared.get_object()
+        resolved = cls._facade_declared_class(
+            cls._ProjectModules(project), module, letter, frozenset(), project=project
+        )
+        if resolved is None:
+            cls._refuse_module(module, cls._undeclared(module, letter), project=project)
+        facade = runtime.qualified_name(
+            project, resolved[1], module_name=resolved[0]
+        ).get_object()
         if not types.py_class(facade):
             msg = f"{module}.{letter} does not name a native facade class"
             raise ValueError(msg)
@@ -143,12 +156,80 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
             or owner not in owner_exports
             or letter not in owner_exports
         ):
-            msg = (
-                f"{module}.{letter} is not declared with its facade class in the "
-                "__all__ of the module that binds it"
-            )
-            raise ValueError(msg)
+            cls._refuse_module(module, cls._undeclared(module, letter), project=project)
         return owner
+
+    @staticmethod
+    def _undeclared(module: str, letter: str) -> str:
+        """Name the missing shared declaration of ``letter`` and its class.
+
+        Returns:
+            The declaration failure message.
+
+        """
+        return (
+            f"{module}.{letter} is not declared with its facade class in the "
+            "__all__ of the module that binds it"
+        )
+
+    @staticmethod
+    def _refuse_module(
+        module: str,
+        msg: str,
+        *,
+        project: p.Infra.RopeProject,
+    ) -> NoReturn:
+        """Raise the declaring module's typed failure.
+
+        A declaration failure of one module is the phase's typed failed result
+        (base.plan_semantic_cutover), never an engine exception.
+
+        Raises:
+            ValidationError: Always, naming the declaring module.
+
+        """
+        types = FlextInfraUtilitiesRopeRuntimeTypes
+        declaring = types.require_file_resource(
+            types.require_declared_source_module(project, module).get_resource(),
+            module,
+        )
+        raise e.ValidationError(
+            msg,
+            context={c.Infra.MOD_FAILURE_MODULE_KEY: declaring.real_path},
+        )
+
+    class _ProjectModules(Mapping[str, tuple[str, bool]]):
+        """Index modules on demand through the Rope project that plans them.
+
+        Dependencies resolve where Rope resolves them (editable or installed),
+        so the runtime-binding walk reads the same sources Rope verifies.
+        """
+
+        def __init__(self, project: p.Infra.RopeProject) -> None:
+            self._project = project
+            self._seen: dict[str, tuple[str, bool]] = {}
+
+        def __getitem__(self, name: str) -> tuple[str, bool]:
+            if name not in self._seen:
+                types = FlextInfraUtilitiesRopeRuntimeTypes
+                try:
+                    declaring = types.require_declared_source_module(
+                        self._project, name
+                    )
+                except (rope_exceptions.ModuleNotFoundError, ValueError) as error:
+                    raise KeyError(name) from error
+                resource = types.require_file_resource(declaring.get_resource(), name)
+                self._seen[name] = (
+                    declaring.source_code,
+                    resource.name == c.Infra.INIT_PY,
+                )
+            return self._seen[name]
+
+        def __iter__(self) -> Iterator[str]:
+            return iter(self._seen)
+
+        def __len__(self) -> int:
+            return len(self._seen)
 
     @classmethod
     def _facade_letter_class(
@@ -315,14 +396,14 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
         Returns:
             The resulting ``tuple[str, str] | None``.
 
-        Raises:
-            ValueError: If cyclic facade binding.
+        A cyclic binding is the declaring module's typed phase failure.
 
         """
         identity = f"{module}.{name}"
         if identity in visiting:
-            msg = f"cyclic facade binding: {identity}"
-            raise ValueError(msg)
+            cls._refuse_module(
+                module, f"cyclic facade binding: {identity}", project=project
+            )
         indexed = modules.get(module)
         if indexed is None:
             return None

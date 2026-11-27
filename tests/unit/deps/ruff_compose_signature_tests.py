@@ -17,6 +17,8 @@ from flext_infra.deps.phases import FlextInfraEnsureRuffConfigPhase
 from flext_infra.gates import FlextInfraGatesRuffFormat, FlextInfraGatesRuffLint
 from tests import c, m, t, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 if TYPE_CHECKING:
     from pathlib import Path
 

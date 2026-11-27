@@ -96,7 +96,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         Constants (all upper case) precede CamelCase classes, which precede
         lower-case names; within a type group names compare case-insensitively
         (``TEST_FACADE_BASES`` < ``TESTS_ROOT``). Every generated import block
-        sorts by this one key, so ``make gen`` and ``make fix`` agree.
+        sorts by this one key, so ``make check`` and ``make check`` agree.
 
         Returns:
             The type group and the case-folded name.

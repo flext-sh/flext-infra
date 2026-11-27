@@ -17,6 +17,8 @@ from flext_infra import config, workspace
 from tests import c, m, p, tm, u
 from tests.unit.codegen import test_mise_pin_bootstrap
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraMakefileBootstrapSoundness:
     """Public Make preserves physical ownership and native tool configuration."""

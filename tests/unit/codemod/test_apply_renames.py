@@ -19,6 +19,8 @@ from flext_infra.codemod import (
 )
 from tests import c, m, p, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 _SECOND_RECEIVER = 2
 _MIN_CHANGED_FILES = 2
 

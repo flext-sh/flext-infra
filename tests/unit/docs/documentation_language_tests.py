@@ -13,6 +13,8 @@ import pytest
 
 from tests import c, m, p, t, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraDocumentationLanguage:
     """Keep localization at the presentation boundary and isolated per project."""

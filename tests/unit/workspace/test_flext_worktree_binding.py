@@ -13,6 +13,8 @@ from pathlib import Path
 from flext_infra import workspace
 from tests import c, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraWorktreeBinding:
     """The service resolves which distributions a worktree can supply."""

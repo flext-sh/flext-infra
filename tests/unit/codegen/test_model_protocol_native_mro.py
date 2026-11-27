@@ -12,6 +12,8 @@ from pathlib import Path
 from flext_infra import infra
 from tests import c, m, p, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsModelProtocolNativeMro:
     """Compare generated contracts with the real Pydantic consumer."""

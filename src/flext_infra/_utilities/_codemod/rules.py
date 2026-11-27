@@ -1302,7 +1302,7 @@ class FlextInfraUtilitiesCodemodRules(
             "digest": u.Cli.sha256_content(canonical_json),
             "provider": provider,
             "resource": str(resource),
-            "fixable": "fix" in parsed_rule,
+            "fixable": parsed_rule.get("fix") is not None,
             "owned_path_suffix": declared_metadata.get("owned_path_suffix"),
             "message": parsed_rule.get("message", ""),
             "module_absence": module_absence,

@@ -17,6 +17,8 @@ from pathlib import Path
 from flext_infra import config
 from tests import c, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraCodegenSonarcloudWorkspaceScope:
     """Tests for the workspace-derived ``.sonarcloud.properties`` scope."""

@@ -13,6 +13,8 @@ from flext_infra import infra
 from flext_infra.codegen import FlextInfraCodegenConform, FlextInfraCodegenLazyInit
 from tests import c, m, p, r, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraRecursiveFamilyFacades:
     """Keep recursive compositions typed, importable and idempotent."""

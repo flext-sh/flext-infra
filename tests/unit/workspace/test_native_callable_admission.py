@@ -10,6 +10,8 @@ from collections.abc import Sequence
 
 from tests import c, t, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraNativeCallableAdmission:
     """Inherited dict and slots callables preserve behavior and binding evidence."""

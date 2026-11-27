@@ -28,9 +28,10 @@ from flext_cli import u
 from pytest_markdown_docs import plugin as markdown_plugin
 from pytest_markdown_docs.plugin import extract_fence_tests
 
-from flext_infra import c, m, p, t
+from flext_infra import FlextInfraConfig, c, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesPytest,
+    FlextInfraUtilitiesPytestConfigDependencies,
     FlextInfraUtilitiesPytestSuiteStop,
 )
 
@@ -298,10 +299,30 @@ class FlextInfraUtilitiesPytestCollection:
             default=None,
             help="Monotonic instant after which the session stops gracefully.",
         )
+        parser.addoption(
+            c.Infra.PYTEST_CONFIG_RECEIPTS_OPTION,
+            default=None,
+            help="Receipts directory of the per-test Testmon config dependencies.",
+        )
 
     @classmethod
     def collection_configure(cls, config: t.Infra.Pytest.Config) -> None:
         """Record warnings once; Testmon keeps its native in-checkout default."""
+        receipts = config.getoption(c.Infra.PYTEST_CONFIG_RECEIPTS_OPTION)
+        if receipts is not None:
+            cache = FlextInfraConfig.fetch_global().Infra.codegen.make.testmon_cache
+            worker = hasattr(config, "workerinput")
+            dependencies = FlextInfraUtilitiesPytestConfigDependencies
+            recorder = dependencies.ConfigDependencyRecorder(
+                rootdir=config.rootpath,
+                receipts=Path(receipts),
+                insensitive=frozenset(cache.config_insensitive_executables),
+                controller=not worker,
+                executes=worker or getattr(config.option, "dist", "no") == "no",
+            )
+            recorder.bind()
+            config.pluginmanager.register(recorder)
+            config.add_cleanup(recorder.unbind)
         config.stash[cls.markdown_state] = m.Infra.PytestMarkdownCollection()
         if cls.suite_manifest_target(config) is not None:
             config.stash[cls.collection_workers] = set()
@@ -320,16 +341,14 @@ class FlextInfraUtilitiesPytestCollection:
 
     @classmethod
     def collection_selection_active(cls, config: t.Infra.Pytest.Config) -> bool:
-        """Return whether this is a runner selection collection under Testmon.
+        """Return whether the runner observes native Testmon selection.
 
         Returns:
-            Whether the manifest is requested by a read-only collection that
-            Testmon's selecting plugin also steers.
+            Whether the invocation requests a manifest while Testmon selects.
 
         """
         return (
             config.pluginmanager.get_plugin(cls.testmon_select_plugin) is not None
-            and bool(config.getoption("collectonly"))
             and config.getoption(c.Infra.PYTEST_COLLECTION_MANIFEST_OPTION) is not None
         )
 
