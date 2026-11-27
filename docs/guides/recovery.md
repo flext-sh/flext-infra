@@ -40,7 +40,7 @@ through the existing guarded planner and publisher. Change the renderer or its
 configuration when that projection is wrong, then publish through this owner.
 The adapter adds no public Make verb.
 
-Creation normally runs through the workspace's `make gen` after the new member
+Creation normally runs through the workspace's `make check` after the new member
 declares its own metadata and its Git checkout is prepared. A standalone target
 without a Makefile uses the same initialization adapter. A prepared tree with its
 own complete project, integration, kind and source provenance receives the declared
@@ -53,7 +53,7 @@ sources. Enabled Beads participation requires the destination's own declared ide
 Generation materializes files; installation and runtime bootstrap belong to `setup`.
 
 For that standalone cold entry, run `codegen init`, `make upg`, `make setup`,
-then `make gen`. The provisioned generation tool runtime owns its native Mise,
+then `make check`. The provisioned generation tool runtime owns its native Mise,
 Python and UV prerequisites. Setup installs the resolved destination dependencies
 into that destination's physical environment. Initialization and generation do
 not install dependencies, resolve locks, initialize Git or create commits.
@@ -120,7 +120,7 @@ its existing owner; it does not retroactively authenticate that installation.
 ## The recovery loop
 
 Run generation and structural modification as separate operations, preserving
-their original failures and publication receipts. Repeat `make gen` after its
+their original failures and publication receipts. Repeat `make check` after its
 inputs change or to prove convergence on unchanged inputs. A failed or interrupted
 run does not count as convergence and is not retried without repairing its cause.
 
@@ -173,6 +173,6 @@ bootstrap owner first. Textual mergeability is not semantic integrity.
 
 Generated artifacts carry `# @flext-rendered-by: flext-infra <version>`.
 A drift between this stamp and the consumed motor is a regeneration order:
-`make gen` re-renders with the declared generator. `make check` validates
+local `make check` re-renders with the declared generator. In CI, `make check` validates
 projections and their provenance without regenerating them; retain the actual
 diagnostic and receipt rather than treating the stamp alone as proof.

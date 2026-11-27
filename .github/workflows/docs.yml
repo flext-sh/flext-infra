@@ -28,7 +28,7 @@ jobs:
       group: ${{ github.workflow }}-${{ github.ref }}
       cancel-in-progress: true
     # packages: read only for distributions declared in codegen
-    # ci_package_registry_read: make gen/check resolve their GitHub Packages.
+    # ci_package_registry_read: make check resolves their GitHub Packages.
     permissions:
       contents: read
     # Why: GitHub-hosted runners share egress IPs, so the unauthenticated
@@ -110,9 +110,6 @@ jobs:
             !~/.local/share/mise/shims
           key: ${{ steps.tool-cache.outputs.cache-primary-key }}
 
-
-      - name: Generate documentation
-        run: make gen
 
       - name: Build site
         run: make build
