@@ -39,7 +39,7 @@ from importlib import import_module
 from importlib.util import find_spec
 from pathlib import Path
 
-from flext_infra import c, m, t
+from flext_infra import c, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesPytest,
@@ -78,14 +78,20 @@ class FlextInfraUtilitiesPytestConfigDependencies:
             self.by_module: dict[str, set[str]] = {}
             self.common: set[str] = set()
             self.module_files: dict[str, str | None] = {}
-            self.retained: tuple[m.BaseModel, ...] = ()
+            self.retained: tuple[p.BaseModel, ...] = ()
             self.observed: dict[
-                type[m.BaseModel],
-                Callable[[m.BaseModel, str], t.Infra.ConfigLeafValue] | None,
+                type[p.BaseModel],
+                Callable[[p.BaseModel, str], t.Infra.ConfigLeafValue] | None,
             ] = {}
 
         def bind(self) -> None:
-            """Elect the config sources and leaves, then start observing reads."""
+            """Elect the config sources and leaves, then start observing reads.
+
+            Raises:
+                TypeError: If the package's ``config`` does not resolve to a
+                    model, so its leaf receipts could not be recorded.
+
+            """
             root = self.receipts.parent
             layout = FlextInfraUtilitiesCodegenNamespace.layout(root)
             package_dir = None if layout is None else layout.package_dir
@@ -94,12 +100,17 @@ class FlextInfraUtilitiesPytestConfigDependencies:
                     self.sources[os.path.realpath(source)] = self.relative(source)
             if package_dir is not None and find_spec(package_dir.name) is not None:
                 singleton = getattr(import_module(package_dir.name), "config", None)
-                if not isinstance(singleton, m.BaseModel):
+                if singleton is not None and not isinstance(singleton, p.BaseModel):
                     # A FLEXT package publishes its root as a lazy stand-in;
                     # the root's own fetch_global() publishes and returns it.
-                    fetch = getattr(singleton, "fetch_global", None)
-                    singleton = fetch() if callable(fetch) else None
-                if isinstance(singleton, m.BaseModel):
+                    singleton = singleton.fetch_global()
+                if singleton is not None:
+                    if not isinstance(singleton, p.BaseModel):
+                        msg = (
+                            f"{package_dir.name}.config does not resolve to a "
+                            f"model: {type(singleton).__qualname__}"
+                        )
+                        raise TypeError(msg)
                     self.observe(singleton)
             sys.addaudithook(self.audit)
             self.armed = True
@@ -123,7 +134,7 @@ class FlextInfraUtilitiesPytestConfigDependencies:
             """
             return os.path.relpath(Path(path).resolve(), self.rootdir)
 
-        def observe(self, singleton: m.BaseModel) -> None:
+        def observe(self, singleton: p.BaseModel) -> None:
             """Write one receipt per typed leaf and record reads of each leaf.
 
             Reads resolve through the singleton node's own path. Another
@@ -132,8 +143,8 @@ class FlextInfraUtilitiesPytestConfigDependencies:
             """
             depth = c.Infra.PYTEST_CONFIG_RECEIPT_DEPTH
             leaves: dict[tuple[str, ...], str] = {}
-            nodes: list[tuple[tuple[str, ...], m.BaseModel, dict[str, str]]] = []
-            pending: list[tuple[tuple[str, ...], m.BaseModel]] = [((), singleton)]
+            nodes: list[tuple[tuple[str, ...], p.BaseModel, dict[str, str]]] = []
+            pending: list[tuple[tuple[str, ...], p.BaseModel]] = [((), singleton)]
             while pending:
                 path, node = pending.pop()
                 owned: dict[str, str] = {}
@@ -141,7 +152,7 @@ class FlextInfraUtilitiesPytestConfigDependencies:
                 for name in type(node).model_fields:
                     key = (*path, name)
                     value = node.__dict__[name]
-                    if isinstance(value, m.BaseModel) and len(key) < depth:
+                    if isinstance(value, p.BaseModel) and len(key) < depth:
                         pending.append((key, value))
                         continue
                     owned[name] = leaves[key] = self.receipt(key, value)
@@ -152,7 +163,7 @@ class FlextInfraUtilitiesPytestConfigDependencies:
                     if stale not in current:
                         stale.unlink()
             reads: dict[int, t.Infra.ConfigLeafReads] = {}
-            unions: dict[type[m.BaseModel], t.Infra.ConfigLeafReads] = {}
+            unions: dict[type[p.BaseModel], t.Infra.ConfigLeafReads] = {}
             for path, node, owned in nodes:
                 whole = frozenset(
                     receipt
@@ -202,7 +213,7 @@ class FlextInfraUtilitiesPytestConfigDependencies:
 
             """
             match value:
-                case m.BaseModel():
+                case p.BaseModel():
                     return {
                         name: cls.canonical(value.__dict__[name])
                         for name in type(value).model_fields
@@ -223,7 +234,7 @@ class FlextInfraUtilitiesPytestConfigDependencies:
 
         def install(
             self,
-            model: type[m.BaseModel],
+            model: type[p.BaseModel],
             reads: Mapping[int, t.Infra.ConfigLeafReads],
             union: t.Infra.ConfigLeafReads,
         ) -> None:
@@ -232,7 +243,7 @@ class FlextInfraUtilitiesPytestConfigDependencies:
             record = self.record
             whole_reads = c.Infra.PYTEST_CONFIG_WHOLE_READS
 
-            def observed(instance: m.BaseModel, name: str) -> t.Infra.ConfigLeafValue:
+            def observed(instance: p.BaseModel, name: str) -> t.Infra.ConfigLeafValue:
                 value = original(instance, name)
                 fields, whole = reads.get(id(instance), union)
                 receipts = fields.get(name)
