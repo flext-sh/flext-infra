@@ -235,6 +235,7 @@ class TestsFlextInfraFamilyFlatten:
             f"    class {project}({owner}):\n"
             "        pass\n\n"
             f"m = {facade_name}\n"
+            f"__all__ = ['{facade_name}', 'm']\n"
         )
         facade_path = package / "models.py"
         facade_path.write_text(facade, encoding="utf-8")
@@ -364,11 +365,11 @@ class TestsFlextInfraFamilyFlatten:
     @c.Tests.MARK.parametrize(
         "reference",
         [
-            "ALIAS = {owner}.Wrapper",
-            "different_name = {owner}.Wrapper",
-            "first = {owner}.Wrapper\nsecond = first",
-            "instance = {owner}.Wrapper()",
-            'alias: "{owner}.Wrapper"',
+            "ALIAS = Wrapper",
+            "different_name = Wrapper",
+            "first = Wrapper\n    second = first",
+            "instance = Wrapper()",
+            'alias: "Wrapper"',
         ],
     )
     def test_wrapper_used_as_an_entity_is_preserved_without_edits(
@@ -385,7 +386,7 @@ class TestsFlextInfraFamilyFlatten:
         owner = f"{u.derive_class_stem(root.name)}ConstantsPayload"
         source = (
             f"class {owner}:\n    class Wrapper:\n        VALUE = 1\n\n"
-            f"{reference.format(owner=owner)}\n\n__all__ = ['{owner}']\n"
+            f"    {reference}\n\n__all__ = ['{owner}']\n"
         )
         path.write_text(source, encoding="utf-8")
         with infra.rope_workspace(root) as rope:
