@@ -342,15 +342,6 @@ class TestsFlextInfraLintRecipes:
         )
         tm.that(long_repaired, has='"""Test fonte incompleta')
 
-        init_source = (
-            "class Sample:\n    def __init__(self) -> None:\n        self.value = 1\n"
-        )
-        init_repaired = self._apply(
-            init_source,
-            ("undocumented-public-init", 2, "Missing docstring in public method"),
-        )
-        tm.that(init_repaired, has='"""Initialize the instance."""')
-
     @c.Tests.MARK.parametrize(
         ("source", "findings", "expected"),
         [
@@ -462,6 +453,7 @@ class TestsFlextInfraLintRecipes:
         author: str = "Sample Author",
     ) -> None:
         """Write a PEP 621 manifest declaring one author and, optionally, a license."""
+        u.Tests.git_bootstrap(root, ("init", "-b", c.Infra.GIT_MAIN))
         license_line = "" if license_id is None else f'license = "{license_id}"\n'
         (root / c.PYPROJECT_FILENAME).write_text(
             '[project]\nname = "sample"\nversion = "1.0.0"\n'

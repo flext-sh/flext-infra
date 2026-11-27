@@ -85,7 +85,9 @@ class TestsFlextInfraPytestCollectionPolicy:
         (events,) = (cached_runner_project / runner.reports).glob(
             "*/testmon-selection.events.jsonl",
         )
-        diagnostic = tm.ok(FlextInfraPytestDiagExtractor.extract_report_log(events))
+        diagnostic = tm.ok(
+            FlextInfraPytestDiagExtractor.extract_report_log(events, interrupted=False)
+        )
         tm.that(diagnostic.warning_count, eq=int(finding == "warning"))
         tm.that(diagnostic.collection_skipped_count, eq=int(finding == "module-skip"))
         tm.that(diagnostic.collection_failed_count, eq=int(finding == "module-error"))

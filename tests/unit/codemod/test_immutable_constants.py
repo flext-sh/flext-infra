@@ -11,6 +11,8 @@ from pathlib import Path
 
 from tests import c, m, p, t, tm
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraConstantsImmutable:
     """Observe exact scalar types and construction identity after public plans."""

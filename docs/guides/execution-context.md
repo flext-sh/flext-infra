@@ -33,7 +33,7 @@
 - [SonarCloud exclusions](#sonarcloud-exclusions)
 - [Bootstrap credentials](#bootstrap-credentials)
 - [Evidence and checkpoints](#evidence-and-checkpoints)
-  - [Publication Receipts, Pytest Profiles, and Testmon Leases](#publication-receipts-pytest-profiles-and-testmon-leases)
+  - [Publication Receipts and Pytest Profiles](#publication-receipts-and-pytest-profiles)
   - [Architecture Checkpoints and AST Rule Catalogs](#architecture-checkpoints-and-ast-rule-catalogs)
   - [Rope Superclass Resolution, Lazy-Init Planners, and Candidate Overlays](#rope-superclass-resolution-lazy-init-planners-and-candidate-overlays)
   - [cProfile Thread Isolation and Performance Diagnosis](#cprofile-thread-isolation-and-performance-diagnosis)
@@ -146,7 +146,7 @@ generated initializer manually. Preserve the first cause and fix its producer.
 Generation must remain importable before repairing projections. Authored component
 facades that share ancestors must impose compatible C3 precedence; reordering a
 generated outer facade cannot repair contradictory component hierarchies. Repair
-the authored composition first, then regenerate through `make gen`. Unresolvable
+the authored composition first, then regenerate through `make check`. Unresolvable
 source ancestry remains an error, never a reason to drop a component silently.
 An explicit base already inherited by another component follows that component
 in the authored base list, preserving Python's subclass-before-parent precedence.
@@ -222,9 +222,9 @@ written. After resolution,
 floor (`floors = [...]`) or pin (`pins = [...]`) from the project's own
 `uv.lock`, so an owned bound is always inside the window, and the locks record
 it without upgrading. Last,
-`flext-infra deps repair-mise-platforms --repository-root <root>` writes only
-the Mise locks of tools missing a declared platform, without generation,
-installation or another resolver.
+`flext-infra deps repair-mise-platforms --repository-root <root>` delegates
+version-3 lock migration to native `mise lock --upgrade`, keeping the locked
+tool versions, before repairing any remaining missing platforms.
 Installed `workspace verify-lock` delegates freshness and closure checks to native
 `uv lock --check`, not an Infra marker evaluator or graph walker. These commands remove
 inherited project/interpreter selectors through `make.native_environment_unset` and
@@ -365,9 +365,11 @@ toolchain nor a corrupt lock stops it:
    then the setup installation of exactly that lock.
 6. Last, the isolated upgrade executor (`make.executor_environment`, a declared
    ignored artifact of the `.gitignore` projection) runs
-   `deps repair-mise-platforms`, which locks the tools missing a platform that
-   `toolchain.mise_lockfile_platforms` declares: Mise reports no preview for that
-   gap. Native uv syncs the executor from the project's frozen lock, only the
+   `deps repair-mise-platforms`. An explicit version-3 lock runs one native
+   format upgrade over the declared platform set. Only tools still missing a
+   platform from `toolchain.mise_lockfile_platforms` are relocked. The earlier
+   version-resolution step can still emit a format warning on the migration run.
+   Native uv syncs the executor from the project's frozen lock, only the
    dependency group that pins flext-infra, without the project and without
    editable installs, and runs it with `python -I`, so the step never imports
    the project's source. Bytecode follows uv's native default: Python compiles
@@ -644,10 +646,9 @@ updated and run to validate it, without mocks, tautologies or policy hardcodes.
 Resolve the test entry from the selected repository's current native help. The
 current catalog declares `make tests` and the explicitly requested `make tests-full`,
 without file or match inputs. The first executes persistent Testmon selection
-once; the second executes the complete applicable population once without
-Testmon, a preliminary incremental run or any cache read, lease or publication.
-The existing database remains untouched. The operator's latest 2026-10-28
-clarification is owned by
+once. The second executes the complete applicable population once and records
+it in the same checkout's Testmon database without an incremental selection
+pass. The current execution contract is owned by
 [ADR-029](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/029-always-working-one-complete-cycle.md).
 Tests execute independently of quality checks; no green check receipt is a
 prerequisite. Both operations retain applicability, original failure and the
@@ -1284,6 +1285,9 @@ configuration snapshots alongside the destination snapshot, including for a
 no-op. Workspace rendering also receives the local topology so its member
 whitelist agrees with conform; the initial `.gitmodules` snapshot authenticates
 that input even when absent. Packaged defaults do not enumerate consumers.
+The configured `.trigger-tree/` pattern keeps the agent's local session history,
+session state and lock outside versioned project content; it does not remove those
+files or exclude product changes from capture.
 
 `make fix-toolchain` repairs one explicitly selected native installation through
 Mise, using the exact version and checksum authority of the current lock. Set
@@ -1347,7 +1351,8 @@ Protocol placement follows ADR-018: model mirrors correspond to `_models/`,
 internal service contracts and DI ports use `_protocols/_services/`, and external
 integration capabilities use `_protocols/_external/`. The public `p` identities
 stay unchanged. `make mod` owns the semantic moves and consumer rewiring;
-`make gen` projects declarations and retires generated conformance witnesses.
+the generation stage of `make check` projects declarations and retires generated
+conformance witnesses.
 Candidate admission requires no separate model-to-protocol witness module.
 The accepted 2026-10-28 [model and service protocol
 projection](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/018-generator-declarations.md#model-and-service-protocol-projection)
@@ -1401,7 +1406,7 @@ contract carrying the projection docstring whose model is gone retires from its
 authored holder, and a generated protocol module left without models retires
 whole. The retirement is hidden from the rest of the same candidate, so the `p`
 facade and the `_protocols` lazy exports drop the retired holder in that run and
-a second `make gen` writes nothing. Authored contracts are never retired.
+a second `make check` writes nothing. Authored contracts are never retired.
 Persisted model fields name their concrete model directly (ADR-018 amendment
 2026-11-09), and consumers receive the `p` contract; the deferred
 `t.schema_for_model` form is no longer used at the field boundary. This is
@@ -1416,7 +1421,7 @@ projection. The entry, callback, cohort policy and runtime receipts remain
 implementation/validation work, not proven capabilities of the current engine.
 Authored rewiring and obsolete-owner retirement run through `make mod`; its coherent
 candidate includes dependent projection through the existing generation owner.
-`make gen` continues to derive protocols and fails before effects if publication
+`make check` continues to derive protocols and fails before effects if publication
 needs an unplanned authored cutover. The ADR's retirement safeguard preserves every
 consumer in that same candidate; prefix/header matching does not authorize deletion.
 Neither operation invokes the other public verb. Protocol sources and every affected
@@ -1777,8 +1782,11 @@ teardown. The next `make tests` selects only the unexecuted remainder, so repeat
 invocations converge to a complete run that exits 0. No budget grows, no test is
 deselected, and the stop never waits for a batch-size flush. The explicitly
 requested `make tests-full` executes the complete
-applicable population once without Testmon or an incremental pre-run, preserving
-the persistent database untouched. It is a distinct operation, not an alias for
+applicable population once and records every item in Testmon without selecting,
+under the environment of its own marker scope. Locally that scope, and therefore
+the environment, is the one `make tests` reads, so one `make tests-full` warms a
+cold lane (a fresh worktree, or a lock or toolchain change) and the next
+`make tests` is incremental. It is a distinct operation, not an alias for
 incremental execution. Checks and tests are independent native operations.
 `flext-infra workspace tests --repository-root <root> --scope all` runs without
 requiring a prior check receipt. Generated Make consumers use `make tests`; bare
@@ -1872,7 +1880,7 @@ declares it.
 
 The generated project owns its declaration, Makefile, CI workflows, package,
 examples, and tests. Provision and validate it through its own `make setup`,
-`make gen`, `make check`, `make tests`, and `make build`. Its physical environment
+`make check`, `make tests`, and `make build`. Its physical environment
 belongs to the generated repository.
 
 First generation authenticates the staged scaffold through the explicitly declared
@@ -1950,7 +1958,7 @@ by the YAML sources, not by the manifest.
 `tool.hatch.build` and `tool.uv.cache-keys` are generator-owned pyproject tables,
 declared once in the pyproject ownership `conflict_sections`. Generation and the
 modernizer read that same declaration and replace both tables from the packaging
-declarations, so a retired or authored entry leaves on the next `make gen` or
+declarations, so a retired or authored entry leaves on the next `make check` or
 `deps modernize`.
 uv rebuilds a local project only when one of its cache keys changes, and its
 defaults cover `pyproject.toml`, `setup.py` and `setup.cfg` alone. A package
@@ -1981,6 +1989,27 @@ Infra owns the full workspace operation receipt and report. CLI's native qualifi
 receipt and report are non-generic read projections of that original payload; they are
 not base classes for domain fields. Original execution, outcome, stage and completion
 remain observable when CLI reads the shared native-tool evidence.
+
+Fixture qualification requires an explicit workspace profile. A workspace can
+elect it in its [local codegen layer](local-config-overrides.md). A tool
+declaration alone does not elect qualification. An elected profile
+requires the locked native launcher and compiler SDK, the compiler resource from
+the CLI distribution's installed RECORD, the required kernel capabilities and
+successful real subprocess observations. Failure in any of these requirements
+fails setup. A workspace without a fixture profile issues no fixture evidence.
+The elected SDK download and static archive extractor are authenticated by
+their declared digests and lock. Setup copies the exact archive into private
+staging and invokes the extractor inside the authenticated launcher. The
+isolated build reads the extracted sysroot and the exact libseccomp headers
+and archive. A changed SDK, extractor or lock invalidates the previous
+qualification and requires the profile to run setup again.
+Setup validates the compiler's numeric seccomp ABI probe and records the
+native machine name used by CLI to admit the qualified process. Run setup
+again to replace a receipt that records the token as its architecture.
+When a profile is elected, setup installs the locked packages as wheels so
+the qualification reads the original resource entries rather than editable paths.
+Operating-system restrictions in the native toolchain elect eligible tools before
+installation. An eligible tool without a valid lock remains a setup failure.
 
 Upgrade installs the newly resolved lock through its existing frozen provisioning
 owner and verifies its runtime provenance before the next producer. Package election
@@ -2231,7 +2260,7 @@ remains `<stem>.local.yaml`. This keeps project editor declarations separate fro
 the library defaults while preserving the same ordered configuration layers.
 
 VS Code's `.vscode/settings.json` is a versioned projection of those declarations,
-regenerated by `make gen`. Editor settings, the `[tool.pyrefly]` analyzer table
+regenerated by `make check`. Editor settings, the `[tool.pyrefly]` analyzer table
 and Git ignores use the same guarded file publisher. The editor surface renders
 each declared destination through its own template and project overlays;
 `.qlty/qlty.toml` therefore remains TOML and never receives VS Code JSON.
@@ -2314,7 +2343,7 @@ does not add an `initialize` Make verb.
 The `flext_core.lazy` loader imports its implementation from root-level source
 modules, never through a generated child initializer. This keeps generation's
 own loader available before child projections are repaired. Recovery uses the
-same guarded `make gen` transaction and its post-generation runtime provenance
+same guarded `make check` generation transaction and its post-generation runtime provenance
 check; it does not disable the environment guard or replace the generator.
 
 ### Mise PATH Composition and Beads Server Environment
@@ -2424,7 +2453,7 @@ executes; reports distinguish the declared scope from attempted commands.
 
 Configuration declares `latest`. `make upg` is the only verb that resolves newer
 releases and writes the committed `uv.lock` and `mise.lock`. `make setup` installs
-from committed locks; `make gen` and `make fmt` neither install nor upgrade tools.
+from committed locks; `make check` neither installs nor upgrades tools.
 Conformance, member propagation and release version stamping preserve existing
 locks and do not create missing ones. External consumer propagation runs its
 declared generation and repair verbs; dependency resolution requires a separate,
@@ -2538,10 +2567,10 @@ so repeated generation reaches a byte-identical fixed point.
 Each internal `flext-*` requirement declares its integration line in `pyproject.toml`,
 never a commit: the resolved commit exists only in `uv.lock`, and only `make upg` moves
 it to the line tip. The manifest does not pin revisions. A commit left in the
-`pyproject.toml` projection is residue: `make gen` re-renders it on the detected line.
+`pyproject.toml` projection is residue: `make check` re-renders it on the detected line.
 When the projection carries no line, a hand-written `project.flext_source` in the
 manifest declares it, and a commit in a hand-written source fails. Fix the setup or
-`upg` owner and regenerate through `make gen`; manual installs do not replace the cycle.
+`upg` owner and regenerate through `make check`; manual installs do not replace the cycle.
 
 A workspace root preserves declared Git requirements and publishes its declared
 package members in `[tool.uv.workspace].members`. Its `[tool.uv.sources]` entries
@@ -2649,13 +2678,13 @@ Rope project and its import inventory, without a second parser or stored kind ca
 A target without project metadata must instead pass the workspace detector's
 positive new-tree admission using its own complete project and integration
 and dependency-provenance declarations and prepared Git checkout. That case uses
-the same complete generation planner and publisher as `make gen`, with bound
+the same complete generation planner and publisher as `make check`, with bound
 collaborators from the adapter's actual tool runtime. No Beads identity or
 dependency provenance is synthesized. A declared new workspace member should
-normally be materialized by the workspace's `make gen`.
+normally be materialized by the workspace's `make check`.
 For a standalone target without a Makefile, a preinstalled generation tool
 runtime invokes `codegen init`; then the destination runs `make upg`,
-`make setup` and `make gen`. Native Mise, Python and UV are prerequisites of
+`make setup` and `make check`. Native Mise, Python and UV are prerequisites of
 the generation tool runtime. Only setup creates the destination's product
 environment; initialization and generation neither install nor resolve locks.
 Setup and audit verify the environment's installed PEP 610 and RECORD-owned editable
@@ -2701,6 +2730,16 @@ worktree owns its physical `<RUNTIME_ROOT>/.venv`; it never resolves an environm
 from the primary checkout or Git common directory. The generated Makefile, generated
 `.envrc`, and `runtime_environment_dir` derive the same path. Neither a caller
 variable nor a checkout-local symlink may redirect the environment.
+
+Git and Mise discovery share that boundary: the generated Makefile and `.envrc` set
+`GIT_CEILING_DIRECTORIES` and `MISE_CEILING_PATHS` to the parent of `RUNTIME_ROOT`.
+An attached member's verbs read workspace paths through the workspace runtime (for
+example the staged preview of `make check` loads the workspace layouts), so the ceiling
+must not stop Git below the superproject; discovery from inside the member still ends
+at the member's own `.git`. A standalone checkout or linked worktree is its own
+`RUNTIME_ROOT`, so its ceiling stays at its own parent. The contract relies on
+`RUNTIME_ROOT` being a Git toplevel, which the renderer guarantees by rendering
+`REPOSITORY_ROOT_REL` as `.` (bead `flext-ce0q5`).
 
 An attached member remains governed by the superproject environment even when the
 superproject does not declare it as a native uv workspace member. Its own committed
@@ -2826,10 +2865,11 @@ prefix for these verbs.
   `make tests`, `gen` and `gen-scope` are not limited either; they still queue for a
   slot.
 
-Heavy routes resolve the declared toolchain before entering the queue. When
-`make gen ROOT=...` targets another checkout and needs a provisioned
-environment, generation rejects a missing target interpreter before admission.
-Run `make setup` and `make gen` in the target checkout so facade resolution
+Heavy routes resolve the declared toolchain before entering the queue. Generation
+admits the requested root against its workspace topology first. If the admitted
+root belongs to another checkout and the selected surface requires a provisioned
+environment, generation rejects a missing target interpreter before queueing.
+Run `make setup` and `make check` in the target checkout so facade resolution
 uses that checkout's own dependencies.
 The per-verb load, processor and memory limits are owned by the Make admission
 prelude (`make.admission` in `config/codegen.yaml`), not by this queue.
@@ -3069,7 +3109,7 @@ consumer. Preserve valid WIP and establish which side violates its contract
 before extending either side. This development installation is distinct from
 the final locked-package, CI and integrated-runtime proofs.
 
-The default `make gen` handler invokes the generation engine at `PROJECT_ROOT`,
+The generation stage of `make check` invokes the generation engine at `PROJECT_ROOT`,
 with `all` scope locally and `self` scope in its declared CI context. A local
 workspace invocation covers its root and declared members, while a standalone
 repository has only itself. The request model's default remains
@@ -3241,9 +3281,13 @@ preserves the backend's native error, without an
 anonymous retry or source switch. CI jobs inject `GITHUB_TOKEN`; containers receive
 the variable or a BuildKit secret explicitly.
 
+The Make test launcher strips inherited GitHub credential aliases. The caller
+credential test supplies one alias explicitly. The host credential test supplies
+only its own `gh` configuration and lets Make select the declared host producer.
+
 ## Evidence and checkpoints
 
-### Publication Receipts, Pytest Profiles, and Testmon Leases
+### Publication Receipts and Pytest Profiles
 
 Each piece of evidence identifies command, directory, observed revision, exit code, and
 decisive result. A run that is in progress, interrupted, or missing its exit code is not
@@ -3309,12 +3353,6 @@ one process-local profiler. Nested profiling subprocesses retain their own profi
 and still execute the original site customization.
 Tests that need sample pstats reuse `native_cprofile`, whose stdlib workload runs
 in a separate process so it cannot compete with the worker's active profiler.
-
-The typed run context is published before waiting for the Testmon lease and
-records whether that lease was acquired. An interrupted wait therefore retains
-its parent profile and authenticated invocation identity without inventing a
-child process outcome. A context with an unacquired lease rejects any selection,
-inventory or suite artifact; it proves no test execution.
 
 Profile reports select the nearest project manifest owning the profile artifact.
 This keeps member reports confined to their member when Make starts at the
@@ -3522,7 +3560,7 @@ Blocked-import sentinels in `sys.modules` remain blocked.
 
 Import normalization treats exception targets and structural pattern captures
 as local bindings. These names do not load a package facade or reintroduce an
-unused import removed by `make fix`.
+unused import removed by `make check`.
 Static facade imports group symbols and module reexports by their emitted
 absolute owner. Module reexports retain their explicit same-name binding;
 ordinary symbols keep their published names. The rename rule distinguishes
@@ -3636,9 +3674,10 @@ when signal registration fails; a cleanup diagnostic cannot replace that cause.
 
 The existing opt-in public CLI form is
 `FLEXT_INFRA_PROFILE=true FLEXT_INFRA_PROFILE_OUTPUT=<file> flext-infra <command> ...`.
-The CLI entry profiles the whole command once. The generated gen, mod and check
-recipes declare the destination through `FLEXT_INFRA_PROFILE_OUTPUT` (make
-`generation_profile_path`, `modification_profile_path` and `check_profile_path`).
+The CLI entry profiles the whole command once. The generated gen, mod, check and
+tests recipes declare the destination through `FLEXT_INFRA_PROFILE_OUTPUT` (make
+`generation_profile_path`, `modification_profile_path`, `check_profile_path` and
+`tests_profile_path`).
 The check route's captured checker child writes its own profile beside its gate
 receipts. The private
 `flext_infra._profile_entry` module survives only as a deprecated pass-through for
@@ -3741,14 +3780,17 @@ filtering must not hide that caller chain from diagnosis. Both views use native 
 and the same complete immutable profile, without running or reconstructing the workload.
 
 The standard Make operations admit the same opt-in setting:
-`FLEXT_INFRA_PROFILE=true make gen`, `FLEXT_INFRA_PROFILE=true make mod` and
-`FLEXT_INFRA_PROFILE=true make check`.
+`FLEXT_INFRA_PROFILE=true make mod`,
+`FLEXT_INFRA_PROFILE=true make check` and `FLEXT_INFRA_PROFILE=true make tests`
+(each pytest child also profiles into the pytest policy's process directory; the
+incremental selection narrows the run to the affected tests).
 `settings.Infra.profile` defaults to false; it never selects a different operation
 or changes source admission, target scope, publication or native failure handling.
 The recipes use the existing shared CLI profiling transport. Their report paths
 come from `Infra.codegen.make.generation_profile_path`,
-`Infra.codegen.make.modification_profile_path` and
-`Infra.codegen.make.check_profile_path`, bound to the selected `PROJECT_ROOT`,
+`Infra.codegen.make.modification_profile_path`,
+`Infra.codegen.make.check_profile_path` and
+`Infra.codegen.make.tests_profile_path`, bound to the selected `PROJECT_ROOT`,
 not the caller's working directory. Disabled capture retains the direct CLI call
 and creates no profile. There is no common profiling verb or legacy alias.
 
@@ -3997,7 +4039,7 @@ Generated family initializers publish through `flext_core.lazy.install_lazy_expo
 declare their part modules in `deferred_members`, and call `defer_lazy_bases`
 (`flext_core.lazy.defer_bases`) for the composed facade parts. Those names are the
 generator's output contract — owned by the `flext-infra` lazy-init planner and
-`flext_core.lazy`, emitted by `make gen`, and never authored or hand-edited. The
+`flext_core.lazy`, emitted by `make check`, and never authored or hand-edited. The
 current `flext-api` and `flext-auth` family initializers are the reference shape.
 
 Facade inheritance never treats the package currently being planned as its own
@@ -4030,7 +4072,7 @@ other than `type`. The facts come from the run's one parse of each module. The
 fresh-import admission then checks every exported stand-in against its real
 class: the non-dunder names each exposes at runtime, including names bound by
 unpacking, decorators or `setattr`, must be equal, or the stale initializer fails
-with a `make gen` fix (rule 2).
+with a `make check` fix (rule 2).
 
 Two composed classes stay real instead of becoming stand-ins (rule 5): a class
 whose body binds no member and names no base, and a class the package's own
@@ -4064,7 +4106,7 @@ Each repository plans once against one original source epoch. A source that
 changes while it is being planned fails verification and raises its original
 exception; there is no in-process successor, receipt adoption, conflict
 classification or bounded re-plan. The repository outcome records that exception
-and no files, and generation is rerun with `make gen` once the sources are stable.
+and no files, and generation is rerun with `make check` once the sources are stable.
 Changed external member dependencies are source inputs, not exclusions.
 
 Repository generation plans treat malformed source as a failed input. The
@@ -4171,15 +4213,17 @@ owns whole-program type analysis, and no second type checker runs beside them
 (`u.Infra.ruff_cache_directory`) and keys its own entries by its version and
 package root inside it; FLEXT adds no namespace of its own. The commit hook
 first provisions the checkout with `make setup`,
-then passes `make.ci.pre_commit_value` to the check, which runs only the fast
+then runs `make check` with `make.ci.pre_commit_value`, which runs only the fast
 commit-stage gates (`make.pre_commit_check_gates`: lint, format and Markdown)
 through the engine that setup provisioned; it runs no tests and no other
 validator. Staged Python files run the lint and format gates on those files; a
 staged Markdown file runs the `markdown` and `markdown-format` gates over the
 repository, never a raw `rumdl` pass, so a declared foreign projected block
 (`tooling.tools.markdown.projected-blocks`) reads the same in the hook as in
-`make check` and `make fmt`. When enabled, the generated pre-push hook
-drops inherited `CI` and runs the workflow's primary check once. The local
+`make check`. When enabled, the generated pre-push hook
+drops inherited `CI` and runs the workflow's primary check once, then the
+incremental tests; CI runs setup, the primary check and the fast tests, without
+external infrastructure or Docker (operator decision 2026-11-22). The local
 workflow retains the complete check and test steps. Every gate blocks in
 every context that runs it; there is no informative or advisory gate.
 Conflict detection uses the canonical Git inventory, including unpublished files,
@@ -4210,7 +4254,7 @@ writes locks; setup preserves the first install error without another lock mode.
 After installation, local setup authorizes the published `.envrc` with native
 `direnv allow`; CI skips that authorization. Setup never renders, compares or
 repairs environment files: `make check` verifies environment provenance and
-projection drift, and `make gen` owns regeneration. Repository batch operations
+projection drift, and local `make check` owns regeneration. Repository batch operations
 such as `codegen mise-artifacts` select `all` in local workspaces; attached
 members, standalone repositories and CI select `self`. Git declarations own discovery
 order, and each operation runs serially through its original validator or consumer.
@@ -4266,19 +4310,64 @@ resolution and lock publication.
 
 The ordinary `tests` operation uses incremental Testmon selection
 ([ADR-029](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/029-always-working-one-complete-cycle.md)).
-The explicit `tests-full` operation executes the applicable suite once without
-Testmon, an incremental pre-run or database access. Marker applicability remains
-owned by the declared execution context; neither operation invents exclusions.
-The incremental filesystem cache is one database per project, shared by every
-checkout and worktree of it, under the real account home's cache directory; a
-redirected `HOME` or `XDG_CACHE_HOME` never moves it, and full execution leaves it
-untouched.
-The explicit single-file operation runs incremental selection followed by complete
-execution of that file, including its declared slow tests, on the same database.
+The explicit `tests-full` operation executes the applicable suite once and records
+dependencies in Testmon without an incremental pre-run. The declared execution
+context determines which markers apply to each operation.
+The incremental database is Testmon's native `.testmondata` at the checkout root,
+ignored by `.gitignore`. The runner binds Testmon to that path for selection and
+execution, even when pytest discovers a nested configuration root. The same
+path goes into the run receipt and SQLite integrity inspection. The runner
+discards an inherited `TESTMON_DATAFILE` value.
+The explicit single-file operation runs that file once and records it in the
+same database. The file uses the full execution mode with per-item deadlines,
+including for its declared slow tests. It has no aggregate deadline even when
+the caller originally constructed the runner for incremental execution.
 No empty marker phase is invoked or converted to success. Zero execution is accepted
 only as an integrity-checked cache hit with complete inventory/deselection accounting.
-The SQLite owner checkpoints and checks integrity before the runner releases its
-lease.
+The SQLite owner checkpoints and checks the integrity of that database before
+and after the run.
+
+A caller supplying a qualified fixture to `workspace_tests` elects a single
+source project and a disjoint private working checkout. Testmon uses its
+regular checkout-root database and SQLite sidecars in that working checkout.
+Project identity reads Git status without optionally refreshing the index.
+The fixture supplies authenticated read-only inputs for the child's native
+Git source inventory. Pytest's benchmark plugin initializes its storage in
+the private phase output directory even when benchmarking is disabled.
+The configuration receipt recorder uses its declared directory beside the
+database, preserving configuration dependencies across invocations.
+The runner holds one checkout lease from preflight through native child
+termination, integrity inspection and the run receipt. The complete-suite
+operation takes the same lease. Each isolated fixture uses the elected
+operation deadline to qualify the native policy compiler and child lifecycle.
+
+Each pytest child receives authenticated source and runtime inputs and a
+separate writable report directory. Its home, temporary files and Python
+bytecode output use that private directory. A qualified whole-project fixture
+selects and executes incrementally in one native Testmon invocation with its
+default environment. Native worker observations bind the complete inventory and
+selection to the suite receipt. The original source identity still binds
+the parent receipts. The requested fixture uses the
+bootstrap-qualified launcher and policy compiler from the original setup
+report. The receipt binds their physical identities. A guest that changes
+those identities obtains a fresh receipt from `make setup` before replaying
+the fixture.
+
+A project may elect an independently prepared private fixture with
+`Infra.tooling.tools.pytest.fixture` in its effective `config/tooling.yaml`.
+The declaration identifies its physical `checkout-root`, the original
+`setup-root`, approved repository-relative `git-inputs`, and the admitted
+`runtime-trees` and `runtime-files`. Its optional environment contains only
+executable, loader and terminal inputs. The runner captures the project's
+native Git inventory and the declared head, index, refs and object files
+after the existing Make and systemd admission. The Git metadata belongs to
+the source project itself, with its own object store. The selected checkout
+owns its own Testmon state.
+The launcher authenticates the declared runtime roots on the retained
+read-only mount descriptors for a whole-project incremental run. A scoped
+or complete run captures the elected runtime version before its first phase
+and verifies that version at each launch.
+Projects without this election keep the ordinary checkout database.
 
 Toolchain caches hold one immutable entry per lock state: the key is the OS,
 Python runtime and content hash of `uv.lock`, `mise.lock`, `pyproject.toml` and
@@ -4627,8 +4716,8 @@ rewritten modules are therefore gate-clean by construction, and no Ruff post-pas
 decides or repairs imports (ADR-028 Decision 8.2; epic `flext-lqfqo`). When authored
 bytes carry formatting debt, normalization passes only changed line ranges to Ruff,
 which owns their logical-statement expansion. Untouched format debt and pre-existing
-lint findings stay for `make fmt` and `make fix`; generation never reformats untouched
-authored statements.
+lint findings stay for the repair and format stages of `make check`; generation never
+reformats untouched authored statements.
 
 Deferred class annotations stay typing-only when native source ancestry proves
 ordinary class construction through `object`: undecorated declarations, no class
@@ -5182,6 +5271,9 @@ to public import routing.
 Native provider capture owns resource addressing and source selection. Route traversal
 consumes that capture and one module/name binding identity, so publication policy does
 not duplicate filesystem discovery or expand the resolver's independent inputs.
+The typing-scaffold cleaner skips Rope's unused-import analysis when the candidate
+contains no import of `typing`: only typing imports are eligible for removal there.
+It still authenticates and removes empty typing guards before that decision.
 Facade collision analysis separates lexical guard provenance from declaration
 collection: only a native import binding to `typing.TYPE_CHECKING` or its
 `typing_extensions` counterpart makes a branch type-only. Runtime redeclarations

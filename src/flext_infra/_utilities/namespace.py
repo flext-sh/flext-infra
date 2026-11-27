@@ -96,7 +96,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         Constants (all upper case) precede CamelCase classes, which precede
         lower-case names; within a type group names compare case-insensitively
         (``TEST_FACADE_BASES`` < ``TESTS_ROOT``). Every generated import block
-        sorts by this one key, so ``make gen`` and ``make fix`` agree.
+        sorts by this one key, so ``make check`` and ``make check`` agree.
 
         Returns:
             The type group and the case-folded name.
@@ -339,6 +339,19 @@ class FlextInfraUtilitiesCodegenNamespace:
         if root.startswith(c.Infra.PKG_PREFIX_UNDERSCORE):
             return root.removeprefix(c.Infra.PKG_PREFIX_UNDERSCORE)
         return root
+
+    @staticmethod
+    def domain_namespace(class_stem: str) -> str:
+        """Name the nested domain namespace a package's facades compose.
+
+        ADR-028 Decision 10: ``FlextDbOracle`` composes ``DbOracle``; a stem
+        without the ``Flext`` prefix names itself.
+
+        Returns:
+            The class stem without its ``Flext`` prefix.
+
+        """
+        return class_stem.removeprefix("Flext") or class_stem
 
     @classmethod
     def _runtime_aliases(

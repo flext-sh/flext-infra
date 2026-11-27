@@ -12,6 +12,8 @@ from pathlib import Path
 from flext_infra.deps import FlextInfraDependencyDetectionService
 from tests import c, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraDepsDetectionPipCheck:
     """A native UV verdict belongs to the selected physical environment."""

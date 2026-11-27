@@ -1,4 +1,4 @@
-# AUTO-GENERATED FILE — Regenerate with: make gen
+# AUTO-GENERATED FILE — Regenerate with: make check
 """Source-derived structural model contracts.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
@@ -112,11 +112,6 @@ class FlextInfraProtocolsCodegenRender:
         @property
         def name(self) -> t.NonEmptyStr:
             """The nested structural contract."""
-            ...
-
-        @property
-        def depth(self) -> int:
-            """The contract's nesting depth beneath its owner."""
             ...
 
         @property
@@ -373,15 +368,6 @@ class FlextInfraProtocolsCodegenRender:
         @property
         def make(self) -> FlextInfraProtocolsConfigMake.MakeSpec:
             """Canonical workflow command contract."""
-            ...
-
-        @property
-        def scenario_data_roots(self) -> tuple[t.NonEmptyStr, ...]:
-            """Structural member projected from the owning model.
-
-            Scenario-data roots the staged-file hook never hands to a gate
-            (codegen.exclusions.scenario_data_roots).
-            """
             ...
 
     @runtime_checkable

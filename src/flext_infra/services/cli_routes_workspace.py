@@ -16,6 +16,21 @@ class FlextInfraWorkspaceRoutes:
     """Own release and workspace command routes."""
 
     @staticmethod
+    def _qualify_setup(
+        params: p.Infra.NativeSetupQualificationRequest,
+    ) -> p.Cli.ErasedCommandResult:
+        """Execute the elected native qualification within setup.
+
+        Returns:
+            The observation count or the original setup failure.
+
+        """
+        return workspace.FlextInfraNativeSetup.qualify_pending(
+            params.repository_root,
+            params.pending_report,
+        )
+
+    @staticmethod
     def _editable_members(
         params: p.Infra.WorkspaceRequest,
     ) -> p.Cli.ErasedCommandResult:
@@ -117,7 +132,9 @@ class FlextInfraWorkspaceRoutes:
         with u.Infra.gate_admitted(gate, params.repository_root, None) as ticket:
             completed = infra.workspace_tests(params, execution_mode=execution_mode)
         if completed.failure:
+            u.Infra.gate_health_record(params.repository_root, "tests", success=False)
             return r[int].from_failure(completed)
+        u.Infra.gate_health_record(params.repository_root, "tests", success=True)
         if completed.value:
             u.Cli.framework_exit(completed.value)
         if full:
@@ -128,7 +145,7 @@ class FlextInfraWorkspaceRoutes:
     def _tests_full(
         cls, params: p.Infra.WorkspaceTestsRequest
     ) -> p.Cli.ErasedCommandResult:
-        """Run one complete native suite without Testmon or an incremental pre-run.
+        """Run one complete native suite and record it in Testmon without selecting.
 
         Returns:
             The native result, preserving the first failing status.
@@ -259,6 +276,7 @@ class FlextInfraWorkspaceRoutes:
             result = cls._check_admitted(params, root, inputs)
         if complete and result.success:
             u.Infra.gate_repeat_record(ticket)
+        u.Infra.gate_health_record(root, "check", success=result.success)
         return result
 
     @classmethod
@@ -435,6 +453,12 @@ class FlextInfraWorkspaceRoutes:
         """
         return (
             m.Cli.ResultCommandRoute(
+                name="qualify-setup",
+                help_text="Attach elected native process observations to this setup",
+                model_cls=m.Infra.NativeSetupQualificationRequest,
+                handler=cls._qualify_setup,
+            ),
+            m.Cli.ResultCommandRoute(
                 name="signing-identity",
                 help_text="Inspect native public signing references without key access",
                 model_cls=m.Infra.GitRepoRequest,
@@ -483,7 +507,7 @@ class FlextInfraWorkspaceRoutes:
                 ),
                 (
                     c.Infra.VERB_TEST_FULL,
-                    "Run the complete selected tests once without Testmon",
+                    "Run the complete selected tests once and record them in Testmon",
                     m.Infra.WorkspaceTestsRequest,
                     cls._tests_full,
                     None,

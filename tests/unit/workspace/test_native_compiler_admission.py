@@ -10,6 +10,8 @@ from pathlib import Path
 
 from tests import c, p, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsNativeCompilerAdmission:
     """Separate passive native observations from isolated import effects."""

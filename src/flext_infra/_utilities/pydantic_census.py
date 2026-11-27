@@ -165,7 +165,7 @@ class FlextInfraUtilitiesPydanticCensus:
             ``True`` for generated content.
 
         """
-        return source.lstrip().startswith(c.Infra.AUTOGEN_HEADER)
+        return source.lstrip().startswith(c.Infra.AUTOGEN_MARKER)
 
     @staticmethod
     def _package(path: Path) -> str:

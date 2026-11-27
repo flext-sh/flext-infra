@@ -11,6 +11,8 @@ from pathlib import Path
 from flext_infra import codemod
 from tests import c, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraSemanticModuleNaming:
     """Derive split-module names from native evidence or fail closed."""

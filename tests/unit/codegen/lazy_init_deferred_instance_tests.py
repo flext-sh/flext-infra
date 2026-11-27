@@ -16,6 +16,8 @@ from pathlib import Path
 
 from tests import c, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraCodegenLazyInitDeferredInstance:
     """The initializer defers a declared root that requires absent settings."""

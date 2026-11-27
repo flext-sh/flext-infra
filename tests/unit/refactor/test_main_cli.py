@@ -16,6 +16,8 @@ from flext_infra import FlextInfraCli, infra
 from flext_infra.refactor import FlextInfraRefactorCensus
 from tests import c, m, p, r, t, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 @dataclasses.dataclass(frozen=True)
 class CensusViolationExpectation:

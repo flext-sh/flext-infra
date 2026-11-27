@@ -16,6 +16,8 @@ from pathlib import Path
 
 from tests import c, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraFacadesDeferEveryPart:
     """The facades publish part members that load on first use."""

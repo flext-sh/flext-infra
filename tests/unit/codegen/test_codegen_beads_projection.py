@@ -13,6 +13,8 @@ import pytest
 from flext_infra import codegen, config, workspace
 from tests import c, p, t, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraCodegenBeadsProjection:
     """Keep codegen on its declarative projection boundary."""

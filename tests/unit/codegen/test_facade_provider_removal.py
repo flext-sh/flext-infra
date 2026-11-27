@@ -28,7 +28,8 @@ class TestsFlextInfraFacadeProviderRemoval:
         name ``FlextSampleUtilitiesGone`` from the previous run; regeneration
         must derive the facade from the providers that exist, not resolve the
         stale base of its own previous projection — including through a class
-        nested inside the stale holder.
+        nested inside the stale holder, and in the header of the owner class
+        that holds the elected namespace.
         """
         root, package = u.Tests.create_lazy_init_workspace(
             tmp_path,
@@ -80,7 +81,8 @@ class TestsFlextInfraFacadeProviderRemoval:
             "    FlextSampleUtilitiesGone,\n"
             "    FlextSampleUtilitiesKept,\n"
             ")\n\n\n"
-            "class FlextSampleUtilities:\n"
+            "class FlextSampleUtilities(FlextSampleUtilitiesGone, "
+            "FlextSampleUtilitiesKept):\n"
             "    class Sample(FlextSampleUtilitiesGone, FlextSampleUtilitiesKept):\n"
             "        class Inner(FlextSampleUtilitiesKept):\n"
             "            pass\n\n\n"

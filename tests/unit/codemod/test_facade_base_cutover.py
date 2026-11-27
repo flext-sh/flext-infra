@@ -21,6 +21,7 @@ if TYPE_CHECKING:
 class TestsFlextInfraFacadeBaseCutover:
     """Exercise the facade-base phase only through ``u.Infra``."""
 
+    installed: Path
     PARENT_CLASS = "ParentDeclaredModelFacade"
     OTHER_CLASS = "OtherDeclaredModelFacade"
 
@@ -113,7 +114,7 @@ class TestsFlextInfraFacadeBaseCutover:
         """Resolve an imported module alias through its actual source identity."""
         child, sources = self._workspace(
             tmp_path,
-            """from parent_pkg import m, p
+            """from parent_pkg import m
 
 class ChildModels(m):
     pass
@@ -174,7 +175,7 @@ __all__ = [{self.PARENT_CLASS!r}, 'm']
             tmp_path,
             "from other_pkg import m as other_m\nfrom parent_pkg import m\n\n\n"
             "class ChildModels(m, other_m):\n    base = m.BaseModel\n"
-            "    other = m.BaseModel\n\n\nm = ChildModels\n",
+            "    other = other_m.BaseModel\n\n\nm = ChildModels\n",
         )
         other = tmp_path / "other/src/other_pkg"
         sources[other / "__init__.py"] = (
@@ -235,21 +236,17 @@ __all__ = [{self.PARENT_CLASS!r}, 'm']
     def test_facade_classes_derive_every_published_letter(
         self,
         tmp_path: Path,
-        installed_dependency_path: Path,
     ) -> None:
-        """Test facade classes derive every published letter."""
+        """The declaring repository root is the only derivation surface."""
         _child, sources = self._workspace(tmp_path, "")
+        parent = tmp_path / "parent"
         for path, source in sources.items():
-            if "parent_pkg" in path.parts:
-                relative = path.relative_to(tmp_path / "parent/src")
-                target = installed_dependency_path / relative
-                target.parent.mkdir(parents=True, exist_ok=True)
-                target.write_text(source, encoding="utf-8")
+            if path.is_relative_to(parent):
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(source, encoding="utf-8")
+        u.Tests.initialize_git_repo(parent)
         tm.that(
-            u.Infra.facade_classes(
-                "parent_pkg",
-                source_root=installed_dependency_path,
-            ),
+            u.Infra.facade_classes("parent_pkg", source_root=parent),
             eq={"m": self.PARENT_CLASS},
         )
 
@@ -395,14 +392,13 @@ __all__ = [{self.PARENT_CLASS!r}, 'm']
     def test_type_only_self_import_does_not_override_lazy_publication(
         self,
         tmp_path: Path,
-        installed_dependency_path: Path,
         guard_import: str,
         guard: str,
     ) -> None:
         """Static self-imports do not create runtime facade binding cycles."""
         _child, sources = self._workspace(tmp_path, "")
-        parent = tmp_path / "parent/src/parent_pkg"
-        sources[parent / "__init__.py"] = (
+        parent = tmp_path / "parent"
+        sources[parent / "src/parent_pkg/__init__.py"] = (
             f"{guard_import}\n"
             f"{self._lazy_publication('.models', self.PARENT_CLASS, 'm')}"
             f"if {guard}:\n"
@@ -410,18 +406,13 @@ __all__ = [{self.PARENT_CLASS!r}, 'm']
             f"__all__ = [{self.PARENT_CLASS!r}, 'm']\n"
         )
         for path, source in sources.items():
-            if "parent_pkg" in path.parts:
-                target = installed_dependency_path / path.relative_to(
-                    tmp_path / "parent/src",
-                )
-                target.parent.mkdir(parents=True, exist_ok=True)
-                target.write_text(source, encoding="utf-8")
+            if path.is_relative_to(parent):
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(source, encoding="utf-8")
+        u.Tests.initialize_git_repo(parent)
 
         tm.that(
-            u.Infra.facade_classes(
-                "parent_pkg",
-                source_root=installed_dependency_path,
-            ),
+            u.Infra.facade_classes("parent_pkg", source_root=parent),
             eq={"m": self.PARENT_CLASS},
         )
 
@@ -584,30 +575,53 @@ __all__ = [{self.PARENT_CLASS!r}, 'm']
             classification=c.Infra.ModScanFindingClass.DETECTION_ONLY,
         )
 
-    @classmethod
+    @u.Tests.fixture(autouse=True)
+    def _installed(self, installed_dependency_path: Path) -> None:
+        """Expose the import root where the parent package is installed."""
+        self.installed = installed_dependency_path
+
     def _plan(
-        cls,
+        self,
         tmp_path: Path,
         sources: Mapping[Path, str],
         child: Path,
     ) -> p.ResultView[tuple[p.Infra.SemanticMigrationEdit, ...]]:
         """Plan the facade-base phase for the detector finding in ``child``.
 
+        The child project is the scope, as in production: its sources are
+        committed checkout files (Git owns the inventory) and the parent is an
+        installed dependency, never a sibling tree inside the scope.
+
         Returns:
             The originating immutable result view of semantic migration edits.
 
         """
-        with infra.rope_workspace(tmp_path) as rope:
+        root = tmp_path / "child"
+        consumer: dict[Path, str] = {}
+        for path, source in sources.items():
+            if path.is_relative_to(root):
+                consumer[path] = source
+                target = path
+            else:
+                # Every other project is a dependency: install it from its src.
+                dependency = path.relative_to(tmp_path)
+                target = self.installed.joinpath(*dependency.parts[2:])
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(source, encoding=c.DEFAULT_ENCODING)
+        package_init = child.parent / c.Infra.INIT_PY
+        if package_init not in consumer:
+            package_init.write_text("", encoding=c.DEFAULT_ENCODING)
+        u.Tests.initialize_git_repo(root)
+        with infra.rope_workspace(root) as rope:
             return u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.FACADE_BASE,
                 rope_workspace=rope,
-                sources=sources,
-                findings=(cls._finding(child.relative_to(tmp_path)),),
+                sources=consumer,
+                findings=(self._finding(child.relative_to(root)),),
             )
 
-    @classmethod
     def _edits(
-        cls,
+        self,
         tmp_path: Path,
         sources: Mapping[Path, str],
         child: Path,
@@ -618,6 +632,6 @@ __all__ = [{self.PARENT_CLASS!r}, 'm']
             The successful plan's edits.
 
         """
-        planned = cls._plan(tmp_path, sources, child)
+        planned = self._plan(tmp_path, sources, child)
         tm.ok(planned)
         return planned.value

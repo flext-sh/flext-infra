@@ -14,6 +14,8 @@ from time import monotonic
 from flext_infra import FlextInfraCli, config, validate
 from tests import c, m, t, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraCProfileReport:
     """Prove real pstats artifacts render through the typed owner."""
@@ -81,9 +83,12 @@ class TestsFlextInfraCProfileReport:
                 if selected_file is None
                 else c.Infra.PytestExecutionMode.FULL
             ),
-            testmon_db=tmp_path / "testmon" if selected_file is None else None,
-            testmon_lease_acquired=True if selected_file is None else None,
-            deadline_monotonic=monotonic() + policy.run_timeout_seconds,
+            testmon_db=tmp_path / "testmon",
+            deadline_monotonic=(
+                monotonic() + policy.run_timeout_seconds
+                if selected_file is None
+                else None
+            ),
             report_directory=directory,
         )
         (directory / "run-context.json").write_text(
@@ -177,50 +182,6 @@ class TestsFlextInfraCProfileReport:
         )
 
     @staticmethod
-    @c.Tests.MARK.parametrize("execution_artifact", [False, True])
-    def test_waiting_lease_profile_has_no_child_execution(
-        tmp_path: Path, native_cprofile: Path, *, execution_artifact: bool
-    ) -> None:
-        """A profiled lease wait renders only authenticated parent evidence."""
-        reports = tmp_path / c.Infra.REPORTS_DIR_NAME
-        directory = reports / "waiting"
-        directory.mkdir(parents=True)
-        profile = native_cprofile
-        policy = config.Infra.tooling.tools.pytest
-        context = m.Infra.PytestRunContext(
-            execution_mode=c.Infra.PytestExecutionMode.INCREMENTAL,
-            testmon_db=tmp_path / "testmon",
-            testmon_lease_acquired=False,
-            deadline_monotonic=monotonic() + policy.run_timeout_seconds,
-            report_directory=directory,
-        )
-        (directory / "run-context.json").write_text(
-            context.model_dump_json(), encoding=c.DEFAULT_ENCODING
-        )
-        profile.with_suffix(".pstats.json").write_text(
-            context.model_copy(
-                update={"profile_sha256": u.Cli.sha256_bytes(profile.read_bytes())}
-            ).model_dump_json(),
-            encoding=c.DEFAULT_ENCODING,
-        )
-        if execution_artifact:
-            (directory / "suite-outcome.json").write_text(
-                "{}\n", encoding=c.DEFAULT_ENCODING
-            )
-        result = validate.FlextInfraCProfileReport(
-            repository_root=tmp_path,
-            profile=profile,
-            output=reports / "profile.txt",
-            sort=config.Infra.tooling.tools.pytest.profile_sort,
-            limit=config.Infra.tooling.tools.pytest.profile_limit,
-            run_receipt=profile.with_suffix(".pstats.json"),
-        ).execute()
-        if execution_artifact:
-            tm.fail(result)
-        else:
-            tm.ok(result)
-
-    @staticmethod
     @c.Tests.MARK.parametrize("exit_code", [0, 1])
     @c.Tests.MARK.parametrize("stage", ["selection", "inventory"])
     def test_selection_profile_without_plan_requires_failed_receipt(
@@ -243,7 +204,6 @@ class TestsFlextInfraCProfileReport:
         context = m.Infra.PytestRunContext(
             execution_mode=c.Infra.PytestExecutionMode.INCREMENTAL,
             testmon_db=tmp_path / "testmon",
-            testmon_lease_acquired=True,
             deadline_monotonic=monotonic() + policy.run_timeout_seconds,
             report_directory=directory,
         )
@@ -456,7 +416,6 @@ class TestsFlextInfraCProfileReport:
         context = m.Infra.PytestRunContext(
             execution_mode=c.Infra.PytestExecutionMode.INCREMENTAL,
             testmon_db=tmp_path / "testmon",
-            testmon_lease_acquired=True,
             deadline_monotonic=monotonic() + policy.run_timeout_seconds,
             report_directory=report_dir,
         )

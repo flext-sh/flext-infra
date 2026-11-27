@@ -589,6 +589,7 @@ class FlextInfra(
         execution_mode: c.Infra.PytestExecutionMode = (
             c.Infra.PytestExecutionMode.GLOBAL_INCREMENTAL
         ),
+        fixture: m.Infra.PytestFixture | None = None,
     ) -> p.Result[int]:
         """Execute native tests in the selected project contexts.
 
@@ -599,9 +600,10 @@ class FlextInfra(
         a shared clock left every later member only the budget its
         predecessors did not spend.
         FULL executes the complete applicable suite once in each project context
-        without Testmon, an incremental pre-run or database access.
+        and records it in Testmon without selecting, warming the incremental run.
         A declared file selects only this repository through that same runner.
         A declared marker narrows only the harness scope to that harness gate.
+        A qualified fixture binds a single project to its private working checkout.
 
         Returns:
             The first failing native test status, or zero after every success.
@@ -615,58 +617,27 @@ class FlextInfra(
             return r[int].fail(
                 f"tests marker narrows only the harness scope: {execution_mode}"
             )
-        context = FlextInfra.project_context(request.repository_root).unwrap()
-        if context.identity is None or context.runtime is None:
-            return r[int].fail(f"tests require a project context: {context.cwd}")
-        root = context.identity.repo_root
-        workspace_root = context.runtime.runtime_root
+        resolved_context = FlextInfra.project_context(request.repository_root)
+        if resolved_context.failure:
+            return r[int].from_failure(resolved_context)
+        context = resolved_context.value
         if (
             request.file is not None
             or request.scope == c.Infra.CodegenConformScope.SELF
+            or fixture is not None
         ):
-            return r[int].ok(
-                validate.FlextInfraPytestRunner.execute_project_context(
-                    context,
-                    started_at_monotonic=started_at_monotonic,
-                    execution_mode=(
-                        c.Infra.PytestExecutionMode.FULL
-                        if request.file is not None
-                        else execution_mode
-                    ),
-                    target_file=request.file,
-                    harness_marker=request.marker,
-                )
+            return FlextInfra._workspace_tests_project(
+                request, context, execution_mode, started_at_monotonic, fixture
             )
-        observed = workspace.FlextInfraWorkspaceDetector.load_workspace_spec(
-            workspace_root,
-        ).unwrap()
-        governed = frozenset(u.Infra.governed_project_roots(workspace_root))
-        references = tuple(
-            repository
-            for repository in (observed.repository, *observed.subprojects)
-            if (workspace_root / repository.path).resolve() in governed
-        )
-        ordered = u.Infra.workspace_dependency_order(workspace_root, references)
-        by_distribution = {
-            repository.distribution: (workspace_root / repository.path).resolve()
-            for repository in references
-        }
-        if frozenset(by_distribution.values()) != governed:
-            return r[int].fail(
-                "tests workspace declarations differ from governed roots"
-            )
+        members = FlextInfra._workspace_test_members(context)
+        if members.failure:
+            return r[int].from_failure(members)
         # A member owning no harness gate is an empty harness scope; the run
         # still fails when no member executed a harness item.
         harness = execution_mode == c.Infra.PytestExecutionMode.HARNESS
         status, executed = 0, not harness
-        for distribution in ordered:
-            selected = by_distribution[distribution]
+        for distribution, selected, project in members.value:
             u.Cli.info(f"tests: repository {distribution} root={selected}")
-            project = (
-                context
-                if selected == root
-                else FlextInfra.project_context(selected).unwrap()
-            )
             outcome = validate.FlextInfraPytestRunner.execute_project_context(
                 project,
                 started_at_monotonic=monotonic(),
@@ -684,6 +655,87 @@ class FlextInfra(
                     status = outcome
         return r[int].ok(
             status if executed else int(c.Infra.PytestExitCode.NO_TESTS_COLLECTED)
+        )
+
+    @staticmethod
+    def _workspace_tests_project(
+        request: p.Infra.WorkspaceTestsRequest,
+        context: p.Infra.WorkspaceProjectContext,
+        execution_mode: c.Infra.PytestExecutionMode,
+        started_at_monotonic: float,
+        fixture: m.Infra.PytestFixture | None,
+    ) -> p.Result[int]:
+        """Bind a caller-qualified fixture to one explicitly selected project.
+
+        Returns:
+            The original native test status or a fixture scope failure.
+
+        """
+        if fixture is not None:
+            if request.scope != c.Infra.CodegenConformScope.SELF:
+                return r[int].fail("a pytest fixture requires explicit self scope")
+            current = m.Infra.WorkspaceProjectContext.model_validate(context)
+            context = current.model_copy(update={"pytest_fixture": fixture})
+        return r[int].ok(
+            validate.FlextInfraPytestRunner.execute_project_context(
+                context,
+                started_at_monotonic=started_at_monotonic,
+                execution_mode=(
+                    c.Infra.PytestExecutionMode.FULL
+                    if request.file is not None
+                    else execution_mode
+                ),
+                target_file=request.file,
+                harness_marker=request.marker,
+            )
+        )
+
+    @staticmethod
+    def _workspace_test_members(
+        context: p.Infra.WorkspaceProjectContext,
+    ) -> p.Result[Sequence[tuple[str, Path, p.Infra.WorkspaceProjectContext]]]:
+        """Resolve every governed member's context in dependency order.
+
+        Returns:
+            ``(distribution, root, context)`` per governed member, the submitted
+            repository reusing ``context``, or the first resolution failure.
+
+        """
+        root = context.identity.repo_root
+        workspace_root = context.runtime.runtime_root
+        spec = workspace.FlextInfraWorkspaceDetector.load_workspace_spec(
+            workspace_root,
+        )
+        if spec.failure:
+            return r[
+                Sequence[tuple[str, Path, p.Infra.WorkspaceProjectContext]]
+            ].from_failure(spec)
+        observed = spec.value
+        governed = frozenset(u.Infra.governed_project_roots(workspace_root))
+        references = tuple(
+            repository
+            for repository in (observed.repository, *observed.subprojects)
+            if (workspace_root / repository.path).resolve() in governed
+        )
+        ordered = u.Infra.workspace_dependency_order(workspace_root, references)
+        by_distribution = {
+            repository.distribution: (workspace_root / repository.path).resolve()
+            for repository in references
+        }
+        if frozenset(by_distribution.values()) != governed:
+            return r[Sequence[tuple[str, Path, p.Infra.WorkspaceProjectContext]]].fail(
+                "tests workspace declarations differ from governed roots"
+            )
+        return r.traverse(
+            ordered,
+            lambda distribution: (
+                r[p.Infra.WorkspaceProjectContext].ok(context)
+                if by_distribution[distribution] == root
+                else FlextInfra.project_context(by_distribution[distribution])
+            ).map(
+                lambda project: (distribution, by_distribution[distribution], project)
+            ),
+            exceptions=(),
         )
 
     @staticmethod

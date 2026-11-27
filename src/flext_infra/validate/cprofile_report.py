@@ -110,8 +110,7 @@ class FlextInfraCProfileReport(s[bool]):
             The resulting ``tuple[Path, ...],``.
 
         Raises:
-            ValueError: If the lease was unacquired yet carries execution artifacts,
-                or the selection plan is absent after a successful suite.
+            ValueError: If the selection plan is absent after a successful suite.
 
         """
         if self.run_receipt is None:
@@ -127,13 +126,7 @@ class FlextInfraCProfileReport(s[bool]):
         suite_required = self._suite_required(suite_outcome)
         plan_path = directory / "selection-plan.json"
         process_profiles = self._process_profiles(directory)
-        if parent.testmon_lease_acquired is False:
-            context_path = directory / "run-context.json"
-            if any(entry != context_path for entry in directory.iterdir()):
-                msg = "unacquired Testmon lease carries execution artifacts"
-                raise ValueError(msg)
-            profiles = (self.profile,)
-        elif plan_path.is_file():
+        if plan_path.is_file():
             profiles = self._planned_profiles(
                 directory,
                 m.Infra.PytestSelectionPlan.model_validate_json(

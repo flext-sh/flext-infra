@@ -782,7 +782,6 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             spec = m.Infra.MakeWorkflowRenderSpec.model_validate({
                 "dist": (dist),
                 "make": (codegen.make),
-                "scenario_data_roots": (codegen.exclusions.scenario_data_roots),
             })
         elif destination == c.Infra.MARKDOWN_CONFIG_FILENAME:
             tooling = render_inputs.tooling_runtime
@@ -878,7 +877,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 return r[p.BaseModel].fail(
                     "Beads rendering requires enabled Beads identity",
                 )
-            # Why: this marker is regenerated on every `make gen`, but the
+            # Why: this marker is regenerated on every `make check`, but the
             # ledger identity inside it is owned by the checkout, not by the
             # fleet SSOT. Rendering without it stripped the key, and Beads then
             # minted a NEW identity on next access — a consumer rig lost its
@@ -1192,6 +1191,21 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                     in u.Infra.installed_runtime_closure(
                         codegen.infra_repository.distribution,
                     )
+                ),
+                "runtime_supplies_infra": (
+                    u.Infra.dep_name(codegen.infra_repository.distribution)
+                    in {
+                        u.Infra.dep_name(requirement)
+                        for requirement in (
+                            target.repository.distribution,
+                            *u.Infra.project_development_requirements(
+                                codegen.scaffold.project,
+                                distribution=target.repository.distribution,
+                                standalone=target.make_profile
+                                is c.Infra.MakeProfile.STANDALONE,
+                            ),
+                        )
+                    }
                 ),
                 "toolchain": (codegen.toolchain),
                 "python_version": (codegen.toolchain.python_version),

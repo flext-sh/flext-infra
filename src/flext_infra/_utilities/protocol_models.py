@@ -10,12 +10,14 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+import collections.abc as _collections_abc
 import copy
 import importlib
 import operator
 import re
 import textwrap
 import tomllib
+import typing as _typing
 from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -1284,7 +1286,7 @@ class FlextInfraUtilitiesModelsProtocol:
                         for node in holder.body
                         if isinstance(node, ast.ClassDef)
                     ]
-                    generated = source.startswith(c.Infra.AUTOGEN_HEADER)
+                    generated = source.startswith(c.Infra.AUTOGEN_MARKER)
                     retired[relative] = (
                         None
                         if generated and not contracts
@@ -2636,6 +2638,7 @@ class FlextInfraUtilitiesModelsProtocol:
             )
             self._source_unpublished_protocol_owners()
             self._source_index_model_aliases(grouped)
+            self._source_index_module_level_model_aliases(grouped)
             self.source_protocol_retirements = self._source_retired_protocol_owners(
                 package_dir, package_name, grouped
             )
@@ -2697,6 +2700,54 @@ class FlextInfraUtilitiesModelsProtocol:
                                 tree,
                                 model_nodes.get(matched[0], classes[0][0]),
                             )
+
+        def _source_index_module_level_model_aliases(
+            self,
+            grouped: Mapping[
+                Path, list[tuple[ast.ClassDef, tuple[str, ...], ast.Module]]
+            ],
+        ) -> None:
+            """Index module-level model aliases not nested in a class body."""
+            prefix = f"p.{self.class_stem}"
+            declared_protocol_names = self._source_protocol_declared_names(
+                frozenset(destination.resolve() for destination in grouped)
+            )
+            global_model_names = {
+                path[-1]
+                for classes in grouped.values()
+                for _node, path, _tree in classes
+                if path
+            }
+            for destination, classes in grouped.items():
+                model_nodes = {path[-1]: node for node, path, _tree in classes if path}
+                if not model_nodes:
+                    continue
+                sibling_names = set(model_nodes)
+                trees = {id(tree): tree for _node, _path, tree in classes}
+                for tree in trees.values():
+                    for statement in tree.body:
+                        alias = self._source_model_alias(statement)
+                        if alias is None:
+                            continue
+                        named = {
+                            symbol.id if isinstance(symbol, ast.Name) else symbol.attr
+                            for symbol in ast.walk(alias.value)
+                            if isinstance(symbol, (ast.Name, ast.Attribute))
+                        }
+                        matched = sorted(named & (sibling_names | global_model_names))
+                        if not matched or not isinstance(alias.name, ast.Name):
+                            continue
+                        if alias.name.id in declared_protocol_names:
+                            continue
+                        key = f"{prefix}.{alias.name.id}"
+                        if key in self.source_model_aliases:
+                            continue
+                        self.source_model_aliases[key] = (
+                            destination,
+                            alias,
+                            tree,
+                            model_nodes.get(matched[0], classes[0][0]),
+                        )
 
         def _source_protocol_declared_names(
             self, projected: frozenset[Path]
@@ -3344,7 +3395,7 @@ class FlextInfraUtilitiesModelsProtocol:
                         None if target is None else target.get_object(),
                     ))
                     continue
-                if not module.source_code.startswith(c.Infra.AUTOGEN_HEADER):
+                if not module.source_code.startswith(c.Infra.AUTOGEN_MARKER):
                     resource = module.get_resource()
                     msg = (
                         f"{resource.path if resource is not None else name}:"
@@ -4027,12 +4078,12 @@ class FlextInfraUtilitiesModelsProtocol:
                 if self.project.source_query(destination, "isfile")
                 else None
             )
-            if existing is not None and not existing.startswith(c.Infra.AUTOGEN_HEADER):
+            if existing is not None and not existing.startswith(c.Infra.AUTOGEN_MARKER):
                 owner = self._source_authored_protocol_holder(destination, package_name)
             generated = self._source_generated_module(
                 destination, owner, classes, package_name
             )
-            if existing is None or existing.startswith(c.Infra.AUTOGEN_HEADER):
+            if existing is None or existing.startswith(c.Infra.AUTOGEN_MARKER):
                 return generated
             return self._source_extend_authored(
                 (existing, generated), owner, classes, (destination, package_name)
@@ -4138,9 +4189,9 @@ class FlextInfraUtilitiesModelsProtocol:
                 ", ".join(
                     ast.unparse(
                         Sibling().visit(
-                            self._source_structural_annotation(
-                                argument, tree, node, classes
-                            )
+                            self._source_structural_projection(
+                                argument, tree, node, classes, lexical=None
+                            )[0]
                         )
                     )
                     for argument in (
@@ -4230,7 +4281,7 @@ class FlextInfraUtilitiesModelsProtocol:
 
             """
             if self.project.source_query(destination, "isfile") and not (
-                self.project.source_text(destination).startswith(c.Infra.AUTOGEN_HEADER)
+                self.project.source_text(destination).startswith(c.Infra.AUTOGEN_MARKER)
             ):
                 return self._source_authored_protocol_holder(
                     destination, self.source_package_name
@@ -4385,6 +4436,9 @@ class FlextInfraUtilitiesModelsProtocol:
             names: set[str] = set()
 
             for node, path, tree in classes:
+                # A nested model's contract is a sibling under its indexed
+                # name: nested in its parent Protocol it would become a class
+                # member every implementing parent model must match.
                 name = self.source_model_protocols[
                     ".".join((self.source_module_names[id(tree)], *path))
                 ]
@@ -4421,7 +4475,6 @@ class FlextInfraUtilitiesModelsProtocol:
                 contracts.append(
                     m.Infra.ModelProtocolRenderContext.ModelProtocolContract(
                         name=name,
-                        depth=0,
                         type_parameters=tuple(
                             ast.unparse(parameter)
                             for parameter in getattr(node, "type_params", ())
@@ -4507,9 +4560,9 @@ class FlextInfraUtilitiesModelsProtocol:
                     continue
                 name = statement.name.id
                 value = ast.unparse(
-                    self._source_structural_annotation(
-                        statement.value, alias_tree, model, classes
-                    )
+                    self._source_structural_projection(
+                        statement.value, alias_tree, model, classes, lexical=None
+                    )[0]
                 )
                 if name in contracts:
                     if value == f"{owner}.{name}":
@@ -4610,7 +4663,16 @@ class FlextInfraUtilitiesModelsProtocol:
                 for symbol in ast.walk(annotation)
                 if isinstance(symbol, ast.Name)
             }
+            base_subscript_names = {
+                symbol.id
+                for node, _path, _tree in classes
+                for base in node.bases
+                if isinstance(base, ast.Subscript)
+                for symbol in ast.walk(base.slice)
+                if isinstance(symbol, ast.Name)
+            }
             self._source_require_bindable_roots(classes, roots)
+            roots |= base_subscript_names
             runtime_imports: list[str] = []
             in_family = (
                 destination is not None
@@ -4647,7 +4709,7 @@ class FlextInfraUtilitiesModelsProtocol:
                 or (
                     self.project.source_query(destination, "isfile")
                     and not self.project.source_text(destination).startswith(
-                        c.Infra.AUTOGEN_HEADER
+                        c.Infra.AUTOGEN_MARKER
                     )
                 )
                 else {self._source_generated_holder(destination)}
@@ -4670,6 +4732,21 @@ class FlextInfraUtilitiesModelsProtocol:
                 )
                 type_imports.extend(type_part)
                 runtime_imports.extend(runtime_part)
+            # Stdlib/runtime names read only from class base subscripts (e.g.
+            # ``RootModel[MutableMapping[...]]``) must still receive an import
+            # even when the inherited root field no longer binds them.
+            already = "\n".join(runtime_imports + type_imports)
+            for name in sorted(base_subscript_names):
+                if name in excluded:
+                    continue
+                if name in getattr(self, "source_family_classes", {}):
+                    continue
+                if f" {name}" in already or f",{name}" in already:
+                    continue
+                if hasattr(_collections_abc, name):
+                    runtime_imports.append(f"from collections.abc import {name}")
+                elif hasattr(_typing, name):
+                    runtime_imports.append(f"from typing import {name}")
             if type_imports:
                 runtime_imports.append(
                     "if TYPE_CHECKING:\n"
@@ -6922,7 +6999,7 @@ class FlextInfraUtilitiesModelsProtocol:
             authored = self.project.source_query(
                 destination, "isfile"
             ) and not self.project.source_text(destination).startswith(
-                c.Infra.AUTOGEN_HEADER
+                c.Infra.AUTOGEN_MARKER
             )
             return (
                 self.source_model_protocols[routes[0]],
@@ -8469,7 +8546,7 @@ class FlextInfraUtilitiesModelsProtocol:
             if resource is None:
                 return content
             existing = self.project.source_text(destination)
-            if existing.startswith(c.Infra.AUTOGEN_HEADER):
+            if existing.startswith(c.Infra.AUTOGEN_MARKER):
                 # A general generation marker alone never proves this owner.
                 if not existing.startswith(content.split('"""', maxsplit=1)[0]) or (
                     '"""Source-derived structural model contracts.' not in existing
@@ -9476,7 +9553,7 @@ class FlextInfraUtilitiesModelsProtocol:
                         route not in self.references
                         and port is not None
                         and self.source_module(owner)
-                        and not owner.source_code.startswith(c.Infra.AUTOGEN_HEADER)
+                        and not owner.source_code.startswith(c.Infra.AUTOGEN_MARKER)
                     ):
                         return self._declared_port(port, route)
                     if route not in self.references:

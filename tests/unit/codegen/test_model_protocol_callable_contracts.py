@@ -14,6 +14,8 @@ from types import ModuleType
 from flext_infra import config
 from tests import c, m, p, t, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsModelProtocolCallableContracts:
     """Exercise public projection, actual Pydantic models and native consumers."""
@@ -620,6 +622,9 @@ class TestsModelProtocolCallableContracts:
         for relative, source in planned.items():
             tm.ok(u.Cli.atomic_write_text_file(root / relative, source))
         generated = planned[(package / "_protocols" / "payload.py").relative_to(root)]
+        # The reference and the declaration agree on the sibling contract.
+        tm.ok("\n    class EnvelopePage(" in generated)
+        tm.fail("\n        class Page(" in generated)
         tm.ok("child: p.EnvelopePage" in generated)
         tm.ok("pages: dict[str, p.EnvelopePage]" in generated)
         tm.fail("def child(" in generated)

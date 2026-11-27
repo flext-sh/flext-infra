@@ -11,6 +11,8 @@ from pathlib import Path
 
 from tests import c, m, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraAttributeReadProofs:
     """Proofs follow lazy exports and refuse custom getter behavior."""

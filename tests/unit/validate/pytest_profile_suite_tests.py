@@ -130,7 +130,7 @@ class TestsFlextInfraPytestProfileSuite:
         receipt = m.Infra.PytestRunContext.model_validate_json(original)
         # The profiled incremental operation is bounded, so its receipt names
         # a deadline.
-        deadline = receipt.deadline_monotonic
+        deadline = tm.not_none(receipt.deadline_monotonic)
         tm.ok(isfinite(deadline))
         tm.that(deadline, gt=0)
         receipt_path.write_text(
@@ -234,12 +234,12 @@ class TestsFlextInfraPytestProfileSuite:
         tm.that(command, has="--testmon --testmon-noselect")
         tm.fail((reports_root / latest_name / "coverage.xml").is_file())
         # A cold run has no database to inspect before pytest; its only cache
-        # receipt is the post-run seed decision.
+        # receipt is the post-run integrity decision on the created database.
         tm.fail((reports_root / latest_name / "cache-before.json").exists())
-        seeded = m.Infra.TestmonCacheState.model_validate_json(
+        created = m.Infra.TestmonCacheState.model_validate_json(
             tm.ok(
                 u.Cli.files_read_text(reports_root / latest_name / "cache-after.json"),
             ),
         )
-        tm.ok(seeded.seed_needed)
-        tm.ok(seeded.saveable)
+        tm.fail(created.restored_accepted)
+        tm.that(created.reason, eq="created")

@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from typing import override
 
 from flext_cli import u
 from rope.base.project import Project
@@ -80,6 +79,7 @@ class FlextInfraRopeRestructure(Restructure):
                 )
             },
             match_filter=self._admit_match,
+            import_filter=self._admit_imports,
         )
         self.import_policy = request.imports
 
@@ -110,35 +110,29 @@ class FlextInfraRopeRestructure(Restructure):
         self.admitted_count += int(admitted)
         return admitted
 
-    @override
-    def _add_imports(
+    def _admit_imports(
         self,
         resource: t.Infra.RopeNativeResource,
-        source: str,
         imports: Sequence[str],
-    ) -> str:
+    ) -> Sequence[str]:
         """Reuse existing bindings instead of replacing a richer public facade.
 
         Returns:
-            Source emitted by the native import manager.
+            The import declarations whose binding the module does not define.
 
         """
-        selected = imports
-        if isinstance(self.import_policy, Mapping):
-            names = (
-                FlextInfraUtilitiesRopeRuntime
-                .require_parsed_module(self.project.get_pymodule(resource))
-                .get_scope()
-                .get_defined_names()
-            )
-            selected = tuple(
-                declaration
-                for binding, declaration in self.import_policy.items()
-                if binding not in names
-            )
-
-        return u.type_adapter(str).validate_python(
-            super()._add_imports(resource, source, selected), strict=True
+        if not isinstance(self.import_policy, Mapping):
+            return imports
+        names = (
+            FlextInfraUtilitiesRopeRuntime
+            .require_parsed_module(self.project.get_pymodule(resource))
+            .get_scope()
+            .get_defined_names()
+        )
+        return tuple(
+            declaration
+            for binding, declaration in self.import_policy.items()
+            if binding not in names
         )
 
 

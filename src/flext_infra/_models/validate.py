@@ -25,6 +25,16 @@ class FlextInfraModelsCore:
     - ``ContractModel`` reserved for immutable settings/settings contracts.
     """
 
+    class PytestFixture(m.FrozenModel):
+        """Explicitly qualified inputs and physical working checkout for pytest."""
+
+        checkout_root: Path = m.Field(
+            description="Private checkout where Testmon uses its native path",
+        )
+        isolation: m.Cli.ProcessReadOnlyIsolation = m.Field(
+            description="CLI-qualified sources, runtime and bootstrap evidence",
+        )
+
     class ValidationReport(m.ArbitraryTypesModel):
         """Validation report model with violations and summary."""
 
@@ -302,22 +312,23 @@ class FlextInfraModelsCore:
         execution_mode: c.Infra.PytestExecutionMode = m.Field(
             description="Canonical test operation for this report directory",
         )
+        isolated_fixture: bool = m.Field(
+            default=False,
+            description="A setup-qualified private checkout owns the child lifecycle",
+        )
         testmon_db: Path | None = m.Field(
             description=(
-                "External pytest-testmon database for incremental operations; "
-                "absent for full and coverage execution"
+                "Native pytest-testmon database for incremental and full "
+                "operations; absent for coverage execution"
             ),
         )
-        testmon_lease_acquired: bool | None = m.Field(
-            description=(
-                "Whether an incremental phase acquired its Testmon lease; "
-                "absent for full and coverage execution"
-            ),
-        )
-        deadline_monotonic: float = m.Field(
+        deadline_monotonic: float | None = m.Field(
             gt=0,
             allow_inf_nan=False,
-            description="Shared absolute deadline across all execution phases",
+            description=(
+                "Shared absolute deadline across all execution phases; "
+                "absent for unconfined FULL"
+            ),
         )
         report_directory: Path | None = m.Field(
             default=None,
@@ -337,17 +348,25 @@ class FlextInfraModelsCore:
                 The validated execution identity.
 
             Raises:
-                ValueError: If the mode contradicts its database or lease state.
+                ValueError: If the mode contradicts its database or deadline
+                    state.
 
             """
-            incremental = self.execution_mode.is_incremental
-            if incremental != (self.testmon_db is not None) or incremental != (
-                self.testmon_lease_acquired is not None
-            ):
+            unbounded_full = (
+                self.execution_mode == c.Infra.PytestExecutionMode.FULL
+                and not self.isolated_fixture
+            )
+            if (self.deadline_monotonic is None) != unbounded_full:
+                msg = "only unconfined full execution owns no deadline"
+                raise ValueError(msg)
+            if self.execution_mode.records_testmon != (self.testmon_db is not None):
                 msg = (
-                    "incremental execution requires a Testmon database and lease; "
-                    "full and coverage execution require neither"
+                    "incremental and full execution require a Testmon database; "
+                    "coverage execution owns none"
                 )
+                raise ValueError(msg)
+            if self.isolated_fixture and self.testmon_db is None:
+                msg = "an isolated fixture requires its native Testmon database"
                 raise ValueError(msg)
             return self
 
@@ -386,6 +405,10 @@ class FlextInfraModelsCore:
         user_properties: tuple[tuple[str, t.JsonValue], ...] = m.Field(
             default_factory=tuple,
             description="Public pytest item properties transported by report-log",
+        )
+        exitstatus: int | None = m.Field(
+            default=None,
+            description="SessionFinish exit status; absent when the session was killed",
         )
 
         @m.model_validator(mode="after")

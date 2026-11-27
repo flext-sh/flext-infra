@@ -90,7 +90,7 @@ binding election belong to ADR-028 Decision 10.
 
 An initializer reexports declared names; it never invents an alias to compensate for a
 missing declaration. Structural changes use `make mod`, including dependent exports.
-Generated initializers are published by `make gen` and the shared publication owner,
+Generated initializers are published by `make check` and the shared publication owner,
 never repaired by copying an old initializer over current source.
 
 Lazy export means resolving an attribute when requested, through PEP 562. It does not

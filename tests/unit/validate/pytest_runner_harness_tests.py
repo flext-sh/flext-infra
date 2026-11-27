@@ -12,6 +12,8 @@ from pathlib import Path
 from flext_infra import config
 from tests import c, infra, m, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraPytestRunnerHarness:
     """The harness scope runs exactly the gates every other scope deselects."""

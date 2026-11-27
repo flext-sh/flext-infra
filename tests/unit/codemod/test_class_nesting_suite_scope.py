@@ -15,6 +15,8 @@ from flext_infra import config
 from flext_infra.codemod import FlextInfraCodemodSemanticApply
 from tests import c, infra, m, p, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraClassNestingSuiteScope:
     """A nested class suite cannot see a sibling while the owner is building."""
@@ -90,7 +92,6 @@ class TestsFlextInfraClassNestingSuiteScope:
             The cold pytest run's standard output.
 
         """
-        cache = config.Infra.codegen.make.testmon_cache
         result = tm.ok(
             u.Cli.run(
                 (
@@ -114,9 +115,6 @@ class TestsFlextInfraClassNestingSuiteScope:
                             "PYTEST_DISABLE_PLUGIN_AUTOLOAD": c.ParserBooleanToken.ONE,
                             "PYTEST_ADDOPTS": "",
                             "PYTEST_PLUGINS": "",
-                            cache.database_environment_variable: str(
-                                root / cache.database_filename
-                            ),
                         }
                     ),
                 ),

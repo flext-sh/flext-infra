@@ -12,6 +12,8 @@ from flext_infra import config
 from flext_infra.codegen import FlextInfraCodegenConform
 from tests import c, m, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraCodegenWorkspaceMemberGroup:
     """Tests for ``FlextInfraCodegenWorkspaceMemberGroup``."""

@@ -1,4 +1,4 @@
-# AUTO-GENERATED FILE — Regenerate with: make gen
+# AUTO-GENERATED FILE — Regenerate with: make check
 """Flext Infra.validate. Pytest Runner package.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
@@ -19,12 +19,16 @@ if TYPE_CHECKING:
     from flext_infra.validate._pytest_runner.execution import (
         FlextInfraPytestRunnerExecution,
     )
+    from flext_infra.validate._pytest_runner.fixture import (
+        FlextInfraPytestFixtureElection,
+    )
     from flext_infra.validate._pytest_runner.reports import (
         FlextInfraPytestRunnerReports,
     )
 
 
 __all__: tuple[str, ...] = (
+    "FlextInfraPytestFixtureElection",
     "FlextInfraPytestRunnerBase",
     "FlextInfraPytestRunnerCommand",
     "FlextInfraPytestRunnerExecution",
@@ -35,6 +39,7 @@ install_lazy_exports(
     __name__,
     globals(),
     {
+        "FlextInfraPytestFixtureElection": ".fixture",
         "FlextInfraPytestRunnerBase": ".base",
         "FlextInfraPytestRunnerCommand": ".command",
         "FlextInfraPytestRunnerExecution": ".execution",

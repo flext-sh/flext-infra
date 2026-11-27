@@ -1,4 +1,4 @@
-# AUTO-GENERATED FILE — Regenerate with: make gen
+# AUTO-GENERATED FILE — Regenerate with: make check
 """Flext Infra.gates package.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from flext_infra.gates.base_gate import FlextInfraGates
     from flext_infra.gates.codemod import FlextInfraGatesCodemod
     from flext_infra.gates.conflict_markers import FlextInfraGatesConflictMarkers
+    from flext_infra.gates.cubic import FlextInfraGatesCubic
     from flext_infra.gates.deps import FlextInfraGatesDeps
     from flext_infra.gates.direnv import FlextInfraGatesDirenv
     from flext_infra.gates.duplication import FlextInfraGatesDuplication
@@ -50,6 +51,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraGatesBandit",
     "FlextInfraGatesCodemod",
     "FlextInfraGatesConflictMarkers",
+    "FlextInfraGatesCubic",
     "FlextInfraGatesDeps",
     "FlextInfraGatesDirenv",
     "FlextInfraGatesDuplication",
@@ -85,6 +87,7 @@ install_lazy_exports(
         "FlextInfraGatesBandit": ".bandit",
         "FlextInfraGatesCodemod": ".codemod",
         "FlextInfraGatesConflictMarkers": ".conflict_markers",
+        "FlextInfraGatesCubic": ".cubic",
         "FlextInfraGatesDeps": ".deps",
         "FlextInfraGatesDirenv": ".direnv",
         "FlextInfraGatesDuplication": ".duplication",

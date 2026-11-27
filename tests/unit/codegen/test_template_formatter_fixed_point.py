@@ -11,6 +11,8 @@ from pathlib import Path
 
 from tests import c, m, p, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraTemplateFormatterFixedPoint:
     """Verify generated template formatter fixed-point contracts."""

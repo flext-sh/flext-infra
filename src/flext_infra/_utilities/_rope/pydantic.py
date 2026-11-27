@@ -14,6 +14,7 @@ from functools import cache
 from pathlib import Path
 
 from flext_infra import c, m, p, t
+from flext_infra._models import FlextInfraModelsBase
 from flext_infra._utilities import FlextInfraUtilitiesCodegenNamespace
 from flext_infra._utilities._rope import FlextInfraUtilitiesRopeRuntime
 from flext_infra._utilities._rope._analysis import (
@@ -88,12 +89,22 @@ class FlextInfraUtilitiesRopePydantic:
             Every public ``m`` class that is a concrete Pydantic model.
 
         """
-        return frozenset(
+        base = m.BaseModel
+        # Collect from facade class m (flext-infra's model facade)
+        facade_presets = {
             name
-            for name in getattr(m, "__all__", ())
+            for name in dir(m)
             if isinstance(getattr(m, name, None), type)
-            and issubclass(getattr(m, name), m.BaseModel)
-        )
+            and issubclass(getattr(m, name), base)
+        }
+        # Collect from package's model base (FlextInfraModelsBase)
+        base_presets = {
+            name
+            for name in dir(FlextInfraModelsBase)
+            if isinstance(getattr(FlextInfraModelsBase, name, None), type)
+            and issubclass(getattr(FlextInfraModelsBase, name), base)
+        }
+        return frozenset(facade_presets | base_presets)
 
     @classmethod
     def tier(cls, path: Path) -> str:
@@ -103,12 +114,9 @@ class FlextInfraUtilitiesRopePydantic:
             The tier letter, or an empty string outside a family directory.
 
         """
+        tiers = cls._tiers()
         return next(
-            (
-                cls._tiers()[part.removeprefix("_")]
-                for part in path.parts
-                if part.removeprefix("_") in cls._tiers()
-            ),
+            (tiers[part] for part in path.parts if part in tiers),
             "",
         )
 
@@ -122,7 +130,7 @@ class FlextInfraUtilitiesRopePydantic:
 
         """
         return {
-            directory: family.suffix
+            directory: family.letter
             for family in FlextInfraUtilitiesCodegenNamespace.facade_families().values()
             for directory in family.directories
         }

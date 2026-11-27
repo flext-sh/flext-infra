@@ -20,6 +20,8 @@ from flext_infra.workspace import (
 )
 from tests import c, m, p, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class FlextInfraGitAttestationFixtures:
     """Shared fixtures and readers for signed-gate behavior tests."""

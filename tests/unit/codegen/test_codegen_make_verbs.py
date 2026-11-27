@@ -297,6 +297,17 @@ class TestsFlextInfraCodegenMakeVerbs:
             makefile,
             has="upg: _bootstrap_setup_tools",
         )
+        # A fresh checkout is trusted before anything resolves a Mise-managed
+        # executable; the credential command runs only in the reread Makefile.
+        tm.that(makefile, has="setup: _setup_trust")
+        tm.that(
+            makefile,
+            has=(
+                "_setup_provision: _builtin_require_github_credential "
+                "_bootstrap_setup_tools"
+            ),
+        )
+        tm.that(makefile, has="ifneq ($(MAKECMDGOALS),setup)")
         tm.that(makefile, has="upg: TOOL_BOOTSTRAP_LIFECYCLE := _upg_lifecycle")
         tm.that(makefile, has="_builtin-fmt: _builtin_fmt_all")
         tm.that(makefile, has="_builtin-fix: _builtin_fix_all")

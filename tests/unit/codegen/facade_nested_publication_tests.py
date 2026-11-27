@@ -10,6 +10,8 @@ from pathlib import Path
 
 from tests import c, p, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFacadeNestedPublication:
     """Nested classes compose; module-level ones fail; stale publications retire."""

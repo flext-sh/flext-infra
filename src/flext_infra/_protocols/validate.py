@@ -1,4 +1,4 @@
-# AUTO-GENERATED FILE — Regenerate with: make gen
+# AUTO-GENERATED FILE — Regenerate with: make check
 """Source-derived structural model contracts.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
@@ -17,11 +17,27 @@ from flext_cli import FlextCliProtocols
 from flext_infra._protocols import FlextInfraProtocolsMixins
 
 if TYPE_CHECKING:
+    from flext_cli import p
+
     from flext_infra import c, t
 
 
 class FlextInfraProtocolsValidate:
     """Own the structural contracts declared by its model source."""
+
+    @runtime_checkable
+    class PytestFixture(FlextCliProtocols.BaseModel, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def checkout_root(self) -> Path:
+            """Private checkout where Testmon uses its native path."""
+            ...
+
+        @property
+        def isolation(self) -> p.Cli.ProcessReadOnlyIsolation:
+            """CLI-qualified sources, runtime and bootstrap evidence."""
+            ...
 
     @runtime_checkable
     class ValidationReport(FlextCliProtocols.BaseModel, Protocol):
@@ -288,26 +304,26 @@ class FlextInfraProtocolsValidate:
             ...
 
         @property
+        def isolated_fixture(self) -> bool:
+            """A setup-qualified private checkout owns the child lifecycle."""
+            ...
+
+        @property
         def testmon_db(self) -> Path | None:
             """Structural member projected from the owning model.
 
-            External pytest-testmon database for incremental operations; absent for
-            full and coverage execution.
+            Native pytest-testmon database for incremental and full operations;
+            absent for coverage execution.
             """
             ...
 
         @property
-        def testmon_lease_acquired(self) -> bool | None:
+        def deadline_monotonic(self) -> float | None:
             """Structural member projected from the owning model.
 
-            Whether an incremental phase acquired its Testmon lease; absent for full
-            and coverage execution.
+            Shared absolute deadline across all execution phases; absent for
+            unconfined FULL.
             """
-            ...
-
-        @property
-        def deadline_monotonic(self) -> float:
-            """Shared absolute deadline across all execution phases."""
             ...
 
         @property
@@ -367,6 +383,11 @@ class FlextInfraProtocolsValidate:
         @property
         def user_properties(self) -> tuple[tuple[str, t.JsonValue], ...]:
             """Public pytest item properties transported by report-log."""
+            ...
+
+        @property
+        def exitstatus(self) -> int | None:
+            """SessionFinish exit status; absent when the session was killed."""
             ...
 
     @runtime_checkable

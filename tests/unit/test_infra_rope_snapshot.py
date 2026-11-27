@@ -13,6 +13,8 @@ import pytest
 from flext_infra import config, infra
 from tests import c, e, m, p, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraRopeSnapshot:
     """Validate the closed snapshot inventory against governed entry files."""

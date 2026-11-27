@@ -11,6 +11,8 @@ from pathlib import Path
 from flext_infra import codemod
 from tests import c, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraSemanticRenameAtomicity:
     """A rename never publishes without the consumer rewire planned with it."""

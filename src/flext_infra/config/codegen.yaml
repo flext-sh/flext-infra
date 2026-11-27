@@ -214,6 +214,11 @@ Infra:
       # read only inside the families; the library set is derived.
       - name: codemod_library_member_name_rules
         shapes: [ ban-library-named-facade-member ]
+      # The facade member-collision law applied to the composition root
+      # (`<package>/api.py`): two unrelated services composed by MRO must not
+      # declare one member; a service extending another overrides it.
+      - name: codemod_composition_root_collision_rules
+        shapes: [ ban-composition-root-member-collision ]
       # The duplicate retirement and wrong-layer guidance, one document per
       # declaring letter scoped to that letter's family files.
       - name: codemod_facade_member_ownership_rules
@@ -324,7 +329,7 @@ Infra:
       # override-dependencies bind only this project's own resolution, never
       # the metadata an installer of this distribution resolves.
       uv_override_dependencies:
-      - rope @ git+https://github.com/marlon-costa-dc/rope.git@09806ca918b69994ac3a880c92cde9689f480f46
+      - rope @ git+https://github.com/marlon-costa-dc/rope.git@ecdee0efcbfa1bbdbd070218de3c39716b0299aa
       # Moving selectors consumed by generated .mise.toml and CI. Only
       # `make upg` resolves them to the newest release and writes mise.lock;
       # setup installs exactly what the committed lock pins, and only these
@@ -343,7 +348,7 @@ Infra:
       # platform lock section must carry one.
       # Base toolchain: only what this generator's own verbs run (python, the
       # self-managed mise, uv, direnv, taplo, ast-grep, gitleaks, scc, qlty,
-      # jscpd, waza, prek). A project that needs more
+      # jscpd, waza, prek, gh). A project that needs more
       # (kubectl, helm, kind, kubeconform, go, ...) declares them as additions
       # in its own config/codegen.yaml under Infra.codegen.toolchain.tools;
       # the config loader concatenates them onto this base. The library never
@@ -446,6 +451,13 @@ Infra:
           binary: prek
           arguments: [ --version ]
           pattern: "^prek {version}$"
+      # The declared GitHub credential command (make.github_credential_command).
+      - name: gh
+        version: latest
+        version_probe:
+          binary: gh
+          arguments: [ --version ]
+          pattern: "^gh version {version} "
       # Pins layered over the tools table by the override files.
       tool_version_pins: {}
       # False keeps Python resolution and installation on precompiled builds:
@@ -478,8 +490,12 @@ Infra:
       # every later `mise` resolved through the mise-managed shims runs exactly
       # that release. The host bootstrap mise only needs to read the committed
       # lockfile format.
+      # 2026.11.11 enters before the 10-day dependency cooldown by operator
+      # decision 2026-11-22 (cooldown exception): the host registry already
+      # runs it and lockfile_version 4 written by it must be readable by every
+      # governed shell (ai-hub aihub-vkb1j.14).
       mise_selector: github:jdx/mise
-      mise_version: "2026.10.3"
+      mise_version: "2026.11.11"
       beads:
         ownership_command_prefix: [ direnv, exec, ., bd ]
         # Beads ledger projection (.beads/config.yaml, .beads/metadata.yaml).
@@ -679,6 +695,7 @@ Infra:
       generation_profile_path: .reports/codegen/gen.pstats
       modification_profile_path: .reports/refactor/mod.pstats
       check_profile_path: .reports/check/route.pstats
+      tests_profile_path: .reports/tests/route.pstats
       # Whole-composition prerequisites precede every other check gate.
       # A partial inventory or any diagnostic prevents subsequent phases.
       check_prerequisite_gates: [ lint, pyrefly ]
@@ -694,11 +711,16 @@ Infra:
       # exception per public verb. Every verb runs at idle CPU and IO weight,
       # so agents use light processes instead of waiting for the load.
       admission:
+        # Operator 2026-11-19 (flext-lgbai): every real checkout keeps the
+        # load gate; only the test fabric renders fixture projects with false.
+        host_load_gate: true
         max_load5: 20
         memory_limit_gb: 5
         max_processes: 2
-        # Operator 2026-11-19: every verb admits at max_load5 20; no verb
-        # declares a higher load override.
+        # Operator 2026-11-22: load above the limit is never a reason to stop;
+        # only the heavy full forms are refused there. Every other verb always
+        # starts and runs under the idle-priority run limits.
+        gated_verbs: [check-full, tests-full, mod-full]
         refusal_guidance:
         - Do not wait for the load to drop; run the lighter form now, it runs at idle priority.
         - Prefer make tests (incremental Testmon) over make tests-full; run tests-full only occasionally.
@@ -727,7 +749,7 @@ Infra:
       #
       # lint_fix ALWAYS runs `--preview --fix --unsafe-fix` (tracker memory
       # operator-ruling-2026-10-09-authority-confirmation-0122, item 4):
-      # unsafe fixes are mandatory in every make fix, in every project and
+      # unsafe fixes are mandatory in every make check repair, in every project and
       # subproject. MakeRuffSpec fails validation without the flag. Rules
       # whose fixes would destroy information stay declared unfixable in
       # tooling.yaml (rule selection, never disabling the unsafe channel).
@@ -738,24 +760,28 @@ Infra:
         format_apply: [ --preview, --force-exclude ]
         lint_check: [ --preview, --no-fix, --force-exclude ]
         lint_fix: [ --preview, --fix, --unsafe-fixes ]
-      # Gates whose mutating side `make fmt` drives (formatters). Their
-      # read-only side runs in `make check`; `make fix` never repeats them
+      # Gates whose mutating side the format stage of `make check` drives
+      # (formatters). Their
+      # read-only side runs in `make check`; its repair stage never repeats them
       # (single-pass verb law: one operation per tool per verb).
-      # `format` (ruff) applies only through `make fmt`; its read-only
+      # `format` (ruff) applies only in the format stage of `make check`; its read-only
       # `--check` side runs in `make check` like markdown-format, so format
       # drift is red at check time. fix never formats.
       fmt_gates: [ format, markdown-format, markdown-code ]
-      # One filename and the root-relative runner paths; the runner places the
-      # database in platformdirs' external per-worktree cache.
+      # Testmon's native default database file at the checkout root
+      # (git-ignored) and the root-relative runner paths. Testmon tracks
+      # Python coverage only, so each test also records the config files it
+      # opens and the typed config leaves it reads: one receipt per leaf under
+      # config_receipts_directory (git-ignored by `.testmondata*`). An edited
+      # YAML then selects only its consumers. A test starting any child
+      # process outside config_insensitive_executables depends on every
+      # config file, since the child reads config Testmon cannot observe.
       testmon_cache:
         database_filename: .testmondata
-        database_environment_variable: TESTMON_DATAFILE
-        data_home_environment_variable: XDG_CACHE_HOME
-        user_home_environment_variable: HOME
-        home_cache_directory: .cache
-        external_storage_directory: flext/infra/testmon
         target_directory: tests
         reports_directory: .reports/tests
+        config_receipts_directory: .testmondata-config
+        config_insensitive_executables: [ git ]
       # Isolated environment that runs `make upg`'s one residual flext-infra
       # step (the Mise platform-gap repair). Native uv syncs it from the
       # project's own frozen lock, the dependency group that pins flext-infra,
@@ -765,19 +791,6 @@ Infra:
       executor_environment:
         directory: .flext/executor
         dependency_group: dev
-      # Actions-cache policy for the shared testmon database: two-phase
-      # generations, a per-repository byte budget with an ascending quota
-      # ladder, and the refs allowed to publish (never pull requests).
-      testmon_cache_policy:
-        mode: stable
-        save_enabled: true
-        max_bootstrap_generations: 3
-        max_stable_generations: 3
-        per_repo_budget_bytes: 52428800
-        warning_threshold_percent: 80
-        maintenance_threshold_percent: 90
-        block_threshold_percent: 95
-        key_prefix: flext-testmon
       ruff_cache:
         external_storage_directory: flext/infra/ruff
       # Public verbs execute their declared operation without mode selectors.
@@ -821,6 +834,10 @@ Infra:
         # passes.
         remote_variable: GITHUB_ACTIONS
         remote_value: "true"
+        # make check exports this to the generation inside its own convergence;
+        # that generation skips the health refusal, since the check is the
+        # remediation the refusal asks for.
+        converge_variable: FLEXT_INFRA_CHECK_CONVERGE
         # Gate baseline of the 0.12 line (tracker memory
         # operator-ruling-2026-10-09-gate-baseline-0122). Every gate blocks in
         # every context that runs it; there is no informative gate. No gate
@@ -843,7 +860,7 @@ Infra:
       pre_commit: true
       pre_push: false
       # Public refactor violations-sweep default; custom sequences use verbs below.
-      violations_sweep_repair_verbs: [ fix, fmt, mod ]
+      violations_sweep_repair_verbs: [ mod ]
       type_contract_rules:
       - bind-typing-adapter-utilities
       - rewire-cli-json-mapping-adapter
@@ -851,62 +868,39 @@ Infra:
       - pydantic-field-positional-default
       - pydantic-unset-private-attribute
       workflow:
-      # A commit provisions the checkout before its check, so a fresh lane
-      # worktree commits against its own locked toolchain, never PATH.
-      - { identity: setup, verb: setup, contexts: [ local, ci, pre_commit ] }
+      # Setup provisions locally and in CI; the commit hook runs only the
+      # converging check row (3f92d28eed: no setup row in pre_commit).
+      - { identity: setup, verb: setup, contexts: [ local, ci ] }
       # Initial behavioral admission requires global source evidence, not full check.
-      - { identity: check-primary, verb: check, phase: primary, contexts: [ local, ci, pre_push ] }
+      - { identity: check-primary, verb: check, phase: primary, contexts: [ local, ci, pre_commit, pre_push ] }
+      # Operator decision 2026-11-22 (supersedes the 2026-11-12 ruling): CI runs
+      # the fast tests after the primary check, with no external infrastructure
+      # and no Docker; the runner deselects the docker, remote and slow markers.
+      # A project that opts into the pre-push stage runs them there too.
       - identity: tests-primary
         verb: tests
-        contexts: [ local ]
+        contexts: [ local, ci, pre_push ]
         requires:
-        - { step: check-primary, contexts: [ local ] }
-      # CI never generates: check's `codegen conform --mode check` is the
-      # read-only projection verdict of the LOCKED generator, so a stale or
-      # skewed projection fails there, while CI generation would run the
-      # local codemod cascade and verify only its own output.
-      - { identity: gen, verb: gen, contexts: [ local ], requires: [ { step: tests-primary, contexts: [ local ] } ] }
-      - { identity: fmt, verb: fmt, contexts: [ local ], requires: [ { step: gen, contexts: [ local ] } ] }
-      - { identity: fix, verb: fix, contexts: [ local ], requires: [ { step: fmt, contexts: [ local ] } ] }
-      - { identity: mod, verb: mod, contexts: [ local ], requires: [ { step: fix, contexts: [ local ] } ] }
-      - identity: check-primary-refresh
+        - { step: check-primary, contexts: [ local, ci, pre_push ] }
+      - identity: check-complete
         verb: check
-        phase: primary
+        phase: complete
         contexts: [ local ]
-        requires:
-        - { step: mod, contexts: [ local ] }
-      - identity: check
-        verb: check
-        contexts: [ local, pre_commit ]
         requires:
         - { step: tests-primary, contexts: [ local ] }
-        - { step: check-primary-refresh, contexts: [ local ] }
       - identity: tests
         verb: tests
         contexts: [ local ]
         requires:
-        - { step: check, contexts: [ local ] }
-        - { step: check-primary-refresh, contexts: [ local ] }
+        - { step: check-primary, contexts: [ local ] }
+        - { step: check-complete, contexts: [ local ] }
       # Acceptance composes operations explicitly; each operation retains its domain.
       lifecycle_steps:
       - { verb: help, contexts: [ local ] }
       - { verb: setup, contexts: [ local, ci ] }
       - { verb: check, phase: primary, contexts: [ local, ci ] }
       - { verb: tests, contexts: [ local ] }
-      - { verb: gen, contexts: [ local ] }
-      - { verb: gen, contexts: [ local ] }
-      - { verb: fmt, contexts: [ local ] }
-      - { verb: fix, contexts: [ local ] }
-      - { verb: mod, contexts: [ local ] }
-      # Consecutive generation proves convergence on unchanged declarations.
-      - { verb: gen, contexts: [ local ] }
-      - { verb: gen, contexts: [ local ] }
-      - { verb: check, phase: primary, contexts: [ local, ci ] }
-      - { verb: check, contexts: [ local ] }
-      - { verb: tests, contexts: [ local ] }
       - { verb: build, contexts: [ local ] }
-      # Repository-local directory of the project's Mise shims. Mise itself is
-      # the official installer's shared default executable, never copied here.
       bootstrap_bin_dir: .bin
       # Artifacts `make clean` removes. Read by Makefile.j2 for the cache
       # sweep and the root-level directory/file lists.
@@ -959,33 +953,21 @@ Infra:
         arguments: [ FLEXT, RECREATE ]
       - name: upg
         description: Resolve declared dependency and tool updates and publish their resolution metadata and locks.
-      - name: lock
-        description: Resolve newly declared dependencies into the locks and keep every existing pin; only upg moves pins.
-      - name: gen
-        arguments: [ ROOT ]
-        description: Materialize explicitly declared new projects and publish every applicable generated projection.
-        requires_activation: false
-      - name: gen-scope
-        arguments: [ ROOT, WHAT, MODULE, SCOPE ]
-        description: Run the focal generation surface (WHAT, MODULE for facades, SCOPE) through the same engine, lock and budget as gen.
-        requires_activation: false
       - name: mod
         arguments: [ LAWS, RULES ]
         description: Refactor declared source structure through the shared pipeline and publish the complete coherent change; LAWS (ENFORCE ids) or RULES (rule ids) diagnose or repair one law (ADR-028 Decision 18 item 2).
-      - name: fix
-        description: Apply declared repairs to authored inputs through their canonical owners.
-      - name: fmt
-        description: Format authored content through the configured formatters.
       - name: check
         description: Validate declarations, projections, environment, documentation and configured gates without repairs or publication.
         arguments: [ CHECK_PHASE ]
       - name: tests
-        description: Run native incremental tests through the persistent Testmon selection.
+        description: Run native incremental tests through the persistent Testmon selection; in a workspace root ALL=Y includes every governed member.
+        arguments: [ ALL ]
       - name: tests-full
-        description: Run the complete selected inventory once without Testmon.
+        description: Run the complete selected inventory once and record it in Testmon; in a workspace root ALL=Y includes every governed member.
+        arguments: [ ALL ]
       - name: tests-harness
-        description: Run only the harness gate tests, through the persistent Testmon selection, under the harness that provides their inputs; MARKER=<harness gate marker> narrows the run to one.
-        arguments: [ MARKER ]
+        description: Run only the harness gate tests, through the persistent Testmon selection, under the harness that provides their inputs; MARKER=<harness gate marker> narrows the run to one; in a workspace root ALL=Y includes every governed member.
+        arguments: [ ALL, MARKER ]
       - name: help
         description: Discover the declared public interface without effects.
       - name: build
@@ -1090,10 +1072,8 @@ Infra:
     # Gitignore-only entries; they feed no other projection.
     - { name: .flext-sync.lock, is_dir: false, vscode_exclude: false, watch_exclude: false }
     - { name: .sync.lock, is_dir: false, vscode_exclude: false, watch_exclude: false }
-    # pytest-testmon's default cwd datafile and its SQLite WAL/SHM siblings.
-    # The canonical test verbs pin the database outside the checkout
-    # (make.testmon_cache) and the pytest plugin refuses an in-tree one, so an
-    # in-tree copy is a stray raw run that must never become tracked.
+    # pytest-testmon's native checkout-root database and its SQLite WAL/SHM
+    # siblings: local state, never tracked.
     - { name: ".testmondata*", is_dir: false, vscode_exclude: false, watch_exclude: false }
     - { name: .planning, vscode_exclude: false, watch_exclude: false }
     - { name: skill-create-output, vscode_exclude: false, watch_exclude: false }
@@ -1716,7 +1696,7 @@ Infra:
         - ".jscpd.json"
       # The generated toolchain config and launcher must reach a clean
       # CI checkout, so the deny-first root cannot swallow them;
-      # `make gen` owns their content.
+      # `make check` owns their content.
       - name: "Documentation"
         profiles: [ workspace ]
         patterns:
@@ -1773,6 +1753,7 @@ Infra:
         - ".claude/shell-snapshots/"
         - ".claude/worktrees/"
         - ".claude/settings.local.json.bak"
+        - ".trigger-tree/"
       # Provider surfaces are REAL files, so the ArgoCD symlink hazard that
       # once justified blocking `.agents/` in non-root checkouts no longer
       # applies: the catalog owner materializes them via
@@ -1829,6 +1810,11 @@ Infra:
       - name: "Private local config layers"
         patterns:
         - "/config/*.local.yaml"
+      # The host publishes a per-machine OpenMoat command policy into each
+      # checkout; it is projection, never source.
+      - name: "Host command policy projection (runtime state, never source)"
+        patterns:
+        - "/.moat/policy.yaml"
       - name: "Gas City skill projections (runtime state, never source)"
         patterns:
         - ".agents/skills/.gc-skill-ownership.json"
@@ -2386,7 +2372,7 @@ Infra:
           # policy: no ignore_errors, unapproved Ruff ignore or relaxed strictness.
           enforce: [ ENFORCE-020 ]
           # CUSTOM vs MANAGED (humans read comments; this block is the owner):
-          #   conflict_sections = MANAGED tables (template wins on make gen)
+          #   conflict_sections = MANAGED tables (template wins on make check)
           #   preserve_project_keys = CUSTOM [project] keys (live wins on merge)
           #   [project] keys the template writes that are not in preserve_project_keys
           #     (requires-python) are MANAGED; live dependencies stay CUSTOM and

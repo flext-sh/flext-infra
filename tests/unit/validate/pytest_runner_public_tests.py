@@ -11,7 +11,7 @@ import sqlite3
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
-from flext_infra import config, infra, validate
+from flext_infra import config
 from tests import c, e, m, t, tm, u
 
 
@@ -19,6 +19,7 @@ class TestsFlextInfraPytestRunner:
     """Exercise the real pytest, testmon, coverage, and report lifecycle."""
 
     @staticmethod
+    @c.Tests.MARK.slow
     @c.Tests.MARK.parametrize("has_origin", [False, True])
     def test_original_suite_receipt_binds_public_process_and_accounting(
         cached_runner_project: Path,
@@ -27,7 +28,6 @@ class TestsFlextInfraPytestRunner:
     ) -> None:
         """A real suite produces its own public proof input without another run."""
         root = cached_runner_project
-        u.Tests.git_bootstrap(root, ("init", "-b", c.Infra.GIT_MAIN))
         for key, value in (
             ("user.name", "Original Suite Test"),
             ("user.email", "suite@example.test"),
@@ -39,11 +39,13 @@ class TestsFlextInfraPytestRunner:
                 root,
                 (
                     "remote",
-                    "add",
+                    "set-url",
                     c.Infra.GIT_ORIGIN,
                     "https://github.example/flext/suite.git",
                 ),
             )
+        else:
+            u.Tests.git_bootstrap(root, ("remote", "remove", c.Infra.GIT_ORIGIN))
         tracked = root / "shared-tracked.txt"
         tracked.write_text("initial\n", encoding=c.DEFAULT_ENCODING)
         cache = config.Infra.codegen.make.testmon_cache
@@ -93,7 +95,7 @@ class TestsFlextInfraPytestRunner:
             "pending\n", encoding=c.DEFAULT_ENCODING
         )
         runner = u.Tests.PytestRunner.runner_for(root)
-        (root / runner.target / "test_shared_worktree.py").write_text(
+        (root / runner.target / "test_runtime.py").write_text(
             "import subprocess\nfrom pathlib import Path\n\n"
             "def test_shared_worktree() -> None:\n"
             f"    root = Path({str(root)!r})\n"
@@ -194,6 +196,7 @@ class TestsFlextInfraPytestRunner:
         )
 
     @staticmethod
+    @c.Tests.MARK.slow
     @c.Tests.MARK.parametrize("ci_context", [False, True])
     def test_child_imports_respect_the_installed_ci_boundary(
         cached_runner_project: Path,
@@ -201,19 +204,27 @@ class TestsFlextInfraPytestRunner:
         *,
         ci_context: bool,
     ) -> None:
-        """CI children cannot import code from a caller's source path."""
+        """CI children cannot import code from a caller's source path.
+
+        A caller's bytecode disable never reaches the suite either: pytest
+        caches rewritten modules only as bytecode, so an inherited disable
+        would re-rewrite every imported module on every run.
+        """
         inherited = cached_runner_project.parent / "inherited-source"
         inherited.mkdir()
         (inherited / "inherited_marker.py").write_text("VALUE = 42\n", encoding="utf-8")
         monkeypatch.setenv(c.Infra.ORCHESTRATOR_ENV_PYTHONPATH, str(inherited))
+        monkeypatch.setenv("PYTHONDONTWRITEBYTECODE", "1")
         source = cached_runner_project / c.Infra.DEFAULT_SRC_DIR
         runner = u.Tests.PytestRunner.runner_for(
             cached_runner_project, ci_context=ci_context
         )
-        (cached_runner_project / runner.target / "test_import_boundary.py").write_text(
+        (cached_runner_project / runner.target / "test_runtime.py").write_text(
             "import importlib.util\n"
-            "import os\n\n"
+            "import os\n"
+            "import sys\n\n"
             "def test_import_boundary() -> None:\n"
+            "    assert sys.dont_write_bytecode is False\n"
             "    paths = os.environ.get('PYTHONPATH', '').split(os.pathsep)\n"
             f"    assert ({str(source)!r} in paths) is {not ci_context!r}\n"
             "    available = importlib.util.find_spec('inherited_marker') is not None\n"
@@ -274,60 +285,121 @@ class TestsFlextInfraPytestRunner:
             runner.build_command(report)[suite_command.index("--testmon-env") + 1],
             eq=names[-1],
         )
+        # Config YAML never keys the environment: each test records its own
+        # config dependencies in the same Testmon environment instead.
+        package_root = cached_runner_project / c.Infra.DEFAULT_SRC_DIR / "runner_sample"
+        (package_root / c.CONFIG_DIR_NAME).mkdir()
+        packaged = package_root / c.CONFIG_DIR_NAME / "behavior.yaml"
+        packaged.write_text("value: initial\n", encoding=c.DEFAULT_ENCODING)
+        tm.that(
+            u.Tests.PytestRunner.runner_for(cached_runner_project).testmon_environment(
+                c.Infra.PytestExecutionMode.INCREMENTAL
+            ),
+            eq=name,
+        )
 
     @staticmethod
     @c.Tests.MARK.slow
-    def test_config_only_changes_invalidate_the_persistent_cache(
+    @c.Tests.MARK.parametrize(
+        ("edited", "content", "consumers"),
+        [
+            (
+                "src/runner_sample/config/sample.yaml",
+                "Sample:\n  alpha:\n    value: 1\n  beta:\n    value: 3\n",
+                ("test_beta", "test_child"),
+            ),
+            (
+                "src/runner_sample/config/sample.yaml",
+                "Sample:\n  alpha:\n    value: 5\n  beta:\n    value: 2\n",
+                ("test_alpha", "test_child", "test_module_level"),
+            ),
+            (
+                "src/runner_sample/config/sample.yaml",
+                (
+                    "# comment only\nSample:\n  alpha:\n    value: 1\n"
+                    "  beta:\n    value: 2\n"
+                ),
+                ("test_child",),
+            ),
+            ("config/raw.yaml", "value: changed\n", ("test_child", "test_raw")),
+        ],
+        ids=["typed-leaf", "module-level-read", "comment-only", "opened-file"],
+    )
+    def test_config_edit_selects_only_its_consumers(
         cached_runner_project: Path,
+        edited: str,
+        content: str,
+        consumers: tuple[str, ...],
     ) -> None:
-        """A governed YAML change executes again using the same Testmon database."""
-        config_root = cached_runner_project / c.CONFIG_DIR_NAME
-        config_root.mkdir()
-        source = config_root / "behavior.yaml"
-        source.write_text("value: initial\n", encoding="utf-8")
-        cache = config.Infra.codegen.make.testmon_cache
-        (cached_runner_project / cache.target_directory / "test_runtime.py").write_text(
+        """An edited YAML executes exactly the tests that consume it, once."""
+        root = cached_runner_project
+        package = root / c.Infra.DEFAULT_SRC_DIR / "runner_sample"
+        (package / c.CONFIG_DIR_NAME).mkdir()
+        (package / c.CONFIG_DIR_NAME / "sample.yaml").write_text(
+            "Sample:\n  alpha:\n    value: 1\n  beta:\n    value: 2\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        (root / c.CONFIG_DIR_NAME).mkdir()
+        (root / c.CONFIG_DIR_NAME / "raw.yaml").write_text(
+            "value: initial\n", encoding=c.DEFAULT_ENCODING
+        )
+        # A typed singleton loaded from the packaged YAML, as FLEXT packages
+        # publish ``config``; each leaf is one ``Sample.<section>.value``.
+        (package / "__init__.py").write_text(
             "from pathlib import Path\n"
-            "from flext_cli import u\n\n"
-            "def test_runtime():\n"
-            f"    payload = u.Cli.config_load(Path({str(source)!r})).unwrap()\n"
-            "    assert payload.data['value']\n",
-            encoding="utf-8",
+            "import yaml\n"
+            "from pydantic import BaseModel\n\n"
+            "class Leaf(BaseModel):\n    value: int\n\n"
+            "class Section(BaseModel):\n    alpha: Leaf\n    beta: Leaf\n\n"
+            "class Root(BaseModel):\n    Sample: Section\n\n"
+            "config = Root.model_validate(yaml.safe_load(\n"
+            "    (Path(__file__).parent / 'config' / 'sample.yaml').read_text()\n"
+            "))\n\n"
+            "def answer() -> int:\n    return 42\n",
+            encoding=c.DEFAULT_ENCODING,
         )
-        runner = u.Tests.PytestRunner.runner_for(cached_runner_project)
-        database = runner.testmon_db
-        tm.that(tm.ok(runner.execute()) == 0, truth=True)
-        reports = cached_runner_project / runner.reports
-        tm.that("executed=1" in u.Tests.PytestRunner.summary(reports), truth=True)
-        warm = u.Tests.PytestRunner.runner_for(cached_runner_project)
-        tm.that(tm.ok(warm.execute()) == 0, truth=True)
+        tests_root = root / config.Infra.codegen.make.testmon_cache.target_directory
+        (tests_root / "test_runtime.py").write_text(
+            "import subprocess\nimport sys\nfrom pathlib import Path\n"
+            "from runner_sample import answer, config\n\n"
+            "def test_alpha() -> None:\n"
+            "    assert config.Sample.alpha.value > 0\n\n"
+            "def test_beta() -> None:\n"
+            "    assert config.Sample.beta.value > 0\n\n"
+            "def test_raw() -> None:\n"
+            "    raw = Path(__file__).parents[1] / 'config' / 'raw.yaml'\n"
+            "    assert raw.read_text()\n\n"
+            "def test_child() -> None:\n"
+            "    subprocess.run([sys.executable, '-c', 'pass'], check=True)\n\n"
+            "def test_free() -> None:\n"
+            "    assert answer() == 42\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        (tests_root / "test_module_level.py").write_text(
+            "from runner_sample import config\n\n"
+            "LIMIT = config.Sample.alpha.value\n\n"
+            "def test_module_level() -> None:\n"
+            "    assert LIMIT > 0\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        runner = u.Tests.PytestRunner.runner_for(root)
+        reports = root / runner.reports
+        tm.that(tm.ok(runner.execute()), eq=0)
+        tm.that(u.Tests.PytestRunner.summary(reports), has=["executed=6"])
+        (root / edited).write_text(content, encoding=c.DEFAULT_ENCODING)
+        changed = u.Tests.PytestRunner.runner_for(root)
+        tm.that(changed.testmon_db, eq=runner.testmon_db)
+        tm.that(tm.ok(changed.execute()), eq=0)
+        latest = reports / (reports / "latest.txt").read_text().strip()
+        selection = m.Infra.PytestCollectionManifest.model_validate_json(
+            (latest / "testmon-selection.json").read_text(),
+        )
         tm.that(
-            "outcome=cache_hit" in u.Tests.PytestRunner.summary(reports), truth=True
+            tuple(sorted(node.rsplit("::", 1)[1] for node in selection.node_ids)),
+            eq=consumers,
         )
-        warm_latest = (reports / "latest.txt").read_text().strip()
-        warm_accounting = m.Infra.TestmonRunAccounting.model_validate_json(
-            (reports / warm_latest / "run-accounting.json").read_text(),
-        )
-        tm.that(warm_accounting.cache_restored, truth=True)
-        tm.that(warm_accounting.executed_count == 0, truth=True)
-        tm.that(
-            warm_accounting.deselected_count == warm_accounting.inventory_count,
-            truth=True,
-        )
-        source.write_text("value: changed\n", encoding="utf-8")
-        changed = u.Tests.PytestRunner.runner_for(cached_runner_project)
-        tm.that(changed.testmon_db == database, truth=True)
-        tm.that(tm.ok(changed.execute()) == 0, truth=True)
-        tm.that("executed=1" in u.Tests.PytestRunner.summary(reports), truth=True)
-        latest = (reports / "latest.txt").read_text().strip()
-        accounting = m.Infra.TestmonRunAccounting.model_validate_json(
-            (reports / latest / "run-accounting.json").read_text(),
-        )
-        tm.that(accounting.executed_count == accounting.reported_count, truth=True)
-        tm.that(
-            accounting.executed_count + accounting.deselected_count,
-            eq=accounting.inventory_count,
-        )
+        tm.that(tm.ok(u.Tests.PytestRunner.runner_for(root).execute()), eq=0)
+        tm.that(u.Tests.PytestRunner.summary(reports), has=["executed=0"])
 
     @staticmethod
     @c.Tests.MARK.slow
@@ -367,7 +439,6 @@ class TestsFlextInfraPytestRunner:
                 tm.ok(u.Cli.files_read_text(reports_root / warm_name / receipt)),
             )
             tm.ok(warm_state.restored_accepted)
-            tm.fail(warm_state.seed_needed)
 
     @staticmethod
     @c.Tests.MARK.slow
@@ -405,13 +476,10 @@ class TestsFlextInfraPytestRunner:
         u.Tests.PytestRunner.declare_parallel_project(cached_runner_project)
         policy = config.Infra.tooling.tools.pytest
         cache = config.Infra.codegen.make.testmon_cache
-        (cached_runner_project / cache.target_directory / "test_phases.py").write_text(
+        (cached_runner_project / cache.target_directory / "test_runtime.py").write_text(
             "import pytest\nfrom runner_sample import answer\n\n"
-            + "".join(
-                f"def test_budgeted_{index}() -> None:\n    assert answer()\n\n"
-                for index in range(1)
-            )
-            + f"@pytest.mark.{policy.slow_marker}\n"
+            "def test_budgeted() -> None:\n    assert answer()\n\n"
+            f"@pytest.mark.{policy.slow_marker}\n"
             "def test_slow_red() -> None:\n    assert answer() < 0\n",
             encoding="utf-8",
         )
@@ -672,15 +740,6 @@ class TestsFlextInfraPytestRunner:
             else pytest_policy.harness_gate_markers
         )
         cache = config.Infra.codegen.make.testmon_cache
-        marker_lines = "".join(
-            f'  "{marker}",\n' for marker in pytest_policy.standard_markers
-        )
-        (cached_runner_project / c.PYPROJECT_FILENAME).write_text(
-            "[tool.pytest.ini_options]\n"
-            f'pythonpath = ["{c.Infra.DEFAULT_SRC_DIR}"]\n'
-            f"markers = [\n{marker_lines}]\n",
-            encoding="utf-8",
-        )
         (
             cached_runner_project / cache.target_directory / "test_external.py"
         ).write_text(
@@ -722,12 +781,12 @@ class TestsFlextInfraPytestRunner:
     @staticmethod
     @c.Tests.MARK.slow
     @c.Tests.MARK.parametrize("ci_context", [False, True])
-    def test_full_executes_the_applicable_population_once_without_touching_testmon(
+    def test_full_executes_the_applicable_population_once_and_records_testmon(
         cached_runner_project: Path,
         *,
         ci_context: bool,
     ) -> None:
-        """A bounded full execution ignores its cache and its harness gates."""
+        """A full execution records its scope and skips harness gates."""
         policy = config.Infra.tooling.tools.pytest
         markers = tuple(
             sorted({
@@ -741,19 +800,10 @@ class TestsFlextInfraPytestRunner:
         # incremental scope does.
         not_executed = tuple(sorted(set(policy.harness_gate_markers)))
         executable = tuple(marker for marker in markers if marker not in not_executed)
-        marker_lines = "".join(f'  "{marker}",\n' for marker in policy.standard_markers)
-        (cached_runner_project / c.PYPROJECT_FILENAME).write_text(
-            "[tool.pytest.ini_options]\n"
-            f'pythonpath = ["{c.Infra.DEFAULT_SRC_DIR}"]\n'
-            f"markers = [\n{marker_lines}]\n",
-            encoding="utf-8",
-        )
         runner = u.Tests.PytestRunner.runner_for(
             cached_runner_project, ci_context=ci_context
         )
         database = tm.not_none(runner.testmon_db)
-        database.write_bytes(b"invalid cache must remain outside the full operation")
-        database_before = database.read_bytes()
         source = "import pytest\nfrom runner_sample import answer\n\n"
         for index, marker in enumerate(markers):
             source += (
@@ -776,14 +826,10 @@ class TestsFlextInfraPytestRunner:
             [context.execution_mode for context in parsed],
             eq=[c.Infra.PytestExecutionMode.FULL],
         )
-        tm.that({context.testmon_db for context in parsed}, eq={None})
-        tm.that({context.testmon_lease_acquired for context in parsed}, eq={None})
-        tm.that(database.read_bytes(), eq=database_before)
+        tm.that({context.testmon_db for context in parsed}, eq={database})
+        tm.ok(database.is_file())
         tm.that(parsed[-1].execution_mode, eq=c.Infra.PytestExecutionMode.FULL)
-        tm.that(
-            parsed[-1].deadline_monotonic,
-            eq=u.Tests.approx(runner.started_at_monotonic + policy.run_timeout_seconds),
-        )
+        tm.that(parsed[-1].deadline_monotonic, none=True)
         report_dir = contexts[-1].parent
         accounting = m.Infra.TestmonRunAccounting.model_validate_json(
             (report_dir / "run-accounting.json").read_text(),
@@ -806,8 +852,16 @@ class TestsFlextInfraPytestRunner:
             ],
         )
         recorded = (report_dir / "command.txt").read_text()
-        tm.fail("--testmon" in recorded)
-        tm.that(recorded, has=c.Infra.PYTEST_SUITE_STOP_OPTION)
+        tm.that(
+            recorded.split(),
+            has=[
+                "--testmon",
+                "--testmon-noselect",
+                runner.testmon_environment(c.Infra.PytestExecutionMode.FULL),
+            ],
+            lacks="--testmon-forceselect",
+        )
+        tm.that(recorded, lacks=c.Infra.PYTEST_SUITE_STOP_OPTION)
         tm.that(recorded, has=f"--timeout={policy.ordinary_timeout_seconds}")
         tm.that(recorded, has=[*not_executed])
         tm.that(
@@ -820,7 +874,7 @@ class TestsFlextInfraPytestRunner:
     def test_file_runs_after_warm_cache_and_ignores_node_like_diagnostics(
         cached_runner_project: Path,
     ) -> None:
-        """Complete file collection preserves a cache warmed by native selection."""
+        """Complete file collection records into a cache warmed by selection."""
         (cached_runner_project / "conftest.py").write_text(
             "import sys\n\n"
             "def pytest_collection_finish(session):\n"
@@ -838,7 +892,6 @@ class TestsFlextInfraPytestRunner:
         tm.that(tm.ok(baseline.execute()), eq=0)
         database = tm.not_none(baseline.testmon_db)
         tm.ok(database.is_file())
-        database_before = database.read_bytes()
         reports_root = cached_runner_project / baseline.reports
         existing = set(reports_root.glob("*/run-context.json"))
         runner = u.Tests.PytestRunner.runner_for(
@@ -857,28 +910,15 @@ class TestsFlextInfraPytestRunner:
             [context.execution_mode for context in parsed],
             eq=[c.Infra.PytestExecutionMode.FULL],
         )
-        tm.that({context.testmon_db for context in parsed}, eq={None})
-        tm.that({context.testmon_lease_acquired for context in parsed}, eq={None})
+        tm.that({context.testmon_db for context in parsed}, eq={database})
         tm.ok(database.is_absolute())
         tm.that(
-            database.is_relative_to(cached_runner_project.resolve()),
-            eq=False,
+            database,
+            eq=cached_runner_project
+            / config.Infra.codegen.make.testmon_cache.database_filename,
         )
-        tm.that(database.read_bytes(), eq=database_before)
-        tm.that(
-            (
-                cached_runner_project
-                / config.Infra.codegen.make.testmon_cache.database_filename
-            ).exists(),
-            eq=False,
-        )
-        tm.that(
-            {context.deadline_monotonic for context in parsed},
-            eq={
-                runner.started_at_monotonic
-                + config.Infra.tooling.tools.pytest.run_timeout_seconds,
-            },
-        )
+        tm.ok(database.is_file())
+        tm.that({context.deadline_monotonic for context in parsed}, eq={None})
         (file_report,) = (path.parent for path in contexts)
         tm.that(
             (file_report / "summary.txt").read_text(),
@@ -904,26 +944,30 @@ class TestsFlextInfraPytestRunner:
 
     @staticmethod
     @c.Tests.MARK.slow
-    def test_full_suite_applies_effective_slow_and_aggregate_policy(
+    def test_full_suite_keeps_item_limits_without_an_aggregate_deadline(
         cached_runner_project: Path,
     ) -> None:
-        """Real pytest enforces slow-item policy within the shared invocation wall."""
+        """Real pytest enforces item policy in an unbounded full invocation."""
         runner = u.Tests.PytestRunner.runner_for(cached_runner_project)
+        policy = config.Infra.tooling.tools.pytest
+        ordinary_limit = policy.ordinary_timeout_seconds
+        slow_limit = policy.slow_timeout_seconds
         reports_root = cached_runner_project / runner.reports
         existing = set(reports_root.glob("*/run-context.json"))
         (cached_runner_project / runner.target / "test_bounded_policy.py").write_text(
             "import pytest\nfrom flext_infra import c\n\n"
             "def test_ordinary_budget(pytestconfig, request):\n"
-            "    assert pytestconfig.getoption('timeout') == 2\n"
+            f"    assert pytestconfig.getoption('timeout') == {ordinary_limit}\n"
             "    assert request.node.get_closest_marker('timeout') is None\n\n"
-            f"@pytest.mark.{config.Infra.tooling.tools.pytest.slow_marker}\n"
+            f"@pytest.mark.{policy.slow_marker}\n"
             "def test_bounded_policy(pytestconfig, request):\n"
-            "    assert pytestconfig.getoption('timeout') == 2\n"
+            f"    assert pytestconfig.getoption('timeout') == {ordinary_limit}\n"
             "    budget = pytestconfig.getini(c.Infra.FLEXT_SLOW_TIMEOUT_SECONDS)\n"
-            "    assert budget == '20'\n"
+            f"    assert budget == {str(slow_limit)!r}\n"
             "    marker = request.node.get_closest_marker('timeout')\n"
-            "    assert marker is not None and marker.args == (20,)\n"
-            "    assert pytestconfig.getoption(c.Infra.PYTEST_SUITE_STOP_OPTION) > 0\n",
+            f"    assert marker is not None and marker.args == ({slow_limit},)\n"
+            "    stop_at = pytestconfig.getoption(c.Infra.PYTEST_SUITE_STOP_OPTION)\n"
+            "    assert stop_at is None\n",
             encoding="utf-8",
         )
 
@@ -938,15 +982,8 @@ class TestsFlextInfraPytestRunner:
             [context.execution_mode for context in parsed],
             eq=[c.Infra.PytestExecutionMode.FULL],
         )
-        tm.that(
-            {context.deadline_monotonic for context in parsed},
-            eq={
-                runner.started_at_monotonic
-                + config.Infra.tooling.tools.pytest.run_timeout_seconds,
-            },
-        )
-        tm.that({context.testmon_db for context in parsed}, eq={None})
-        tm.that({context.testmon_lease_acquired for context in parsed}, eq={None})
+        tm.that({context.deadline_monotonic for context in parsed}, eq={None})
+        tm.that({context.testmon_db for context in parsed}, eq={runner.testmon_db})
 
     @staticmethod
     @c.Tests.MARK.slow
@@ -1093,54 +1130,3 @@ class TestsFlextInfraPytestRunner:
         tm.that(len(contexts), eq=2)
         tm.fail((contexts[-1].parent / "suite-outcome.json").exists())
         tm.fail((contexts[-1].parent / "testmon-inventory.json").exists())
-
-
-class TestsFlextInfraPytestRunnerDatabase:
-    """The incremental database location is owned by the runner, not the caller."""
-
-    @staticmethod
-    @c.Tests.MARK.parametrize(
-        "mode",
-        [
-            c.Infra.PytestExecutionMode.GLOBAL_INCREMENTAL,
-            c.Infra.PytestExecutionMode.FULL,
-        ],
-    )
-    def test_project_database_ignores_a_redirected_home(
-        tmp_path: Path,
-        monkeypatch: t.Tests.MonkeyPatch,
-        *,
-        mode: c.Infra.PytestExecutionMode,
-    ) -> None:
-        """One database per project at the real account home; full runs have none."""
-        repository = tmp_path / "project"
-        u.Tests.WorktreeFixture.initialize_governed_project(
-            repository,
-            "fixture-project",
-            beads=u.Tests.BeadsIdentity(
-                workspace="fixture-workspace",
-                database="fixture_database",
-                issue_prefix="fixture",
-            ),
-        )
-        context = tm.ok(infra.project_context(repository))
-        cache = config.Infra.codegen.make.testmon_cache
-        expected = (
-            u.Infra.real_account_home()
-            / cache.home_cache_directory
-            / cache.external_storage_directory
-            / tm.not_none(context.target).canonical_project_name
-            / cache.database_filename
-        )
-        redirected = tmp_path / "redirected-home"
-        monkeypatch.setenv("HOME", str(redirected))
-        monkeypatch.setenv("XDG_CACHE_HOME", str(redirected / "cache"))
-        runner = validate.FlextInfraPytestRunner.from_project_context(
-            context,
-            started_at_monotonic=1.0,
-            execution_mode=mode,
-        )
-        tm.that(
-            runner.testmon_db,
-            eq=expected if mode.is_incremental else None,
-        )

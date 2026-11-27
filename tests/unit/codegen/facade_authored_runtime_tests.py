@@ -12,6 +12,8 @@ from pathlib import Path
 from flext_infra import codegen, config, workspace
 from tests import c, m, p, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraFacadeAuthoredRuntime:
     """Exercise preservation through generation and a fresh public consumer."""

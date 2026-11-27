@@ -148,6 +148,16 @@ class FlextInfraModelsConfigMake(
             t.NonEmptyStr,
             m.Field(description="Value of remote_variable on a remote runner"),
         ] = "true"
+        converge_variable: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description=(
+                    "Variable make check exports to the generation of its own "
+                    "convergence: the check is the remediation the health refusal "
+                    "asks for, so that generation never needs an earlier green check."
+                ),
+            ),
+        ] = "FLEXT_INFRA_CHECK_CONVERGE"
 
         @m.model_validator(mode="after")
         def _validate_distinct_tokens(self) -> Self:
@@ -346,93 +356,18 @@ class FlextInfraModelsConfigMake(
                 raise ValueError(msg)
             return self
 
-    class TestmonCachePolicySpec(FlextInfraModelsConfigContract.ConfigContract):
-        """Declarative Actions-cache policy for the shared testmon database.
-
-        Implements the preserved #1001 delta (bead flext-j0u23): two-phase
-        generations with per-mode caps, a per-repository byte budget with a
-        three-stage quota ladder and a cache-key namespace. Event identity
-        determines publication eligibility; branch names are not policy.
-        The packaged codegen configuration owns all policy values. This
-        declaration validates them and never supplies a second policy when
-        required configuration is missing.
-        """
-
-        mode: Annotated[
-            Literal["bootstrap", "stable"],
-            m.Field(description="Cache phase: bootstrap seeds, stable saves"),
-        ]
-        save_enabled: Annotated[
-            bool,
-            m.Field(description="Master switch for cache publishes"),
-        ]
-        max_bootstrap_generations: Annotated[
-            int,
-            m.Field(gt=0, description="Retention cap for bootstrap generations"),
-        ]
-        max_stable_generations: Annotated[
-            int,
-            m.Field(gt=0, description="Retention cap for stable generations"),
-        ]
-        per_repo_budget_bytes: Annotated[
-            int,
-            m.Field(gt=0, description="Per-repository byte budget"),
-        ]
-        warning_threshold_percent: Annotated[
-            int,
-            m.Field(ge=0, le=100, description="Quota-ladder warning stage"),
-        ]
-        maintenance_threshold_percent: Annotated[
-            int,
-            m.Field(ge=0, le=100, description="Quota-ladder maintenance stage"),
-        ]
-        block_threshold_percent: Annotated[
-            int,
-            m.Field(ge=0, le=100, description="Quota-ladder block stage"),
-        ] = 95
-        key_prefix: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Actions cache key namespace"),
-        ]
-
-        @m.model_validator(mode="after")
-        def require_ascending_quota_ladder(self) -> Self:
-            """Keep the quota ladder strictly ascending within the percent scale.
-
-            Returns:
-                The resulting ``Self``.
-
-            Raises:
-                ValueError: If testmon cache quota ladder must ascend warning <
-                    maintenance < block <= 100.
-
-            """
-            full_scale = 100
-            if not (
-                self.warning_threshold_percent
-                < self.maintenance_threshold_percent
-                < self.block_threshold_percent
-                <= full_scale
-            ):
-                msg = (
-                    "testmon cache quota ladder must ascend "
-                    "warning < maintenance < block <= 100"
-                )
-                raise ValueError(msg)
-            return self
-
     class MakeRuffSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Ruff CLI contract for generated Make verbs and quality gates.
 
         Operator 2026-09-08: ruff is the style and autofix rule. Every
         invocation uses preview. Never weaken ruff to keep a file; change the
-        code. Single-pass verb law (operator 2026-09-18): ``make fmt`` runs
-        format only and ``make fix`` owns lint repair through the lint gate —
+        code. Single-pass verb law (operator 2026-09-18): ``make check`` runs
+        format only and ``make check`` owns lint repair through the lint gate —
         there is deliberately no ``lint_apply`` key, because a lint pass
         inside fmt would repeat the lint gate's fix.
 
         *** Operator law 2026-10-05 (direct order, OBLIGATORY and NEVER to be
-        disabled again): ``make fix`` ALWAYS applies Ruff's unsafe fixes —
+        disabled again): ``make check`` ALWAYS applies Ruff's unsafe fixes —
         ``lint_fix`` MUST carry the unsafe-fix flag in every project and
         subproject, forever. A configuration without it fails validation;
         re-adding it after a removal is a mandated repair, and removing it is
@@ -460,7 +395,8 @@ class FlextInfraModelsConfigMake(
                 description=(
                     "Flags for ruff check --fix; MANDATORY unsafe-fix channel"
                     " (operator law 2026-10-05): the lint gate's apply mode"
-                    " (make fix) always applies safe and unsafe fixes"
+                    " (make check) always applies safe and unsafe "
+                    "fixes"
                 ),
             ),
         ]
@@ -513,8 +449,10 @@ class FlextInfraModelsConfigMake(
             tuple[t.NonEmptyStr, ...],
             m.Field(
                 description=(
-                    "Gates whose mutating side `make fmt` drives (formatters). "
-                    "The read-only side runs in `make check`; `make fix` never "
+                    "Gates whose mutating side `make check` drives "
+                    "(formatters). "
+                    "The read-only side runs in `make check`; the fix phase of `make "
+                    "check` never "
                     "repeats them (single-pass verb law)."
                 ),
             ),
@@ -582,106 +520,13 @@ class FlextInfraModelsConfigMake(
     class MakeHarnessSpec(MakeExecutionSpec):
         """Test harness, cache, receipt and profile environment of the Make surface."""
 
-        class TestmonCachePolicySpec(FlextInfraModelsConfigContract.ConfigContract):
-            """Declarative Actions-cache policy for the shared testmon database.
-
-            Implements the preserved #1001 delta (bead flext-j0u23): two-phase
-            generations with per-mode caps, a per-repository byte budget with a
-            three-stage quota ladder and a cache-key namespace. Event identity
-            determines publication eligibility; branch names are not policy.
-            """
-
-            mode: Annotated[
-                Literal["bootstrap", "stable"],
-                m.Field(description="Cache phase: bootstrap seeds, stable saves"),
-            ] = "stable"
-            save_enabled: Annotated[
-                bool,
-                m.Field(description="Master switch for cache publishes"),
-            ] = False
-            max_bootstrap_generations: Annotated[
-                int,
-                m.Field(gt=0, description="Retention cap for bootstrap generations"),
-            ] = 3
-            max_stable_generations: Annotated[
-                int,
-                m.Field(gt=0, description="Retention cap for stable generations"),
-            ] = 3
-            per_repo_budget_bytes: Annotated[
-                int,
-                m.Field(gt=0, description="Per-repository byte budget"),
-            ] = 52_428_800
-            warning_threshold_percent: Annotated[
-                int,
-                m.Field(ge=0, le=100, description="Quota-ladder warning stage"),
-            ] = 80
-            maintenance_threshold_percent: Annotated[
-                int,
-                m.Field(ge=0, le=100, description="Quota-ladder maintenance stage"),
-            ] = 90
-            block_threshold_percent: Annotated[
-                int,
-                m.Field(ge=0, le=100, description="Quota-ladder block stage"),
-            ] = 95
-            key_prefix: Annotated[
-                t.NonEmptyStr,
-                m.Field(description="Actions cache key namespace"),
-            ] = "flext-testmon"
-
-            @m.model_validator(mode="after")
-            def require_ascending_quota_ladder(self) -> Self:
-                """Keep the quota ladder strictly ascending within the percent scale.
-
-                Returns:
-                    The resulting ``Self``.
-
-                Raises:
-                    ValueError: If testmon cache quota ladder must ascend warning <
-                        maintenance < block <= 100.
-
-                """
-                full_scale = 100
-                if not (
-                    self.warning_threshold_percent
-                    < self.maintenance_threshold_percent
-                    < self.block_threshold_percent
-                    <= full_scale
-                ):
-                    msg = (
-                        "testmon cache quota ladder must ascend"
-                        " warning < maintenance < block <= 100"
-                    )
-                    raise ValueError(msg)
-                return self
-
-        class TestmonCacheSpec(
-            FlextInfraExternalCacheDirectorySpec.Directory[
-                FlextInfraConstantsConfig.PytestCacheEnvironment
-            ],
-            FlextInfraModelsConfigContract.ConfigContract,
-        ):
-            """Persistent pytest-testmon database and runner paths."""
+        class TestmonCacheSpec(FlextInfraModelsConfigContract.ConfigContract):
+            """Testmon's native database filename and the runner paths."""
 
             database_filename: Annotated[
                 t.NonEmptyStr,
-                m.Field(description="pytest-testmon database filename"),
+                m.Field(description="pytest-testmon's native database filename"),
             ]
-            database_environment_variable: Annotated[
-                FlextInfraConstantsConfig.PytestCacheEnvironment,
-                m.Field(
-                    description="pytest-testmon's supported database-path variable",
-                ),
-            ]
-            data_home_environment_variable: Annotated[
-                FlextInfraConstantsConfig.PytestCacheEnvironment,
-                m.Field(description="XDG persistent cache-home variable"),
-            ] = m.Field()
-            user_home_environment_variable: Annotated[
-                FlextInfraConstantsConfig.PytestCacheEnvironment,
-                m.Field(
-                    description="User home variable for the XDG default",
-                ),
-            ] = m.Field()
             target_directory: Annotated[
                 Path,
                 m.Field(description="Repository-relative pytest target"),
@@ -690,42 +535,40 @@ class FlextInfraModelsConfigMake(
                 Path,
                 m.Field(description="Repository-relative pytest reports root"),
             ]
+            config_receipts_directory: Annotated[
+                t.NonEmptyStr,
+                m.Field(
+                    description=(
+                        "Checkout-root directory of the typed config receipts "
+                        "Testmon fingerprints as per-test dependencies"
+                    )
+                ),
+            ]
+            config_insensitive_executables: Annotated[
+                tuple[t.NonEmptyStr, ...],
+                m.Field(
+                    description=(
+                        "Programs whose child processes never read project config; "
+                        "any other child makes its test depend on every config file"
+                    )
+                ),
+            ] = ()
 
             @m.model_validator(mode="after")
-            def require_external_database_contract(self) -> Self:
-                """Keep testmon's official path variable and external path policy exact.
+            def require_database_filename(self) -> Self:
+                """Keep the database and the receipts bare names at the checkout root.
 
                 Returns:
                     The resulting ``Self``.
 
                 Raises:
-                    ValueError: If testmon cache database_filename must be a filename;
-                        or if testmon cache.
+                    ValueError: If a checkout-root name is not a bare filename.
 
                 """
-                for name, actual, expected in (
-                    (
-                        "database_environment_variable",
-                        self.database_environment_variable,
-                        FlextInfraConstantsConfig.PytestCacheEnvironment.DATABASE_FILE,
-                    ),
-                    (
-                        "data_home_environment_variable",
-                        self.data_home_environment_variable,
-                        FlextInfraConstantsConfig.PytestCacheEnvironment.DATA_HOME,
-                    ),
-                    (
-                        "user_home_environment_variable",
-                        self.user_home_environment_variable,
-                        FlextInfraConstantsConfig.PytestCacheEnvironment.USER_HOME,
-                    ),
-                ):
-                    if actual != expected:
-                        msg = f"testmon cache {name} must be {expected.value}"
+                for name in (self.database_filename, self.config_receipts_directory):
+                    if Path(name).name != name:
+                        msg = f"testmon cache name must be a filename: {name}"
                         raise ValueError(msg)
-                if Path(self.database_filename).name != self.database_filename:
-                    msg = "testmon cache database_filename must be a filename"
-                    raise ValueError(msg)
                 return self
 
         class ExecutorEnvironmentSpec(FlextInfraModelsConfigContract.ConfigContract):
@@ -779,7 +622,10 @@ class FlextInfraModelsConfigMake(
 
         testmon_cache: Annotated[
             TestmonCacheSpec,
-            m.Field(description="Adaptive testmon Actions cache policy"),
+            m.Field(
+                description="Testmon's native database filename and runner paths",
+                default_factory=TestmonCacheSpec,
+            ),
         ]
         executor_environment: Annotated[
             ExecutorEnvironmentSpec,
@@ -815,20 +661,20 @@ class FlextInfraModelsConfigMake(
                 )
             ),
         ]
+        tests_profile_path: Annotated[
+            Path,
+            m.Field(
+                description=(
+                    "Repository-relative profile of the tests route; each "
+                    "pytest child profiles into the pytest policy's directory"
+                )
+            ),
+        ]
         check_report_output_environment_variable: Annotated[
             str,
             m.Field(
                 pattern=r"^[A-Z][A-Z0-9_]*$",
                 description="Invocation-owned checker report destination transport",
-            ),
-        ]
-        testmon_cache_policy: Annotated[
-            FlextInfraModelsConfigMake.TestmonCachePolicySpec,
-            m.Field(
-                description=(
-                    "Declarative save/budget/quota policy for the shared"
-                    " testmon cache (#1001 delta)"
-                ),
             ),
         ]
         ruff_cache: Annotated[
@@ -882,8 +728,20 @@ class FlextInfraModelsConfigMake(
         ADR-032: on the shared host every verb refuses to start above
         ``max_load5`` and runs bounded by ``memory_limit_gb`` and
         ``max_processes``; ``overrides`` declares explicit verb exceptions.
+        ``host_load_gate`` false renders a Makefile without the load refusal,
+        for fixture projects the test fabric builds inside an admitted verb;
+        the run limits stay in force.
         """
 
+        host_load_gate: Annotated[
+            bool,
+            m.Field(
+                description=(
+                    "Whether rendered verbs refuse above max_load5; false only "
+                    "for test-fabric fixture projects (ADR-032)"
+                ),
+            ),
+        ]
         overrides: Annotated[
             Mapping[
                 t.NonEmptyStr,
@@ -891,6 +749,15 @@ class FlextInfraModelsConfigMake(
             ],
             m.Field(description="Explicit per-verb exceptions to the defaults"),
         ] = m.Field(default_factory=dict)
+        gated_verbs: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                description=(
+                    "Heavy verb forms the load gate refuses above max_load5; "
+                    "every other verb always starts inside the run limits"
+                ),
+            ),
+        ] = ()
         refusal_guidance: Annotated[
             tuple[
                 Annotated[
@@ -1128,7 +995,7 @@ class FlextInfraModelsConfigMake(
                 ValueError: If make public verb names must be unique; or if make
                     workflow verbs must be unique; or if make workflow verbs are not
                     declared public verbs; or if make workflow verbs must exist in every
-                    profile; or if make fmt gates are not declared gate vocabulary; or
+                    profile; or if make check gates are not declared gate vocabulary; or
                     if make docs reports_dir must
                     be repository-relative.
 
@@ -1215,7 +1082,10 @@ class FlextInfraModelsConfigMake(
                 )
                 raise ValueError(msg)
             approval = tuple(step for step in self.workflow if "ci" in step.contexts)
-            milestones = ((c.Infra.VERB_CHECK, c.Infra.CheckPhase.PRIMARY),)
+            milestones = (
+                (c.Infra.VERB_CHECK, c.Infra.CheckPhase.PRIMARY),
+                (c.Infra.VERB_TEST, c.Infra.CheckPhase.COMPLETE),
+            )
             if (
                 not approval
                 or approval[0].verb != c.Infra.VERB_SETUP
@@ -1226,15 +1096,22 @@ class FlextInfraModelsConfigMake(
                 )
                 != milestones
             ):
-                msg = "CI requires setup followed by the fast primary check only"
+                msg = (
+                    "CI requires setup followed by the fast primary check "
+                    "and the fast tests only"
+                )
                 raise ValueError(msg)
             hook = tuple(
                 step.verb for step in self.workflow if "pre_commit" in step.contexts
             )
-            # A commit first provisions the checkout's own environment, so the
-            # check runs the locked toolchain even in a fresh lane worktree.
-            if hook != (c.Infra.VERB_SETUP, c.Infra.VERB_CHECK):
-                msg = "the pre-commit hook requires setup followed by check"
+            # A commit runs the fast check (and optionally the fast tests) on
+            # the locked toolchain; provisioning is a lane/CI concern, never a
+            # per-commit step.
+            if set(hook) not in (
+                {c.Infra.VERB_CHECK},
+                {c.Infra.VERB_CHECK, c.Infra.VERB_TEST},
+            ):
+                msg = "the pre-commit hook requires check followed by tests"
                 raise ValueError(msg)
 
         def _validate_workflow_requirements(self) -> None:
@@ -1338,7 +1215,7 @@ class FlextInfraModelsConfigMake(
             """Validate formatter ownership and repository-relative report paths.
 
             Raises:
-                ValueError: If make fmt gates are not declared gate vocabulary; or
+                ValueError: If make check gates are not declared gate vocabulary; or
                     if report paths are empty, absolute or escape the repository.
 
             """
@@ -1347,7 +1224,8 @@ class FlextInfraModelsConfigMake(
             )
             if unknown_fmt_gates:
                 msg = (
-                    "make fmt gates are not declared gate vocabulary: "
+                    "make check gates are not declared gate "
+                    "vocabulary: "
                     f"{', '.join(sorted(unknown_fmt_gates))}"
                 )
                 raise ValueError(msg)
@@ -1356,6 +1234,7 @@ class FlextInfraModelsConfigMake(
                 ("generation_profile_path", self.generation_profile_path),
                 ("modification_profile_path", self.modification_profile_path),
                 ("check_profile_path", self.check_profile_path),
+                ("tests_profile_path", self.tests_profile_path),
             ):
                 if path.is_absolute() or ".." in path.parts or not path.parts:
                     msg = f"make {name} must be nonempty and repository-relative"

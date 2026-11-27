@@ -1,4 +1,4 @@
-# AUTO-GENERATED FILE — Regenerate with: make gen
+# AUTO-GENERATED FILE — Regenerate with: make check
 """Source-derived structural model contracts.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
@@ -316,6 +316,11 @@ class FlextInfraProtocolsMiseToolchain:
             ...
 
         @property
+        def os(self) -> tuple[Literal["linux", "macos", "windows"], ...]:
+            """Mise operating systems eligible for this tool."""
+            ...
+
+        @property
         def install_env(self) -> Mapping[str, str]:
             """Native installation environment, part of the tool identity."""
             ...
@@ -380,6 +385,89 @@ class FlextInfraProtocolsMiseToolchain:
         @property
         def proven(self) -> frozenset[str]:
             """Selectors already proven before this entry."""
+            ...
+
+    @runtime_checkable
+    class NativeIsolationProvider(
+        FlextInfraProtocolsMiseToolchainBase.SchemaRecord, Protocol
+    ):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def tool(self) -> t.NonEmptyStr:
+            """Declared Mise tool key."""
+            ...
+
+        @property
+        def relative_path(self) -> Path:
+            """Resource path inside the installed tool."""
+            ...
+
+        @property
+        def sha256(self) -> str:
+            """Publisher-authenticated resource SHA-256."""
+            ...
+
+    @runtime_checkable
+    class NativeIsolationSetup(
+        FlextInfraProtocolsMiseToolchainBase.SchemaRecord, Protocol
+    ):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def profiles(self) -> tuple[Literal["read-only", "fixture"], ...]:
+            """Profiles to qualify exactly once."""
+            ...
+
+        @property
+        def launcher(self) -> FlextInfraProtocolsMiseToolchain.NativeIsolationProvider:
+            """Qualified static Bubblewrap candidate."""
+            ...
+
+        @property
+        def compiler(self) -> FlextInfraProtocolsMiseToolchain.NativeIsolationProvider:
+            """Authenticated C17 compiler and sysroot archive."""
+            ...
+
+        @property
+        def extractor(self) -> FlextInfraProtocolsMiseToolchain.NativeIsolationProvider:
+            """Authenticated static SDK archive extractor."""
+            ...
+
+        @property
+        def extractor_arguments(self) -> tuple[t.NonEmptyStr, ...]:
+            """Native archive extraction arguments."""
+            ...
+
+        @property
+        def compiler_member(self) -> Path:
+            """Compiler path relative to the SDK archive."""
+            ...
+
+        @property
+        def compiler_arguments(self) -> tuple[t.NonEmptyStr, ...]:
+            """Native arguments selecting the compiler driver."""
+            ...
+
+        @property
+        def seccomp_header(
+            self,
+        ) -> FlextInfraProtocolsMiseToolchain.NativeIsolationProvider:
+            """Public header from the static libseccomp SDK."""
+            ...
+
+        @property
+        def seccomp_syscalls(
+            self,
+        ) -> FlextInfraProtocolsMiseToolchain.NativeIsolationProvider:
+            """Syscall declarations from the static libseccomp SDK."""
+            ...
+
+        @property
+        def seccomp_archive(
+            self,
+        ) -> FlextInfraProtocolsMiseToolchain.NativeIsolationProvider:
+            """Library archive from the static libseccomp SDK."""
             ...
 
     @runtime_checkable
@@ -602,6 +690,13 @@ class FlextInfraProtocolsMiseToolchain:
             ...
 
         @property
+        def native_isolation(
+            self,
+        ) -> FlextInfraProtocolsMiseToolchain.NativeIsolationSetup | None:
+            """Explicit native setup qualification request."""
+            ...
+
+        @property
         def python_required_version(self) -> str:
             """PEP 440 requirement spanning the configured Python minor line."""
             ...
@@ -629,6 +724,11 @@ class FlextInfraProtocolsMiseToolchain:
         @property
         def mise_install_keys(self) -> tuple[str, ...]:
             """Every [tools] key the project declares, in projection order."""
+            ...
+
+        @property
+        def mise_platform_tools(self) -> Mapping[str, tuple[str, ...]]:
+            """Map the scoped native tool keys to eligible operating systems."""
             ...
 
     @runtime_checkable

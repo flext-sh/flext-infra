@@ -383,11 +383,12 @@ class FlextInfraUtilitiesGitSemanticIdentity(FlextInfraUtilitiesGitRepo):
         working_tree = Path(repo.working_tree_dir or str(repo.working_dir)).resolve()
         git_dir = Path(repo.git_dir).resolve()
         common_dir = Path(repo.common_dir).resolve()
-        porcelain = (
-            repo.git.status("--porcelain", "--untracked-files=all")
-            if include_status
-            else ""
-        )
+        porcelain = ""
+        if include_status:
+            with repo.git.custom_environment(
+                GIT_OPTIONAL_LOCKS=c.ParserBooleanToken.ZERO
+            ):
+                porcelain = repo.git.status("--porcelain", "--untracked-files=all")
         branch = None if repo.head.is_detached else repo.active_branch.name
         origin_remote, upstream_remote = cls._redacted_remotes(repo)
         superproject, is_attached_submodule = cls._superproject_root(

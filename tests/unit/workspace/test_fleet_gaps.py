@@ -21,6 +21,8 @@ from flext_infra import FlextInfraCli
 from flext_infra.check import FlextInfraWorkspaceChecker
 from tests import c, m, p, t, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 if TYPE_CHECKING:
     from collections.abc import Generator
 

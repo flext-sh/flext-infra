@@ -9,7 +9,6 @@ from __future__ import annotations
 import os
 import signal
 import sys
-import time
 from typing import TYPE_CHECKING
 
 from flext_infra import config, validate
@@ -45,6 +44,7 @@ class TestsFlextInfraPytestFullInventory:
             u.Cli.toml_write_mapping(
                 project / c.PYPROJECT_FILENAME,
                 {
+                    "project": {"name": project.name, "version": "0.1.0"},
                     "tool": {
                         "pytest": {
                             "ini_options": {
@@ -300,6 +300,43 @@ class TestsFlextInfraPytestFullInventory:
                 eq="ALPHA\nBETA",
             )
         tm.fail((project / "excluded-output.txt").exists())
+
+    @staticmethod
+    @c.Tests.MARK.parametrize(
+        ("mode", "deadline"),
+        [
+            (c.Infra.PytestExecutionMode.FULL, 1.0),
+            (c.Infra.PytestExecutionMode.INCREMENTAL, None),
+        ],
+    )
+    def test_only_full_execution_owns_no_deadline(
+        tmp_path: Path,
+        mode: c.Infra.PytestExecutionMode,
+        deadline: float | None,
+    ) -> None:
+        """A run context's deadline is absent exactly when its mode is FULL."""
+        with u.Tests.raises(m.ValidationError, match="only full execution"):
+            m.Infra.PytestRunContext(
+                execution_mode=mode,
+                testmon_db=tmp_path / "testmon",
+                deadline_monotonic=deadline,
+                report_directory=tmp_path,
+            )
+
+    @staticmethod
+    @c.Tests.MARK.slow
+    def test_full_on_a_fresh_database_warms_the_incremental_selection(
+        tmp_path: Path,
+    ) -> None:
+        """One FULL run on a fresh database makes the next incremental run a hit."""
+        project = TestsFlextInfraPytestFullInventory._consumer(tmp_path)
+        runner = u.Tests.PytestRunner.runner_for(project)
+        tm.that(tm.ok(runner.execute_full()), eq=c.Tests.ExitCode.OK)
+        tm.that(tm.ok(runner.execute()), eq=c.Tests.ExitCode.OK)
+        tm.that(
+            u.Tests.PytestRunner.summary(project / runner.reports),
+            has="outcome=cache_hit",
+        )
 
     @staticmethod
     @c.Tests.MARK.slow
@@ -620,7 +657,6 @@ class TestsFlextInfraPytestFullInventory:
         project = TestsFlextInfraPytestFullInventory._consumer(tmp_path)
         runner = u.Tests.PytestRunner.runner_for(project)
         policy = config.Infra.tooling.tools.pytest
-        cache = config.Infra.codegen.make.testmon_cache
 
         process = tm.ok(
             u.Cli.run_raw(
@@ -632,7 +668,6 @@ class TestsFlextInfraPytestFullInventory:
                         c.Infra.PYTEST_ENV_TARGET: str(runner.target),
                         c.Infra.PYTEST_ENV_TARGET_FILE: "",
                         c.Infra.PYTEST_ENV_REPORTS: str(runner.reports),
-                        cache.database_environment_variable: str(runner.testmon_db),
                         "FLEXT_INFRA_PROFILE": c.ParserBooleanToken.TRUE,
                     },
                     deadline=m.Cli.ProcessDeadline(
@@ -653,10 +688,11 @@ class TestsFlextInfraPytestFullInventory:
             (directory / "run-context.json").read_bytes(),
         )
         tm.that(context.execution_mode, eq=c.Infra.PytestExecutionMode.FULL)
-        tm.that(
-            context.deadline_monotonic - policy.run_timeout_seconds,
-            gte=runner.started_at_monotonic,
-            lte=time.monotonic(),
+        # The real FULL entrypoint elects no run deadline.
+        tm.that(context.deadline_monotonic, none=True)
+        tm.fail(
+            c.Infra.PYTEST_SUITE_STOP_OPTION
+            in (directory / "command.txt").read_text(encoding=c.DEFAULT_ENCODING)
         )
         capture = m.Infra.GateCaptureStart.model_validate_json(
             (directory / c.Infra.GATE_CAPTURE_START_FILENAME).read_bytes(),

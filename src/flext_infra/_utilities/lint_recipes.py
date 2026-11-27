@@ -1,7 +1,7 @@
 """Repairs for lint findings Ruff reports without a fix of its own.
 
 The tooling owner maps each Ruff rule code to one recipe
-(``tools.ruff.lint.fix-recipes``); ``make fix`` applies Ruff's own fixes and
+(``tools.ruff.lint.fix-recipes``); ``make check`` applies Ruff's own fixes and
 then these recipes to the findings left. Every repair is derived from the
 source itself: a docstring section from the signature, the summary and the
 raise statement, a summary from the declared name, the notice from the

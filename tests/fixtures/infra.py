@@ -369,6 +369,8 @@ def cached_runner_project(tmp_path: Path) -> Path:
     tests_root = project_root / policy.target_directory
     package_root.mkdir(parents=True)
     tests_root.mkdir(parents=True)
+    # Python source discovery reads a Git checkout, as every real consumer is.
+    u.Tests.initialize_git_repo(project_root)
     # A faithful consumer project carries the fleet-standard coverage
     # boundary: the Cython provider mapping of dependency_injector is not
     # parseable source and is omitted by every fleet coverage config.
@@ -376,6 +378,7 @@ def cached_runner_project(tmp_path: Path) -> Path:
         u.Cli.toml_write_mapping(
             project_root / c.PYPROJECT_FILENAME,
             {
+                "project": {"name": "runner-sample", "version": "0.1.0"},
                 "tool": {
                     "coverage": {
                         "run": {"omit": ["*/dependency_injector/providers.pyx"]},
@@ -407,11 +410,15 @@ def cached_runner_project(tmp_path: Path) -> Path:
         "    assert answer() == 42\n",
         encoding="utf-8",
     )
+    u.Tests.git_bootstrap(project_root, ("init", "-b", c.Infra.GIT_MAIN))
     return project_root
 
 
 @pytest.fixture
-def policy_violation_project(tmp_path: Path) -> Path:
+def policy_violation_project(
+    tmp_path: Path,
+    fixture_tree: p.Tests.FixtureTree,
+) -> Path:
     """Create a real consumer whose suite violates the slow-timeout policy.
 
     Returns:
@@ -423,19 +430,25 @@ def policy_violation_project(tmp_path: Path) -> Path:
     tests_root = project_root / policy.target_directory
     tests_root.mkdir(parents=True)
     # The ini value is an arbitrary non-production budget owned by this probe.
-    (project_root / c.PYPROJECT_FILENAME).write_text(
-        '[tool.pytest.ini_options]\nflext_slow_timeout_seconds = "30"\n',
-        encoding="utf-8",
+    tm.ok(
+        u.Cli.toml_write_mapping(
+            project_root / c.PYPROJECT_FILENAME,
+            {
+                "tool": {
+                    "pytest": {
+                        "ini_options": {
+                            c.Infra.FLEXT_SLOW_TIMEOUT_SECONDS: "30",
+                            "markers": list(
+                                config.Infra.tooling.tools.pytest.standard_markers,
+                            ),
+                        },
+                    },
+                },
+            },
+        ),
     )
-    (tests_root / "test_policy.py").write_text(
-        "import pytest\n"
-        "\n"
-        "\n"
-        "@pytest.mark.timeout(1)\n"
-        "def test_breaks_policy() -> None:\n"
-        "    pass\n",
-        encoding="utf-8",
-    )
+    fixture_tree("pytest-runner-policy-violation", destination=tests_root)
+    u.Tests.initialize_git_repo(project_root)
     return project_root
 
 

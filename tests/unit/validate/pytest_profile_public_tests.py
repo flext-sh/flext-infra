@@ -11,7 +11,6 @@ import pstats
 import signal
 import sys
 from collections.abc import Callable
-from math import isfinite
 from pathlib import Path
 from time import monotonic
 
@@ -413,7 +412,6 @@ class TestsFlextInfraPytestProfile:
             for name, function in measured.func_profiles.items()
             if name
             in {
-                "_config_testmon_digest",
                 "snapshot_config_sources",
                 "_validated_config_roots",
                 "__class_getitem__",
@@ -539,9 +537,6 @@ class TestsFlextInfraPytestProfile:
                             c.Infra.PYTEST_ENV_TARGET: str(runner.target),
                             c.Infra.PYTEST_ENV_TARGET_FILE: str(target),
                             c.Infra.PYTEST_ENV_REPORTS: str(runner.reports),
-                            cache.database_environment_variable: str(
-                                tm.not_none(runner.testmon_db)
-                            ),
                         },
                     ),
                 ),
@@ -657,9 +652,6 @@ class TestsFlextInfraPytestProfile:
                             c.Infra.PYTEST_ENV_TARGET: str(runner.target),
                             c.Infra.PYTEST_ENV_TARGET_FILE: str(target),
                             c.Infra.PYTEST_ENV_REPORTS: str(runner.reports),
-                            cache.database_environment_variable: str(
-                                tm.not_none(runner.testmon_db)
-                            ),
                         },
                     ),
                 ),
@@ -723,10 +715,9 @@ class TestsFlextInfraPytestProfile:
             contexts[0].read_text(encoding="utf-8"),
         )
         tm.that(context.testmon_db, eq=runner.testmon_db)
-        tm.ok(isfinite(context.deadline_monotonic))
-        tm.that(context.deadline_monotonic, gt=started_at)
         tm.that(
-            context.deadline_monotonic,
+            tm.not_none(context.deadline_monotonic),
+            gt=started_at,
             lte=monotonic() + config.Infra.tooling.tools.pytest.run_timeout_seconds,
         )
         command = (contexts[0].parent / "command.txt").read_text(encoding="utf-8")

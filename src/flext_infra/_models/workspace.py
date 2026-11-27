@@ -17,6 +17,7 @@ from flext_infra import c, p, t
 from flext_infra._models import (
     FlextInfraModelsBase,
     FlextInfraModelsCheck,
+    FlextInfraModelsCore,
     FlextInfraModelsMixins,
     FlextInfraModelsRope,
 )
@@ -432,6 +433,66 @@ class FlextInfraModelsWorkspace:
             m.Field(gt=1, description="Native wall budget including termination grace"),
         ]
 
+    class NativeSetupQualificationRequest(WorkspaceRequest):
+        """One pending receipt created by the original setup invocation."""
+
+        pending_report: Annotated[
+            Path, m.Field(description="Invocation-owned pending setup report")
+        ]
+
+    class NativeSetupInputs(m.ContractModel):
+        """One elected and captured native tool build closure."""
+
+        launcher: Annotated[
+            t.Port[p.Cli.AtomicFileReceipt],
+            m.Field(description="Locked static launcher receipt"),
+        ]
+        extractor: Annotated[
+            t.Port[p.Cli.AtomicFileReceipt],
+            m.Field(description="Locked static SDK extractor receipt"),
+        ]
+        extractor_arguments: Annotated[
+            tuple[str, ...],
+            m.Field(description="Original native SDK extraction arguments"),
+        ]
+        compiler_archive: Annotated[
+            t.Port[p.Cli.AtomicFileReceipt],
+            m.Field(description="Original authenticated SDK archive"),
+        ]
+        compiler_member: Annotated[
+            Path,
+            m.Field(description="Compiler path inside the authenticated SDK archive"),
+        ]
+        compiler_arguments: Annotated[
+            tuple[str, ...],
+            m.Field(description="Original arguments selecting the driver"),
+        ]
+        archive: Annotated[Path, m.Field(description="Static libseccomp archive")]
+        headers: Annotated[
+            tuple[Path, Path],
+            m.Field(description="Exact public libseccomp headers"),
+        ]
+        sources: Annotated[
+            tuple[t.Port[p.Cli.AtomicFileReceipt], t.Port[p.Cli.AtomicFileReceipt]],
+            m.Field(description="Installed policy and probe source receipts"),
+        ]
+        declaration: Annotated[
+            tuple[t.Port[p.Cli.AtomicFileReceipt], ...],
+            m.Field(description="Original toolchain declaration"),
+        ]
+        installation: Annotated[
+            tuple[t.Port[p.Cli.AtomicFileReceipt], ...],
+            m.Field(description="Exact locked installation inputs"),
+        ]
+        abi_reference: Annotated[
+            t.Port[p.Cli.AtomicFileReceipt],
+            m.Field(description="Installed runtime interpreter receipt"),
+        ]
+        profiles: Annotated[
+            tuple[Literal["read-only", "fixture"], ...],
+            m.Field(description="Original elected process profiles"),
+        ]
+
     class WorkspaceTestsRequest(WorkspaceRequest):
         """Select repositories for native persistent incremental tests."""
 
@@ -703,24 +764,28 @@ class FlextInfraModelsWorkspace:
 
         cwd: Annotated[Path, m.Field(description="Resolved submitted directory")]
         identity: Annotated[
-            FlextInfraModelsGitIdentity.GitIdentityReport | None,
-            m.Field(description="Observed Git identity, absent outside a repository"),
-        ] = None
+            FlextInfraModelsGitIdentity.GitIdentityReport,
+            m.Field(description="Observed Git identity of the containing checkout"),
+        ]
         workspace: Annotated[
             FlextInfraModelsConfig.WorkspaceSpec | None,
             m.Field(description="Governed workspace contract when declared"),
         ] = None
         target: Annotated[
-            FlextInfraModelsConfig.RepositoryConformTarget | None,
+            FlextInfraModelsConfig.RepositoryConformTarget,
             m.Field(description="Effective governed project properties"),
-        ] = None
+        ]
         governed: Annotated[
             bool,
             m.Field(description="Whether repository-local FLEXT governance exists"),
         ] = False
         runtime: Annotated[
-            FlextInfraModelsWorkspace.WorkspaceRuntimeContext | None,
+            FlextInfraModelsWorkspace.WorkspaceRuntimeContext,
             m.Field(description="Physical environment and native resolver ownership"),
+        ]
+        pytest_fixture: Annotated[
+            FlextInfraModelsCore.PytestFixture | None,
+            m.Field(description="Qualified fixture bound by an explicit test request"),
         ] = None
 
     class DirectUrlDirectoryInfo(m.ContractModel):

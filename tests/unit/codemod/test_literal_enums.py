@@ -11,6 +11,8 @@ from pathlib import Path
 
 from tests import c, m, p, t, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraLiteralEnums:
     """Prove enum identities and wire behavior through the public phase."""

@@ -11,6 +11,8 @@ from pathlib import Path
 
 from tests import c, p, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsProtocolHolderComposition:
     """Composition, collision ownership and copy-port derivation of the projector."""
@@ -20,7 +22,11 @@ class TestsProtocolHolderComposition:
         for relative, source in sources.items():
             path = package / relative
             tm.ok(u.Cli.ensure_dir(path.parent))
-            tm.ok(u.Cli.atomic_write_text_file(path, source))
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    path, source, durability=c.Cli.WriteDurability.SCRATCH
+                )
+            )
 
     @staticmethod
     def _domain_workspace(
@@ -151,7 +157,11 @@ class TestsProtocolHolderComposition:
         tm.fail(f"from {family}.part import" in projected[sibling])
         tm.that(cls._class_bases(projected[sibling], "ProtocolsGit"), has=holder)
         for relative, source in projected.items():
-            tm.ok(u.Cli.atomic_write_text_file(root / relative, source))
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    root / relative, source, durability=c.Cli.WriteDurability.SCRATCH
+                )
+            )
         tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
         native_consumer(
             f"sys.path.insert(0, {str(package.parent)!r})\n"
@@ -247,7 +257,11 @@ class TestsProtocolHolderComposition:
         for relative, source in projected.items():
             path = root / relative
             tm.ok(u.Cli.ensure_dir(path.parent))
-            tm.ok(u.Cli.atomic_write_text_file(path, source))
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    path, source, durability=c.Cli.WriteDurability.SCRATCH
+                )
+            )
         tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
         native_consumer(
             f"sys.path.insert(0, {str(package.parent)!r})\n"
@@ -284,7 +298,11 @@ class TestsProtocolHolderComposition:
         for relative, source in projected.items():
             path = root / relative
             tm.ok(u.Cli.ensure_dir(path.parent))
-            tm.ok(u.Cli.atomic_write_text_file(path, source))
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    path, source, durability=c.Cli.WriteDurability.SCRATCH
+                )
+            )
         native_consumer(
             f"sys.path.insert(0, {str(package.parent)!r})\n"
             f"from {family} import {holder}\n"
@@ -338,7 +356,11 @@ class TestsProtocolHolderComposition:
             eq=cls._without_member(before, "Scope"),
         )
         for relative, source in projected.items():
-            tm.ok(u.Cli.atomic_write_text_file(root / relative, source))
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    root / relative, source, durability=c.Cli.WriteDurability.SCRATCH
+                )
+            )
         tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
         native_consumer(
             f"sys.path.insert(0, {str(package.parent)!r})\n"

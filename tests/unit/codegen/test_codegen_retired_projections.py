@@ -12,6 +12,8 @@ from flext_infra import config
 from flext_infra.codegen import FlextInfraCodegenConform
 from tests import c, t, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraCodegenRetiredProjections:
     """Exercise configured retirement through real plans and publication."""

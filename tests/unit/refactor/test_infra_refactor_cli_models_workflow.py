@@ -13,6 +13,8 @@ from typing import TYPE_CHECKING
 from flext_infra import FlextInfraCli
 from tests import c, m, t, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 if TYPE_CHECKING:
     from pathlib import Path
 

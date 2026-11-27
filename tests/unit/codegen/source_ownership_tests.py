@@ -12,6 +12,8 @@ from flext_infra import config, infra
 from flext_infra.codegen import FlextInfraCodegenLazyInit
 from tests import c, m, p, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraSourceOwnership:
     """Exercise the native source reader through its public planning facade."""

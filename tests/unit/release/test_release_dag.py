@@ -14,6 +14,8 @@ from pathlib import Path
 from flext_infra import config
 from tests import c, m, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraReleaseDag:
     """Behavior contract for fail-closed release build policy."""

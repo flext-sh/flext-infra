@@ -1,4 +1,4 @@
-"""Typed post-run integrity and saveability for pytest-testmon SQLite DBs.
+"""Typed integrity inspection for the native pytest-testmon SQLite DB.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -15,7 +15,7 @@ from flext_infra import m, p, r, s, u
 
 
 class FlextInfraTestmonDbInspector(s[p.Infra.TestmonCacheState]):
-    """Checkpoint WAL, verify integrity, and compute saveability."""
+    """Checkpoint WAL, verify integrity, and report the change since the run."""
 
     db_path: Annotated[Path, m.Field(description="Absolute .testmondata path.")]
     pre_run_digest: Annotated[
@@ -25,30 +25,26 @@ class FlextInfraTestmonDbInspector(s[p.Infra.TestmonCacheState]):
 
     @m.model_validator(mode="after")
     def _validate_absolute_db(self) -> Self:
-        """Reject relative or in-checkout database paths.
+        """Reject a relative database path.
 
         Returns:
             The resulting ``Self``.
 
         Raises:
-            ValueError: If testmon db_path must be absolute; or if testmon database must
-                be outside the repository checkout.
+            ValueError: If testmon db_path is not absolute.
 
         """
         if not self.db_path.is_absolute():
             msg = "testmon db_path must be absolute"
             raise ValueError(msg)
-        if self.db_path.resolve().is_relative_to(self.root.resolve()):
-            msg = "testmon database must be outside the repository checkout"
-            raise ValueError(msg)
         return self
 
     @staticmethod
     def digest_file(path: Path) -> str | None:
-        """Return a stable digest; absence alone denotes an unseeded cache.
+        """Return a stable digest; absence alone denotes a cold cache.
 
         Returns:
-            A stable digest; absence alone denotes an unseeded cache.
+            A stable digest; absence alone denotes a cold cache.
 
         Raises:
             ValueError: If testmon db must not be a symlink; or if testmon db must be a
@@ -119,24 +115,22 @@ class FlextInfraTestmonDbInspector(s[p.Infra.TestmonCacheState]):
         if path.stat().st_size == 0:
             msg = f"testmon db must not be empty: {path}"
             raise ValueError(msg)
-        with closing(sqlite3.connect(f"file:{path}?mode=rw", uri=True)) as connection:
+        database_uri = f"{path.as_uri()}?mode=rw"
+        with closing(sqlite3.connect(database_uri, uri=True)) as connection:
             self._validate_open_db(connection)
         post_digest = self.digest_file(path)
         changed = post_digest is not None and post_digest != self.pre_run_digest
-        seed_needed = self.pre_run_digest is None
-        saveable = seed_needed or changed
-        if seed_needed:
-            reason = "seed_ready"
+        restored = self.pre_run_digest is not None
+        if not restored:
+            reason = "created"
         elif changed:
-            reason = "changed_saveable"
+            reason = "changed"
         else:
             reason = "unchanged"
         return r[p.Infra.TestmonCacheState].ok(
             m.Infra.TestmonCacheState(
-                seed_needed=seed_needed,
-                restored_accepted=self.pre_run_digest is not None,
+                restored_accepted=restored,
                 changed=changed,
-                saveable=saveable,
                 reason=reason,
             ),
         )

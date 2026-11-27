@@ -9,7 +9,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra.docs import FlextInfraDocGenerator, FlextInfraDocValidator
-from tests import m, tm, u
+from tests import c, m, tm, u
+
+pytestmark = c.Tests.MARK.slow
 
 if TYPE_CHECKING:
     from pathlib import Path

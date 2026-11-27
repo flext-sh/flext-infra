@@ -1,4 +1,4 @@
-# AUTO-GENERATED FILE — Regenerate with: make gen
+# AUTO-GENERATED FILE — Regenerate with: make check
 """Source-derived structural model contracts.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
@@ -72,6 +72,14 @@ class FlextInfraProtocolsGitWorktreeState:
         @property
         def paths(self) -> tuple[Path, ...]:
             """Literal owned relative paths; empty selects nothing."""
+            ...
+
+        @property
+        def base(self) -> str | None:
+            """Structural member projected from the owning model.
+
+            Declared commit a destination stands on; absent keeps the source HEAD.
+            """
             ...
 
     @runtime_checkable
@@ -219,6 +227,15 @@ class FlextInfraProtocolsGitWorktreeState:
         @property
         def head(self) -> str:
             """Original HEAD commit object identifier."""
+            ...
+
+        @property
+        def base(self) -> str | None:
+            """Structural member projected from the owning model.
+
+            Resolved declared commit a destination stands on; absent means the
+            original HEAD.
+            """
             ...
 
         @property

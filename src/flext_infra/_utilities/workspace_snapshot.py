@@ -419,6 +419,10 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
     ) -> tuple[Path, ...]:
         """Return one member's Python modules, listed through one project view.
 
+        Every module of the member's source inventory enters the snapshot
+        (operator decision 2026-11-26: "tudo entra no snapshot"); Git owns that
+        inventory, so untracked and ignored files stay out.
+
         The snapshot's engine lists once per member; a planned view project
         (with proposed additions and retirements) lists through itself.
         Sources of a member nested inside this one belong to that member.

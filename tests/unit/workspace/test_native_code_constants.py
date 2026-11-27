@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from tests import c, t, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsNativeCodeConstants:
     """Changes visible to the executing function cannot disappear in transport."""

@@ -12,6 +12,8 @@ from pathlib import Path
 from flext_infra import infra
 from tests import c, m, p, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsModelProtocolNativeMro:
     """Compare generated contracts with the real Pydantic consumer."""
@@ -56,7 +58,11 @@ class TestsModelProtocolNativeMro:
         }
         for path, content in sources.items():
             tm.ok(u.Cli.ensure_dir(path.parent))
-            tm.ok(u.Cli.atomic_write_text_file(path, content))
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    path, content, durability=c.Cli.WriteDurability.SCRATCH
+                )
+            )
         with u.Infra.facade_source_project(root) as binding:
             if requested == "foreign":
                 with u.Tests.raises(
@@ -73,7 +79,11 @@ class TestsModelProtocolNativeMro:
         )
         for relative, source in projected.items():
             tm.ok(u.Cli.ensure_dir((root / relative).parent))
-            tm.ok(u.Cli.atomic_write_text_file(root / relative, source))
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    root / relative, source, durability=c.Cli.WriteDurability.SCRATCH
+                )
+            )
         native_consumer(
             f"sys.path.insert(0, {str(package.parent)!r})\n"
             f"from {package.name}.models import m\n"
@@ -141,7 +151,11 @@ class TestsModelProtocolNativeMro:
         }
         for path, source in sources.items():
             tm.ok(u.Cli.ensure_dir(path.parent))
-            tm.ok(u.Cli.atomic_write_text_file(path, source))
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    path, source, durability=c.Cli.WriteDurability.SCRATCH
+                )
+            )
         native_consumer(
             "from flext_infra import u\n"
             "from flext_tests import tm\n"
@@ -199,7 +213,11 @@ class TestsModelProtocolNativeMro:
         }
         for path, content in sources.items():
             tm.ok(u.Cli.ensure_dir(path.parent))
-            tm.ok(u.Cli.atomic_write_text_file(path, content))
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    path, content, durability=c.Cli.WriteDurability.SCRATCH
+                )
+            )
         with u.Infra.facade_source_project(root) as binding:
             projected = tm.ok(
                 u.Infra.protocol_model_sources_from_source(root, binding[0])
@@ -209,7 +227,11 @@ class TestsModelProtocolNativeMro:
         tm.fail("TypeMetadata" in generated)
         for relative, content in projected.items():
             tm.ok(u.Cli.ensure_dir((root / relative).parent))
-            tm.ok(u.Cli.atomic_write_text_file(root / relative, content))
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    root / relative, content, durability=c.Cli.WriteDurability.SCRATCH
+                )
+            )
         native_consumer(
             "from flext_tests import tm\n"
             f"sys.path.insert(0, {str(package.parent)!r})\n"
@@ -253,7 +275,11 @@ class TestsModelProtocolNativeMro:
         }
         for path, source in sources.items():
             tm.ok(u.Cli.ensure_dir(path.parent))
-            tm.ok(u.Cli.atomic_write_text_file(path, source))
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    path, source, durability=c.Cli.WriteDurability.SCRATCH
+                )
+            )
 
         with u.Infra.facade_source_project(root) as binding:
             projected = tm.ok(
@@ -301,7 +327,11 @@ class TestsModelProtocolNativeMro:
         }
         for path, source in sources.items():
             tm.ok(u.Cli.ensure_dir(path.parent))
-            tm.ok(u.Cli.atomic_write_text_file(path, source))
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    path, source, durability=c.Cli.WriteDurability.SCRATCH
+                )
+            )
         with u.Infra.facade_source_project(root) as binding:
             projected = tm.ok(
                 u.Infra.protocol_model_sources_from_source(root, binding[0])
@@ -318,7 +348,11 @@ class TestsModelProtocolNativeMro:
         tm.ok("@runtime_checkable" in generated)
         for relative, source in projected.items():
             tm.ok(u.Cli.ensure_dir((root / relative).parent))
-            tm.ok(u.Cli.atomic_write_text_file(root / relative, source))
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    root / relative, source, durability=c.Cli.WriteDurability.SCRATCH
+                )
+            )
         native_consumer(
             "from flext_tests import tm\n"
             f"sys.path.insert(0, {str(package.parent)!r})\n"
@@ -382,7 +416,11 @@ class TestsModelProtocolNativeMro:
         }
         for path, content in sources.items():
             tm.ok(u.Cli.ensure_dir(path.parent))
-            tm.ok(u.Cli.atomic_write_text_file(path, content))
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    path, content, durability=c.Cli.WriteDurability.SCRATCH
+                )
+            )
         with u.Infra.facade_source_project(root) as binding:
             projected = tm.ok(
                 u.Infra.protocol_model_sources_from_source(root, binding[0])
@@ -391,7 +429,11 @@ class TestsModelProtocolNativeMro:
         tm.ok(destination in projected)
         for relative, content in projected.items():
             tm.ok(u.Cli.ensure_dir((root / relative).parent))
-            tm.ok(u.Cli.atomic_write_text_file(root / relative, content))
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    root / relative, content, durability=c.Cli.WriteDurability.SCRATCH
+                )
+            )
         native_consumer(
             "from flext_tests import tm\n"
             f"sys.path.insert(0, {str(package.parent)!r})\n"
@@ -452,14 +494,22 @@ class TestsModelProtocolNativeMro:
         }
         for path, source in sources.items():
             tm.ok(u.Cli.ensure_dir(path.parent))
-            tm.ok(u.Cli.atomic_write_text_file(path, source))
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    path, source, durability=c.Cli.WriteDurability.SCRATCH
+                )
+            )
         with infra.rope_workspace(root) as workspace:
             projected = tm.ok(u.Infra.protocol_model_sources(workspace))
         tm.that(projected, empty=False)
         tm.ok((package / "_protocols" / "diamond.py").relative_to(root) in projected)
         for path, source in projected.items():
             tm.ok(u.Cli.ensure_dir((root / path).parent))
-            tm.ok(u.Cli.atomic_write_text_file(root / path, source))
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    root / path, source, durability=c.Cli.WriteDurability.SCRATCH
+                )
+            )
         native_consumer(
             "from typing import get_type_hints, is_protocol\n"
             "from flext_tests import tm\n"
@@ -528,7 +578,11 @@ class TestsModelProtocolNativeMro:
             sources[package / "_protocols" / relative] = existing
         for path, source in sources.items():
             tm.ok(u.Cli.ensure_dir(path.parent))
-            tm.ok(u.Cli.atomic_write_text_file(path, source))
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    path, source, durability=c.Cli.WriteDurability.SCRATCH
+                )
+            )
         with infra.rope_workspace(root) as workspace:
             projected = tm.ok(u.Infra.protocol_model_sources(workspace))
         expected = {
@@ -538,7 +592,11 @@ class TestsModelProtocolNativeMro:
         tm.ok(expected <= projected.keys())
         for path, source in projected.items():
             tm.ok(u.Cli.ensure_dir((root / path).parent))
-            tm.ok(u.Cli.atomic_write_text_file(root / path, source))
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    root / path, source, durability=c.Cli.WriteDurability.SCRATCH
+                )
+            )
         with infra.rope_workspace(root) as workspace:
             repeated = tm.ok(u.Infra.protocol_model_sources(workspace))
         for path, source in repeated.items():
@@ -595,7 +653,11 @@ class TestsModelProtocolNativeMro:
         }
         for path, source in sources.items():
             tm.ok(u.Cli.ensure_dir(path.parent))
-            tm.ok(u.Cli.atomic_write_text_file(path, source))
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    path, source, durability=c.Cli.WriteDurability.SCRATCH
+                )
+            )
         with (
             infra.rope_workspace(root) as workspace,
             u.Tests.raises(ValueError, match="incompatible authored protocol contract"),
@@ -648,7 +710,11 @@ class TestsModelProtocolNativeMro:
         }
         for path, source in sources.items():
             tm.ok(u.Cli.ensure_dir(path.parent))
-            tm.ok(u.Cli.atomic_write_text_file(path, source))
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    path, source, durability=c.Cli.WriteDurability.SCRATCH
+                )
+            )
         with infra.rope_workspace(root) as workspace:
             projected = tm.ok(u.Infra.protocol_model_sources(workspace))
         rendered = projected[destination.relative_to(root)]
@@ -695,7 +761,11 @@ class TestsModelProtocolNativeMro:
         }
         for path, source in sources.items():
             tm.ok(u.Cli.ensure_dir(path.parent))
-            tm.ok(u.Cli.atomic_write_text_file(path, source))
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    path, source, durability=c.Cli.WriteDurability.SCRATCH
+                )
+            )
         with (
             infra.rope_workspace(root) as workspace,
             u.Tests.raises(ValueError, match="incompatible authored protocol contract"),
@@ -748,7 +818,11 @@ class TestsModelProtocolNativeMro:
         }
         for path, source in sources.items():
             tm.ok(u.Cli.ensure_dir(path.parent))
-            tm.ok(u.Cli.atomic_write_text_file(path, source))
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    path, source, durability=c.Cli.WriteDurability.SCRATCH
+                )
+            )
         with u.Infra.facade_source_project(root) as binding:
             projected = tm.ok(
                 u.Infra.protocol_model_sources_from_source(root, binding[0])
@@ -757,7 +831,11 @@ class TestsModelProtocolNativeMro:
         tm.ok(relative in projected)
         for path, content in projected.items():
             tm.ok(u.Cli.ensure_dir((root / path).parent))
-            tm.ok(u.Cli.atomic_write_text_file(root / path, content))
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    root / path, content, durability=c.Cli.WriteDurability.SCRATCH
+                )
+            )
         native_consumer(
             "from flext_tests import tm\n"
             f"sys.path.insert(0, {str(package.parent)!r})\n"
@@ -810,14 +888,22 @@ class TestsModelProtocolNativeMro:
         }
         for path, source in sources.items():
             tm.ok(u.Cli.ensure_dir(path.parent))
-            tm.ok(u.Cli.atomic_write_text_file(path, source))
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    path, source, durability=c.Cli.WriteDurability.SCRATCH
+                )
+            )
         with u.Infra.facade_source_project(root) as binding:
             projected = tm.ok(
                 u.Infra.protocol_model_sources_from_source(root, binding[0])
             )
         for relative, source in projected.items():
             tm.ok(u.Cli.ensure_dir((root / relative).parent))
-            tm.ok(u.Cli.atomic_write_text_file(root / relative, source))
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    root / relative, source, durability=c.Cli.WriteDurability.SCRATCH
+                )
+            )
         native_consumer(
             "from typing import get_type_hints\n"
             "from flext_tests import tm\n"
@@ -873,7 +959,11 @@ class TestsModelProtocolNativeMro:
         }
         for path, source in sources.items():
             tm.ok(u.Cli.ensure_dir(path.parent))
-            tm.ok(u.Cli.atomic_write_text_file(path, source))
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    path, source, durability=c.Cli.WriteDurability.SCRATCH
+                )
+            )
 
         with infra.rope_workspace(root) as workspace:
             projected = tm.ok(u.Infra.protocol_model_sources(workspace))
@@ -951,7 +1041,11 @@ class TestsModelProtocolNativeMro:
         }
         for path, source in sources.items():
             tm.ok(u.Cli.ensure_dir(path.parent))
-            tm.ok(u.Cli.atomic_write_text_file(path, source))
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    path, source, durability=c.Cli.WriteDurability.SCRATCH
+                )
+            )
 
         with infra.rope_workspace(root) as workspace:
             projected = tm.ok(u.Infra.protocol_model_sources(workspace))
@@ -1000,7 +1094,11 @@ class TestsModelProtocolNativeMro:
         }
         for path, content in sources.items():
             tm.ok(u.Cli.ensure_dir(path.parent))
-            tm.ok(u.Cli.atomic_write_text_file(path, content))
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    path, content, durability=c.Cli.WriteDurability.SCRATCH
+                )
+            )
 
         tm.ok(
             u.Infra.bootstrap_protocol_model_sources(
@@ -1061,7 +1159,11 @@ class TestsModelProtocolBuiltLazyMap:
         }
         for path, content in sources.items():
             tm.ok(u.Cli.ensure_dir(path.parent))
-            tm.ok(u.Cli.atomic_write_text_file(path, content))
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    path, content, durability=c.Cli.WriteDurability.SCRATCH
+                )
+            )
         with u.Infra.facade_source_project(root) as binding:
             projected = tm.ok(
                 u.Infra.protocol_model_sources_from_source(root, binding[0])

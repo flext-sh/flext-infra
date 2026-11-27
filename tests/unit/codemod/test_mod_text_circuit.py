@@ -13,6 +13,8 @@ from flext_infra import config, infra
 from flext_infra.codemod import FlextInfraModTextGateEngine
 from tests import c, m, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraModTextGateEngine:
     """Exercise the declarative sed-by-list engine through its public scan."""

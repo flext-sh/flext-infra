@@ -166,8 +166,17 @@ class FlextInfraUtilitiesGitStateSnapshot(FlextInfraUtilitiesGitRepo):
         root: Path,
         paths: Sequence[Path],
     ) -> tuple[p.Infra.GitWorktreeIndexEntry, ...]:
+        # Git selects the owned paths through literal pathspecs: one tree walk,
+        # never a per-entry scan of every owned path and its parents.
         rows = (
-            cls._repo(root).git.ls_tree("-r", "--full-tree", "-z", "HEAD")
+            cls._repo(root).git.ls_tree(
+                "-r",
+                "--full-tree",
+                "-z",
+                "HEAD",
+                "--",
+                *(f":(literal){path.as_posix()}" for path in paths),
+            )
             if paths
             else ""
         )
@@ -176,11 +185,10 @@ class FlextInfraUtilitiesGitStateSnapshot(FlextInfraUtilitiesGitRepo):
             if not row:
                 continue
             metadata, raw_path = row.split("\t", 1)
-            path = Path(raw_path)
-            if not any(path == owned or owned in path.parents for owned in paths):
-                continue
             mode, _kind, oid = metadata.split()
-            entries.append(m.Infra.GitWorktreeIndexEntry(path=path, mode=mode, oid=oid))
+            entries.append(
+                m.Infra.GitWorktreeIndexEntry(path=Path(raw_path), mode=mode, oid=oid),
+            )
         return tuple(entries)
 
     @classmethod
@@ -261,6 +269,71 @@ class FlextInfraUtilitiesGitStateSnapshot(FlextInfraUtilitiesGitRepo):
         return tuple(sorted(files, key=lambda state: state.path.as_posix()))
 
     @classmethod
+    def _state_declared_base(
+        cls,
+        root: Path,
+        head: str,
+        request: p.Infra.GitWorktreeStateRequest,
+    ) -> str | None:
+        """Resolve the declared base and refuse a claimed path the base changed.
+
+        The claimed paths are materialized onto the base whole; a path that
+        differs between the source HEAD and the base would silently drop the
+        base's change, so the capture fails naming every such path.
+
+        Returns:
+            The resolved base commit, or ``None`` when no base is declared.
+
+        Raises:
+            ValueError: If a claimed path differs between HEAD and the base.
+
+        """
+        if request.base is None:
+            return None
+        repo = cls._repo(root)
+        # rev-parse fails as a GitCommandError naming an unknown base; the
+        # object lookup would raise outside the snapshot's typed failures.
+        base = repo.git.rev_parse("--verify", f"{request.base}^{{commit}}")
+        if request.paths and base != head:
+            changed = tuple(
+                path
+                for path in repo.git.diff(
+                    "--name-only",
+                    "-z",
+                    head,
+                    base,
+                    "--",
+                    *cls._state_pathspecs(request.paths),
+                ).split("\0")
+                if path
+            )
+            if changed:
+                msg = (
+                    "claimed paths conflict with the declared base "
+                    f"{request.base}: {', '.join(changed)}"
+                )
+                raise ValueError(msg)
+        return base
+
+    @staticmethod
+    def state_expected_head(
+        snapshot: p.Infra.GitWorktreeStateSnapshot,
+        root: Path,
+    ) -> str:
+        """Return the commit ``root`` must stand on for this capture.
+
+        The source keeps its captured HEAD; a destination stands on the
+        declared base, or on the captured HEAD when no base was declared.
+
+        Returns:
+            The expected HEAD commit of ``root``.
+
+        """
+        if root.resolve() == snapshot.repo_root:
+            return snapshot.head
+        return snapshot.base or snapshot.head
+
+    @classmethod
     def _state_snapshot(
         cls,
         request: p.Infra.GitWorktreeStateRequest,
@@ -277,6 +350,7 @@ class FlextInfraUtilitiesGitStateSnapshot(FlextInfraUtilitiesGitRepo):
             else ()
         )
         head = repo.head.commit.hexsha
+        base = cls._state_declared_base(root, head, request)
         retained = tuple(
             sorted(
                 {repo.commit(oid).hexsha for oid in request.retained_commits} - {head},
@@ -286,6 +360,7 @@ class FlextInfraUtilitiesGitStateSnapshot(FlextInfraUtilitiesGitRepo):
             "repo_root": (root),
             "common_dir": (Path(repo.common_dir).resolve()),
             "head": (head),
+            "base": (base),
             "branch": (None if repo.head.is_detached else repo.active_branch.name),
             "retained_commits": (retained),
             "paths": (tuple(request.paths)),
@@ -332,7 +407,9 @@ class FlextInfraUtilitiesGitStateSnapshot(FlextInfraUtilitiesGitRepo):
         if observed.failure:
             return r[bool].from_failure(observed)
         actual = observed.value
-        if actual.common_dir != snapshot.common_dir or actual.head != snapshot.head:
+        if actual.common_dir != snapshot.common_dir or actual.head != (
+            cls.state_expected_head(snapshot, destination_root)
+        ):
             return r[bool].fail("captured repository identity or HEAD does not match")
         return r[bool].ok(
             actual.index_entries == snapshot.index_entries

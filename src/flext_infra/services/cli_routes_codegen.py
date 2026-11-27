@@ -17,10 +17,10 @@ class FlextInfraCodegenRoutes:
     def execute_repair_mise_platforms(
         request: p.Infra.WorkspaceRequest,
     ) -> p.Result[bool]:
-        """Compose the Mise platform repair with the shared native command runner.
+        """Compose the Mise lock repair with the shared native command runner.
 
         Returns:
-            The Mise platform repair result, or its first native failure.
+            The Mise lock repair result, or its first native failure.
 
         """
         return deps.FlextInfraLockIntegrityVerifier.repair_mise_platforms(
@@ -222,7 +222,7 @@ class FlextInfraCodegenRoutes:
         return FlextInfraUtilitiesBase.result_routes((
             (
                 "repair-mise-platforms",
-                "Lock the governed Mise tools missing a declared platform",
+                "Migrate version-3 Mise locks or repair missing platform locks",
                 m.Infra.WorkspaceRequest,
                 FlextInfraCodegenRoutes.execute_repair_mise_platforms,
                 "native Mise platform repair completed",

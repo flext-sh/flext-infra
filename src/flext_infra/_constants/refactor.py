@@ -285,6 +285,10 @@ class FlextInfraConstantsRefactor:
     "Generated rule shape moving a family-class namespace read to its letter."
     FACADE_LIBRARY_MEMBER_SHAPE: ClassVar[str] = "ban-library-named-facade-member"
     "Generated rule shape banning a library-named facade member outside families."
+    COMPOSITION_ROOT_COLLISION_SHAPE: ClassVar[str] = (
+        "ban-composition-root-member-collision"
+    )
+    "Generated rule shape failing two unrelated services composed with one member."
     FACADE_MEMBER_RETIRE_SHAPE: ClassVar[str] = "retire-foreign-facade-member"
     "Generated rule shape deleting the duplicate a non-owner letter declares."
     FACADE_MEMBER_WRONG_LAYER_SHAPE: ClassVar[str] = "facade-member-wrong-layer"

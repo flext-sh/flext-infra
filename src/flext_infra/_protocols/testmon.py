@@ -1,4 +1,4 @@
-# AUTO-GENERATED FILE — Regenerate with: make gen
+# AUTO-GENERATED FILE — Regenerate with: make check
 """Source-derived structural model contracts.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
@@ -8,7 +8,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Protocol, runtime_checkable
 
 from flext_cli import FlextCliProtocols
@@ -22,11 +21,6 @@ class FlextInfraProtocolsTestmon:
         """Structural data contract projected from the owning model."""
 
         @property
-        def seed_needed(self) -> bool:
-            """No usable DB was present."""
-            ...
-
-        @property
         def restored_accepted(self) -> bool:
             """An existing DB passed integrity checks."""
             ...
@@ -37,32 +31,8 @@ class FlextInfraProtocolsTestmon:
             ...
 
         @property
-        def saveable(self) -> bool:
-            """DB may be published as a cache generation."""
-            ...
-
-        @property
         def reason(self) -> str:
             """Decisive cache-state reason."""
-            ...
-
-    @runtime_checkable
-    class TestmonCachePublication(FlextCliProtocols.BaseModel, Protocol):
-        """Structural data contract projected from the owning model."""
-
-        @property
-        def database(self) -> Path:
-            """Integrity-checked project database."""
-            ...
-
-        @property
-        def digest(self) -> str:
-            """Checkpoint digest."""
-            ...
-
-        @property
-        def saveable(self) -> bool:
-            """Completed run may publish this generation."""
             ...
 
     @runtime_checkable

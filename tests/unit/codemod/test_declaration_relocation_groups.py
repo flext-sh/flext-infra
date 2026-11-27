@@ -19,6 +19,8 @@ from tests.unit.codemod.declaration_relocation_support import (
     TestsFlextInfraDeclarationRelocationSupport,
 )
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraDeclarationRelocationGroups:
     """Exercise guarded, grouped, and composed declaration relocation cutovers."""

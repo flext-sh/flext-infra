@@ -19,6 +19,8 @@ from typing import get_protocol_members
 from flext_infra import transformers
 from tests import c, m, p, t, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraRopeContractCatalog:
     """Validate rule ownership, catalogue composition and public export retirement."""

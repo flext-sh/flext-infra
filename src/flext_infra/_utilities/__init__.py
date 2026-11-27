@@ -1,4 +1,4 @@
-# AUTO-GENERATED FILE — Regenerate with: make gen
+# AUTO-GENERATED FILE — Regenerate with: make check
 """Flext Infra. Utilities package.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
@@ -40,6 +40,9 @@ if TYPE_CHECKING:
         FlextInfraUtilitiesFacadeComponents,
     )
     from flext_infra._utilities.facade_members import FlextInfraUtilitiesFacadeMembers
+    from flext_infra._utilities.facade_namespace import (
+        FlextInfraUtilitiesFacadeNamespace,
+    )
     from flext_infra._utilities.gate_admission import FlextInfraUtilitiesGateAdmission
     from flext_infra._utilities.generation_inventory import (
         FlextInfraGenerationInventory,
@@ -48,6 +51,7 @@ if TYPE_CHECKING:
     )
     from flext_infra._utilities.git import FlextInfraUtilitiesGit
     from flext_infra._utilities.import_law import FlextInfraUtilitiesImportLaw
+    from flext_infra._utilities.imported_names import FlextInfraUtilitiesImportedNames
     from flext_infra._utilities.iteration import FlextInfraUtilitiesIteration
     from flext_infra._utilities.iteration_directory import (
         FlextInfraUtilitiesIterationDirectory,
@@ -138,6 +142,9 @@ if TYPE_CHECKING:
     from flext_infra._utilities.pytest_collection import (
         FlextInfraUtilitiesPytestCollection,
     )
+    from flext_infra._utilities.pytest_config_dependencies import (
+        FlextInfraUtilitiesPytestConfigDependencies,
+    )
     from flext_infra._utilities.pytest_suite_stop import (
         FlextInfraUtilitiesPytestSuiteStop,
     )
@@ -195,10 +202,12 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesEnforcementCatalog",
     "FlextInfraUtilitiesFacadeComponents",
     "FlextInfraUtilitiesFacadeMembers",
+    "FlextInfraUtilitiesFacadeNamespace",
     "FlextInfraUtilitiesGateAdmission",
     "FlextInfraUtilitiesGenerationInventory",
     "FlextInfraUtilitiesGit",
     "FlextInfraUtilitiesImportLaw",
+    "FlextInfraUtilitiesImportedNames",
     "FlextInfraUtilitiesIteration",
     "FlextInfraUtilitiesIterationDirectory",
     "FlextInfraUtilitiesIterationMatching",
@@ -236,6 +245,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesPyrefly",
     "FlextInfraUtilitiesPytest",
     "FlextInfraUtilitiesPytestCollection",
+    "FlextInfraUtilitiesPytestConfigDependencies",
     "FlextInfraUtilitiesPytestSuiteStop",
     "FlextInfraUtilitiesPythonModel",
     "FlextInfraUtilitiesQualifiedNames",
@@ -287,10 +297,12 @@ install_lazy_exports(
         "FlextInfraUtilitiesEnforcementCatalog": ".enforcement_catalog",
         "FlextInfraUtilitiesFacadeComponents": ".facade_components",
         "FlextInfraUtilitiesFacadeMembers": ".facade_members",
+        "FlextInfraUtilitiesFacadeNamespace": ".facade_namespace",
         "FlextInfraUtilitiesGateAdmission": ".gate_admission",
         "FlextInfraUtilitiesGenerationInventory": ".generation_inventory",
         "FlextInfraUtilitiesGit": ".git",
         "FlextInfraUtilitiesImportLaw": ".import_law",
+        "FlextInfraUtilitiesImportedNames": ".imported_names",
         "FlextInfraUtilitiesIteration": ".iteration",
         "FlextInfraUtilitiesIterationDirectory": ".iteration_directory",
         "FlextInfraUtilitiesIterationMatching": ".iteration_matching",
@@ -328,6 +340,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesPyrefly": ".pyrefly",
         "FlextInfraUtilitiesPytest": ".pytest_surface",
         "FlextInfraUtilitiesPytestCollection": ".pytest_collection",
+        "FlextInfraUtilitiesPytestConfigDependencies": ".pytest_config_dependencies",
         "FlextInfraUtilitiesPytestSuiteStop": ".pytest_suite_stop",
         "FlextInfraUtilitiesPythonModel": ".python_model",
         "FlextInfraUtilitiesQualifiedNames": ".qualified_names",
@@ -370,10 +383,12 @@ install_lazy_exports(
         "FlextInfraUtilitiesEnforcementCatalog",
         "FlextInfraUtilitiesFacadeComponents",
         "FlextInfraUtilitiesFacadeMembers",
+        "FlextInfraUtilitiesFacadeNamespace",
         "FlextInfraUtilitiesGateAdmission",
         "FlextInfraUtilitiesGenerationInventory",
         "FlextInfraUtilitiesGit",
         "FlextInfraUtilitiesImportLaw",
+        "FlextInfraUtilitiesImportedNames",
         "FlextInfraUtilitiesIteration",
         "FlextInfraUtilitiesIterationDirectory",
         "FlextInfraUtilitiesIterationMatching",
@@ -411,6 +426,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesPyrefly",
         "FlextInfraUtilitiesPytest",
         "FlextInfraUtilitiesPytestCollection",
+        "FlextInfraUtilitiesPytestConfigDependencies",
         "FlextInfraUtilitiesPytestSuiteStop",
         "FlextInfraUtilitiesPythonModel",
         "FlextInfraUtilitiesQualifiedNames",

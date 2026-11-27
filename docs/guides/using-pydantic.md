@@ -469,7 +469,7 @@ generator never synthesizes upstream `llms.txt` addresses or crawls whole sites.
 Locked and installed versions are separate provenance. An upstream `latest` URL
 does not establish content compatibility with the loaded version.
 The existing documentation planner, templates and atomic publication own this
-output alongside FLEXT project references during `make gen`. For the offline
+output alongside FLEXT project references during `make check`. For the offline
 target, `upg` resolves declared documentation sources and hashes in `docs.lock`,
 `setup` provisions those objects, and generation/build consume authenticated local
 bytes without networking. Required content cannot be replaced with links or stale

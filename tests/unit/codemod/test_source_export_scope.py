@@ -11,6 +11,8 @@ from pathlib import Path
 from flext_infra import FlextInfraCli
 from tests import c, m, t, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraSourceExportScope:
     """Exercise both export verdicts through the real public AST command."""

@@ -301,7 +301,7 @@ class FlextInfraUtilitiesLazyInitPlan:
                 ).declaration_only
             ):
                 continue
-            generated = text is not None and text.startswith(c.Infra.AUTOGEN_HEADER)
+            generated = text is not None and text.startswith(c.Infra.AUTOGEN_MARKER)
             if any(
                 module.suffix == c.Infra.EXT_PYTHON
                 and module.name != c.Infra.INIT_PY
@@ -354,7 +354,7 @@ class FlextInfraUtilitiesLazyInitPlan:
                 current_pkg=name,
                 surface=name.split(".", maxsplit=1)[0],
                 generated_init=init is not None
-                and init.startswith(c.Infra.AUTOGEN_HEADER),
+                and init.startswith(c.Infra.AUTOGEN_MARKER),
                 importable=bool(name)
                 and all(
                     part.isidentifier() and not iskeyword(part)
@@ -534,11 +534,12 @@ class FlextInfraUtilitiesLazyInitPlan:
         # import-time code reads, is not deferred (root ADR-018 stand-in
         # composition law, rule 5): an empty stand-in is invalid, and a
         # stand-in published at import forbids an eager process.
+        roots = cls._lazy_init_facade_roots(run)
         parts = frozenset(
             owner
             for owner in (
-                cls._lazy_init_facade_composed(run)
-                - cls._lazy_init_facade_roots(run).keys()
+                cls._lazy_init_facade_composed(run, roots)
+                - roots.keys()
                 - cls._lazy_init_import_time(run)
             )
             if not cls._lazy_init_binds_nothing(run, owner)
@@ -739,20 +740,39 @@ class FlextInfraUtilitiesLazyInitPlan:
     ) -> Mapping[tuple[str, str], FlextInfraModelsCodegenLazyInit.LazyInitPlan]:
         """Return the family facade class of each root-namespace module and its plan.
 
-        Only the namespace families (``c``, ``t``, ``p``, ``m``, ``u``, derived
-        from the core package) compose namespace mixins; another facade, such
-        as a service base, composes model mixins that stay real.
+        The namespace families (``c``, ``t``, ``p``, ``m``, ``u``, derived from
+        the core package) compose namespace mixins. Another root facade class is
+        a root only when its project declares it in ``deferred_facades``
+        (operator ruling 2026-11-19); its parts pass the same stand-in checks.
 
         Returns:
             The planned root package of each ``(module, class)`` facade pair.
+
+        Raises:
+            ValueError: If a declared facade class is defined by no root-package
+                module of its project.
 
         """
         python = FlextInfraUtilitiesPythonModel
         families = FlextInfraUtilitiesCodegenNamespace.facade_families()
         roots: dict[tuple[str, str], FlextInfraModelsCodegenLazyInit.LazyInitPlan] = {}
+        declared: dict[Path, frozenset[str]] = {}
+        found: dict[Path, set[str]] = {}
         for plan in run.plans.values():
             if not cls.lazy_init_is_facade_root(plan.context):
                 continue
+            project = FlextInfraUtilitiesLazyInitRender.lazy_init_project_root(
+                run.model, plan.context.pkg_dir
+            )
+            if project not in declared:
+                declared[project] = frozenset(
+                    FlextInfraUtilitiesProjectManagedArtifacts
+                    .load_repository_declaration_inputs(
+                        project, source_project=run.model.source_project
+                    )
+                    .unwrap()
+                    .spec.deferred_facades
+                )
             entry = run.index.packages_by_dir.get(str(plan.context.pkg_dir))
             for module in entry.modules if entry is not None else ():
                 if (
@@ -761,18 +781,30 @@ class FlextInfraUtilitiesLazyInitPlan:
                     or module.file_path.name == c.Infra.INIT_PY
                 ):
                     continue
-                owner = python.python_model_facade_owner(
-                    python.python_model_module_at(
-                        run.model, module.file_path, module.module_name
-                    )
+                facts = python.python_model_module_at(
+                    run.model, module.file_path, module.module_name
                 )
+                owner = python.python_model_facade_owner(facts)
                 if owner is not None and owner[0] in families:
                     roots[module.module_name, owner[1]] = plan
+                for name in declared[project] & facts.classes.keys():
+                    roots[module.module_name, name] = plan
+                    found.setdefault(project, set()).add(name)
+        missing = {
+            str(project): sorted(names - found.get(project, set()))
+            for project, names in declared.items()
+            if names - found.get(project, set())
+        }
+        if missing:
+            msg = f"deferred facades are defined by no root-package module: {missing}"
+            raise ValueError(msg)
         return roots
 
     @classmethod
     def _lazy_init_facade_composed(
-        cls, run: FlextInfraModelsCodegenLazyInit.LazyInitRun
+        cls,
+        run: FlextInfraModelsCodegenLazyInit.LazyInitRun,
+        roots: Mapping[tuple[str, str], FlextInfraModelsCodegenLazyInit.LazyInitPlan],
     ) -> frozenset[tuple[str, str]]:
         """Return every in-package class a facade root class composes by MRO.
 
@@ -788,7 +820,6 @@ class FlextInfraUtilitiesLazyInitPlan:
 
         """
         python = FlextInfraUtilitiesPythonModel
-        roots = cls._lazy_init_facade_roots(run)
         pending = [(*root, plan) for root, plan in roots.items()]
         composed: set[tuple[str, str]] = set()
         while pending:
@@ -883,7 +914,7 @@ class FlextInfraUtilitiesLazyInitPlan:
                     else ""
                 )
                 published = source.startswith(
-                    c.Infra.AUTOGEN_HEADER
+                    c.Infra.AUTOGEN_MARKER
                 ) and name in FlextInfraUtilitiesLazyInitPlan._lazy_import_names(source)
             return (provider, name) if published else None
 
@@ -1236,7 +1267,7 @@ class FlextInfraUtilitiesLazyInitPlan:
             )
             is not None
             and text.strip()
-            and not text.startswith(c.Infra.AUTOGEN_HEADER)
+            and not text.startswith(c.Infra.AUTOGEN_MARKER)
             for candidate in (pkg_dir, *entry.descendant_child_dirs)
             if str(candidate) in run.index.packages_by_dir
         )

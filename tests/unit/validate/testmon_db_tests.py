@@ -1,4 +1,4 @@
-"""Testmon SQLite integrity and saveability contracts.
+"""Testmon SQLite integrity contracts.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -15,7 +15,7 @@ from tests import p, tm, u
 
 
 class TestsFlextInfraTestmonDbInspector:
-    """Prove WAL checkpoint, integrity, and saveability decisions."""
+    """Prove WAL checkpoint, integrity, and change decisions."""
 
     @staticmethod
     def test_missing_db_fails_loud(tmp_path: Path) -> None:
@@ -33,18 +33,21 @@ class TestsFlextInfraTestmonDbInspector:
             inspector.execute()
 
     @staticmethod
-    def test_database_inside_checkout_is_rejected(tmp_path: Path) -> None:
-        """Test database inside checkout is rejected."""
+    def test_native_checkout_database_is_accepted(tmp_path: Path) -> None:
+        """Testmon's native checkout-root database is the inspected database."""
         repository_root = tmp_path / "checkout"
         repository_root.mkdir()
+        database = (
+            repository_root / config.Infra.codegen.make.testmon_cache.database_filename
+        )
 
-        with u.Tests.raises(ValueError, match="outside the repository checkout"):
-            FlextInfraTestmonDbInspector(
-                repository_root=repository_root,
-                db_path=repository_root
-                / config.Infra.codegen.make.testmon_cache.database_filename,
-                pre_run_digest=None,
-            )
+        inspector = FlextInfraTestmonDbInspector(
+            repository_root=repository_root,
+            db_path=database,
+            pre_run_digest=None,
+        )
+
+        tm.that(inspector.db_path, eq=database)
 
     @staticmethod
     def test_corrupt_db_preserves_sqlite_failure(tmp_path: Path) -> None:
@@ -67,8 +70,8 @@ class TestsFlextInfraTestmonDbInspector:
             ).execute()
 
     @staticmethod
-    def test_healthy_new_db_is_saveable_seed(tmp_path: Path) -> None:
-        """Test healthy new db is saveable seed."""
+    def test_healthy_new_db_is_reported_created(tmp_path: Path) -> None:
+        """A healthy database with no input digest is reported as created."""
         repository_root = tmp_path / "checkout"
         repository_root.mkdir()
         db = (
@@ -89,13 +92,12 @@ class TestsFlextInfraTestmonDbInspector:
                 pre_run_digest=None,
             ).execute(),
         )
-        tm.ok(state.seed_needed)
-        tm.ok(state.saveable)
-        tm.that(state.reason, eq="seed_ready")
+        tm.fail(state.restored_accepted)
+        tm.that(state.reason, eq="created")
 
     @staticmethod
-    def test_unchanged_db_is_not_saveable(tmp_path: Path) -> None:
-        """Test unchanged db is not saveable."""
+    def test_unchanged_db_is_reported_unchanged(tmp_path: Path) -> None:
+        """An unchanged restored database is accepted and reported unchanged."""
         repository_root = tmp_path / "checkout"
         repository_root.mkdir()
         db = (
@@ -116,18 +118,6 @@ class TestsFlextInfraTestmonDbInspector:
                 pre_run_digest=digest,
             ).execute(),
         )
+        tm.ok(state.restored_accepted)
         tm.fail(state.changed)
-        tm.fail(state.saveable)
         tm.that(state.reason, eq="unchanged")
-
-    @staticmethod
-    def test_in_checkout_database_is_rejected(tmp_path: Path) -> None:
-        """Test in checkout database is rejected."""
-        filename = config.Infra.codegen.make.testmon_cache.database_filename
-
-        with u.Tests.raises(ValueError, match="outside the repository checkout"):
-            FlextInfraTestmonDbInspector(
-                repository_root=tmp_path,
-                db_path=tmp_path / filename,
-                pre_run_digest=None,
-            )

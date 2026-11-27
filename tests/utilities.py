@@ -15,7 +15,7 @@ from pathlib import Path
 
 from flext_tests import u as flext_tests_u
 
-from flext_infra import FlextInfraUtilities, config
+from flext_infra import FlextInfraConfig, FlextInfraUtilities, config
 from tests import c, m, p, r, t, tm
 from tests._utilities import (
     TestsFlextInfraUtilitiesCodegen,
@@ -256,6 +256,9 @@ class TestsFlextInfraUtilities(FlextInfraUtilities):
             # Repository-relative promoted command files and their header
             # tables, written before rendering because headers declare verbs.
             commands: tuple[tuple[str, t.JsonMapping], ...] = ()
+            # make.admission keys of the fixture's untracked local layer,
+            # merged over the fabric's host_load_gate: false.
+            local_admission: t.JsonMapping = dataclasses.field(default_factory=dict)
 
         @staticmethod
         def render_make_environment(
@@ -348,6 +351,28 @@ class TestsFlextInfraUtilities(FlextInfraUtilities):
             workspace = u.Tests.workspace_spec(
                 repository,
                 project=u.Tests.project_spec(shape.project_name),
+            )
+            # A fixture's verbs run inside the admitted test verb: its untracked
+            # local layer renders the Makefile without the host load gate
+            # (ADR-032; a tracked project layer cannot declare it).
+            tm.ok(
+                u.Cli.yaml_dump(
+                    FlextInfraConfig.config_layer_paths_for_repository(
+                        project_root, filename=c.Infra.CODEGEN_CONFIG_FILENAME
+                    )[-1],
+                    {
+                        "Infra": {
+                            "codegen": {
+                                "make": {
+                                    "admission": {
+                                        "host_load_gate": False,
+                                        **shape.local_admission,
+                                    },
+                                },
+                            },
+                        },
+                    },
+                )
             )
             plan = u.Tests.conform_plan(
                 project_root,

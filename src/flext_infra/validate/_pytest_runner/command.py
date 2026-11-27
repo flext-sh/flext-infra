@@ -22,7 +22,8 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
     """Build the single supported pytest command family.
 
     One suite builder owns every flag. Global incremental and explicit FULL
-    share the same inventory scope; only incremental execution uses Testmon.
+    share the same inventory scope; incremental execution selects through
+    Testmon, FULL only records into it.
     Local/slow callers retain their marker partitions. Coverage owns its
     separate measurement plugin. Every operation shares its entrypoint
     deadline across collection and execution.
@@ -41,16 +42,22 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         (gate-budget law). A declared file runs its slow items. The coverage
         operation and both global modes include slow items. One predicate
         drives both the marker expression and the stop reserve, so an in-flight
-        slow item always has its slow drain.
+        slow item always has its slow drain. Under the Make CI token the global
+        incremental run is the fast tier (operator decision 2026-11-22): CI
+        runs the fast tests, so slow items stay out of it.
 
         Returns:
             The resulting ``bool``.
 
         """
+        fast_ci = (
+            self.ci_context
+            and execution_mode == c.Infra.PytestExecutionMode.GLOBAL_INCREMENTAL
+        )
         return (
             self.slow_phase
             or self.target_file is not None
-            or execution_mode.is_global
+            or (execution_mode.is_global and not fast_ci)
             or execution_mode == c.Infra.PytestExecutionMode.COVERAGE
         )
 
@@ -61,7 +68,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         execution_mode: c.Infra.PytestExecutionMode = (
             c.Infra.PytestExecutionMode.INCREMENTAL
         ),
-    ) -> float:
+    ) -> float | None:
         """Derive the graceful suite stop instant from the entrypoint deadline.
 
         Selection and inventory consume the same clock, so the instant leaves
@@ -71,9 +78,12 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         promising a synthetic unit completion window.
 
         Returns:
-            The resulting ``float``.
+            The stop instant, or None when the run owns no deadline.
 
         """
+        deadline = self._deadline_monotonic(execution_mode=execution_mode)
+        if deadline is None:
+            return None
         pytest = self.pytest_policy()
         if self.carries_slow_items(execution_mode):
             reserve = (
@@ -83,7 +93,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             )
         else:
             reserve = self.termination_grace_seconds
-        return self.started_at_monotonic + self.run_timeout_seconds - reserve
+        return deadline - reserve
 
     def ci_excluded_markers(
         self,
@@ -173,6 +183,12 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         without running it. testmon's environment is its declared separation
         between run configurations, so each marker scope owns one.
 
+        Config edits never name an environment: each test records the config
+        files it opens and the typed config leaves it reads as Testmon file
+        dependencies (``_config_receipt_args``), so an edited YAML selects
+        only its consumers. Only the elected pytest policy, which shapes the
+        run itself rather than any test's behavior, keys the environment.
+
         Returns:
             The resulting ``str``.
 
@@ -180,47 +196,24 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         scope = hashlib.sha256(
             self._marker_expression(execution_mode).encode(),
         ).hexdigest()[:8]
-        toolchain, configuration = self.testmon_input_identity()
-        return f"toolchain-{toolchain[:12]}-{configuration}-{scope}"
-
-    def testmon_input_identity(self) -> tuple[str, str]:
-        """Read runtime and configuration identities independently of selection.
-
-        Returns:
-            The existing installed toolchain identity and declared-input digest.
-
-        """
-        return (
-            FlextInfraWorkspaceEnvironmentProvenance.installed_toolchain_identity(),
-            self._config_testmon_digest(),
+        policy = hashlib.sha256(
+            self.pytest_policy().model_dump_json().encode(),
+        ).hexdigest()[:8]
+        toolchain = (
+            FlextInfraWorkspaceEnvironmentProvenance.installed_toolchain_identity()
         )
+        return f"toolchain-{toolchain[:12]}-{policy}-{scope}"
 
-    def _config_testmon_digest(self) -> str:
-        """Fingerprint the project's current ``config/*.yaml`` behavior inputs.
-
-        testmon tracks Python sources only, while a FLEXT project's behavior
-        is declared in its config: an edited YAML must select a fresh
-        environment in the same external database instead of a cache hit.
-        Read on every command construction, never memoized.
+    def _config_receipt_args(self) -> t.StrTuple:
+        """Activate per-test config dependency recording for a Testmon process.
 
         Returns:
-            The digest of every config source path and content.
-
-        Raises:
-            ValueError: If a required config source disappears mid-read.
+            The plugin option naming the receipts directory, or nothing.
 
         """
-        digest = hashlib.sha256()
-        for state in u.Infra.snapshot_config_sources(self.repository_root).unwrap():
-            if state.content is None:
-                msg = f"required test configuration disappeared: {state.path}"
-                raise ValueError(msg)
-            digest.update(
-                state.path.relative_to(self.repository_root).as_posix().encode()
-            )
-            digest.update(b"\0")
-            digest.update(hashlib.sha256(state.content).digest())
-        return digest.hexdigest()[:8]
+        if self.config_receipts is None:
+            return ()
+        return (f"{c.Infra.PYTEST_CONFIG_RECEIPTS_OPTION}={self.config_receipts}",)
 
     def _marker_expression(self, execution_mode: c.Infra.PytestExecutionMode) -> str:
         """Return the native pytest marker expression of one execution scope.
@@ -276,11 +269,6 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             "-p",
             pytest.enforcement_plugin,
             f"--timeout={pytest.ordinary_timeout_seconds}",
-            *(
-                c.Infra.TEST_SELECTION_DISABLE_PLUGIN_ARGS
-                if execution_mode == c.Infra.PytestExecutionMode.FULL
-                else ()
-            ),
             "-p",
             "no:metadata",
             "-o",
@@ -327,8 +315,8 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         workers reading the database while a third writes it collect different
         sets, which xdist aborts with "Different tests were collected". This
         pass runs no test and records its collection and warning evidence.
-        Unselected full and coverage inventories own no Testmon plugin, so
-        they never read or write the persistent database.
+        FULL collects in its suite and coverage owns no Testmon plugin, so
+        neither runs this pass.
 
         Returns:
             The resulting ``tuple[str, ...],``.
@@ -347,6 +335,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
                 *(("--testmon-noselect",) if complete else ("--testmon-forceselect",)),
                 "--testmon-env",
                 self.testmon_environment(execution_mode),
+                *self._config_receipt_args(),
             )
         )
         pytest_arguments = (
@@ -395,8 +384,9 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         Workers record dependencies without selecting those IDs a second time.
         Their ``--testmon-noselect`` freezes only the accepted selection, never
         elects the global inventory for regular incremental execution.
-        FULL execution uses no Testmon plugin and publishes its inventory from
-        this suite's own collection, without an earlier selection process.
+        A qualified fixture publishes the inventory and native selection from
+        this suite's collection. FULL publishes its own inventory and records
+        every item without selecting.
 
         Returns:
             The resulting ``tuple[str, ...],``.
@@ -431,7 +421,9 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
                     f"{selection_plan.manifest_path}"
                 ),
             )
-        elif execution_mode == c.Infra.PytestExecutionMode.FULL:
+        elif execution_mode == c.Infra.PytestExecutionMode.FULL or (
+            self._native_fixture_dispatch and execution_mode.is_incremental
+        ):
             manifest_args = (
                 "-p",
                 FlextInfraPytestCollection.__module__,
@@ -461,13 +453,18 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
                         "--testmon",
                         *(
                             ("--testmon-noselect",)
-                            if selection_plan is not None and bool(selection)
+                            if bool(selection)
+                            or execution_mode == c.Infra.PytestExecutionMode.FULL
                             else ("--testmon-forceselect",)
                         ),
-                        "--testmon-env",
-                        self.testmon_environment(execution_mode),
+                        *(
+                            ("--testmon-env", self.testmon_environment(execution_mode))
+                            if not self._native_fixture_dispatch
+                            else ()
+                        ),
+                        *self._config_receipt_args(),
                     )
-                    if execution_mode.is_incremental
+                    if execution_mode.records_testmon
                     else ()
                 ),
                 *self._NO_COVERAGE,
@@ -523,14 +520,18 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         """Return the aggregate graceful suite stop deadline.
 
         Returns:
-            The bounded suite's time-limit arguments.
+            The bounded suite's time-limit arguments; none for an unbounded run.
 
         """
         suite_stop = self.suite_stop_monotonic(
             serial=workers == c.ParserBooleanToken.ZERO,
             execution_mode=execution_mode,
         )
-        return (f"{c.Infra.PYTEST_SUITE_STOP_OPTION}={suite_stop!r}",)
+        return (
+            ()
+            if suite_stop is None
+            else (f"{c.Infra.PYTEST_SUITE_STOP_OPTION}={suite_stop!r}",)
+        )
 
     def _suite_argv(
         self,

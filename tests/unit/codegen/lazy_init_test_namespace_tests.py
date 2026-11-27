@@ -12,13 +12,17 @@ from tests import c, tm, u
 
 
 class TestsFlextInfraLazyInitTestNamespace:
-    """The tests facade publishes sibling public APIs, never test modules."""
+    """The tests facade publishes the public ``src`` API, never test modules."""
 
     @staticmethod
-    def test_tests_root_publishes_src_scripts_and_examples_publics(
+    def test_tests_root_publishes_src_publics_only(
         tmp_path: Path,
     ) -> None:
-        """The tests facade exposes sibling public APIs and omits test modules."""
+        """The tests facade re-exports ``src`` publics, never scripts or examples.
+
+        Each tier owns its own namespace: the tests root inherits only the
+        public ``src`` names it does not redeclare, and omits test modules.
+        """
         repository_root, package_root = u.Tests.demo_lazy_init_workspace(tmp_path)
         package_root.joinpath("__version__.py").write_text(
             '__all__: list[str] = ["__version__"]\n__version__ = "0.1.0"\n',
@@ -64,8 +68,8 @@ class TestsFlextInfraLazyInitTestNamespace:
         init_content = u.Tests.generated_init(tests_root)
 
         tm.that(init_content, has='"FlextDemoPublic"')
-        tm.that(init_content, has='"ScriptsPublic"')
-        tm.that(init_content, has='"ExamplesPublic"')
+        tm.that(init_content, lacks="ScriptsPublic")
+        tm.that(init_content, lacks="ExamplesPublic")
         tm.that(init_content, lacks='"__version__"')
         tm.that(init_content, lacks='"TestsNamespaceLeak"')
         compile(init_content, "tests/__init__.py", "exec")
@@ -147,6 +151,36 @@ class TestsFlextInfraLazyInitTestNamespace:
         tm.that(first, lacks="DemoHelper")
         tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
         tm.that(u.Tests.generated_init(tests_root), eq=first)
+
+    @staticmethod
+    def test_tests_subpackage_drops_a_name_removed_from_its_module(
+        tmp_path: Path,
+    ) -> None:
+        """A tests subpackage initializer follows its modules' ``__all__``."""
+        repository_root, _ = u.Tests.demo_lazy_init_workspace(tmp_path)
+        tests_root = repository_root / c.Infra.DIR_TESTS
+        helpers_root = tests_root / "helpers"
+        helpers_root.mkdir(parents=True)
+        tests_root.joinpath(c.Infra.INIT_PY).touch()
+        helpers_root.joinpath(c.Infra.INIT_PY).touch()
+        module = helpers_root / "harness.py"
+        u.Tests.write_lazy_init_namespace_module(
+            module, class_name="DemoHelper", alias="demo_helper"
+        )
+
+        tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
+        tm.that(u.Tests.generated_init(helpers_root), has='"demo_helper"')
+        module.write_text(
+            module.read_text(encoding=c.DEFAULT_ENCODING).replace(
+                '"DemoHelper", "demo_helper"', '"DemoHelper"'
+            ),
+            encoding=c.DEFAULT_ENCODING,
+        )
+
+        tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
+        generated = u.Tests.generated_init(helpers_root)
+        tm.that(generated, has='"DemoHelper"')
+        tm.that(generated, lacks='"demo_helper"')
 
 
 __all__: list[str] = ["TestsFlextInfraLazyInitTestNamespace"]

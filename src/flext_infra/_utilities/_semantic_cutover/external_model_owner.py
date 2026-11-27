@@ -82,7 +82,7 @@ class FlextInfraUtilitiesSemanticCutoverExternalModelOwner:
             The native rename decision, or ``None`` when the module is ineligible.
 
         """
-        if path.name == c.Infra.INIT_PY or source.startswith(c.Infra.AUTOGEN_HEADER):
+        if path.name == c.Infra.INIT_PY or source.startswith(c.Infra.AUTOGEN_MARKER):
             return None
         convention = workspace.convention(path)
         policy = convention.module_policy

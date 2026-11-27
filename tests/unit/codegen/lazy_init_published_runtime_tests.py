@@ -13,6 +13,8 @@ from pathlib import Path
 from flext_infra import infra
 from tests import c, m, p, tm, u
 
+pytestmark = c.Tests.MARK.slow
+
 
 class TestsFlextInfraLazyInitPublishedRuntime:
     """Consume published package identities and enforce admission before effects."""
