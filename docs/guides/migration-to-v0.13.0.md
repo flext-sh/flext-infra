@@ -1,4 +1,4 @@
-<!-- AUTO-GENERATED FILE — regenerate through `make gen` from the workspace root. -->
+<!-- AUTO-GENERATED FILE — regenerate through `make check` from the workspace root. -->
 <!-- Source of truth: `<workspace-root>/docs/guides/migration-to-v0.13.0.md`; adjust that workspace source, never this member projection. -->
 
 # flext-infra - Migration to v0.13.0
