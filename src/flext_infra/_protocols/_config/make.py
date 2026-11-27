@@ -132,6 +132,16 @@ class FlextInfraProtocolsConfigMake:
             """Value of remote_variable on a remote runner."""
             ...
 
+        @property
+        def converge_variable(self) -> t.NonEmptyStr:
+            """Structural member projected from the owning model.
+
+            Variable make check exports to the generation of its own convergence:
+            the check is the remediation the health refusal asks for, so that
+            generation never needs an earlier green check.
+            """
+            ...
+
     @runtime_checkable
     class MakeVerbSpec(FlextInfraProtocolsConfigContract.ConfigContract, Protocol):
         """Structural data contract projected from the owning model."""
