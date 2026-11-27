@@ -33,7 +33,7 @@ jobs:
       group: {% raw %}${{ github.workflow }}-${{ github.ref }}{% endraw %}
       cancel-in-progress: true
     # packages: read only for distributions declared in codegen
-    # ci_package_registry_read: make gen/check resolve their GitHub Packages.
+    # ci_package_registry_read: make build/check resolve their GitHub Packages.
     permissions:
       contents: read
 {%- if packages_read %}
@@ -60,9 +60,6 @@ jobs:
       # starts warm. Only written when the restore missed.
 {%- include "_fragments/toolchain_cache_save.j2" %}
 {%- include "_fragments/custom_steps.j2" %}
-
-      - name: Generate documentation
-        run: make gen
 
       - name: Build site
         run: make build
