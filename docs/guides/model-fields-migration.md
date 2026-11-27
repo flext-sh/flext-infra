@@ -118,7 +118,7 @@ discards a disappearing-process error. The test then verifies the original lock 
 staging cleanup against the real upgrade implementation.
 
 Rule snapshot changes are projected with `make mod-snapshots`. Run `make mod`,
-`make gen`, and the native validation lifecycle after updating the automation
+`make check`, and the native validation lifecycle after updating the automation
 dependency. Do not repair the consumer by editing the rewritten call site.
 
 Census consumers pass the canonical `m.Infra.CensusInput` to `infra.census`.

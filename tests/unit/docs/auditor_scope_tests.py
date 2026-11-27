@@ -92,6 +92,7 @@ class TestsFlextInfraAuditorScope:
     @staticmethod
     def test_audit_scope_with_links_check(tmp_path: Path) -> None:
         """Test audit_scope runs links check."""
+        u.Tests.initialize_git_repo(tmp_path)
         auditor = FlextInfraDocAuditor()
         scope = m.Infra.DocScope(
             name="test",

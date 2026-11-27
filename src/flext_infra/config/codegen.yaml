@@ -749,7 +749,7 @@ Infra:
       #
       # lint_fix ALWAYS runs `--preview --fix --unsafe-fix` (tracker memory
       # operator-ruling-2026-10-09-authority-confirmation-0122, item 4):
-      # unsafe fixes are mandatory in every make fix, in every project and
+      # unsafe fixes are mandatory in every make check repair, in every project and
       # subproject. MakeRuffSpec fails validation without the flag. Rules
       # whose fixes would destroy information stay declared unfixable in
       # tooling.yaml (rule selection, never disabling the unsafe channel).
@@ -760,10 +760,11 @@ Infra:
         format_apply: [ --preview, --force-exclude ]
         lint_check: [ --preview, --no-fix, --force-exclude ]
         lint_fix: [ --preview, --fix, --unsafe-fixes ]
-      # Gates whose mutating side `make fmt` drives (formatters). Their
-      # read-only side runs in `make check`; `make fix` never repeats them
+      # Gates whose mutating side the format stage of `make check` drives
+      # (formatters). Their
+      # read-only side runs in `make check`; its repair stage never repeats them
       # (single-pass verb law: one operation per tool per verb).
-      # `format` (ruff) applies only through `make fmt`; its read-only
+      # `format` (ruff) applies only in the format stage of `make check`; its read-only
       # `--check` side runs in `make check` like markdown-format, so format
       # drift is red at check time. fix never formats.
       fmt_gates: [ format, markdown-format, markdown-code ]
@@ -1695,7 +1696,7 @@ Infra:
         - ".jscpd.json"
       # The generated toolchain config and launcher must reach a clean
       # CI checkout, so the deny-first root cannot swallow them;
-      # `make gen` owns their content.
+      # `make check` owns their content.
       - name: "Documentation"
         profiles: [ workspace ]
         patterns:
@@ -2371,7 +2372,7 @@ Infra:
           # policy: no ignore_errors, unapproved Ruff ignore or relaxed strictness.
           enforce: [ ENFORCE-020 ]
           # CUSTOM vs MANAGED (humans read comments; this block is the owner):
-          #   conflict_sections = MANAGED tables (template wins on make gen)
+          #   conflict_sections = MANAGED tables (template wins on make check)
           #   preserve_project_keys = CUSTOM [project] keys (live wins on merge)
           #   [project] keys the template writes that are not in preserve_project_keys
           #     (requires-python) are MANAGED; live dependencies stay CUSTOM and

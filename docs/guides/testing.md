@@ -117,12 +117,9 @@ For an explicitly requested complete execution, use:
 make tests-full
 ```
 
-`make tests-full` executes the complete applicable population once, without
-Testmon or a preliminary incremental run. It does not load the Testmon plugin,
-pass its options or database environment, acquire its lease, inspect or modify
-its database, or publish a cache receipt. The existing database remains untouched
-for later `make tests` runs. This is the latest operator clarification of
-2026-10-28, recorded in
+`make tests-full` executes the complete applicable population once without a
+preliminary incremental run, and records the execution in Testmon for later
+incremental runs. This is the 2026-11-19 amendment in
 ADR-029.
 Both operations retain source admission, runtime/input identity, applicability,
 original failures and the complete invocation deadline. Full execution is not
@@ -159,8 +156,8 @@ runner that violates this contract is repaired at its owner and rerun through Ma
 Each phase retains its mode, raw process outcome, collection manifest, and
 diagnostics. The latest receipt names the current attempt even when collection fails.
 Incremental phases retain their database and cache accounting. Full phases record
-no Testmon database, lease or cache publication and reconcile execution against
-their complete applicable inventory.
+their Testmon database and reconcile execution against their complete applicable
+inventory; a cache hit does not establish full execution.
 Warning totals include selection, inventory, and suite occurrences, with blocking and
 explicitly suspended warnings reported separately. The existing non-strict MRO
 enforcement suspension remains visible in those receipts. Unexpected skips block
@@ -219,7 +216,7 @@ Member copies of this guide are generated projections. Change this root source a
 regenerate from the workspace root:
 
 ```bash
-make gen
+make check
 ```
 
 Do not edit a member projection by hand.
