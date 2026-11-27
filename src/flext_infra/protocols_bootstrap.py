@@ -35,7 +35,7 @@ _SOURCE_BOOTSTRAP_CONTRACT_DOCSTRING = (
     "Structural data contract projected from the owning model."
 )
 _MAX_IMPORT_LINE_LENGTH = 88
-_GENERATED_INIT_HEADER = "# AUTO-GENERATED FILE — Regenerate with: make gen"
+_GENERATED_INIT_HEADER = "# AUTO-GENERATED FILE — Regenerate with: make check"
 _FIELD_ALIAS_KEYWORDS = frozenset({"alias", "validation_alias", "serialization_alias"})
 _FIELD_ASSIGNMENT_KEYWORDS = _FIELD_ALIAS_KEYWORDS | frozenset({
     "default",
@@ -2437,7 +2437,7 @@ def _render_family_init(
 ) -> str:
     """Render one protocol family initializer in the lazy-init generator layout.
 
-    The result carries the generator header, so ``make gen`` owns it afterwards.
+    The result carries the generator header, so ``make check`` owns it afterwards.
 
     Returns:
         The initializer source: type-only imports, ``__all__`` and the lazy mapping.

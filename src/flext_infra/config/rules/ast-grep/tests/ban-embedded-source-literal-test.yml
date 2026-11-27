@@ -42,7 +42,7 @@ valid:
   - |
     header = (
         "# AUTO-GENERATED FILE\n"
-        "# Regenerate with: make gen\n"
+        "# Regenerate with: make check\n"
         "# Owner: tooling\n"
         "# Do not edit\n"
     )

@@ -877,7 +877,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 return r[p.BaseModel].fail(
                     "Beads rendering requires enabled Beads identity",
                 )
-            # Why: this marker is regenerated on every `make gen`, but the
+            # Why: this marker is regenerated on every `make check`, but the
             # ledger identity inside it is owned by the checkout, not by the
             # fleet SSOT. Rendering without it stripped the key, and Beads then
             # minted a NEW identity on next access — a consumer rig lost its
