@@ -180,9 +180,9 @@ class TestsFlextInfraCodegenLazyInit:
                 planned = {
                     plan.path
                     for plan in tm.ok(
-                        FlextInfraCodegenLazyInit(repository_root=repository).plan_files(
-                            source_project=source_project
-                        )
+                        FlextInfraCodegenLazyInit(
+                            repository_root=repository
+                        ).plan_files(source_project=source_project)
                     )
                 }
                 tm.ok(src_init in sources)
@@ -212,9 +212,9 @@ class TestsFlextInfraCodegenLazyInit:
                 planned = {
                     plan.path
                     for plan in tm.ok(
-                        FlextInfraCodegenLazyInit(repository_root=repository).plan_files(
-                            source_project=source_project
-                        )
+                        FlextInfraCodegenLazyInit(
+                            repository_root=repository
+                        ).plan_files(source_project=source_project)
                     )
                 }
                 tm.ok(src_init in sources)
@@ -257,9 +257,9 @@ class TestsFlextInfraCodegenLazyInit:
                 planned = {
                     plan.path
                     for plan in tm.ok(
-                        FlextInfraCodegenLazyInit(repository_root=repository).plan_files(
-                            source_project=source_project
-                        )
+                        FlextInfraCodegenLazyInit(
+                            repository_root=repository
+                        ).plan_files(source_project=source_project)
                     )
                 }
                 tm.ok(src_init in sources)

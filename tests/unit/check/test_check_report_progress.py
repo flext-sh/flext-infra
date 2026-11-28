@@ -58,9 +58,7 @@ class TestsFlextInfraCheckReportProgress:
         tm.that(tuple(summary.pending_gates), eq=later)
         tm.that(summary.complete, eq=not include_security)
         tm.that(summary.targets, length=1)
-        tm.that(
-            tuple(summary.targets[0].applicable_gates), eq=(c.Infra.LINT, *later)
-        )
+        tm.that(tuple(summary.targets[0].applicable_gates), eq=(c.Infra.LINT, *later))
         tm.that(summary.results, length=1)
         tm.that(tuple(summary.results[0].gates), eq=(c.Infra.LINT,))
         execution = summary.results[0].gates[c.Infra.LINT]
