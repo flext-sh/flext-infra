@@ -48,20 +48,16 @@ class TestsFlextInfraRuleCatalogCache:
         )
 
     @staticmethod
-    def _project(project: Path, message: str) -> tuple[Path, Path]:
-        """Author one rule in the leased consumer.
-
-        The rule plan reads the target repository's own runtime, so the case
-        runs in the worker's once-provisioned Git checkout, never a bare
-        temporary directory.
-
-        Returns:
-            The project root and the authored rule path.
-
-        """
+    def _project(tmp_path: Path, message: str) -> tuple[Path, Path]:
+        project = tmp_path / "catalog-cache"
         config_path = project / c.Infra.CODEMOD_CONFIG_RELPATH
         rules = config_path.parent / c.Cli.RULES_DIR_NAME
         rules.mkdir(parents=True, exist_ok=True)
+        (project / "src").mkdir(exist_ok=True)
+        (project / c.PYPROJECT_FILENAME).write_text(
+            '[project]\nname = "catalog-cache"\nversion = "1.0.0"\ndependencies = []\n',
+            encoding="utf-8",
+        )
         config_path.write_text(
             f"ruleDirs: [{c.Cli.RULES_DIR_NAME}]\n",
             encoding="utf-8",
@@ -72,14 +68,15 @@ class TestsFlextInfraRuleCatalogCache:
             f"message: '{message}'\nrule:\n  pattern: only($VALUE)\n",
             encoding="utf-8",
         )
+        u.Tests.provision_checkout(project)
         return project, rule
 
     def test_unchanged_catalog_preserves_the_public_plan(
         self,
-        duplicate_project: Path,
+        tmp_path: Path,
     ) -> None:
         """Repeated planning preserves every rule's authenticated identity."""
-        project, _ = self._project(duplicate_project, "first")
+        project, _ = self._project(tmp_path, "first")
 
         with u.Infra.codemod_workspace_snapshot(project) as snapshot:
             first = tm.ok(u.Infra.codemod_rule_plan(snapshot))
@@ -93,10 +90,10 @@ class TestsFlextInfraRuleCatalogCache:
 
     def test_an_edited_rule_is_a_new_key_never_the_stale_rule(
         self,
-        duplicate_project: Path,
+        tmp_path: Path,
     ) -> None:
         """Changing a rule's text re-parses it under a new content key."""
-        project, rule = self._project(duplicate_project, "before")
+        project, rule = self._project(tmp_path, "before")
         with u.Infra.codemod_workspace_snapshot(project) as snapshot:
             first = tm.ok(u.Infra.codemod_rule_plan(snapshot))
         rule.write_text(
@@ -111,10 +108,10 @@ class TestsFlextInfraRuleCatalogCache:
         tm.that(edited["cache-only"], ne=local["cache-only"])
 
     def test_utility_only_generated_provider_drives_catalog_scope(
-        self, duplicate_project: Path
+        self, tmp_path: Path
     ) -> None:
         """A catalog rewrite consumes generated utilities and the declared scope."""
-        project, rule = self._project(duplicate_project, "generated facts")
+        project, rule = self._project(tmp_path, "generated facts")
         selected = project / "src" / "selected.py"
         excluded = project / "src" / "excluded.py"
         for source in (selected, excluded):
@@ -167,10 +164,10 @@ class TestsFlextInfraRuleCatalogCache:
         tm.that(excluded.read_text(encoding=c.DEFAULT_ENCODING), eq="only(7)\n")
 
     def test_parameterized_utility_keeps_argument_captures_and_formal_shadow(
-        self, duplicate_project: Path
+        self, tmp_path: Path
     ) -> None:
         """Native arguments export their capture instead of a homonymous utility."""
-        project, rule = self._project(duplicate_project, "parameterized utility")
+        project, rule = self._project(tmp_path, "parameterized utility")
         consumer = project / "src" / "consumer.py"
         consumer.write_text("only(7)\nwrong(8)\n", encoding=c.DEFAULT_ENCODING)
         catalog = rule.parent.parent
@@ -230,11 +227,10 @@ class TestsFlextInfraRuleCatalogCache:
     def test_a_fresh_consumer_builds_the_same_typed_rules(
         self,
         tmp_path: Path,
-        duplicate_project: Path,
         native_consumer: p.Tests.NativeConsumer,
     ) -> None:
         """A fresh process derives the same public plan from authored sources."""
-        project, rule_path = self._project(duplicate_project, "native")
+        project, rule_path = self._project(tmp_path, "native")
         with u.Infra.codemod_workspace_snapshot(project) as snapshot:
             plan = tm.ok(u.Infra.codemod_rule_plan(snapshot))
         expected = next(rule for rule in plan.rules if rule.resource == rule_path)

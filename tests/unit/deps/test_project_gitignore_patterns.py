@@ -199,9 +199,10 @@ class TestsFlextInfraProjectGitignorePatterns:
                 },
             },
         )
-        codegen = config.Infra.codegen.model_copy(
-            update={"templates": templates},
-        )
+        codegen = m.Infra.CodegenConfigSpec.model_validate({
+            **config.Infra.codegen.model_dump(exclude_computed_fields=True),
+            "templates": templates,
+        })
         external = (
             "# BEGIN external projection\n"
             f"!/{relative.as_posix()}\n"
