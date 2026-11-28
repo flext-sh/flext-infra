@@ -199,6 +199,7 @@ class TestsFlextInfraAuditorCommandContract:
         with u.Tests.raises(type(cause), match=re.escape(str(cause))) as caught:
             u.Infra.docs_command_contract_issues(scope)
 
+        tm.that(type(caught.value), eq=type(cause))
         tm.that(str(caught.value), eq=str(cause))
 
     @staticmethod
@@ -252,6 +253,7 @@ class TestsFlextInfraAuditorCommandContract:
                 scope,
                 repository_root=source_scope.path,
             )
+        tm.that(type(blocked.value), eq=type(cause))
         tm.that(str(blocked.value), eq=str(cause))
 
     @staticmethod
