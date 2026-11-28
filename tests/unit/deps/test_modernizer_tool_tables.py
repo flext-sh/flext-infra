@@ -41,6 +41,7 @@ class TestsFlextInfraDepsModernizerToolTables:
         package_dir.mkdir(parents=True, exist_ok=True)
         # A live package: the first-party owner derives importable packages.
         (package_dir / c.Infra.INIT_PY).write_text('"""Package."""\n', encoding="utf-8")
+        u.Tests.initialize_git_repo(project_dir)
         payload = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python(
             u.Tests.toml_payload(
                 '[project]\nname = "flext-sample"\n'
@@ -293,6 +294,7 @@ class TestsFlextInfraDepsModernizerToolTables:
             '[project]\nname = "demo-distribution"\n',
             encoding="utf-8",
         )
+        u.Tests.initialize_git_repo(project_dir)
         namespaces = FlextInfraToolTablesPhase.first_party_namespaces(path=project_dir)
         tm.that(namespaces, has="demo_app", lacks="demo_distribution")
 
