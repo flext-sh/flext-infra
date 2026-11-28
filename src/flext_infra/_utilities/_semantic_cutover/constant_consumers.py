@@ -291,16 +291,18 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         """
         cli.display_text(f"census: resolve constants imports in {len(sources)} modules")
         paths: MutableMapping[str, Mapping[str, p.Infra.RopePyName]] = {}
+        codegen_inputs: MutableMapping[Path, p.Infra.CodegenInputs] = {}
+        source_context = (rope_workspace, codegen_inputs)
         with FlextInfraUtilitiesWorkspaceSnapshot.workspace_planned_source_view(
             project, sources
         ):
 
             def rewrite(path: Path, source: str) -> t.Infra.TransformResult:
                 updated, changes = cls._rewrite_constant_consumer(
-                    path, source, rope_workspace, project, paths
+                    path, source, source_context, project, paths
                 )
                 reused, literal_changes = cls._reuse_literal_constants(
-                    path, updated, rope_workspace, project, paths
+                    path, updated, source_context, project, paths
                 )
                 return reused, (*changes, *literal_changes)
 
@@ -312,7 +314,9 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         cls,
         path: Path,
         source: str,
-        workspace: p.Infra.RopeWorkspaceDsl,
+        source_context: tuple[
+            p.Infra.RopeWorkspaceDsl, MutableMapping[Path, p.Infra.CodegenInputs]
+        ],
         project: p.Infra.RopeProject,
         paths: MutableMapping[str, Mapping[str, p.Infra.RopePyName]],
     ) -> t.Infra.TransformResult:
@@ -322,9 +326,13 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
             Proposed source with only identity-proven literal consumer edits.
 
         """
+        workspace = source_context[0]
         convention = workspace.convention(path)
         layout = convention.project_layout
-        if cls._constant_definition_source(workspace, convention) or layout is None:
+        if (
+            cls._constant_definition_source(source_context, convention)
+            or layout is None
+        ):
             return source, ()
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         refactors = FlextInfraUtilitiesRopeRuntimeRefactors
@@ -628,7 +636,9 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         cls,
         path: Path,
         source: str,
-        rope_workspace: p.Infra.RopeWorkspaceDsl,
+        source_context: tuple[
+            p.Infra.RopeWorkspaceDsl, MutableMapping[Path, p.Infra.CodegenInputs]
+        ],
         project: p.Infra.RopeProject,
         paths: MutableMapping[str, Mapping[str, p.Infra.RopePyName]],
     ) -> t.Infra.TransformResult:
@@ -640,8 +650,9 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         refactors = FlextInfraUtilitiesRopeRuntimeRefactors
+        rope_workspace = source_context[0]
         convention = rope_workspace.convention(path)
-        if cls._constant_definition_source(rope_workspace, convention):
+        if cls._constant_definition_source(source_context, convention):
             return source, ()
         layout = convention.project_layout
         if layout is None:
@@ -654,7 +665,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
             FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(resource, path),
         )
         statements = cls._constant_imports(project, module)
-        if not cls._has_constant_imports(rope_workspace, project, module, statements):
+        if not cls._has_constant_imports(source_context, project, module, statements):
             return source, ()
         package = cls._constant_facade_package(statements, layout.package_name, path)
         facade_module = Path(c.Infra.CONSTANTS_PY).stem
@@ -819,7 +830,9 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
     @classmethod
     def _has_constant_imports(
         cls,
-        workspace: p.Infra.RopeWorkspaceDsl,
+        source_context: tuple[
+            p.Infra.RopeWorkspaceDsl, MutableMapping[Path, p.Infra.CodegenInputs]
+        ],
         project: p.Infra.RopeProject,
         module: p.Infra.RopePyModule,
         statements: Sequence[tuple[p.Infra.RopeFromImport, p.Infra.LogicalStatement]],
@@ -830,6 +843,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
             Whether a resolved import declares the constants family.
 
         """
+        workspace = source_context[0]
         bindings = FlextInfraUtilitiesRopeRuntimeModules.scope_at(module, 0).get_names()
         for info, _statement in statements:
             for name, alias in info.names_and_aliases:
@@ -844,14 +858,16 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                     continue
                 resource = declaration.get_module().get_resource()
                 if resource is not None and cls._constant_definition_source(
-                    workspace, workspace.convention(Path(resource.real_path))
+                    source_context, workspace.convention(Path(resource.real_path))
                 ):
                     return True
         return False
 
     @staticmethod
     def _constant_definition_source(
-        workspace: p.Infra.RopeWorkspaceDsl,
+        source_context: tuple[
+            p.Infra.RopeWorkspaceDsl, MutableMapping[Path, p.Infra.CodegenInputs]
+        ],
         convention: p.Infra.RopeModuleConvention,
     ) -> bool:
         """Exclude constants and configured layer-zero owners from consumer edits.
@@ -860,23 +876,24 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
             Whether this module owns declarations rather than consuming them.
 
         """
+        workspace, codegen_inputs = source_context
         path = convention.file_path
         policy = convention.module_policy
         layout = convention.project_layout
-        runtime_owner = (
-            layout is not None
-            and path.parent == layout.package_dir
-            and path.stem
-            in FlextInfraUtilitiesCodegenNamespace.runtime_module_names(
-                project_name=layout.project_name,
-                codegen=FlextInfraUtilitiesProjectManagedArtifacts
-                .load_codegen_inputs(
-                    layout.project_root, source_project=workspace.rope_project
+        runtime_owner = False
+        if layout is not None and path.parent == layout.package_dir:
+            if layout.project_root not in codegen_inputs:
+                codegen_inputs[layout.project_root] = (
+                    FlextInfraUtilitiesProjectManagedArtifacts.load_codegen_inputs(
+                        layout.project_root, source_project=workspace.rope_project
+                    ).unwrap()
                 )
-                .unwrap()
-                .spec,
-            ).values()
-        )
+            runtime_owner = path.stem in (
+                FlextInfraUtilitiesCodegenNamespace.runtime_module_names(
+                    project_name=layout.project_name,
+                    codegen=codegen_inputs[layout.project_root].spec,
+                ).values()
+            )
         return (
             policy.expected_alias == "c"
             or policy.expected_family == "Constants"
