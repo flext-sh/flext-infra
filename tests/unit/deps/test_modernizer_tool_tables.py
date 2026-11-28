@@ -319,6 +319,7 @@ class TestsFlextInfraDepsModernizerToolTables:
             skip_check=True,
         )
         root_path = tmp_path / c.PYPROJECT_FILENAME
+        u.Tests.initialize_git_repo(tmp_path)
         root_codegen = tm.ok(u.Infra.load_codegen_inputs(tmp_path)).spec
         root_topology = m.Infra.PyprojectDeclaredTopology(project_kind="platform")
         member_topology = m.Infra.PyprojectDeclaredTopology()
@@ -332,6 +333,7 @@ class TestsFlextInfraDepsModernizerToolTables:
         )
         member_path = tmp_path / "arbitrary-member" / c.PYPROJECT_FILENAME
         member_path.parent.mkdir()
+        u.Tests.initialize_git_repo(member_path.parent)
         member_codegen = tm.ok(u.Infra.load_codegen_inputs(member_path.parent)).spec
         member_first: str = tm.ok(
             modernizer.conform_source(

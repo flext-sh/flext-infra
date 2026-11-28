@@ -78,6 +78,7 @@ class TestsFlextInfraDocsRender:
         tmp_path: Path,
     ) -> None:
         """The real ProperDocs navigation has manual guides beyond generated indexes."""
+        u.Tests.initialize_git_repo(tmp_path)
         scope = m.Infra.DocScope(
             name="flext-demo",
             path=tmp_path,
@@ -103,6 +104,7 @@ class TestsFlextInfraDocsRender:
     @staticmethod
     def test_project_mkdocs_excludes_root_readme_only(tmp_path: Path) -> None:
         """Keep nested README pages while excluding only the docs root README."""
+        u.Tests.initialize_git_repo(tmp_path)
         scope = m.Infra.DocScope(
             name="flext-demo",
             path=tmp_path,
@@ -128,6 +130,7 @@ class TestsFlextInfraDocsRender:
     @staticmethod
     def test_root_navigation_discovers_maintained_pages(tmp_path: Path) -> None:
         """The root portal exposes maintained sections without a fixed nav list."""
+        u.Tests.initialize_git_repo(tmp_path)
         for relative in (
             "index.md",
             "architecture/adr/001-decision.md",
@@ -163,6 +166,7 @@ class TestsFlextInfraDocsRender:
         tmp_path: Path,
     ) -> None:
         """Render the repository label from the same URL owner as the link."""
+        u.Tests.initialize_git_repo(tmp_path)
         scope = m.Infra.DocScope(
             name="consumer",
             path=tmp_path,
@@ -184,6 +188,7 @@ class TestsFlextInfraDocsRender:
         tmp_path: Path,
     ) -> None:
         """Do not derive Git revision dates for generated API pages."""
+        u.Tests.initialize_git_repo(tmp_path)
         scope = m.Infra.DocScope(
             name="flext-demo",
             path=tmp_path,
@@ -216,6 +221,7 @@ class TestsFlextInfraDocsRender:
         tmp_path: Path,
     ) -> None:
         """Repository policy reaches page and physical-copy consumers exactly once."""
+        u.Tests.initialize_git_repo(tmp_path)
         scope = m.Infra.DocScope(
             name="flext-demo",
             path=tmp_path,

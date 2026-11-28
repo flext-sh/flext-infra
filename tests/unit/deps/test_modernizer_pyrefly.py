@@ -40,6 +40,8 @@ class TestsFlextInfraModernizerPyrefly:
         payload = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python(
             u.Tests.toml_payload(source),
         )
+        if project_dir is not None:
+            u.Tests.initialize_git_repo(project_dir)
         changes = FlextInfraEnsurePyreflyConfigPhase(
             config.Infra.tooling,
             codegen=config.Infra.codegen,
@@ -136,10 +138,12 @@ class TestsFlextInfraModernizerPyrefly:
 
     def test_root_payload_receives_canonical_fields(self) -> None:
         """Root payloads receive version, default search path, and strict errors."""
-        pyrefly_settings = u.Infra.native_tool_settings(config.Infra.tooling, "pyrefly")
         _, pyrefly, changes = self._applied()
         tm.that(changes, empty=False)
-        tm.that(pyrefly["python-version"], eq=pyrefly_settings["python-version"])
+        tm.that(
+            pyrefly["python-version"],
+            eq=config.Infra.codegen.toolchain.python_version,
+        )
         tm.that(
             list(u.Tests.strings(pyrefly["search-path"])),
             eq=[c.Infra.DEFAULT_SRC_DIR],
@@ -195,10 +199,7 @@ class TestsFlextInfraModernizerPyrefly:
         self,
         tmp_path: Path,
     ) -> None:
-        """Project context keeps the source root first, then included roots.
-
-        The root path is ordered last.
-        """
+        """Project context separates import roots from analyzed roots."""
         rules = config.Infra.tooling.tools.pyrefly.path_rules
         project_dir = tmp_path / "flext-core"
         for directory in rules.env_dirs:
@@ -212,7 +213,11 @@ class TestsFlextInfraModernizerPyrefly:
 
         tm.that(
             list(u.Tests.strings(pyrefly["search-path"])),
-            eq=[rules.source_dir, "tests", rules.project_root],
+            eq=[rules.source_dir, rules.project_root],
+        )
+        tm.that(
+            list(u.Tests.strings(pyrefly[c.Infra.PROJECT_INCLUDES])),
+            eq=["tests/**/*.py*"],
         )
 
     def test_declared_future_roots_are_deterministic(self, tmp_path: Path) -> None:
@@ -276,6 +281,7 @@ class TestsFlextInfraModernizerPyrefly:
             "VALUE = 2\n",
             encoding="utf-8",
         )
+        u.Tests.initialize_git_repo(project_dir)
         modernizer = FlextInfraPyprojectModernizer(
             repository_root=tmp_path,
             skip_check=True,
@@ -377,6 +383,7 @@ class TestsFlextInfraModernizerPyrefly:
             encoding="utf-8",
         )
 
+        u.Tests.initialize_git_repo(project_dir)
         includes = FlextInfraExtraPathsManager(
             repository_root=tmp_path,
         ).pyrefly_project_includes(project_dir=project_dir, is_root=False)
@@ -391,7 +398,11 @@ class TestsFlextInfraModernizerPyrefly:
         rules = config.Infra.tooling.tools.pyrefly.path_rules
         (tmp_path / "tests").mkdir()
         (tmp_path / "tests" / "__init__.py").write_text("", encoding="utf-8")
-        _ = TestsFlextInfraExtraPathsSupport.workspace_with_dependency(tmp_path)
+        _, dependency = TestsFlextInfraExtraPathsSupport.workspace_with_dependency(
+            tmp_path,
+        )
+        u.Tests.initialize_git_repo(dependency)
+        u.Tests.initialize_git_repo(tmp_path)
         payload = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python({})
 
         _ = FlextInfraEnsurePyreflyConfigPhase(

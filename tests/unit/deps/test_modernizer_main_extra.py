@@ -145,6 +145,7 @@ class TestsFlextInfraDepsModernizerMainExtra:
         path = tmp_path / c.PYPROJECT_FILENAME
         modernizer = FlextInfraPyprojectModernizer(repository_root=tmp_path)
         topology = m.Infra.PyprojectDeclaredTopology()
+        u.Tests.initialize_git_repo(tmp_path)
         codegen = tm.ok(u.Infra.load_codegen_inputs(tmp_path)).spec
         canonical_source = tm.ok(
             modernizer.conform_source(
