@@ -139,7 +139,7 @@ class TestsFlextInfraProjectGitignorePatterns:
             "/projection/b\r\n"
             "# END external projection\r\n"
         )
-        (root / ".ignore").write_bytes(("old policy\n\n" + external).encode())
+        (root / c.Infra.GITIGNORE).write_bytes(("old policy\n\n" + external).encode())
 
         first = tm.ok(
             u.Infra.render_project_gitignore(
@@ -166,7 +166,7 @@ class TestsFlextInfraProjectGitignorePatterns:
         tm.that(planned == first, truth=True)
         tm.that(external in first, truth=True)
         tm.that("old policy" not in first, truth=True)
-        (root / ".ignore").write_bytes(first.encode())
+        (root / c.Infra.GITIGNORE).write_bytes(first.encode())
         second = tm.ok(
             u.Infra.render_project_gitignore(
                 config.Infra.codegen,
@@ -256,7 +256,7 @@ class TestsFlextInfraProjectGitignorePatterns:
     ) -> None:
         """Incomplete, duplicate and modified delimiters never get normalized."""
         root = self._external_project(tmp_path / "project")
-        (root / ".ignore").write_text(current, encoding="utf-8")
+        (root / c.Infra.GITIGNORE).write_text(current, encoding="utf-8")
 
         result = u.Infra.render_project_gitignore(
             config.Infra.codegen,
@@ -266,7 +266,10 @@ class TestsFlextInfraProjectGitignorePatterns:
         )
 
         tm.that(result.failure, truth=True)
-        tm.that((root / ".ignore").read_text(encoding="utf-8") == current, truth=True)
+        tm.that(
+            (root / c.Infra.GITIGNORE).read_text(encoding="utf-8") == current,
+            truth=True,
+        )
 
     def test_undeclared_external_block_is_not_retained(self, tmp_path: Path) -> None:
         """Only the project's typed configuration delegates block ownership."""
@@ -274,7 +277,7 @@ class TestsFlextInfraProjectGitignorePatterns:
             tmp_path / "project",
             {"tooling.yaml": "ManagedArtifacts: {}\n"},
         )
-        (root / ".ignore").write_text(
+        (root / c.Infra.GITIGNORE).write_text(
             "# BEGIN external projection\n/projection/a\n# END external projection\n",
             encoding="utf-8",
         )
@@ -302,7 +305,7 @@ class TestsFlextInfraProjectGitignorePatterns:
                 ),
             },
         )
-        (root / ".ignore").write_text(
+        (root / c.Infra.GITIGNORE).write_text(
             "# BEGIN outer\n# BEGIN inner\n/owned\n# END inner\n# END outer\n",
             encoding="utf-8",
         )
@@ -333,7 +336,7 @@ class TestsFlextInfraProjectGitignorePatterns:
                 ),
             },
         )
-        (root / ".ignore").write_text(
+        (root / c.Infra.GITIGNORE).write_text(
             "# BEGIN external projection\n/first\n# END external projection\n\n"
             "# BEGIN external projection extended\n/second\n"
             "# END external projection extended\n",
@@ -350,7 +353,7 @@ class TestsFlextInfraProjectGitignorePatterns:
         )
         tm.that(first.count("# BEGIN external projection\n") == 1, truth=True)
         tm.that(first.count("# BEGIN external projection extended\n") == 1, truth=True)
-        (root / ".ignore").write_text(first, encoding="utf-8")
+        (root / c.Infra.GITIGNORE).write_text(first, encoding="utf-8")
         second = tm.ok(
             u.Infra.render_project_gitignore(
                 config.Infra.codegen,
@@ -367,7 +370,7 @@ class TestsFlextInfraProjectGitignorePatterns:
     ) -> None:
         """A normal comment may quote a marker without claiming the block."""
         root = self._external_project(tmp_path / "project")
-        (root / ".ignore").write_text(
+        (root / c.Infra.GITIGNORE).write_text(
             "# This comment quotes # BEGIN external projection for readers.\n"
             "# BEGIN external projection\n/owned\n# END external projection\n",
             encoding="utf-8",
