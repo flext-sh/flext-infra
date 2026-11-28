@@ -65,8 +65,12 @@ jobs:
         run: make build
 
       # One check per run, on the tree the site was built from.
+{%- for step in make.workflow if step.verb == "check" and step.phase == "complete" %}
+{%- if loop.first %}
       - name: Check documentation and projections
-        run: make check
+        run: {{ step.make_command }}
+{%- endif %}
+{%- endfor %}
 
 {%- if docs_site_publish %}
 
@@ -104,10 +108,12 @@ jobs:
         uses: {{ github_actions["upload-artifact"].repository }}@{{ github_actions["upload-artifact"].version }}
         with:
           name: docs-reports
-          # Structured docs reports only — omit raw docs log trees that may carry
+          # Structured docs and check reports only — omit raw log trees that may carry
           # env-derived secrets from lifecycle commands.
           path: |{% for prefix in (".reports/**", "apps/*/.reports/**") %}{% for name in docs_report_filenames %}
             {{ report_root }}{{ prefix }}/{{ name }}{% endfor %}{% endfor %}
+            {{ report_root }}{{ make.gate_receipts_directory }}/**/check/**/*.sarif
+            {{ report_root }}{{ make.gate_receipts_directory }}/**/check/**/*.md
           if-no-files-found: error
           # The allowlisted reports live under hidden .reports directories.
           # upload-artifact excludes hidden paths unless this is explicit.

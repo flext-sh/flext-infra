@@ -20,6 +20,22 @@ class TestsFlextInfraCodegenMakeCheckPartition:
     """Keep CI, local checks and the fast hook on their declared boundaries."""
 
     @staticmethod
+    @c.Tests.MARK.parametrize("phase", tuple(c.Infra.CheckPhase))
+    def test_check_command_preserves_its_declared_phase(
+        phase: c.Infra.CheckPhase,
+    ) -> None:
+        """Neither checker phase may inherit the Makefile's ambient default."""
+        operation = m.Infra.MakeOperationSpec(
+            verb=c.Infra.VERB_CHECK,
+            phase=phase,
+        )
+
+        tm.that(
+            operation.make_command,
+            eq=f"make {c.Infra.VERB_CHECK} CHECK_PHASE={phase}",
+        )
+
+    @staticmethod
     def test_sonarcloud_render_contract_round_trips_typed_configuration() -> None:
         """Resolve the full public render schema before filesystem scaffolding."""
         codegen = config.Infra.codegen
