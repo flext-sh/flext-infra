@@ -1,6 +1,6 @@
 # Execution context
 
-<!-- Revision 2026-11-28.7; Marlon Costa <marlon.costa@datacosmos.com.br>; Datacosmos. -->
+<!-- Revision 2026-11-28.8; Marlon Costa <marlon.costa@datacosmos.com.br>; Datacosmos. -->
 
 <!-- TOC START -->
 
@@ -4469,8 +4469,9 @@ runs and is not recorded as an executed gate.
 Requested gates remain visible in the report; pending work contains only gates
 selected by the captured per-target applicability.
 
-Cubic and Qlty operational failures, invalid reports and process interruptions
-produce `ERROR` executions with the native process outcome and raw receipt.
+Cubic and Qlty classify operational failures, invalid reports and process
+interruptions as `ERROR`. Executed commands retain their native process outcome
+and raw receipt.
 Findings already parsed from a published report remain present after the native
 interruption diagnostic; retaining those findings does not make the execution
 successful or eligible for an accepted gate attestation.

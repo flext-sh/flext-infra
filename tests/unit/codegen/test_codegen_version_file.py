@@ -67,8 +67,8 @@ class TestsFlextInfraCodegenVersionFile:
         pkg = proj / "src" / pkg_name
         pkg.mkdir(parents=True)
         (pkg / "__init__.py").write_text("", encoding="utf-8")
-        u.Tests.declare_workspace_projects(ws, (project_name,))
         u.Tests.initialize_git_repo(proj)
+        u.Tests.declare_workspace_projects(ws, (project_name,))
         return ws, proj, pkg
 
     def test_generates_version_file_for_project(self, tmp_path: Path) -> None:

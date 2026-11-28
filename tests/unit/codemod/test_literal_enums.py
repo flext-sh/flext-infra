@@ -9,7 +9,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from tests import c, m, p, t, tm, u
+from tests import c, infra, m, p, t, tm, u
 
 pytestmark = c.Tests.MARK.slow
 
@@ -143,11 +143,10 @@ class TestsFlextInfraLiteralEnums:
     @c.Tests.MARK.parametrize("case", ["shadowed", "ambiguous"])
     def test_competing_enum_bindings_fail_before_publication(
         constants_workspace: tuple[Path, Path],
-        constant_candidate: t.Tests.SourceCandidate,
         case: str,
     ) -> None:
         """A singleton annotation never selects an arbitrary member or facade."""
-        _root, package = constants_workspace
+        root, package = constants_workspace
         owner = package / c.Infra.CONSTANTS_PY
         consumer = package / "consumer.py"
         extra = (
@@ -177,5 +176,14 @@ class TestsFlextInfraLiteralEnums:
             if case == "shadowed"
             else "literal annotation has ambiguous enum owners"
         )
-        with u.Tests.raises(ValueError, match=message):
-            constant_candidate(sources, ())
+        for path, content in sources.items():
+            tm.ok(u.Cli.atomic_write_text_file(path, content))
+        with infra.rope_workspace(root) as workspace:
+            planned = u.Infra.plan_semantic_cutover(
+                c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS,
+                rope_workspace=workspace,
+                sources=sources,
+            )
+        tm.fail(planned, has=message)
+        for path, content in sources.items():
+            tm.that(path.read_bytes(), eq=content.encode(c.DEFAULT_ENCODING))
