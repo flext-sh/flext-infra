@@ -54,7 +54,7 @@ class TestsFlextInfraCodegenLazyInit:
     def governed_project(
         tmp_path: Path,
     ) -> Path:
-        """Provide the project manifest every scanned package belongs to.
+        """Provide the Git checkout and manifest every scanned package belongs to.
 
         Lazy-init plans a package only inside a physical project, and the
         generated notice names the manifest's first author and its license.
@@ -69,6 +69,7 @@ class TestsFlextInfraCodegenLazyInit:
             'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n',
             encoding="utf-8",
         )
+        u.Tests.initialize_git_repo(tmp_path)
         return tmp_path
 
     class TestsAllDirectoriesScanned:
@@ -341,6 +342,7 @@ class TestsFlextInfraCodegenLazyInit:
                     manifest,
                     encoding="utf-8",
                 )
+                u.Tests.initialize_git_repo(tmp_path / repository)
             src_dir_a = tmp_path / "a" / "src" / "pkg"
             _create_init_file(src_dir_a, src_content)
             tm.that(u.Tests.run_lazy_init(tmp_path / "a"), eq=0)
