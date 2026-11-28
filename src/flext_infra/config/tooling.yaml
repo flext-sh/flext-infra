@@ -516,7 +516,11 @@ Infra:
         # consumer whose measured harness exceeds it declares its own value
         # in its config/tooling.yaml overlay, never the incremental budget.
         harness-run-timeout-seconds: 240
-        termination-grace-seconds: 2
+        # Shutdown reserve at the suite deadline (operator 2026-11-27,
+        # flext-6znjd): SIGINT, then SIGTERM and SIGKILL at fractions of this
+        # grace. Workers need it to flush Testmon's pending coverage batch and
+        # publish their profile; 2 s killed them before either was written.
+        termination-grace-seconds: 10
         # One failure stops the invocation. The next run starts from the
         # corrected owner instead of accumulating a backlog of unrelated
         # failures.

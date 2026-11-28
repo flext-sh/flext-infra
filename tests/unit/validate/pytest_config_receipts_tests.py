@@ -48,3 +48,25 @@ class TestsFlextInfraPytestConfigReceipts:
 
         tm.that(bool(written), truth=True)
         tm.that(bool(recorder.retained), truth=True)
+
+    @staticmethod
+    @c.Tests.MARK.slow
+    def test_recording_starts_after_project_conftest_configuration(
+        cached_runner_project: Path,
+    ) -> None:
+        """A conftest that configures before the package import keeps that order.
+
+        Recording binds at session start, after every ``pytest_configure``, so a
+        consumer conftest may refuse a package imported before its own setup.
+        """
+        cache = config.Infra.codegen.make.testmon_cache
+        tests_root = cached_runner_project / cache.target_directory
+        (tests_root / "conftest.py").write_text(
+            "import sys\n"
+            "def pytest_configure(config):\n"
+            "    assert 'runner_sample' not in sys.modules\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        runner = u.Tests.PytestRunner.runner_for(cached_runner_project)
+
+        tm.that(runner.execute(), eq=c.Tests.ExitCode.OK)

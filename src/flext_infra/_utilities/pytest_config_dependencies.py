@@ -39,7 +39,7 @@ from importlib import import_module
 from importlib.util import find_spec
 from pathlib import Path
 
-from flext_infra import c, p, t
+from flext_infra import FlextInfraConfig, c, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesPytest,
@@ -48,6 +48,31 @@ from flext_infra._utilities import (
 
 class FlextInfraUtilitiesPytestConfigDependencies:
     """The runner's per-test config dependency recorder for pytest-testmon."""
+
+    @classmethod
+    def config_dependencies_bind(cls, config: t.Infra.Pytest.Config) -> None:
+        """Start recording per-test config dependencies for Testmon.
+
+        Runs at session start, after every ``pytest_configure`` (project
+        conftests included) and before collection imports any test module, so
+        a conftest that configures settings before the package is imported
+        keeps that order.
+        """
+        receipts = config.getoption(c.Infra.PYTEST_CONFIG_RECEIPTS_OPTION)
+        if receipts is None:
+            return
+        cache = FlextInfraConfig.fetch_global().Infra.codegen.make.testmon_cache
+        worker = hasattr(config, "workerinput")
+        recorder = cls.ConfigDependencyRecorder(
+            rootdir=config.rootpath,
+            receipts=Path(receipts),
+            insensitive=frozenset(cache.config_insensitive_executables),
+            controller=not worker,
+            executes=worker or getattr(config.option, "dist", "no") == "no",
+        )
+        recorder.bind()
+        config.pluginmanager.register(recorder)
+        config.add_cleanup(recorder.unbind)
 
     class ConfigDependencyRecorder:
         """Record config reads per test and name them in Testmon's batches."""
