@@ -25,6 +25,7 @@ class TestsFlextInfraConstantsCodegenQualityGate:
     @staticmethod
     def test_dispatch_returns_int(tmp_path: Path) -> None:
         """main() dispatches constants-quality-gate command to handler."""
+        u.Tests.initialize_git_repo(tmp_path)
         result = FlextInfraCli.infra_main([
             "codegen",
             "constants-quality-gate",
@@ -36,6 +37,7 @@ class TestsFlextInfraConstantsCodegenQualityGate:
     @staticmethod
     def test_json_format_exits_with_int(tmp_path: Path) -> None:
         """JSON mode returns an integer exit code."""
+        u.Tests.initialize_git_repo(tmp_path)
         result = FlextInfraCli.infra_main([
             "codegen",
             "constants-quality-gate",
@@ -49,6 +51,7 @@ class TestsFlextInfraConstantsCodegenQualityGate:
     @staticmethod
     def test_text_format_exits_with_int(tmp_path: Path) -> None:
         """Text mode returns an integer exit code."""
+        u.Tests.initialize_git_repo(tmp_path)
         result = FlextInfraCli.infra_main([
             "codegen",
             "constants-quality-gate",
@@ -80,6 +83,7 @@ class TestsFlextInfraConstantsCodegenQualityGate:
     @staticmethod
     def test_real_workspace_run_returns_report(tmp_path: Path) -> None:
         """Quality gate runs on real empty workspace without errors."""
+        u.Tests.initialize_git_repo(tmp_path)
         gate = FlextInfraGatesCodegenQuality(
             workspace_factory=infra.rope_workspace,
             repository_root=tmp_path,
