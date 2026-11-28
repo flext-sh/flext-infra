@@ -13,17 +13,21 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import sys
 from collections.abc import Mapping, MutableMapping, Sequence
+from functools import cache
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from urllib.parse import parse_qs, unquote, urlsplit
 
 from flext_infra import u
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, config, m, p, t, tm
 from tests._utilities import (
+    TestsFlextInfraUtilitiesGit,
     TestsFlextInfraUtilitiesProjectFixture,
     TestsFlextInfraUtilitiesToml,
 )
@@ -181,6 +185,87 @@ class TestsFlextInfraUtilitiesHermeticGit:
             head,
         )
         return tuple(sources.values())
+
+    @staticmethod
+    @cache
+    def locked_dependency_project(
+        project_root: Path,
+        storage: Path,
+        requirement: str,
+    ) -> Path:
+        """Materialize one locked Git dependency from provisioned local objects.
+
+        Returns:
+            The real source project consumed by the existing wheel builder.
+
+        Raises:
+            ValueError: If the lock has no unique matching Git source, its
+                selectors are unsupported, or its project identity differs.
+
+        """
+        fixture = TestsFlextInfraUtilitiesHermeticGit
+        name = tm.not_none(u.Infra.dep_name(requirement))
+        context = tm.ok(FlextInfraWorkspaceDetector.resolution_context(project_root))
+        document = tm.ok(u.Cli.toml_read_json(context.lock_path))
+        locked = m.Infra.LockedEnvironment.model_validate_json(json.dumps(document))
+        packages = tuple(
+            package
+            for package in locked.package
+            if u.Infra.distribution_identity(package.name) == name
+        )
+        if len(packages) != 1 or packages[0].source.git is None:
+            msg = f"Fixture dependency has no unique locked Git source owner: {requirement}"
+            raise ValueError(msg)
+        source = tm.not_none(packages[0].source.git)
+        parts = urlsplit(source)
+        selectors = parse_qs(parts.query, keep_blank_values=True)
+        if (
+            set(selectors) != {"rev"}
+            or len(selectors["rev"]) != 1
+            or not selectors["rev"][0]
+            or not parts.fragment
+        ):
+            msg = f"Unsupported locked fixture Git source selectors: {source}"
+            raise ValueError(msg)
+        url = f"{parts.scheme}://{parts.netloc}{parts.path}"
+        rev = selectors["rev"][0]
+        sha = parts.fragment
+        declared = tm.ok(u.Infra.declared_git_source(requirement))
+        resolved = tm.ok(u.Infra.declared_git_source(f"{name} @ git+{url}@{rev}"))
+        if declared != ("", "") and declared not in {
+            resolved,
+            (resolved[0], sha),
+        }:
+            msg = f"Fixture dependency differs from its locked Git source: {requirement}"
+            raise ValueError(msg)
+        owner = storage / "dependency-sources" / name
+        destination = owner / hashlib.sha256(source.encode()).hexdigest()
+        owner.mkdir(parents=True, exist_ok=True)
+        with u.Cli.file_changes_lock(owner.with_suffix(".lock")):
+            if not destination.is_dir():
+                with TemporaryDirectory(dir=owner, prefix=".staging-") as temporary:
+                    staging = Path(temporary)
+                    mirrors = staging / "mirrors"
+                    fixture.build_git_mirrors(project_root, mirrors, ((url, rev, sha),))
+                    environment = fixture.hermetic_git_environment(mirrors)
+                    mirror = mirrors / parts.netloc / parts.path.lstrip("/")
+                    project = staging / "project"
+                    TestsFlextInfraUtilitiesGit.git_bootstrap(
+                        staging,
+                        ("clone", "--no-local", "--no-checkout", str(mirror), str(project)),
+                        overrides=environment,
+                    )
+                    TestsFlextInfraUtilitiesGit.git_bootstrap(
+                        project,
+                        ("checkout", "--detach", sha),
+                        overrides=environment,
+                    )
+                    metadata = tm.ok(u.Infra.read_project_metadata_result(project))
+                    if u.Infra.distribution_identity(metadata.project.name) != name:
+                        msg = f"Locked fixture source does not own {name}: {source}"
+                        raise ValueError(msg)
+                    project.rename(destination)
+        return destination
 
     @staticmethod
     def _commit_origins(

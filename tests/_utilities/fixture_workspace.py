@@ -867,7 +867,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
                     root,
                     dependency_projects=(
                         TestsFlextInfraUtilitiesToolingFixture.python_dependency_projects(
-                            root
+                            root, session_runtime=session_runtime
                         )
                     ),
                     session_runtime=session_runtime,

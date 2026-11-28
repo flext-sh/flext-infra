@@ -116,7 +116,9 @@ class TestsFlextInfraSourceOwnership:
         tm.ok(
             u.Tests.create_python_environment(
                 root,
-                dependency_projects=u.Tests.python_dependency_projects(root),
+                dependency_projects=u.Tests.python_dependency_projects(
+                    root, session_runtime=session_runtime
+                ),
                 session_runtime=session_runtime,
             )
         )

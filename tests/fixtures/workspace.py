@@ -73,7 +73,9 @@ def rope_contract_consumer(
     tm.ok(
         u.Tests.create_python_environment(
             root,
-            dependency_projects=u.Tests.python_dependency_projects(root),
+            dependency_projects=u.Tests.python_dependency_projects(
+                root, session_runtime=session_runtime
+            ),
             session_runtime=session_runtime,
         )
     )
@@ -244,7 +246,8 @@ def infra_git_repo(
         u.Tests.create_python_environment(
             repo,
             dependency_projects=u.Tests.python_dependency_projects(
-                tm.not_none(u.Infra.project_root(Path(__file__)))
+                tm.not_none(u.Infra.project_root(Path(__file__))),
+                session_runtime=session_runtime,
             ),
             session_runtime=session_runtime,
         )

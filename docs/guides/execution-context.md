@@ -1,6 +1,6 @@
 # Execution context
 
-<!-- Revision 2026-11-28.10; Marlon Costa <marlon.costa@datacosmos.com.br>; Datacosmos. -->
+<!-- Revision 2026-11-28.11; Marlon Costa <marlon.costa@datacosmos.com.br>; Datacosmos. -->
 
 <!-- TOC START -->
 
@@ -2641,6 +2641,15 @@ workspace and lock noneditably. An independent checkout resolves its own declare
 sources without discovering neighboring repositories or borrowing their environment.
 When composition changes, regenerate its declaring owner, upgrade its lock and
 install that resolution through the separate lifecycle operations.
+
+Dependency-backed test fixtures elect source owners from the same native resolution
+context. Declared workspace members supply their authenticated source trees;
+independent checkouts use the exact Git sources and commits recorded in the owning
+`uv.lock`. The hermetic Git fixture owner materializes those sources only from
+objects already provisioned by setup, retaining distribution identity and refusing
+missing or ambiguous ownership. Shared fixture tooling passes the resulting source
+projects to its existing real wheel builder and installer. This dependency-backed
+path does not borrow the invoking environment or substitute an editable install.
 
 Resolver-wide source election is explicit policy in
 `Infra.codegen.toolchain.uv_override_dependencies`, not inferred from an installed
