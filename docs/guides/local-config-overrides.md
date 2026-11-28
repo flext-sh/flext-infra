@@ -1,5 +1,7 @@
 # Repository configuration and local overrides
 
+<!-- Revision 2026-11-28.1; Marlon Costa <marlon.costa@datacosmos.com.br>; Datacosmos. -->
+
 <!-- TOC START -->
 
 - [Native Ruff Policy](#native-ruff-policy)
@@ -45,6 +47,11 @@ branches derive from native Git origins, declared submodule branches, and the
 selected repository's integration contract. There is no provider/member/docs
 repository roster to extend when a new member is added.
 
+Project-specific Make verbs belong in `Infra.codegen.repository.extra_verbs` in
+the repository's `config/codegen.yaml`. The command-contract auditor and shared
+guide projection read that typed declaration through `load_codegen_inputs`;
+workspace manifests describe composition and do not author command extensions.
+
 The shared package contains generic rules. Consumer-specific Sed campaigns and CSV
 inputs belong to that consumer's configuration; they are not shipped as library
 policy. Dependency resolution preserves real graph edges and never emits a
@@ -55,9 +62,11 @@ chooses a winner and reports the conflict as a warning.
 
 ## Native Ruff Policy
 
-Ruff rule selection and native conventions come from the shared typed tooling owner.
-Neither shared policy nor project-local managed artifacts accepts exemption catalogs,
-free-form ignores, per-file ignores, or informative-only rule maps. The required
+Ruff rule selection and native conventions come from the typed tooling owner.
+Authorized `ruff.lint.per-file-ignores` are declared in `Infra.tooling.settings`;
+the renderer retains that complete native policy and removes stale project-table
+overrides. Project-local managed artifacts cannot introduce a second exemption
+catalog or informative-only rule map. The required
 `rule-owners` mapping declares rules enforced by another canonical checking gate.
 The existing gate registry rejects self-owned, unknown, missing, non-repairing, or
 unelected owners before a projection derives Ruff's native ignore from that mapping.
@@ -156,11 +165,10 @@ declarations and new-tree identity, that adapter selects the existing complete
 generation planner and publisher. An existing project retains the bounded
 Makefile recovery surface. A project-metadata symlink is an existing input, never
 evidence of a new tree.
-The cold sequence is `codegen init`, `make upg`, `make setup`, then `make check`.
-The generation tool runtime supplies its own declared native Mise, Python and UV
-prerequisites; it is not the destination's product runtime. Upgrade resolves the
-generated manifests, setup creates the destination's physical environment from
-those locks, and later generation uses that environment. Initialization and
+The [recovery runbook](recovery.md#broken-bootstrap-the-checkouts-makefile-misbehaves)
+owns the cold sequence and generation-runtime prerequisites. That tool runtime is
+not the destination's product runtime; later generation consumes the destination's
+provisioned physical environment. Initialization and
 generation never install dependencies, write locks or borrow another checkout's
 environment. Beads participation uses the destination's own policy and identity;
 the adapter neither invents an identity nor changes those flags.
@@ -182,10 +190,14 @@ fail through the canonical reader.
 
 Generation is the sole writer of `.envrc`. Local `make setup` authorizes that
 projection with native `direnv allow`; it never renders, replaces, or removes
-environment files. `make check` verifies the selected repository's projection
-against its current declaration. A fresh clone with a valid committed `.envrc`
-needs no local generation journal. A missing or divergent projection fails
-without repair; local `make check` owns its regeneration.
+environment files. A check first passes the existing activation and environment
+admission. Once admitted, local check convergence regenerates the declared `.envrc`
+and reauthorizes it through the same locked Direnv owner. CI and commit hooks skip
+convergence. Outside the commit-hook context, complete validation checks projections
+without publishing repairs.
+A fresh clone with a valid committed `.envrc` needs no local generation journal.
+If activation itself cannot admit the checkout, use the
+[recovery owner](recovery.md#broken-bootstrap-the-checkouts-makefile-misbehaves).
 
 The publication owner authenticates each file's captured destination and declared
 inputs. A changed dependency rejects its affected file with a causal issue while

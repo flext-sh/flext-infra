@@ -1,5 +1,7 @@
 # Execution context
 
+<!-- Revision 2026-11-28.2; Marlon Costa <marlon.costa@datacosmos.com.br>; Datacosmos. -->
+
 <!-- TOC START -->
 
 - [Runtime is the authority](#runtime-is-the-authority)
@@ -671,10 +673,13 @@ not this required contract, establish which generated consumers have adopted it.
 Generated README quality guidance is owned by `DocumentationText.QUALITY_BODY`
 in `src/flext_infra/_constants/docs.py`, consumed by the `quality_gates` macro in
 `templates/docs/_macros.md.j2`. Both languages point to `make help` for the current
-command surface rather than copying a verb list. Each verb performs only its
-declared operation; `make check` validates without applying repairs. Change this
-authored contract before its presentation text, then publish through the docs owner,
-never by editing a generated README.
+command surface rather than copying a verb list. Local `make check` converges
+generation, repairs and formatting before validating its selected phase; CI and
+commit-hook contexts (`Y` and `C`) verify without that convergence. The
+[check-phase contract](#independent-native-checks-and-testmon-execution-adr-029)
+distinguishes primary admission from complete validation. Change this authored
+contract before its presentation text, then publish through the docs owner, never
+by editing a generated README.
 
 Documentation templates resolve from the installed package resource owner exposed
 by `FlextInfraConfig.ssot_config_dir().parent`, under `templates/docs/`, never
@@ -900,8 +905,8 @@ must keep both the source text and its syntax-node offsets consistent.
 
 Generation, structural modification, dependency resolution and authored repairs
 have separate operation owners. The retired `codegen pipeline` route must not
-combine those operations. `gen` and `mod` use the existing semantic planners and
-publisher for their own complete changes, including dependent generated exports;
+combine those operations. Generation and `mod` use the existing semantic planners
+and publisher for their own complete changes, including dependent generated exports;
 neither invokes another public lifecycle verb. Their canonical components remain
 available through their respective owners, without a second orchestration route.
 All declared checking gates belong to `check`; a separate public-verb exclusion
@@ -1791,7 +1796,10 @@ cold lane (a fresh worktree, or a lock or toolchain change) and the next
 incremental execution. Checks and tests are independent native operations.
 `flext-infra workspace tests --repository-root <root> --scope all` runs without
 requiring a prior check receipt. Generated Make consumers use `make tests`; bare
-`make check` retains complete acceptance. Every phase, locally and in CI, checks
+`make check` selects primary admission. Request `make check CHECK_PHASE=complete`
+for complete validation. `MakeOperationSpec.make_command` carries the phase
+explicitly for each check workflow row, so a complete row does not inherit the
+Makefile's primary default. Every phase, locally and in CI, checks
 only the selected project root while provisioning keeps the containing runtime
 environment; an attached member's commit hook therefore checks the member alone,
 and workspace scope is selected only by `ALL=Y` (ADR-038 decision 9,
@@ -1804,11 +1812,18 @@ the same native checker, original capture and SARIF publisher. Test owners execu
 their native engines and report the original outcome; missing, red or old check
 receipts never block testing. Complete check and test evidence remains necessary
 for integration and completion.
+The Make handler converges generation, repairs and formatting before either phase
+in the local or unset CI context. CI and commit-hook tokens (`Y` and `C`) skip
+convergence. The native
+`workspace check` route itself is read-only: outside the commit hook, complete
+validation adds conformance observation and documentation validation/audit after
+the captured gates. A primary receipt does not include those additional checks.
 The CI workflow also exposes an optional `full_check` boolean on
 `workflow_dispatch` and `workflow_call`, defaulting to false. It runs the
-existing complete check with `make.ci.local_value`, in addition to the unchanged
-required CI operations. This selects every active gate instead of the CI
-partition. The workflow records the candidate SHA and uploads the complete
+complete phase with `make.ci.value`, in addition to the unchanged required CI
+operations. It preserves read-only CI execution and the CI gate partition while
+adding conformance and documentation validation; it does not attest the complete
+local gate inventory. The workflow records the candidate SHA and uploads that
 check's receipts through the same artifact owner; a primary-only result is
 not complete-check evidence.
 Native checks emit bounded progress at selection, identity/report preparation,
@@ -1856,24 +1871,27 @@ mutating checks retain prerequisite admission. Missing project or gate execution
 remain incomplete and fail closed. This diagnostic collection does not admit
 tests, publication or any subsequent lifecycle phase on red prerequisite evidence.
 
-The phase-aware Make and CI consumers are generated projections. Until the
-updated template is published, use the native `workspace check --phase primary`
-composition above; setting `CHECK_PHASE` on an older Make projection does not
-select the new policy. Template edits alone are not rollout or runtime evidence.
+The phase-aware Make and CI consumers are generated projections. An older Makefile
+must be recovered through the
+[declared bootstrap owner](recovery.md#broken-bootstrap-the-checkouts-makefile-misbehaves)
+before its commands can establish the current contract; setting `CHECK_PHASE` on
+an older projection does not add phase support. Template edits alone are not
+rollout or runtime evidence.
 
 ## New projects
 
-`make project-new` delegates to the same typed `codegen new` service exposed by
-the public Infra facade. It consumes explicit `NAME`, `KIND`, `OUTPUT_ROOT`,
-`PROVIDER`, `REPOSITORY_URL`, `REPOSITORY_BRANCH`, `FLEXT_REPOSITORY_URL`,
-`FLEXT_REPOSITORY_REF`, `LICENSE`, `AUTHOR_NAME`, `AUTHOR_EMAIL`, `UPSTREAM`,
-`FLEXT_SOURCE`, and `YEAR` inputs. These are identity declarations for a repository
-that does not exist yet; missing or invalid values fail the service's validation.
-Make transports their literal values through the environment, preserving spaces
-without evaluating the values as shell code.
+New targets declare their own project and integration identity under
+`Infra.codegen.repository` in `config/codegen.yaml`; native Git declares the
+repository location, origin and branch. The [project-kind guide](project-kinds.md)
+describes package identity, upstream dependency, license and authorship inputs.
+Prepare the target's Git checkout and follow the
+[bootstrap owner](recovery.md#broken-bootstrap-the-checkouts-makefile-misbehaves):
+workspace generation consumes a declared new member, while `codegen init` admits
+an explicitly declared standalone target. The former `project-new` Make launcher
+and `codegen new` route are not part of the current command catalog.
 
-A new project depends at runtime on its declared `UPSTREAM`: the first render
-writes that upstream's distribution, named by its `scaffold.project.config_bases`
+A new project depends at runtime on its declared `project.upstream`: the first
+render writes that upstream's distribution, named by its `scaffold.project.config_bases`
 dependency profile, into `[project].dependencies` after the repository's own
 `runtime_dependency_overlay`, and the FLEXT line pins it like every other FLEXT
 requirement. An upstream without a declared profile fails the render. Governance
@@ -2986,8 +3004,9 @@ A complete self-pin does not require a host Mise.
 Without that pin, setup stops before provisioning; `make upg` can establish it
 using an available native Mise. Setup qualifies the final self-pin before
 installing tools. Every later `mise` resolved
-through the release's own shims is the pinned release, and `make audit`
-(`codegen mise-proof`) fails when the running Mise differs from the lock.
+through the release's own shims is the pinned release. The declared
+`flext-infra codegen mise-proof` route fails when the running Mise differs from
+the lock.
 
 The runtime's `.mise.toml` remains a native project configuration. The optional
 global configuration has the distinct path `.mise/config.toml` under that same
@@ -3014,8 +3033,8 @@ cutover complete; the amendment itself is not a runtime receipt.
 `make setup` passes the explicit declared key list
 (`toolchain.mise_install_keys`) to `mise install`. A bare `mise install` would also
 provision every tool of the operator's global Mise registry, so no generated recipe
-runs one. After setup provisions the environment, `make audit` runs the reality proof
-(`flext-infra codegen mise-proof`). For each declared tool, in
+runs one. After setup provisions the environment, the
+`flext-infra codegen mise-proof` route checks each declared tool. In
 order, it stops at the first defect:
 
 1. the `mise.lock` entry exists, names a version the toolchain selector accepts, and
@@ -3262,7 +3281,8 @@ describes layout drift even when no semantic phase added a change note.
 
 The committed-lock contract also removes the former SonarCloud exclusion for a missing
 lock. `codegen.sonarcloud.issue_exclusions` remains the single source of the server
-configuration. With `SONAR_TOKEN` in the environment, `make sonarcloud-sync` sends a
+configuration. With `SONAR_TOKEN` in the environment, the declared
+`flext-infra maintenance sonarcloud-sync` route sends a
 non-empty list through the `settings/set` API; an empty list uses
 [`settings/reset`](https://sonarcloud.io/web_api/api/settings/reset) with `component`
 and `keys`. The command rereads `settings/values` and requires the exact effective
@@ -3420,7 +3440,8 @@ collateral
 Private approved plans remain local execution context. Do not collect, project, copy
 or link them into published documentation without explicit publication authorization.
 
-`make mod-rules` inspects the full governed source inventory without rewriting it.
+`flext-infra refactor mod --check` inspects the governed source inventory without
+rewriting it. Its typed rule and law selectors retain their declared scope.
 Native `isinstance` and None assertions retain Python's type narrowing. Assertions
 with a message retain its evaluation on failure. Their automatic matcher rewrites
 are retired: unused return values lose narrowing, while generated conditionals
@@ -4148,17 +4169,15 @@ including its filename and source text. The complete batch remains unchanged.
 
 ### File Gate, Type Diagnosis, and Stage Partitioning
 
-`make file-gate FILE=<repository-relative path>` delegates to the existing
-`check run --file` owner, never bare analyzers or a second gate engine. The raw
-Make value travels through an exported environment value, not interpolated shell
-source. Selection rejects empty, absolute, traversal, missing, non-Python and
+The public `flext-infra check run --file` route selects a literal
+repository-relative path through the existing typed request, never bare analyzers
+or a second gate engine. Selection rejects empty, absolute, traversal, missing, non-Python and
 symlink-component paths before creating reports or invoking tools. Only the literal
 file reaches each gate's existing `check_files`; no mutation is permitted.
-The Make pre-gate explicitly selects registered lint, format, Pyrefly and
-codemod gates through the existing typed `RunCommand.gates` owner and
-`resolve_gates`; no separate gate vocabulary or configuration is introduced.
-The public `check run --file` requires explicit `--gates`, never silently falls
-back to whole-project gates, and rejects unknown names before scanner execution.
+The caller selects registered gates through `RunCommand.gates` and `resolve_gates`;
+no separate gate vocabulary or configuration is introduced. The route requires
+explicit `--gates`, never silently falls back to whole-project gates, and rejects
+unknown names before scanner execution.
 Every selected gate retains its native diagnostics and verdict; failures, missing
 tools/configuration and malformed reports remain blocking.
 Codemod uses its elected, staged provider configurations and native report owner.
@@ -4191,7 +4210,8 @@ configuration or provisioned toolchain capability. Removing that ownerless
 best-effort advertisement removes no supported acceptance capability: it never
 contributed a truthful verdict. Registered rule diagnostics remain unchanged;
 no dictionary, installation, provider or suppression replaces the hook.
-The pre-gate remains bounded; full `make check` is still required acceptance.
+The file check remains bounded; `make check CHECK_PHASE=complete` is still
+required for complete acceptance.
 
 Trailing comma layout has one owner: Ruff's formatter. The tooling SSOT records
 the removal of redundant `missing-trailing-comma` (COM812) lint enforcement using
@@ -4216,23 +4236,23 @@ attributes with actual defaults or factories retain those declarations.
 
 Local runs, CI, and hooks derive their gates from the same active set and from
 each gate's declared stage (`c.Infra.GateStage` in the registry row, or `stage` on a
-`make.project_check_gates` entry); no hand-kept gate list exists. `CI=N make check`
-and `make check` without `CI` run the complete active set. `CI=Y make check` runs
-the commit and CI stages (`make.check_gates_ci`, Pyrefly included). Ruff and
+`make.project_check_gates` entry); no hand-kept gate list exists. Phase selection
+comes first: primary uses `make.check_prerequisite_gates` in every context.
+For `CHECK_PHASE=complete`, the local or unset CI context selects the complete
+active set, the CI context selects `make.check_gates_ci`, and the commit context
+selects `make.pre_commit_check_gates`. Ruff and
 Pyrefly are the only Python analyzers: Ruff owns formatting and lint, Pyrefly
 owns whole-program type analysis, and no second type checker runs beside them
 (operator order 2026-11-13, `ag-6w7a`). Ruff uses one shared external cache
 (`u.Infra.ruff_cache_directory`) and keys its own entries by its version and
 package root inside it; FLEXT adds no namespace of its own. The commit hook
-first provisions the checkout with `make setup`,
-then runs `make check` with `make.ci.pre_commit_value`, which runs only the fast
-commit-stage gates (`make.pre_commit_check_gates`: lint, format and Markdown)
-through the engine that setup provisioned; it runs no tests and no other
-validator. Staged Python files run the lint and format gates on those files; a
-staged Markdown file runs the `markdown` and `markdown-format` gates over the
-repository, never a raw `rumdl` pass, so a declared foreign projected block
-(`tooling.tools.markdown.projected-blocks`) reads the same in the hook as in
-`make check`. When enabled, the generated pre-push hook
+first provisions the checkout with `make setup`, then runs the workflow's primary
+check with `make.ci.pre_commit_value` through that installed engine. The generated
+workflow hooks set `pass_filenames: false`: their checker receives the selected
+repository, not a file list. The commit workflow runs no tests, convergence or
+complete conformance/documentation phase. Native Markdown gates retain their
+declared foreign projected-block contract when selected through the checker;
+a raw `rumdl` invocation does not replace it. When enabled, the generated pre-push hook
 drops inherited `CI` and runs the workflow's primary check once, then the
 incremental tests; CI runs setup, the primary check and the fast tests, without
 external infrastructure or Docker (operator decision 2026-11-22). The local
@@ -4243,10 +4263,9 @@ and the shared merge-control classifier. It reads literal source-link targets wi
 following them. Every finding, including a native warning, blocks approval while its
 original severity remains in the receipt.
 
-Every workspace and standalone projection exposes `make pre-commit` for the CI
-validation
-workflow. CI invokes the separate approval verbs declared by `make.workflow`, in their
-declared order; it never substitutes the fast hook for approval, and no verb requires
+Generated hooks and the CI workflow project `make.workflow`. CI invokes its
+separate approval verbs in their declared order; it never substitutes the fast hook
+for approval, and no verb requires
 a clean or unchanged tree. The configured CI token selects the blocking CI gate
 partition. Audit is read-only conformance and installed-lock provenance, not
 generation or a dirty-tree check; legitimate staged changes are not rejected simply
@@ -4493,8 +4512,8 @@ select a remote effect or prevent local capture, signing or verification. Toolch
 verification reads the elected live resolver inputs and effective configuration,
 including uncommitted values; membership in a Git commit is not required.
 
-`make status` also reads the selected repository's native Git signing configuration
-through the existing workspace CLI. The report names the declared signing format,
+`flext-infra workspace signing-identity` reads the selected repository's native
+Git signing configuration. The report names the declared signing format,
 file references and each setting's effective origin/scope and native process outcome.
 It does not read key/trust files, invoke signing/default-key commands or consult a
 keyring. Undeclared settings preserve Git's absent-key outcome (`1`, with no stdout
@@ -4506,9 +4525,9 @@ public declarations, never paths. Their base64 envelope and encoded key-type agr
 are checked without reading files or contacting an agent; malformed declarations fail
 without exporting their payload. Algorithm usability and trust still require the
 selected native signing or verification action, not this observation.
-The CLI emits the typed report as JSON, excluding native values. Neither `status` nor
-original check/test capture selects signing: capture binds the typed target policy and
-producer evidence. Direct `u.Infra.git_create_gate_attestation` and
+The CLI emits the typed report as JSON, excluding native values. Neither this
+observation nor original check/test capture selects signing: capture binds the
+typed target policy and producer evidence. Direct `u.Infra.git_create_gate_attestation` and
 `u.Infra.git_verify_gate_attestation` select signing/publication or signature
 verification;
 their required trust input and native key/signature failures remain fail-loud. A valid
@@ -4527,8 +4546,10 @@ and match it. The canonical `workspace create-gate-attestation`,
 these operations; admission itself does not invoke Make, publish GitHub checks, or
 modify repository state. Absent or incompatible proof never approves implicitly.
 
-`smells` is not part of the `make check` partitions. The selector-free `make smells`
-verb runs only the qlty smell scan and fails when it finds defects. Each smell
+`smells` belongs to the registered push-stage gates. The local complete check
+includes it through `make.check_gates_default`. Primary admission uses its declared
+prerequisites, while the CI partition excludes push-stage gates. The gate runs the
+qlty smell scan. Each smell
 finding carries the repair text declared under `smells.fix-text` in
 `config/tooling.yaml`, keyed by the qlty check. Static enforcement has no
 hand-maintained catalog: each owner that detects a law claims its `ENFORCE-NNN`
@@ -4875,7 +4896,8 @@ selects normalization before sealing and adds every native default check inside
 the guarded candidate consumer. Reusing a sealed receipt never removes that
 operation's selected preparation or admission policy. Both operations retain
 source, membership, inode, candidate-tree, lease and journal verification. The
-independent `make check` surface continues to own its complete configured gates.
+independent `make check CHECK_PHASE=complete` surface owns complete validation
+within the selected context's gate partition.
 
 ### Journal Footprint, Child Profiling, and CLI Route Selection
 
@@ -4908,10 +4930,12 @@ only when that journal proves directory creation; published file receipts then
 replace their authenticated preimages. Directory receipts are captured once per
 batch and shared across targets.
 
-Read-only Make verbs never invoke generation, repairs, formatting, or codemod
-application; `make check` runs conform only in its read-only `--mode check`. Audit
-checks installed dependency and environment provenance, and check validates the
-documentation without rendering replacements. Installation provenance identifies
+The native `workspace check` validation route never invokes generation, repairs,
+formatting or codemod application. Its complete phase runs conform in read-only
+`--mode check` and validates documentation without rendering replacements. Local
+Make checks first compose generation, repairs and formatting through their private
+convergence handlers; CI and commit hooks omit that stage. Environment verification
+checks installed dependency provenance. Installation provenance identifies
 the installed origin and explicitly selected physical checkout; an editable
 selection need not equal a committed lock or gitlink. Operation admission
 separately authenticates the content and epoch of its consumed sources and accepts
@@ -5458,8 +5482,8 @@ The generation start message includes the resolved profiling flag and destinatio
 beside its native PID. These process settings are evidence of selection, not evidence
 of a completed capture; the raw capture and readable report must still be verified.
 
-Profiling is opt-in: export `FLEXT_INFRA_PROFILE=1`. The root `gen` and `mod`
-recipes set `FLEXT_INFRA_PROFILE_OUTPUT` themselves, from the typed Make spec
+Profiling is opt-in: export `FLEXT_INFRA_PROFILE=1`. The private generation and
+public `mod` handlers set `FLEXT_INFRA_PROFILE_OUTPUT` from the typed Make spec
 (`generation_profile_path`, `modification_profile_path`), so an output path
 exported by the caller is overridden. A profiled run writes
 `<reports>/codegen/gen-<id>.pstats` (and `<reports>/refactor/mod-<id>.pstats`)

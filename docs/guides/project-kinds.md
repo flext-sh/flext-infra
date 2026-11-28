@@ -1,5 +1,7 @@
 # Project kinds
 
+<!-- Revision 2026-11-28.1; Marlon Costa <marlon.costa@datacosmos.com.br>; Datacosmos. -->
+
 <!-- TOC START -->
 
 - [Consumer repositories](#consumer-repositories)
@@ -31,8 +33,8 @@ documentation and tests that exercise that distribution. A client incident repos
 that runs an engine against the client's databases is the model case.
 
 Use `consumer` when every behavior lives in the consumed distribution. A repository that
-owns Python modules under `src/` is an `internal_flext` project: a consumer rejects an
-authored `src` tree when it is scaffolded.
+owns Python modules under `src/` needs a package declaration and the corresponding
+detected governance kind: a consumer rejects an authored `src` tree when scaffolded.
 
 ### What it may contain
 
@@ -102,10 +104,12 @@ parts:
 
 ### Gates
 
-Each gate selects itself from the repository's own facts, so `make check` runs every
-gate on what the repository has: lint, format, the type checkers, security, markdown,
-duplication, layout, direnv, the lock and environment proofs and the codemod catalog run
-over `tests/`, `config/` and `docs/`. Two gates are not applicable because they judge a
+Each gate selects applicability from the repository's own facts. Local
+`make check CHECK_PHASE=complete` selects the complete active inventory; bare
+`make check` selects primary admission. Applicable gates include lint, format,
+Pyrefly type checking, security, markdown, duplication, layout, direnv, the lock
+and environment proofs and the codemod catalog over the repository's declared
+surfaces. Two gates are not applicable because they judge a
 package's own source: the fresh-process import gate imports the checkout's package, and
 the dependency scan compares the imports of production source with the declaration. A
 consumer owns neither; its tests prove the consumed distribution is importable and
@@ -113,21 +117,21 @@ usable.
 
 ### Bootstrap
 
-A new consumer starts from its declaration, its documentation and its tests. Copy the
-governed `.mise.toml` and `mise.lock` from a governed checkout, then:
+A new consumer starts from its declaration, its documentation and its tests.
+Prepare its Git checkout and complete the cold bootstrap through `make setup`
+using the [recovery runbook](recovery.md#broken-bootstrap-the-checkouts-makefile-misbehaves).
+Once the consumed distribution is installed, seed the test facades:
 
 ```bash
-flext-infra codegen init --repository-root .   # generate the project surface
-make upg                                       # first lock and toolchain
-make setup                                     # install the locked environment
-flext-infra codegen scaffold --repository-root .   # seed the test facades
-make mod
-make check
+flext-infra codegen scaffold --repository-root .
+make check CHECK_PHASE=complete
 ```
 
 `codegen init` runs before the consumed distribution is installed, so it does not seed
 test facades: those compose the distribution's facades and are seeded by
-`codegen scaffold` once `make setup` installed it.
+`codegen scaffold` once `make setup` installed it. If authored sources need semantic
+migration, select the applicable rules or laws through `make mod` before checking;
+the [Make command guide](make-commands.md) owns that selection contract.
 
 ### Adding a dependency
 

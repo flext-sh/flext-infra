@@ -10,7 +10,7 @@ import re
 from typing import TYPE_CHECKING
 
 from flext_infra import config
-from tests import c, m, p, tm, u
+from tests import c, m, p, t, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -257,7 +257,7 @@ class TestsFlextInfraAuditorCommandContract:
     @staticmethod
     def test_member_guides_resolve_from_the_containing_workspace(
         command_contract_scope: p.Infra.DocScope,
-        tmp_path: Path,
+        tmp_path_factory: t.Tests.TempPathFactory,
     ) -> None:
         """A member-scoped plan projects its containing workspace's guides.
 
@@ -266,11 +266,14 @@ class TestsFlextInfraAuditorCommandContract:
         """
         workspace_scope = command_contract_scope
         workspace = workspace_scope.path
+        u.write_file(
+            workspace / c.PYPROJECT_FILENAME,
+            "[project]\nname='infra-pkg'\nversion='0.0.0'\n",
+        )
         guide = workspace / "docs/guides/using-demo.md"
         guide.parent.mkdir(parents=True)
         u.write_file(guide, "# Using Demo\n\nWorkspace-owned guidance.\n")
-        source = tmp_path / "member-source"
-        source.mkdir()
+        source = tmp_path_factory.mktemp("member-source")
         u.Tests.initialize_git_repo(source)
         source_guide = source / "docs/guides/local.md"
         source_guide.parent.mkdir(parents=True)

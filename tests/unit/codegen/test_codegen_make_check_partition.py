@@ -232,8 +232,8 @@ class TestsFlextInfraCodegenMakeCheckPartition:
     def test_ci_workflow_runs_only_the_ci_partition() -> None:
         """The CI job runs each approval verb once, in order, under the CI token.
 
-        CI never runs the pre-commit hook verb. The local partition runs only
-        in the operator-dispatched full qualification, never on push or PR.
+        CI never runs the pre-commit hook verb or the local partition. The
+        operator-dispatched complete qualification retains the CI token.
         """
         make = config.Infra.codegen.make
         steps = u.CodegenTestSupport.Ci.ci_job_steps(
@@ -254,9 +254,7 @@ class TestsFlextInfraCodegenMakeCheckPartition:
                 eq=f"{make.ci.variable}={make.ci.value} {row.make_command}",
             )
         local = f"{make.ci.variable}={make.ci.local_value} make"
-        for step in steps:
-            if local in str(step.get("run", "")):
-                tm.that(str(step.get("if", "")), has="inputs.full_check == true")
+        tm.fail(any(local in command for command in commands))
         tm.fail(any("make pre-commit" in command for command in commands))
 
     @staticmethod

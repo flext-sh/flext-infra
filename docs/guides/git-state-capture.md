@@ -1,5 +1,7 @@
 # Durable Git state capture
 
+<!-- Revision 2026-11-28.1; Marlon Costa <marlon.costa@datacosmos.com.br>; Datacosmos. -->
+
 <!-- TOC START -->
 
 - [Git primitives and lane publication](#git-primitives-and-lane-publication)
@@ -92,7 +94,8 @@ integration tip. Each keeps the rule its own operation needs:
   a dirty nested submodule; it never forces removal or prunes other registrations.
 
 Automated lane publication (`u.Infra.git_publish_lane`, used by `make
-release-version` and `make propagate`) owns one deterministic protocol branch
+release-version` and `flext-infra workspace propagate`) owns one deterministic
+protocol branch
 (`release/next`, the propagation lane). It starts only from a clean checkout on the
 declared integration branch and continues that branch when it already exists
 locally or on the remote.

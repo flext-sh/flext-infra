@@ -174,7 +174,7 @@ jobs:
       - name: Complete check qualification
         id: qualification-check
         if: {% raw %}${{ !cancelled() && inputs.full_check == true && steps.{% endraw %}{{ ci_check.setup_id }}{% raw %}.outcome == 'success' }}{% endraw %}
-        run: {{ make.ci.variable }}={{ make.ci.local_value }} {{ step.make_command }}
+        run: {{ make.ci.variable }}={{ make.ci.value }} {{ step.make_command }}
 {%- endif %}
 {%- endfor %}
 {%- include "_fragments/custom_post_steps.j2" %}

@@ -1,5 +1,7 @@
 # CSV rename campaigns
 
+<!-- Revision 2026-11-28.1; Marlon Costa <marlon.costa@datacosmos.com.br>; Datacosmos. -->
+
 <!-- TOC START -->
 
 - [Declarative Text Rules and Candidate Bootstrap](#declarative-text-rules-and-candidate-bootstrap)
@@ -34,9 +36,9 @@ its repository declaration supplies exactly one `candidate_bootstrap_targets` en
 Declare targets under `Infra.codegen.repository.candidate_bootstrap_targets` in
 `config/codegen.yaml`, with each `path` relative to the healthy provider and a
 canonical `what` surface.
-The same target declaration supports `make bootstrap-candidate` to project the
-declared recovery surface without importing the candidate package. A candidate
-worktree may appear only once per invocation. Recover a conflicted pyproject with
+The same target declaration supports `flext-infra codegen candidate-bootstrap`
+to project the declared recovery surface without importing the candidate package.
+A candidate worktree may appear only once per invocation. Recover a conflicted pyproject with
 `what: pyproject`, then use the internal `codegen init` adapter from its
 preinstalled generation tool runtime to regenerate the existing candidate's
 Makefile and run `make check` to complete generation. The bootstrap authenticates the
@@ -120,9 +122,10 @@ are relative to the consumer repository. Absolute and parent-traversing declarat
 fail during typed config validation; resolved paths that leave either owner through a
 symbolic link fail during public composition before source publication.
 
-`make mod-text` replays only the declared Sed text rules through the same authenticated
-publisher used by `make mod`. It exists for recovery when a text rule has left an
-authored Python file unparsable and the Rope phases cannot start. Every future Python
+`flext-infra refactor mod-text` replays only the declared Sed text rules through
+the same authenticated publisher used by `make mod`. It exists for recovery when
+a text rule has left an authored Python file unparsable and the Rope phases cannot
+start. Every future Python
 replacement is parsed before the atomic batch publishes, so a malformed block-scalar
 replacement leaves all source files unchanged. After recovery, rerun `make mod`
 and `make check`; `mod-text` is not a substitute for the full circuit.
