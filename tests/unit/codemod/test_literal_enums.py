@@ -178,12 +178,19 @@ class TestsFlextInfraLiteralEnums:
         )
         for path, content in sources.items():
             tm.ok(u.Cli.atomic_write_text_file(path, content))
+        before = {path: path.read_bytes() for path in sources}
         with infra.rope_workspace(root) as workspace:
             planned = u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS,
                 rope_workspace=workspace,
                 sources=sources,
             )
-        tm.fail(planned, has=message)
-        for path, content in sources.items():
-            tm.that(path.read_bytes(), eq=content.encode(c.DEFAULT_ENCODING))
+        tm.fail(planned, has=f"{message} in {consumer}")
+        tm.that(
+            tm.not_none(planned.error_data)[c.Infra.MOD_FAILURE_MODULE_KEY],
+            eq=str(consumer),
+        )
+        if case == "ambiguous":
+            tm.that(planned.error, has="c.Kind")
+            tm.that(planned.error, has="c.Other")
+        tm.that({path: path.read_bytes() for path in sources}, eq=before)

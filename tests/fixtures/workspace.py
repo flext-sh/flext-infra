@@ -154,8 +154,8 @@ def constant_candidate(
                 ),
                 empty=True,
             )
-        for path, source in proposed.items():
-            tm.ok(u.Cli.atomic_write_text_file(path, source))
+        for edit in edits:
+            tm.ok(u.Cli.atomic_write_text_file(edit.file_path, edit.updated_source))
         return proposed
 
     return candidate
