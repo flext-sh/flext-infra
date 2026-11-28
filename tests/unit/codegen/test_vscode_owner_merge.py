@@ -134,6 +134,7 @@ class TestsFlextInfraVscodeOwnerMerge:
         """Topology validates its policy while editor rejection retains its cause."""
         directory = tmp_path / c.CONFIG_DIR_NAME
         directory.mkdir()
+        u.Tests.initialize_git_repo(tmp_path)
         path = directory / c.Infra.CODEGEN_CONFIG_FILENAME
         tm.ok(
             u.Cli.yaml_dump(
@@ -243,6 +244,7 @@ class TestsFlextInfraVscodeOwnerMerge:
         for root, chosen in ((first, project_choice), (second, other_choice)):
             directory = root / c.CONFIG_DIR_NAME
             directory.mkdir(parents=True)
+            u.Tests.initialize_git_repo(root)
             tm.ok(
                 u.Cli.yaml_dump(
                     directory / c.Infra.CODEGEN_CONFIG_FILENAME,

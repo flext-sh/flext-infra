@@ -1,6 +1,6 @@
 # Execution context
 
-<!-- Revision 2026-11-28.2; Marlon Costa <marlon.costa@datacosmos.com.br>; Datacosmos. -->
+<!-- Revision 2026-11-28.3; Marlon Costa <marlon.costa@datacosmos.com.br>; Datacosmos. -->
 
 <!-- TOC START -->
 
@@ -1801,9 +1801,11 @@ for complete validation. `MakeOperationSpec.make_command` carries the phase
 explicitly for each check workflow row, so a complete row does not inherit the
 Makefile's primary default. Every phase, locally and in CI, checks
 only the selected project root while provisioning keeps the containing runtime
-environment; an attached member's commit hook therefore checks the member alone,
-and workspace scope is selected only by `ALL=Y` (ADR-038 decision 9,
-flext-bga5y). The generated Make transport selects that root before the
+environment; an attached member's commit hook therefore checks the member alone.
+The Make check handler does not forward `ALL` as a checking scope. Test and internal
+repair/format handlers use `GATE_SCOPE`, which selects governed members with `ALL=Y`
+in a workspace profile outside CI (ADR-038 decision 9, flext-bga5y).
+The generated Make transport selects the check root before the
 checker reads repository governance; it does not substitute workspace policy
 or bypass the selected project's declaration. The primary phase
 derives its gates from `make.check_prerequisite_gates`; the complete phase

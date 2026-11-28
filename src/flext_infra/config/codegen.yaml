@@ -952,7 +952,7 @@ Infra:
         arguments: [ LAWS, RULES ]
         description: Refactor declared source structure through the shared pipeline and publish the complete coherent change; LAWS (ENFORCE ids) or RULES (rule ids) diagnose or repair one law (ADR-028 Decision 18 item 2).
       - name: check
-        description: Locally, converge generation, repairs and formatting to a fixed point; then validate declarations, projections, environment, documentation and configured gates. CI and commit hooks verify without repairs or publication (ADR-037).
+        description: Locally, converge generation, repairs and formatting to a fixed point; then run the selected validation phase (primary by default). CHECK_PHASE=complete selects the context's full gate partition and, outside commit hooks, projection and documentation validation. CI and commit hooks skip convergence (ADR-037).
         arguments: [ CHECK_PHASE ]
       - name: tests
         description: Run native incremental tests through the persistent Testmon selection; in a workspace root ALL=Y includes every governed member.
