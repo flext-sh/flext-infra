@@ -33,12 +33,17 @@ class TestsFlextInfraTypeGates:
     @staticmethod
     @c.Tests.MARK.parametrize(
         "field",
-        ["data_home_environment_variable", "user_home_environment_variable"],
+        [
+            "database_filename",
+            "target_directory",
+            "reports_directory",
+            "config_receipts_directory",
+        ],
     )
-    def test_required_cache_environment_fields_do_not_inherit_defaults(
+    def test_required_testmon_fields_do_not_inherit_defaults(
         field: str,
     ) -> None:
-        """Testmon keeps its explicitly required YAML environment contract."""
+        """Testmon requires its declared checkout database and runner paths."""
         configured = config.Infra.codegen.make
         policy = configured.testmon_cache
         payload = policy.model_dump(
