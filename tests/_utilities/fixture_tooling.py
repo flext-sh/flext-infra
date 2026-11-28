@@ -277,12 +277,10 @@ class TestsFlextInfraUtilitiesToolingFixture:
         checkouts materialize the owning lock's Git dependencies from objects
         provisioned by setup. Registry dependencies remain owned by the wheel
         installer's native resolver; a missing internal source remains a failure.
+        Source-election ``ValueError`` is propagated from the shared Git owner.
 
         Returns:
             The declared projects and their real runtime dependency closure.
-
-        Raises:
-            ValueError: When a ``flext-`` dependency has no elected source owner.
 
         """
         projects = cls.workspace_source_projects()

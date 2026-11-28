@@ -254,12 +254,11 @@ class TestsFlextInfraUtilitiesHermeticGit:
     ) -> Path:
         """Materialize one locked Git dependency from provisioned local objects.
 
+        Election and authentication propagate ``ValueError`` for a missing or
+        ambiguous Git source, unsupported selectors or a mismatched identity.
+
         Returns:
             The real source project consumed by the existing wheel builder.
-
-        Raises:
-            ValueError: If the lock has no unique matching Git source, its
-                selectors are unsupported, or its project identity differs.
 
         """
         name = tm.not_none(u.Infra.dep_name(requirement))

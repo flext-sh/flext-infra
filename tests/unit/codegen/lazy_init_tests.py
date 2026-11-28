@@ -160,7 +160,7 @@ class TestsFlextInfraCodegenLazyInit:
         @classmethod
         @c.Tests.MARK.parametrize("authored", (True, False))
         def test_nested_vendor_dir_is_scanned(
-            cls, tmp_path: Path, authored: bool
+            cls, tmp_path: Path, *, authored: bool
         ) -> None:
             """Keep nested vendored packages in discovery with their write policy."""
             repository, package = (
@@ -168,7 +168,9 @@ class TestsFlextInfraCodegenLazyInit:
                 if authored
                 else u.Tests.create_lazy_init_workspace(tmp_path)
             )
-            src_init = cls._package_initializer(package, _VALID_INIT if authored else "")
+            src_init = cls._package_initializer(
+                package, _VALID_INIT if authored else ""
+            )
             vendor_init = cls._package_initializer(
                 repository / "tests" / "vendor" / "pkg",
                 _VALID_TESTS_INIT if authored else "",
@@ -191,14 +193,16 @@ class TestsFlextInfraCodegenLazyInit:
 
         @classmethod
         @c.Tests.MARK.parametrize("authored", (True, False))
-        def test_venv_dir_excluded(cls, tmp_path: Path, authored: bool) -> None:
+        def test_venv_dir_excluded(cls, tmp_path: Path, *, authored: bool) -> None:
             """Exclude physical virtual-environment packages from both inventories."""
             repository, package = (
                 (tmp_path, tmp_path / "src" / "pkg")
                 if authored
                 else u.Tests.create_lazy_init_workspace(tmp_path)
             )
-            src_init = cls._package_initializer(package, _VALID_INIT if authored else "")
+            src_init = cls._package_initializer(
+                package, _VALID_INIT if authored else ""
+            )
             excluded_init = cls._package_initializer(
                 repository / "tests" / ".venv" / "pkg",
                 _VALID_TESTS_INIT if authored else "",
@@ -226,6 +230,7 @@ class TestsFlextInfraCodegenLazyInit:
             cls,
             tmp_path: Path,
             environment: str,
+            *,
             authored: bool,
         ) -> None:
             """Exclude site-packages even without a virtual-environment parent."""
@@ -234,7 +239,9 @@ class TestsFlextInfraCodegenLazyInit:
                 if authored
                 else u.Tests.create_lazy_init_workspace(tmp_path)
             )
-            src_init = cls._package_initializer(package, _VALID_INIT if authored else "")
+            src_init = cls._package_initializer(
+                package, _VALID_INIT if authored else ""
+            )
             excluded_init = cls._package_initializer(
                 repository
                 / "pkg"
