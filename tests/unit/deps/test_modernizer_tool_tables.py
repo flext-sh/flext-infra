@@ -115,7 +115,18 @@ class TestsFlextInfraDepsModernizerToolTables:
         tm.that(ini["minversion"], eq=expected["minversion"])
         tm.that(ini["flext_slow_timeout_seconds"], eq=str(policy.slow_timeout_seconds))
         tm.that(ini["python_classes"], eq=expected["python_classes"])
-        tm.that(ini["addopts"], eq=expected["addopts"])
+        tm.that(
+            ini["addopts"],
+            eq=list(
+                dict.fromkeys((
+                    *u.Tests.strings(expected["addopts"]),
+                    *(
+                        f"--ignore={root}"
+                        for root in config.Infra.codegen.exclusions.scenario_data_roots
+                    ),
+                )),
+            ),
+        )
         tm.that(
             set(u.Tests.strings(ini["markers"])),
             eq={"custom: custom marker", *policy.standard_markers},
