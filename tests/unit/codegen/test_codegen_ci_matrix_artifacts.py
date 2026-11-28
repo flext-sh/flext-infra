@@ -543,10 +543,13 @@ class TestsFlextInfraCodegenCiMatrixArtifacts(TestsFlextInfraCodegenCiMatrixSupp
             tm.that(inputs["if-no-files-found"], eq="error")
 
     @staticmethod
-    def test_docs_failure_upload_keeps_audit_failure_and_scopes_hidden_reports(
+    @c.Tests.MARK.parametrize("with_docs_reports", [False, True])
+    def test_docs_failure_upload_keeps_check_failure_and_scopes_hidden_reports(
         rendered_project: Path,
+        tmp_path: Path,
+        with_docs_reports: bool,
     ) -> None:
-        """A generated Docs job fails on audit findings and retains safe reports."""
+        """A failed docs check retains its safe receipts without requiring an audit."""
         workflow = u.Cli.yaml_load_mapping(
             rendered_project / ".github" / "workflows" / "docs.yml",
         )
@@ -556,28 +559,54 @@ class TestsFlextInfraCodegenCiMatrixArtifacts(TestsFlextInfraCodegenCiMatrixSupp
             u.Cli.JSON_MAPPING_ADAPTER.validate_python(step)
             for step in u.Cli.JSON_LIST_ADAPTER.validate_python(docs_job["steps"])
         ]
-        docs_step = next(
-            step for step in steps if step.get("name") == "Docs lifecycle (blocking)"
+        check_step = next(
+            step
+            for step in steps
+            if step.get("name") == "Check documentation and projections"
         )
         upload = next(
             step
             for step in steps
             if step.get("name") == "Upload docs reports on failure"
         )
-        tm.that(docs_step.get("run"), eq="make docs")
-        tm.that(docs_step.get("continue-on-error"), eq=None)
+        tm.that(check_step.get("run"), eq="make check")
+        tm.that(check_step.get("continue-on-error"), eq=None)
         tm.that(upload["if"], eq="failure()")
         upload_with = u.Cli.JSON_MAPPING_ADAPTER.validate_python(upload["with"])
         tm.that(upload_with["include-hidden-files"], eq=True)
         tm.that(upload_with["if-no-files-found"], eq="error")
         report_paths = str(upload_with["path"]).splitlines()
         tm.that(report_paths, empty=False)
-        tm.that(
-            {Path(path).name for path in report_paths},
-            eq=set(c.Infra.DOCS_STRUCTURED_REPORT_FILENAMES),
+        inputs = tm.ok(u.Infra.load_codegen_inputs(rendered_project))
+        check_reports = (
+            tmp_path
+            / inputs.spec.make.gate_receipts_directory
+            / "captured-run"
+            / "check"
+            / "captured-check"
         )
-        for path in report_paths:
-            tm.ok(".reports" in Path(path).parts)
+        expected_reports = {
+            check_reports / c.Infra.CHECK_REPORT_MARKDOWN_FILENAME,
+            check_reports / c.Infra.CHECK_REPORT_SARIF_FILENAME,
+        }
+        if with_docs_reports:
+            expected_reports.update(
+                tmp_path / inputs.spec.make.docs.reports_dir / name
+                for name in c.Infra.DOCS_STRUCTURED_REPORT_FILENAMES
+            )
+        for report in expected_reports:
+            report.parent.mkdir(parents=True, exist_ok=True)
+            report.touch()
+        (check_reports / "tool.raw.log").touch()
+        tm.that(
+            {
+                report
+                for path in report_paths
+                for report in tmp_path.glob(path)
+                if report.is_file()
+            },
+            eq=expected_reports,
+        )
 
     @staticmethod
     def test_docs_workflow_jobs_authenticate_toolchain_resolution(
