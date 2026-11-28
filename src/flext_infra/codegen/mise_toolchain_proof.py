@@ -101,8 +101,7 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecution[bool]):
         or exact release must name the locked version.
 
         Returns:
-            The ``(version, checksum)`` pair; checksum is empty only for a
-            tool declaring ``lock_checksum: false``.
+            The ``(version, checksum)`` pair.
 
         """
         locked = cls._locked_entry(entry, lock)
@@ -120,8 +119,6 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecution[bool]):
                 f"{entry.name}: mise.lock pins {version!r}, the toolchain requests "
                 f"{requested}; run make upg",
             )
-        if not entry.lock_checksum:
-            return r[tuple[str, str]].ok((version, ""))
         section = locked.value.get(
             c.Infra.MISE_LOCK_PLATFORM_KEY.format(platform=platform_name),
         )
