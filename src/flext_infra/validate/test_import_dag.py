@@ -61,9 +61,12 @@ class FlextInfraValidateTestImportDag(FlextInfraProjectSelectionServiceBase[bool
             and (path.is_file() or path.is_symlink())
         ]
         with u.Infra.open_project(project_root) as project:
+            source_paths = frozenset(
+                u.Infra.ast_grep_scan_targets(project_root, source_project=project)
+            )
             for resource in u.Infra.python_resources(project):
                 file_path = u.Infra.resource_file_path(project, resource)
-                if file_path is None:
+                if file_path is None or resource.path not in source_paths:
                     continue
                 module_imports = u.Infra.resolve_module_imports(project, resource)
                 relative = file_path.relative_to(project_root).with_suffix("")

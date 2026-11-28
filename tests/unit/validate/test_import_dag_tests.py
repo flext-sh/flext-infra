@@ -66,6 +66,7 @@ class TestsFlextInfraImportDag:
             ("tests/unit/test_behavior.py", "from tests.fixtures.users import user\n"),
             ("tests/unit/test_behavior.py", "from ..fixtures import users\n"),
             ("tests/conftest.py", "import tests.fixtures.users\n"),
+            ("tests/fixtures/runtime.py", "from tests.fixtures.users import user\n"),
         ],
     )
     def test_artifact_imports_fail_from_every_test_layer(
@@ -98,9 +99,12 @@ class TestsFlextInfraImportDag:
     def test_python_artifacts_are_data_without_source_parsing(
         self, tmp_path: Path
     ) -> None:
-        """Ignore root and nested Python artifacts without decoding their bytes."""
+        """Ignore scenario files at both depths without decoding their bytes."""
         project = self._project(tmp_path, {"src/sample/api.py": "value = 1\n"})
-        for relative in ("tests/fixtures/input.py", "tests/fixtures/scenario/input.py"):
+        for relative in (
+            "tests/fixtures/scenario/input.py",
+            "tests/fixtures/scenario/nested/input.py",
+        ):
             artifact = project / relative
             artifact.parent.mkdir(parents=True, exist_ok=True)
             artifact.write_bytes(b"\xff\xfe\x00")
