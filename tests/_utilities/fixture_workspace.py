@@ -558,7 +558,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
             ("[project]\nname='test-project'\ndependencies=['flext-core>=0.1.0']\n"),
             encoding="utf-8",
         )
-        (project / c.GIT_DIR_NAME).mkdir()
+        TestsFlextInfraUtilitiesGit.initialize_git_repo(project)
         TestsFlextInfraUtilitiesProjectFixture.write_project_beads_config(
             project,
             "test-project",
