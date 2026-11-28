@@ -58,6 +58,8 @@ class FlextInfraModelsConfigMakeDocs:
     class MakeDocsSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Generated Makefile docs verb lifecycle and audit policy."""
 
+        model_config = m.ConfigDict(extra="forbid")
+
         contract_guide: Annotated[
             Path | None,
             m.Field(
