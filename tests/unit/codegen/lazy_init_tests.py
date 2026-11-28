@@ -150,11 +150,15 @@ class TestsFlextInfraCodegenLazyInit:
                 _VALID_TESTS_INIT,
             )
             generator = FlextInfraCodegenLazyInit(repository_root=tmp_path)
-            result = generator.plan_files()
+            with u.Infra.facade_source_project(tmp_path) as (source_project, sources):
+                result = generator.plan_files(source_project=source_project)
+                tm.ok(src_init in sources)
+                tm.ok(vendor_init in sources)
             planned = {plan.path for plan in tm.ok(result)}
-            tm.ok(src_init in planned)
-            tm.ok(vendor_init.is_file())
-            tm.ok(vendor_init in planned)
+            tm.that(planned, lacks=src_init)
+            tm.that(planned, lacks=vendor_init)
+            tm.that(src_init.read_text(encoding="utf-8"), eq=_VALID_INIT)
+            tm.that(vendor_init.read_text(encoding="utf-8"), eq=_VALID_TESTS_INIT)
 
         @staticmethod
         def test_venv_dir_excluded(tmp_path: Path) -> None:
@@ -165,11 +169,15 @@ class TestsFlextInfraCodegenLazyInit:
                 _VALID_TESTS_INIT,
             )
             generator = FlextInfraCodegenLazyInit(repository_root=tmp_path)
-            result = generator.plan_files()
+            with u.Infra.facade_source_project(tmp_path) as (source_project, sources):
+                result = generator.plan_files(source_project=source_project)
+                tm.ok(src_init in sources)
+                tm.that(sources, lacks=excluded_init)
             planned = {plan.path for plan in tm.ok(result)}
-            tm.ok(src_init in planned)
-            tm.ok(excluded_init.is_file())
+            tm.that(planned, lacks=src_init)
             tm.that(planned, lacks=excluded_init)
+            tm.that(src_init.read_text(encoding="utf-8"), eq=_VALID_INIT)
+            tm.that(excluded_init.read_text(encoding="utf-8"), eq=_VALID_TESTS_INIT)
 
         @staticmethod
         @c.Tests.MARK.parametrize("environment", ("venv", "runtime"))
@@ -190,11 +198,15 @@ class TestsFlextInfraCodegenLazyInit:
                 _VALID_TESTS_INIT,
             )
             generator = FlextInfraCodegenLazyInit(repository_root=tmp_path)
-            result = generator.plan_files()
+            with u.Infra.facade_source_project(tmp_path) as (source_project, sources):
+                result = generator.plan_files(source_project=source_project)
+                tm.ok(src_init in sources)
+                tm.that(sources, lacks=excluded_init)
             planned = {plan.path for plan in tm.ok(result)}
-            tm.ok(src_init in planned)
-            tm.ok(excluded_init.is_file())
+            tm.that(planned, lacks=src_init)
             tm.that(planned, lacks=excluded_init)
+            tm.that(src_init.read_text(encoding="utf-8"), eq=_VALID_INIT)
+            tm.that(excluded_init.read_text(encoding="utf-8"), eq=_VALID_TESTS_INIT)
 
         @staticmethod
         def test_runtime_scratch_dir_excluded_from_plans(tmp_path: Path) -> None:
