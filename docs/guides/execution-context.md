@@ -1,6 +1,6 @@
 # Execution context
 
-<!-- Revision 2026-11-28.6; Marlon Costa <marlon.costa@datacosmos.com.br>; Datacosmos. -->
+<!-- Revision 2026-11-28.7; Marlon Costa <marlon.costa@datacosmos.com.br>; Datacosmos. -->
 
 <!-- TOC START -->
 
@@ -4185,9 +4185,10 @@ including its filename and source text. The complete batch remains unchanged.
 
 The public `flext-infra check run --file` route selects a literal
 repository-relative path through the existing typed request, never bare analyzers
-or a second gate engine. Selection rejects empty, absolute, traversal, missing, non-Python and
-symlink-component paths before creating reports or invoking tools. Only the literal
-file reaches each gate's existing `check_files`; no mutation is permitted.
+or a second gate engine. Selection rejects empty, absolute, traversal, missing,
+non-Python and symlink-component paths before creating reports or invoking tools.
+Only the literal file reaches each gate's existing `check_files`; no mutation is
+permitted.
 The caller selects registered gates through `RunCommand.gates` and `resolve_gates`;
 no separate gate vocabulary or configuration is introduced. The route requires
 explicit `--gates`, never silently falls back to whole-project gates, and rejects
@@ -4465,6 +4466,14 @@ an applicable scanner is an operational error, retained in the native check repo
 it cannot supply an accepted receipt or a signed gate attestation under either
 clean-quality or complete-execution policy. An unselected optional scanner never
 runs and is not recorded as an executed gate.
+Requested gates remain visible in the report; pending work contains only gates
+selected by the captured per-target applicability.
+
+Cubic and Qlty operational failures, invalid reports and process interruptions
+produce `ERROR` executions with the native process outcome and raw receipt.
+Findings already parsed from a published report remain present after the native
+interruption diagnostic; retaining those findings does not make the execution
+successful or eligible for an accepted gate attestation.
 
 Admission derives from the original typed reports rather than caller success flags.
 Checks require complete target and requested-gate coverage in SARIF. Tests require
@@ -4547,10 +4556,10 @@ without exporting their payload. Algorithm usability and trust still require the
 selected native signing or verification action, not this observation.
 The CLI emits the typed report as JSON, excluding native values. Neither this
 observation nor original check/test capture selects signing: capture binds the
-typed target policy and producer evidence. Direct `u.Infra.git_create_gate_attestation` and
-`u.Infra.git_verify_gate_attestation` select signing/publication or signature
-verification;
-their required trust input and native key/signature failures remain fail-loud. A valid
+typed target policy and producer evidence. Direct
+`u.Infra.git_create_gate_attestation` and `u.Infra.git_verify_gate_attestation`
+select signing/publication or signature verification; their required trust input and
+native key/signature failures remain fail-loud. A valid
 observation is never signed proof, and absent signing material does not gate unrelated
 offline producers.
 

@@ -211,8 +211,8 @@ class FlextInfraGitAttestationFixtures:
         )
 
 
-class TestsFlextInfraGithubGateAttestation(FlextInfraGitAttestationFixtures):
-    """Behavior tests for local SSH-signed gate attestations."""
+class TestsFlextInfraGithubScannerAttestation(FlextInfraGitAttestationFixtures):
+    """Scanner availability remains part of signed-gate evidence."""
 
     def test_runtime_identity_records_missing_scanner(self, tmp_path: Path) -> None:
         """A missing scanner changes the identity without stopping native capture."""
@@ -249,9 +249,7 @@ class TestsFlextInfraGithubGateAttestation(FlextInfraGitAttestationFixtures):
         }):
             captured = tm.ok(
                 u.Infra.git_capture_gate(
-                    m.Infra.GateCaptureRequest(
-                        repository_root=tmp_path, gates=gate_id
-                    ),
+                    m.Infra.GateCaptureRequest(repository_root=tmp_path, gates=gate_id),
                     inputs=inputs,
                     load_inputs=u.Infra.load_codegen_inputs,
                     read_runtime_identity=self._runtime_identity,
@@ -284,6 +282,10 @@ class TestsFlextInfraGithubGateAttestation(FlextInfraGitAttestationFixtures):
             tuple(issue.message for issue in execution.issues),
             eq=(f"{gate.scanner_binary} binary not found on PATH",),
         )
+
+
+class TestsFlextInfraGithubGateAttestation(FlextInfraGitAttestationFixtures):
+    """Behavior tests for local SSH-signed gate attestations."""
 
     @c.Tests.MARK.parametrize("phase", tuple(c.Infra.CheckPhase))
     def test_original_capture_publishes_distinct_receipts_with_stable_context(
