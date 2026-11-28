@@ -4426,6 +4426,9 @@ public facts retain the actual process outcome, portable operation intent and di
 classification. The original public receipt binds the exact argv digest; command bytes
 and the working directory remain in private execution checkpoints, outside the CI
 artifact allowlist.
+The runtime identity records external scanner availability and fingerprints present
+executables. The native check selects applicable scanners and reports missing
+binaries for applicable gates in its original receipt.
 
 Admission derives from the original typed reports rather than caller success flags.
 Checks require complete target and requested-gate coverage in SARIF. Tests require

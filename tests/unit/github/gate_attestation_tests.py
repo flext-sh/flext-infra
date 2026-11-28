@@ -213,6 +213,13 @@ class FlextInfraGitAttestationFixtures:
 class TestsFlextInfraGithubGateAttestation(FlextInfraGitAttestationFixtures):
     """Behavior tests for local SSH-signed gate attestations."""
 
+    def test_runtime_identity_accounts_for_missing_scanner(self, tmp_path: Path) -> None:
+        """A missing scanner changes the identity without stopping native capture."""
+        with u.Tests.env_vars_context({"PATH": str(tmp_path)}):
+            unavailable = tm.ok(self._runtime_identity((c.Infra.CUBIC,)))
+            without_scanner = tm.ok(self._runtime_identity(()))
+        tm.that(unavailable, ne=without_scanner)
+
     @c.Tests.MARK.parametrize("phase", tuple(c.Infra.CheckPhase))
     def test_original_capture_publishes_distinct_receipts_with_stable_context(
         self,

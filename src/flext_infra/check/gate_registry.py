@@ -230,14 +230,14 @@ class FlextInfraGateRegistry:
         *,
         installed_identity: str,
     ) -> p.Result[str]:
-        """Fingerprint selected provisioned scanners through their existing owners.
+        """Fingerprint the availability and content of declared native scanners.
 
         Python module tools are bound by the shared installed-distribution owner.
-        Only declared scanner binaries participate here; no project/tool roster
-        is introduced.
+        A missing binary contributes to the identity. The native checker elects
+        applicable gates and reports any tool missing for a gate it executes.
 
         Returns:
-            An opaque digest of actual selected external executable identities.
+            An opaque digest of the observed external executable identities.
 
         """
         observed: list[str] = []
@@ -251,9 +251,8 @@ class FlextInfraGateRegistry:
                 continue
             executable = gate.resolve_binary()
             if executable is None:
-                return r[str].fail(
-                    f"selected scanner is not provisioned: {gate.scanner_binary}",
-                )
+                observed.append(f"{gate_id}:{gate.scanner_binary}:absent")
+                continue
             content = u.Cli.files_read_binary(executable)
             if content.failure:
                 return r[str].from_failure(content)
