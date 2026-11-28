@@ -219,4 +219,8 @@ class TestsFlextInfraNestingCutoverOutput:
                 sources={module: source},
             )
         tm.fail(planned, has="cannot preserve native type parameter scope")
+        tm.that(
+            tm.not_none(planned.error_data).get(c.Infra.MOD_FAILURE_MODULE_KEY),
+            eq=str(module),
+        )
         tm.that(module.read_text(encoding="utf-8"), eq=source)
