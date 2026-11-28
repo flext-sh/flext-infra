@@ -18,13 +18,15 @@ class TestsFlextInfraScannerAvailability:
     @staticmethod
     @c.Tests.MARK.parametrize("gate_id", (c.Infra.CUBIC, c.Infra.SMELLS))
     def test_missing_applicable_scanner_is_an_operational_error(
-        tmp_path: Path, gate_id: str
+        tmp_path: Path,
+        gate_id: str,
     ) -> None:
         """A selected scanner that cannot execute never reports quality findings."""
         registry = FlextInfraGateRegistry.default()
         gate = tm.not_none(registry.create(gate_id, tmp_path))
         context = m.Infra.GateContext(
-            repository_root=tmp_path, reports_dir=tmp_path / "reports"
+            repository_root=tmp_path,
+            reports_dir=tmp_path / "reports",
         )
         with u.Tests.env_vars_context({
             "PATH": str(tmp_path),
@@ -49,7 +51,8 @@ class TestsFlextInfraScannerAvailability:
         registry = FlextInfraGateRegistry.default()
         gate = tm.not_none(registry.get(c.Infra.CUBIC))
         context = m.Infra.GateContext(
-            repository_root=tmp_path, reports_dir=tmp_path / "reports"
+            repository_root=tmp_path,
+            reports_dir=tmp_path / "reports",
         )
         with u.Tests.env_vars_context({
             "PATH": str(tmp_path),

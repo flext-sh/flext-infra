@@ -1,6 +1,6 @@
 # CSV rename campaigns
 
-<!-- Revision 2026-11-28.2; Marlon Costa <marlon.costa@datacosmos.com.br>; Datacosmos. -->
+<!-- Revision 2026-11-28.3; Marlon Costa <marlon.costa@datacosmos.com.br>; Datacosmos. -->
 
 <!-- TOC START -->
 
@@ -40,8 +40,8 @@ Declare targets under `Infra.codegen.repository.candidate_bootstrap_targets` in
 canonical `what` surface.
 The same target declaration supports `flext-infra codegen candidate-bootstrap`
 to project the declared recovery surface without importing the candidate package.
-A candidate worktree may appear only once per invocation. Recover a conflicted pyproject with
-`what: pyproject`, then use the internal `codegen init` adapter from its
+A candidate worktree may appear only once per invocation. Recover a conflicted
+pyproject with `what: pyproject`, then use the internal `codegen init` adapter from its
 preinstalled generation tool runtime to regenerate the existing candidate's
 Makefile and run `make check` to complete generation. The bootstrap authenticates the
 consulted codegen declarations through publication; it requires no retired
