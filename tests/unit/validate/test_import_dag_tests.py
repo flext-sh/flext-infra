@@ -61,26 +61,21 @@ class TestsFlextInfraImportDag:
         tm.fail(report.passed)
 
     @c.Tests.MARK.parametrize(
-        ("source", "case"),
+        ("source", "imported"),
         [
-            ("tests/unit/test_behavior.py", "absolute"),
-            ("tests/unit/test_behavior.py", "relative"),
-            ("tests/conftest.py", "plugin"),
+            ("tests/unit/test_behavior.py", "from tests.fixtures.users import user\n"),
+            ("tests/unit/test_behavior.py", "from ..fixtures import users\n"),
+            ("tests/conftest.py", "import tests.fixtures.users\n"),
         ],
     )
     def test_artifact_imports_fail_from_every_test_layer(
         self,
         tmp_path: Path,
-        fixture_tree: p.Tests.FixtureTree,
         source: str,
-        case: str,
+        imported: str,
     ) -> None:
         """Reject imports of artifact data from ordinary tests and conftest."""
-        scenario = fixture_tree("artifact-imports", destination=tmp_path / "scenarios")
-        project = self._project(
-            tmp_path,
-            {source: (scenario / f"{case}.py").read_text(encoding=c.DEFAULT_ENCODING)},
-        )
+        project = self._project(tmp_path, {source: imported})
         report: p.Infra.ValidationReport = tm.ok(
             FlextInfraValidateTestImportDag().build_report(project),
         )
