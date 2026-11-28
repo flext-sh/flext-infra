@@ -326,8 +326,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
             Proposed source with only identity-proven literal consumer edits.
 
         """
-        workspace = source_context[0]
-        convention = workspace.convention(path)
+        convention = source_context[0].convention(path)
         layout = convention.project_layout
         if (
             cls._constant_definition_source(source_context, convention)
