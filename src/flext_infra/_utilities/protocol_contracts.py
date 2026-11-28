@@ -310,6 +310,8 @@ class FlextInfraUtilitiesModelsProtocolContracts:
             The resulting ``p.Infra.ProtocolPlacementCensus``.
 
         """
+        if not sources:
+            return cls._protocol_dependencies(workspace.repository_root, (), {})
         origins = cls._external_protocol_origins(workspace.rope_project, sources)
         model_origins = cls._native_protocol_models(workspace)
         references = {
