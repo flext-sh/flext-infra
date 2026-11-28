@@ -237,11 +237,40 @@ class TestsFlextInfraSmellsGate:
         )
 
         tm.fail(execution.result.passed)
+        tm.that(execution.outcome, eq=c.Infra.ToolOutcome.ERROR)
         tm.that(len(execution.issues), eq=1)
         tm.that(execution.issues[0].severity, eq=str(c.Infra.GateSeverity.ERROR.value))
         tm.that(
             "generated qlty configuration is absent" in execution.issues[0].message,
             eq=True,
+        )
+
+    def test_invalid_project_configuration_is_an_operational_error(
+        self,
+        tmp_path: Path,
+        smells_project: Path,
+    ) -> None:
+        """Preserve the real scanner's failed configuration parse and receipt."""
+        self._configure(tmp_path)
+        config_path = (
+            tmp_path / c.Infra.QLTY_CONFIG_DIRNAME / c.Infra.QLTY_CONFIG_FILENAME
+        )
+        config_path.write_text("[", encoding=c.DEFAULT_ENCODING)
+
+        execution = FlextInfraGatesSmells(tmp_path).check(
+            smells_project,
+            self._ctx(tmp_path),
+        )
+
+        tm.fail(execution.result.passed)
+        tm.that(execution.outcome, eq=c.Infra.ToolOutcome.ERROR)
+        process = tm.not_none(execution.process)
+        tm.fail(process.raw_return_code == c.Cli.EXIT_CODE_SUCCESS)
+        tm.ok(bool(execution.raw_output.strip()))
+        receipt = tm.not_none(execution.raw_receipt)
+        tm.that(
+            receipt.read_text(encoding=c.DEFAULT_ENCODING),
+            eq=execution.raw_output,
         )
 
     @staticmethod
@@ -273,6 +302,11 @@ class TestsFlextInfraSmellsGate:
         )
 
         tm.ok(execution.result.passed)
+        tm.that(execution.outcome, eq=c.Infra.ToolOutcome.CLEAN)
+        tm.that(
+            tm.not_none(execution.process).raw_return_code,
+            eq=c.Cli.EXIT_CODE_SUCCESS,
+        )
         tm.that(len(execution.issues), eq=0)
 
     def test_finding_states_the_concrete_problem_and_the_fix(
@@ -296,6 +330,11 @@ class TestsFlextInfraSmellsGate:
         )
 
         tm.fail(execution.result.passed)
+        tm.that(execution.outcome, eq=c.Infra.ToolOutcome.FINDINGS)
+        tm.that(
+            tm.not_none(execution.process).raw_return_code,
+            eq=c.Cli.EXIT_CODE_SUCCESS,
+        )
         messages = [issue.message for issue in execution.issues]
         tm.ok(any("wide" in message for message in messages))
         tm.fail(any("{" in message for message in messages))

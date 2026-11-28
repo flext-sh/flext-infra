@@ -77,22 +77,7 @@ class FlextInfraGatesSmells(FlextInfraGates):
         """
         started = time.monotonic()
         scan = self._scan(project_dir, ctx)
-        issues = self._scanned_issues(scan, project_dir)
-        return self._build_gate_execution(
-            m.Infra.GateExecutionParams.model_validate({
-                "project_dir": (project_dir),
-                "verdict": (not issues),
-                "outcome": (
-                    c.Infra.ToolOutcome.FINDINGS
-                    if issues
-                    else c.Infra.ToolOutcome.CLEAN
-                ),
-                "issues": (tuple(issues)),
-                "raw_output": (self._raw_output(scan)),
-                "started": (started),
-            }),
-            ctx=ctx,
-        )
+        return self._parsed_gate_execution(project_dir, ctx, scan, started)
 
     @override
     def _build_check_command(
@@ -236,7 +221,7 @@ class FlextInfraGatesSmells(FlextInfraGates):
             file=c.PYPROJECT_FILENAME,
             line=1,
             column=0,
-            code=FlextInfraGatesSmells.gate_id,
+            code=c.Infra.ToolOutcome.ERROR.value,
             message=message or "qlty returned no parseable SARIF output",
             severity=str(c.Infra.GateSeverity.ERROR.value),
         )

@@ -227,7 +227,7 @@ class FlextInfraGates:
             file=c.PYPROJECT_FILENAME,
             line=1,
             column=0,
-            code=self.gate_id,
+            code=c.Infra.ToolOutcome.ERROR.value,
             message=scan.stderr or f"{self.scanner_binary} execution failed",
             severity=str(c.Infra.GateSeverity.ERROR.value),
         )
@@ -549,6 +549,8 @@ class FlextInfraGates:
         errors: Sequence[str],
         ctx: p.Infra.GateContext,
         started: float,
+        *,
+        outcome: c.Infra.ToolOutcome | None = None,
     ) -> p.Infra.GateExecution:
         """Preserve project-level failures as blocking structured diagnostics.
 
@@ -560,6 +562,7 @@ class FlextInfraGates:
             m.Infra.GateExecutionParams(
                 project_dir=project_dir,
                 verdict=not errors,
+                outcome=outcome,
                 issues=tuple(
                     m.Infra.Issue(
                         file=str(project_dir),

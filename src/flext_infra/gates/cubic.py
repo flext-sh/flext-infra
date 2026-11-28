@@ -65,28 +65,14 @@ class FlextInfraGatesCubic(FlextInfraGates):
                 (f"{c.Infra.CUBIC_BINARY} binary not found on PATH",),
                 ctx,
                 started,
+                outcome=c.Infra.ToolOutcome.ERROR,
             )
         scan = self._run(
             (binary, *c.Infra.CUBIC_REVIEW_ARGS),
             project_dir,
             ctx,
         )
-        issues = self._report_issues(scan)
-        return self._build_gate_execution(
-            m.Infra.GateExecutionParams.model_validate({
-                "project_dir": (project_dir),
-                "verdict": (not issues),
-                "outcome": (
-                    c.Infra.ToolOutcome.FINDINGS
-                    if issues
-                    else c.Infra.ToolOutcome.CLEAN
-                ),
-                "issues": (tuple(issues)),
-                "raw_output": (self._raw_output(scan)),
-                "started": (started),
-            }),
-            ctx=ctx,
-        )
+        return self._parsed_gate_execution(project_dir, ctx, scan, started)
 
     @override
     def _parse_check_output(
@@ -253,7 +239,7 @@ class FlextInfraGatesCubic(FlextInfraGates):
             file=c.PYPROJECT_FILENAME,
             line=1,
             column=0,
-            code=self.gate_id,
+            code=c.Infra.ToolOutcome.ERROR.value,
             message=message or "cubic returned no parseable JSON review output",
             severity=str(c.Infra.GateSeverity.ERROR.value),
         )
