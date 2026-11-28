@@ -75,10 +75,11 @@ class TestsFlextInfraCiCompleteCheck:
         tm.that(
             optional["run"],
             eq=(
-                f"{spec.make.ci.variable}={spec.make.ci.local_value} "
+                f"{spec.make.ci.variable}={spec.make.ci.value} "
                 f"{complete.make_command}"
             ),
         )
+        tm.that(optional["run"], has=f"CHECK_PHASE={c.Infra.CheckPhase.COMPLETE}")
         tm.that(optional["if"], has="inputs.full_check == true")
         receipts = next(
             step

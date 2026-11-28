@@ -159,8 +159,10 @@ class TestsFlextInfraRuffProjectPolicy:
         )
 
     @staticmethod
-    def test_modernization_retires_all_rule_suppression_tables(tmp_path: Path) -> None:
-        """Remove per-file overrides while preserving the declared native policy."""
+    def test_modernization_replaces_local_suppression_with_native_policy(
+        tmp_path: Path,
+    ) -> None:
+        """Replace local masks with the complete declared native policy."""
         payload = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python(
             u.Tests.toml_payload(
                 '[project]\nname = "retired-exemptions"\n'
@@ -181,10 +183,16 @@ class TestsFlextInfraRuffProjectPolicy:
         lint = tm.not_none(u.Cli.toml_mapping_path(payload, ("tool", "ruff", "lint")))
         for retired in (
             "extend-ignore",
-            "per-file-ignores",
             "extend-per-file-ignores",
         ):
             tm.that(lint, lacks=retired)
+        authorized = tm.not_none(
+            u.Cli.toml_mapping_child(
+                u.Infra.native_tool_configuration(config.Infra.tooling, "ruff"),
+                "lint",
+            )
+        )
+        tm.that(lint.get("per-file-ignores"), eq=authorized.get("per-file-ignores"))
         tm.that(
             lint["ignore"],
             eq=sorted({

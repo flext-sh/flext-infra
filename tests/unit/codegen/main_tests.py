@@ -314,12 +314,20 @@ class TestsFlextInfraCodegenMain:
             tm.that(
                 ini_options["addopts"],
                 eq=list(
-                    u.Infra.native_tool_setting(
-                        config.Infra.tooling,
-                        "pytest.ini_options",
-                        "addopts",
-                        TypeForm(Sequence[str]),
-                    )
+                    dict.fromkeys((
+                        *u.Infra.native_tool_setting(
+                            config.Infra.tooling,
+                            "pytest.ini_options",
+                            "addopts",
+                            TypeForm(Sequence[str]),
+                        ),
+                        *(
+                            f"--ignore={root}"
+                            for root in (
+                                config.Infra.codegen.exclusions.scenario_data_roots
+                            )
+                        ),
+                    )),
                 ),
             )
 

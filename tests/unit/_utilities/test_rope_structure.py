@@ -51,6 +51,7 @@ class TestsFlextInfraRopeStructure:
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text("value: int\n", encoding="utf-8")
 
+        u.Tests.initialize_git_repo(tmp_path)
         tm.that(
             u.Infra.discover_first_party_namespaces(tmp_path),
             eq=["namespace", "regular", "stubs"],

@@ -176,9 +176,8 @@ class TestsFlextInfraDocsShared:
         tm.that(result.value[1].report_dir, eq=workspace / "flext-a/.custom-docs")
 
     @staticmethod
-    def test_build_scopes_skips_missing_projects(tmp_path: Path) -> None:
-        # Why (X-70): see test_build_scopes_without_filter_still_returns_root_scope.
-        """Test build scopes skips missing projects."""
+    def test_build_scopes_rejects_missing_projects(tmp_path: Path) -> None:
+        """An explicit missing selector fails instead of selecting the root."""
         workspace = u.Tests.create_docs_workspace(tmp_path)
 
         result = u.Infra.build_scopes(
@@ -187,8 +186,14 @@ class TestsFlextInfraDocsShared:
             output_dir=c.Infra.DEFAULT_DOCS_OUTPUT_DIR,
         )
 
-        tm.ok(result)
-        tm.that([scope.name for scope in result.value], eq=["workspace"])
+        tm.fail(result)
+        tm.that(
+            result.error,
+            eq=(
+                "scope resolution failed: "
+                "docs project selector does not resolve: flext-missing"
+            ),
+        )
 
     @staticmethod
     def test_build_scopes_preserves_discovered_package_name(

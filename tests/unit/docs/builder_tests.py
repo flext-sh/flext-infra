@@ -64,15 +64,25 @@ class TestsFlextInfraBuilder:
         if "output_dir" in kwargs:
             match kwargs["output_dir"]:
                 case str() as output_dir:
-                    tm.ok(
-                        builder.build(tmp_path, output_dir=str(tmp_path / output_dir)),
+                    workspace = u.Tests.create_docs_workspace(tmp_path)
+                    reports = tm.ok(
+                        builder.build(workspace, output_dir=output_dir),
                     )
+                    tm.that([report.scope for report in reports], eq=["workspace"])
+                    tm.ok((workspace / output_dir / "build-report.md").exists())
                 case invalid:
                     pytest.fail(f"invalid output_dir test case: {invalid!r}")
         else:
             match kwargs.get("projects"):
                 case list() as projects:
-                    tm.ok(builder.build(tmp_path, projects=projects))
+                    workspace = u.Tests.create_docs_workspace(
+                        tmp_path,
+                        project_names=projects,
+                    )
+                    reports = tm.ok(builder.build(workspace, projects=projects))
+                    tm.that(
+                        [report.scope for report in reports], eq=["root", *projects]
+                    )
                 case invalid_projects:
                     pytest.fail(f"invalid projects test case: {invalid_projects!r}")
 
@@ -110,6 +120,9 @@ class TestsFlextInfraBuilder:
         tmp_path: Path,
     ) -> None:
         """Test build with multiple projects returns list of reports."""
-        result = builder.build(tmp_path, projects=["proj1", "proj2"])
-        if result.success:
-            tm.that(len(result.value), gte=0)
+        projects = ("proj1", "proj2")
+        workspace = u.Tests.create_docs_workspace(tmp_path, project_names=projects)
+
+        reports = tm.ok(builder.build(workspace, projects=projects))
+
+        tm.that([report.scope for report in reports], eq=["root", *projects])

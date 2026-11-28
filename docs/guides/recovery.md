@@ -1,5 +1,7 @@
 # Recovery runbook
 
+<!-- Revision 2026-11-28.1; Marlon Costa <marlon.costa@datacosmos.com.br>; Datacosmos. -->
+
 <!-- TOC START -->
 
 - [Broken bootstrap (the checkout's Makefile misbehaves)](#broken-bootstrap-the-checkouts-makefile-misbehaves)
@@ -158,21 +160,25 @@ input, not permission to rewrite its version or widen its authority.
 ## Orphan imports
 
 The `deps` gate (deptry) fails any import the declared dependencies do not
-cover, at check time. Cure the declaration (the project's dependency SSOT or
-the org override surface), never the consumer's import.
+cover, at check time. Cure the repository's dependency declaration or its declared
+native source, never the consumer's import merely to hide the missing dependency.
 
 ## Racing-lane merges
 
 Before an administrative merge of diverged lanes: realign the branch
 (`git merge --no-ff` the declared integration base), then run the repository's
-applicable canonical `mod`, `fix`, `fmt`, `check` and `tests` operations on the
-realigned sources. Repair a broken Make projection through the documented
-bootstrap owner first. Textual mergeability is not semantic integrity.
+applicable `make mod` rule or law selection and the declared check/test workflow on
+the realigned sources. Local `make check` owns generation, repair and formatting
+convergence; request `CHECK_PHASE=complete` for complete validation. The private
+generation/repair/format handlers are not additional public Make commands.
+Repair a broken Make projection through the documented bootstrap owner first.
+Textual mergeability is not semantic integrity.
 
 ## Render provenance
 
 Generated artifacts carry `# @flext-rendered-by: flext-infra <version>`.
 A drift between this stamp and the consumed motor is a regeneration order:
-local `make check` re-renders with the declared generator. In CI, `make check` validates
-projections and their provenance without regenerating them; retain the actual
+local `make check` re-renders with the declared generator. In CI, the complete
+check phase validates projections and their provenance without regenerating them;
+the default primary phase does not establish that complete verdict. Retain the actual
 diagnostic and receipt rather than treating the stamp alone as proof.

@@ -19,10 +19,10 @@ $(shell awk -v reference="{{ reference }}" 'index($$0, reference) { count++ } EN
     (the CI token selects the check partition), so adding or deleting a gate
     never desynchronizes a generated Makefile. -#}
 {%- macro check_run(gate_set, extra="") -%}$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gate-set {{ gate_set }}{{ extra }}{%- endmacro -%}
-{#- One process runs the whole read-only verb: captured gates run first.
-    The complete phase then checks the locked generator's projection verdict,
-    lane census (outside CI) and documentation. The commit hook token runs
-    only the stage-derived commit gates. -#}
+{#- One process verifies the selected phase: primary captures prerequisites;
+    complete captures the context's gate partition, then checks projections
+    and documentation outside the commit-hook context. Local convergence
+    belongs to the Make handler before this read-only route. -#}
 {%- macro local_check_body() -%}
 {{ "\t" }}@$(if $(CHECK_PROFILE),FLEXT_INFRA_PROFILE=$(CHECK_PROFILE) ,)FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/{{ make.check_profile_path }}" $(PROJECT_FLEXT_INFRA) {{ workspace_cli_group }} check --repository-root "$(PROJECT_ROOT)"$(if $(CHECK_PHASE), --phase "$$CHECK_PHASE")
 {%- endmacro -%}
@@ -450,10 +450,11 @@ TOOL_BOOTSTRAP_LIFECYCLE := _setup_native_prepare
 {{ tool_bootstrap_recipe("_bootstrap_setup_tools", "$(PROJECT_ROOT)", toolchain, mise_install_tools, "$(SELF_MAKE) $(TOOL_BOOTSTRAP_LIFECYCLE)", make, bootstrap_report_shell_literal, bootstrap_report_relative_path) }}
 _bootstrap_setup_tools: _builtin_require_workspace
 
-# A workspace root's verbs act on the workspace project only; ALL=Y extends
-# them to every governed member, processed together in one checker run
+# Test and internal repair/format handlers use this scope. ALL=Y extends
+# them to every governed member, processed together by their existing runner
 # (operator rulings 2026-10-25: never member by member; 2026-11-22, bead
 # flext-bga5y: members only with ALL=Y). CI evaluates only its own repository.
+# Workspace check selects its declared repository independently of this scope.
 {%- if make_profile == "workspace" %}
 GATE_SCOPE := $(if $(filter {{ make.ci.value }},$({{ make.ci.variable }})),self,$(if $(filter Y,$(ALL)),all,self))
 {%- else %}
@@ -1021,7 +1022,8 @@ _builtin_build_artifacts:
 
 # Check verifies through gates without --apply. Local convergence first runs
 # the private generation, repair and formatting phases; CI and hooks never do.
-# Each gate's declared stage selects its partition: CI={{ make.ci.value }} runs
+# Primary selects only make.check_prerequisite_gates. Complete checking uses
+# each gate's declared stage to select its partition: CI={{ make.ci.value }} runs
 # make.check_gates_ci, CI={{ make.ci.pre_commit_value }} (the commit hook) runs
 # make.pre_commit_check_gates, CI={{ make.ci.local_value }} runs
 # make.check_gates_local, and an absent CI token runs every active gate.

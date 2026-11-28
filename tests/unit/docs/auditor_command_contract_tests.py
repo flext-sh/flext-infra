@@ -10,7 +10,7 @@ import re
 from typing import TYPE_CHECKING
 
 from flext_infra import config
-from tests import c, m, p, tm, u
+from tests import c, m, p, t, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -24,7 +24,7 @@ class TestsFlextInfraAuditorCommandContract:
     def command_contract_scope(
         tmp_path: Path,
     ) -> p.Infra.DocScope:
-        """Declare the same repository identity in Git and the typed topology.
+        """Declare Git identity and the repository's typed codegen policy.
 
         Returns:
             The resulting ``m.Infra.DocScope``.
@@ -32,7 +32,7 @@ class TestsFlextInfraAuditorCommandContract:
         """
         name = "infra-pkg"
         u.Tests.write_project_beads_config(tmp_path, name)
-        u.Tests.write_standalone_workspace_manifest(tmp_path, name)
+        u.Tests.override_repository_declaration(tmp_path, {})
         u.Tests.initialize_git_repo(
             tmp_path,
             origin_url=u.Tests.repository_ref(name).url,
@@ -70,11 +70,26 @@ class TestsFlextInfraAuditorCommandContract:
         u.write_file(excluded, "```bash\nruff check src\n```\n")
         u.write_file(
             infra_test_workspace / c.PYPROJECT_FILENAME,
-            (
-                "[project]\nname='infra-pkg'\nversion='0.0.0'\n\n"
-                "[tool.flext.docs]\n"
-                'exclude_docs=["standards/historical/**"]\n'
-            ),
+            "[project]\nname='infra-pkg'\nversion='0.0.0'\n\n",
+        )
+        codegen = tm.ok(u.Infra.load_codegen_inputs(infra_test_workspace)).spec
+        directory = infra_test_workspace / c.Infra.CODEGEN_CONFIG_DIR
+        tm.ok(
+            u.Cli.yaml_dump(
+                directory / c.Infra.CODEGEN_CONFIG_FILENAME,
+                {
+                    "Infra": {
+                        "codegen": {
+                            "exclusions": {
+                                "docs_copy": [
+                                    *codegen.exclusions.docs_copy,
+                                    "docs/standards/historical/**",
+                                ],
+                            },
+                        },
+                    },
+                },
+            )
         )
         issues = u.Infra.docs_command_contract_issues(command_contract_scope)
 
@@ -107,10 +122,9 @@ class TestsFlextInfraAuditorCommandContract:
             name=verb_name,
             description="Repository-owned operation",
         )
-        u.Tests.write_standalone_workspace_manifest(
+        u.Tests.override_repository_declaration(
             scope.path,
-            scope.name,
-            extra_verbs=(spec,) if declared else (),
+            {"extra_verbs": [spec.model_dump(mode="json")] if declared else []},
         )
         guide = scope.path / "docs/guides/commands.md"
         guide.parent.mkdir(parents=True)
@@ -126,10 +140,10 @@ class TestsFlextInfraAuditorCommandContract:
             tm.that(issues, eq=[])
 
     @staticmethod
-    def test_manifest_changes_update_the_live_contract(
+    def test_codegen_changes_update_the_live_contract(
         command_contract_scope: p.Infra.DocScope,
     ) -> None:
-        """Test manifest changes update the live contract."""
+        """Test codegen changes update the live contract."""
         scope = command_contract_scope
         spec = m.Infra.MakeVerbSpec(
             name="publish-preview",
@@ -138,10 +152,9 @@ class TestsFlextInfraAuditorCommandContract:
         guide = scope.path / "docs/guides/commands.md"
         guide.parent.mkdir(parents=True)
         u.write_file(guide, f"```bash\nmake {spec.name}\n```\n")
-        u.Tests.write_standalone_workspace_manifest(
+        u.Tests.override_repository_declaration(
             scope.path,
-            scope.name,
-            extra_verbs=(spec,),
+            {"extra_verbs": [spec.model_dump(mode="json")]},
         )
         tm.that(u.Infra.docs_command_contract_issues(scope), eq=[])
 
@@ -154,38 +167,40 @@ class TestsFlextInfraAuditorCommandContract:
             name="archive-assets",
             description="Repository-owned operation",
         )
-        u.Tests.write_standalone_workspace_manifest(
+        u.Tests.override_repository_declaration(
             scope.path,
-            scope.name,
-            extra_verbs=(renamed,),
+            {"extra_verbs": [renamed.model_dump(mode="json")]},
         )
         u.write_file(guide, f"```bash\nmake {renamed.name}\n```\n")
         tm.that(u.Infra.docs_command_contract_issues(scope), eq=[])
 
     @staticmethod
     @c.Tests.MARK.parametrize("with_guide", [False, True])
-    def test_malformed_selected_topology_blocks_with_exact_cause(
+    def test_malformed_selected_codegen_blocks_with_exact_cause(
         command_contract_scope: p.Infra.DocScope,
         *,
         with_guide: bool,
     ) -> None:
-        """Test malformed selected topology blocks with exact cause."""
+        """Test malformed selected codegen blocks with exact cause."""
         scope = command_contract_scope
         if with_guide:
             guide = scope.path / "docs/guides/commands.md"
             guide.parent.mkdir(parents=True)
             spec = config.Infra.codegen.make.verbs[0]
             u.write_file(guide, f"```bash\nmake {spec.name}\n```\n")
-        manifest = u.Tests.write_standalone_workspace_manifest(scope.path, scope.name)
-        u.write_file(manifest, "version: [\n")
-        loaded = u.Infra.load_workspace_manifest(scope.path)
-        tm.fail(loaded)
-        tm.that(loaded.error, has=str(manifest))
+        declaration = (
+            scope.path / c.Infra.CODEGEN_CONFIG_DIR / c.Infra.CODEGEN_CONFIG_FILENAME
+        )
+        u.write_file(declaration, "Infra: [\n")
+        with u.Tests.raises(u.Yaml.YAMLError) as loaded:
+            u.Infra.load_codegen_inputs(scope.path)
+        cause = loaded.value
 
-        with u.Tests.raises(ValueError, match=re.escape(loaded.error or "")) as caught:
+        with u.Tests.raises(type(cause), match=re.escape(str(cause))) as caught:
             u.Infra.docs_command_contract_issues(scope)
 
-        tm.that(str(caught.value), eq=loaded.error)
+        tm.that(type(caught.value), eq=type(cause))
+        tm.that(str(caught.value), eq=str(cause))
 
     @staticmethod
     def test_guide_projection_resolves_source_repository_contract(
@@ -197,10 +212,9 @@ class TestsFlextInfraAuditorCommandContract:
             name="publish-preview",
             description="Source repository operation",
         )
-        manifest = u.Tests.write_standalone_workspace_manifest(
+        u.Tests.override_repository_declaration(
             source_scope.path,
-            source_scope.name,
-            extra_verbs=(spec,),
+            {"extra_verbs": [spec.model_dump(mode="json")]},
         )
         guide = source_scope.path / "docs/guides/commands.md"
         guide.parent.mkdir(parents=True)
@@ -225,20 +239,27 @@ class TestsFlextInfraAuditorCommandContract:
         tm.that(projected.value[0][1], eq=destination / "docs/guides/commands.md")
         tm.that(projected.value[0][2], has=f"make {spec.name}")
 
-        u.write_file(manifest, "version: [\n")
-        loaded = u.Infra.load_workspace_manifest(source_scope.path)
-        tm.fail(loaded)
-        blocked = u.Infra.docs_project_guides_artifacts(
-            scope,
-            repository_root=source_scope.path,
+        declaration = (
+            source_scope.path
+            / c.Infra.CODEGEN_CONFIG_DIR
+            / c.Infra.CODEGEN_CONFIG_FILENAME
         )
-        tm.fail(blocked)
-        tm.that(blocked.error, eq=loaded.error)
+        u.write_file(declaration, "Infra: [\n")
+        with u.Tests.raises(u.Yaml.YAMLError) as loaded:
+            u.Infra.load_codegen_inputs(source_scope.path)
+        cause = loaded.value
+        with u.Tests.raises(type(cause), match=re.escape(str(cause))) as blocked:
+            u.Infra.docs_project_guides_artifacts(
+                scope,
+                repository_root=source_scope.path,
+            )
+        tm.that(type(blocked.value), eq=type(cause))
+        tm.that(str(blocked.value), eq=str(cause))
 
     @staticmethod
     def test_member_guides_resolve_from_the_containing_workspace(
         command_contract_scope: p.Infra.DocScope,
-        tmp_path: Path,
+        tmp_path_factory: t.Tests.TempPathFactory,
     ) -> None:
         """A member-scoped plan projects its containing workspace's guides.
 
@@ -247,11 +268,14 @@ class TestsFlextInfraAuditorCommandContract:
         """
         workspace_scope = command_contract_scope
         workspace = workspace_scope.path
+        u.write_file(
+            workspace / c.PYPROJECT_FILENAME,
+            "[project]\nname='infra-pkg'\nversion='0.0.0'\n",
+        )
         guide = workspace / "docs/guides/using-demo.md"
         guide.parent.mkdir(parents=True)
         u.write_file(guide, "# Using Demo\n\nWorkspace-owned guidance.\n")
-        source = tmp_path / "member-source"
-        source.mkdir()
+        source = tmp_path_factory.mktemp("member-source")
         u.Tests.initialize_git_repo(source)
         source_guide = source / "docs/guides/local.md"
         source_guide.parent.mkdir(parents=True)

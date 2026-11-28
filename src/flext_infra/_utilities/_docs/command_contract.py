@@ -213,12 +213,14 @@ class FlextInfraUtilitiesDocsCommandContract:
 
         ``iter_scope_markdown_files`` owns every formal scope exclusion; this
         detector carries no path allowlist or bypass.
+        Configuration loading failures preserve the original exception when
+        available.
 
         Returns:
             The resulting ``Sequence[p.Infra.AuditIssue]``.
 
         Raises:
-            ValueError: If ``loaded.failure``.
+            ValueError: If configuration loading fails without an original exception.
 
         """
         loaded = FlextInfraUtilitiesProjectManagedArtifacts.load_codegen_inputs(

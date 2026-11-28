@@ -530,16 +530,14 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
             kind detected from native project facts.
 
         """
+        spec = FlextInfraUtilitiesProjectManagedArtifacts._validated_codegen_policy(
+            document, repository_root
+        )
         kind = FlextInfraUtilitiesProjectDiscoveryShape.detected_project_kind(
             repository_root,
             source_project=source_project,
         )
-        return (
-            FlextInfraUtilitiesProjectManagedArtifacts._validated_codegen_policy(
-                document, repository_root
-            ),
-            kind,
-        )
+        return spec, kind
 
     @staticmethod
     def _validated_codegen_policy(

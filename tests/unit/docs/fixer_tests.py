@@ -131,8 +131,9 @@ class TestsFlextInfraDocsFixer:
         """
         workspace = u.Tests.create_docs_workspace(tmp_path)
         document = workspace / "docs/notest.md"
+        bare_info = f"python {c.Infra.MARKDOWN_CODE_SKIP_MARKER}"
         document.write_text(
-            "# Example\n\n```python\n# comment\nimport os\n```\n\n## Next\n",
+            f"# Example\n\n```{bare_info}\n# comment\nimport os\n```\n\n## Next\n",
             encoding="utf-8",
         )
 
@@ -140,5 +141,11 @@ class TestsFlextInfraDocsFixer:
 
         tm.ok(result)
         content = document.read_text(encoding="utf-8")
-        tm.ok("```python" in content)
-        tm.fail("```python" in content)
+        tm.that(
+            content,
+            has=(
+                f"```{c.Infra.DOCS_NOTEST_ATTR_INFO_FORMAT.format('python')}\n"
+                "# comment\nimport os\n```\n"
+            ),
+            lacks=f"```{bare_info}\n",
+        )

@@ -83,7 +83,8 @@ class FlextInfraUtilitiesBase:
     ) -> tuple[str, ...]:
         """Resolve one gate inventory from the typed Make spec at runtime.
 
-        The CI token selects the check partition: its declared CI value runs
+        The primary phase selects only prerequisite gates. For complete checks,
+        the CI token selects the partition: its declared CI value runs
         the CI partition, its declared pre-commit value the commit-stage
         gates, its declared local value the local partition, and any other
         value the complete default set.

@@ -1219,9 +1219,6 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
                 root,
                 origin_url=cls.governed_repository_url(distribution),
             )
-            baseline = tm.ok(
-                u.Cli.capture([c.Infra.GIT, "rev-parse", "HEAD"], cwd=root),
-            )
             tm.ok(
                 u.Cli.run_checked(
                     [
@@ -1229,20 +1226,6 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
                         "config",
                         "remote.origin.skipDefaultUpdate",
                         c.ParserBooleanToken.TRUE,
-                    ],
-                    cwd=root,
-                ),
-            )
-            tm.ok(
-                u.Cli.run_checked(
-                    [
-                        c.Infra.GIT,
-                        "update-ref",
-                        (
-                            "refs/remotes/origin/"
-                            f"{TestsFlextInfraUtilitiesProjectFixture.provider_branch()}"
-                        ),
-                        baseline,
                     ],
                     cwd=root,
                 ),

@@ -41,17 +41,27 @@ class TestsFlextInfraRuntimeIntegrityLockFreshness:
         tm.that(execution.requested_components, has=c.Infra.LOCK_FRESHNESS)
         return execution.components[c.Infra.LOCK_FRESHNESS]
 
-    def test_a_fresh_lock_passes(self, duplicate_project: Path) -> None:
-        """The provisioned consumer's own lock matches its manifest."""
-        tm.ok(self._lock_freshness(duplicate_project).result.passed)
+    @c.Tests.MARK.parametrize(
+        "provisioned_infra_checkout", ["lock-freshness-native"], indirect=True
+    )
+    def test_a_fresh_lock_passes(
+        self, provisioned_infra_checkout: tuple[str, Path]
+    ) -> None:
+        """The provisioned checkout's own lock matches its manifest."""
+        _, project = provisioned_infra_checkout
+        tm.ok(self._lock_freshness(project).result.passed)
 
+    @c.Tests.MARK.parametrize(
+        "provisioned_infra_checkout", ["lock-freshness-manifest"], indirect=True
+    )
     def test_a_manifest_changed_without_relock_fails(
-        self, duplicate_project: Path
+        self, provisioned_infra_checkout: tuple[str, Path]
     ) -> None:
         """A dependency declared after locking leaves the lock stale and red."""
-        lock = duplicate_project / c.Infra.UV_LOCK_FILENAME
+        _, root = provisioned_infra_checkout
+        lock = root / c.Infra.UV_LOCK_FILENAME
         before = lock.read_bytes()
-        manifest = duplicate_project / c.PYPROJECT_FILENAME
+        manifest = root / c.PYPROJECT_FILENAME
         payload = u.Tests.toml_payload(manifest.read_text(encoding="utf-8"))
         project = u.Tests.toml_mapping(payload["project"])
         dependencies = u.Tests.toml_strings(project["dependencies"])
@@ -64,5 +74,5 @@ class TestsFlextInfraRuntimeIntegrityLockFreshness:
                 },
             )
         )
-        tm.fail(self._lock_freshness(duplicate_project).result.passed)
+        tm.fail(self._lock_freshness(root).result.passed)
         tm.that(lock.read_bytes(), eq=before)

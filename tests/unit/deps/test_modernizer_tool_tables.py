@@ -115,7 +115,18 @@ class TestsFlextInfraDepsModernizerToolTables:
         tm.that(ini["minversion"], eq=expected["minversion"])
         tm.that(ini["flext_slow_timeout_seconds"], eq=str(policy.slow_timeout_seconds))
         tm.that(ini["python_classes"], eq=expected["python_classes"])
-        tm.that(ini["addopts"], eq=expected["addopts"])
+        tm.that(
+            ini["addopts"],
+            eq=list(
+                dict.fromkeys((
+                    *u.Tests.strings(expected["addopts"]),
+                    *(
+                        f"--ignore={root}"
+                        for root in config.Infra.codegen.exclusions.scenario_data_roots
+                    ),
+                )),
+            ),
+        )
         tm.that(
             set(u.Tests.strings(ini["markers"])),
             eq={"custom: custom marker", *policy.standard_markers},
@@ -462,8 +473,12 @@ class TestsFlextInfraDepsModernizerToolTables:
         SSOT's exclusions decide (bead flext-x44z3).
         """
         project_dir = self._workspace_with_exclusion(tmp_path, "scripts")
+        stale_pattern = "stale-pattern.py"
         payload = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python(
-            u.Tests.toml_payload('[project]\nname = "flext-sample"\n'),
+            u.Tests.toml_payload(
+                '[project]\nname = "flext-sample"\n'
+                f'[tool.ruff.lint.per-file-ignores]\n"{stale_pattern}" = ["E402"]\n',
+            ),
         )
         FlextInfraEnsureRuffConfigPhase(
             config.Infra.tooling,
@@ -485,4 +500,17 @@ class TestsFlextInfraDepsModernizerToolTables:
         namespace_packages = u.Tests.toml_strings(table.get("namespace-packages", []))
         tm.that(src_roots, lacks="scripts", has="src")
         tm.that(namespace_packages, lacks="scripts")
-        tm.that(self._table(payload, "ruff", "lint"), lacks="per-file-ignores")
+        authorized = tm.not_none(
+            u.Cli.toml_mapping_child(
+                u.Infra.native_tool_configuration(config.Infra.tooling, "ruff"),
+                "lint",
+            )
+        )
+        tm.that(
+            self._table(payload, "ruff", "lint", "per-file-ignores"),
+            lacks=stale_pattern,
+        )
+        tm.that(
+            self._table(payload, "ruff", "lint").get("per-file-ignores"),
+            eq=authorized.get("per-file-ignores"),
+        )

@@ -93,24 +93,32 @@ class TestsFlextInfraWorkspaceLockCompleteness:
             eq=package,
         )
 
+    @c.Tests.MARK.parametrize(
+        "provisioned_infra_checkout", ["lock-completeness-native"], indirect=True
+    )
     def test_a_native_lock_passes_without_mutation(
         self,
-        duplicate_project: Path,
+        provisioned_infra_checkout: tuple[str, Path],
     ) -> None:
-        """The real once-provisioned consumer keeps its immutable lock bytes."""
-        lock = self._selected_lock(duplicate_project)
+        """The provisioned checkout keeps its existing native lock bytes."""
+        _, locked_project = provisioned_infra_checkout
+        lock = self._selected_lock(locked_project)
         before = lock.read_bytes()
-        tm.ok(FlextInfraWorkspaceLockCompleteness.verify_lock(duplicate_project))
+        tm.ok(FlextInfraWorkspaceLockCompleteness.verify_lock(locked_project))
         tm.that(lock.read_bytes(), eq=before)
 
+    @c.Tests.MARK.parametrize(
+        "provisioned_infra_checkout", ["lock-completeness-malformed"], indirect=True
+    )
     def test_malformed_manifest_groups_fail_without_lock_mutation(
         self,
-        duplicate_project: Path,
+        provisioned_infra_checkout: tuple[str, Path],
     ) -> None:
         """Native manifest validation precedes permissive requirement extraction."""
-        lock = self._selected_lock(duplicate_project)
+        _, locked_project = provisioned_infra_checkout
+        lock = self._selected_lock(locked_project)
         before = lock.read_bytes()
-        path = duplicate_project / c.PYPROJECT_FILENAME
+        path = locked_project / c.PYPROJECT_FILENAME
         document = tm.ok(u.Cli.toml_read_document(path))
         u.Cli.toml_sync_value(
             document,
@@ -118,18 +126,30 @@ class TestsFlextInfraWorkspaceLockCompleteness:
             {"invalid-audit-group": [42]},
         )
         tm.ok(u.Cli.files_write_text(path, u.Cli.toml_dumps(document)))
-        tm.fail(FlextInfraWorkspaceLockCompleteness.verify_lock(duplicate_project))
+        tm.fail(FlextInfraWorkspaceLockCompleteness.verify_lock(locked_project))
         tm.that(lock.read_bytes(), eq=before)
 
+    @c.Tests.MARK.parametrize(
+        "provisioned_infra_checkout", ["lock-completeness-partial"], indirect=True
+    )
     def test_a_partial_lock_fails_loud_without_repairing_it(
-        self, duplicate_project: Path
+        self, provisioned_infra_checkout: tuple[str, Path]
     ) -> None:
         """Removing a real active package never passes as an empty closure."""
-        lock = self._selected_lock(duplicate_project)
+        _, locked_project = provisioned_infra_checkout
+        lock = self._selected_lock(locked_project)
         document = tm.ok(u.Cli.toml_read_document(lock))
         payload = tm.ok(u.Cli.toml_read_json(lock))
         inventory = m.Infra.LockedEnvironment.model_validate_json(dumps(payload))
-        name = c.Tests.CONSUMER_MODULES[0]
+        name = next(
+            name
+            for requirement in u.Tests.toml_strings_at(
+                (locked_project / c.PYPROJECT_FILENAME).read_text(encoding="utf-8"),
+                "project",
+                "dependencies",
+            )
+            if (name := u.Infra.dep_name(requirement, active_only=True)) is not None
+        )
         tm.ok(any(item.name == name for item in inventory.package))
         u.Cli.toml_sync_value(
             document,
@@ -142,7 +162,7 @@ class TestsFlextInfraWorkspaceLockCompleteness:
         )
         tm.ok(u.Cli.files_write_text(lock, u.Cli.toml_dumps(document)))
         before = lock.read_bytes()
-        tm.fail(FlextInfraWorkspaceLockCompleteness.verify_lock(duplicate_project))
+        tm.fail(FlextInfraWorkspaceLockCompleteness.verify_lock(locked_project))
         tm.that(lock.read_bytes(), eq=before)
 
     @staticmethod
