@@ -260,7 +260,7 @@ class FlextInfraModelsConfigMake(
             """Canonical Make transport for this typed workflow operation."""
             return f"make {self.verb}" + (
                 f" CHECK_PHASE={self.phase}"
-                if self.phase == c.Infra.CheckPhase.PRIMARY
+                if self.verb == c.Infra.VERB_CHECK
                 else ""
             )
 
