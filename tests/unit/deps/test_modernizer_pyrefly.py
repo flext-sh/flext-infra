@@ -149,10 +149,14 @@ class TestsFlextInfraModernizerPyrefly:
             eq=[c.Infra.DEFAULT_SRC_DIR],
         )
         tm.that(
-            set(u.Tests.toml_mapping(pyrefly["errors"])),
-            eq=set(
-                u.Infra.native_tool_settings(config.Infra.tooling, "pyrefly.errors")
-            ),
+            u.Tests.toml_mapping(pyrefly["errors"]),
+            eq={
+                **u.Infra.native_tool_settings(config.Infra.tooling, "pyrefly.errors"),
+                **{
+                    rule: "ignore"
+                    for rule in config.Infra.tooling.tools.pyrefly.ruling_disabled_rules
+                },
+            },
         )
 
     @c.Tests.MARK.parametrize(
@@ -176,10 +180,14 @@ class TestsFlextInfraModernizerPyrefly:
         errors = u.Tests.toml_mapping(pyrefly["errors"])
         tm.that(errors, lacks=stale_key)
         tm.that(
-            set(errors),
-            eq=set(
-                u.Infra.native_tool_settings(config.Infra.tooling, "pyrefly.errors")
-            ),
+            errors,
+            eq={
+                **u.Infra.native_tool_settings(config.Infra.tooling, "pyrefly.errors"),
+                **{
+                    rule: "ignore"
+                    for rule in config.Infra.tooling.tools.pyrefly.ruling_disabled_rules
+                },
+            },
         )
         tm.that(changes, has=f"tool.pyrefly.errors.{stale_key} removed")
 
