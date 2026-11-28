@@ -244,17 +244,17 @@ class TestsFlextInfraCodegenMakeCheckPartition:
         tm.fail(any("make pre-commit" in command for command in commands))
 
     @staticmethod
-    def test_pre_commit_runs_check_without_setup() -> None:
-        """The commit hook runs the check row without setup."""
+    def test_pre_commit_runs_setup_then_check() -> None:
+        """The commit hook runs what CI runs, setup first (ADR-038 d7)."""
         make = config.Infra.codegen.make
         tm.that(
             tuple(step.verb for step in make.workflow if "pre_commit" in step.contexts),
-            eq=(c.Infra.VERB_CHECK,),
+            eq=(c.Infra.VERB_SETUP, c.Infra.VERB_CHECK),
         )
 
     @staticmethod
-    def test_pre_commit_workflow_refuses_every_other_operation() -> None:
-        """Any other declared workflow verb in the commit hook is refused."""
+    def test_pre_commit_workflow_without_setup_is_refused() -> None:
+        """A commit hook that skips setup is refused by the declared model."""
         base = config.Infra.codegen.make.model_dump(
             mode="json", exclude_computed_fields=True
         )
