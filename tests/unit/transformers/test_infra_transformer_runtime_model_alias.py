@@ -67,7 +67,7 @@ from email.utils import parseaddr
 
 
 class Version:
-    info: tuple[int, int, int]
+    info: t.VariadicTuple[int]
 
     @staticmethod
     def resolve() -> t.StrTuple: ...
