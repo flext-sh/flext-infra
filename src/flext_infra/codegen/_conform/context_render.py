@@ -324,7 +324,6 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 ),
                 "extra_verbs": (extra_verbs),
                 "script_dispatch": (repository.script_dispatch),
-                "verb_groups": (repository.verb_groups),
             }),
         )
 
