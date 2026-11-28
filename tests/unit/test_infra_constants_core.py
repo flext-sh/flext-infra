@@ -52,7 +52,7 @@ class TestsFlextInfraConstantsInfraCore:
         """Base walker exclusions derive the declared registry composition.
 
         The base set is config-owned (P0): it must equal exactly the union
-        of the declared ``analysis_exclude`` artifacts, the declared
+        of the declared ``analysis_exclude`` directory artifacts, the declared
         tool-state roots, and the VCS-derived names, whatever valid values
         the config holds.
         """
@@ -61,7 +61,7 @@ class TestsFlextInfraConstantsInfraCore:
             frozenset(
                 artifact.name
                 for artifact in config.Infra.codegen.artifacts
-                if artifact.analysis_exclude
+                if artifact.analysis_exclude and artifact.is_dir
             )
             | frozenset(config.Infra.codegen.exclusions.tool_state)
             | frozenset((c.Infra.GIT_DIR, c.Infra.WORKTREES_DIRNAME))
