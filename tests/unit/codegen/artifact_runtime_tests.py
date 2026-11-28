@@ -108,51 +108,8 @@ class TestsArtifactRuntime:
                 ("c", "t", "p", "m", "u", "infra"),
             )
         provider = u.Tests.repository_ref("flext-core")
-        sources = tuple(
-            source
-            for source in u.Tests.locked_git_sources(producer)
-            if source[0] == provider.url
-        )
-        tm.that(len(sources), eq=1)
-        url, _branch, sha = sources[0]
-        repository = tmp_path / "provider"
-        tm.ok(
-            u.Cli.run_checked(
-                [
-                    c.Infra.GIT,
-                    "clone",
-                    "--no-checkout",
-                    url,
-                    str(repository),
-                ],
-                cwd=tmp_path,
-                options=options,
-            ),
-        )
-        tm.ok(
-            u.Cli.run_checked(
-                [c.Infra.GIT, "checkout", "--detach", sha],
-                cwd=repository,
-                options=options,
-            ),
-        )
-        tm.that(
-            tm.ok(
-                u.Cli.capture(
-                    [c.Infra.GIT, "rev-parse", c.Infra.GIT_HEAD],
-                    cwd=repository,
-                ),
-            ).strip(),
-            eq=sha,
-        )
-        tm.that(
-            tm.ok(
-                u.Cli.capture(
-                    [c.Infra.GIT, "config", "--get", "remote.origin.url"],
-                    cwd=repository,
-                ),
-            ).strip(),
-            eq=url,
+        repository = u.Tests.checkout_locked_provider(
+            producer, provider.url, tmp_path / "provider", options
         )
         return (
             repository,

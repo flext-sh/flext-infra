@@ -6,9 +6,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
 
-from tests import c, p, tm, u
+from tests import c, m, p, tm, u
 
 
 class TestsFlextInfraCodemodModuleMemberImportHeader:
@@ -17,7 +18,9 @@ class TestsFlextInfraCodemodModuleMemberImportHeader:
     @u.Tests.fixture
     @staticmethod
     def project_tree(
-        tmp_path: Path, session_runtime: p.Tests.SessionRuntime
+        tmp_path: Path,
+        session_runtime: p.Tests.SessionRuntime,
+        hermetic_git_environment: Mapping[str, str],
     ) -> tuple[Path, Path]:
         """Build a project whose child package publishes one class.
 
@@ -36,10 +39,16 @@ class TestsFlextInfraCodemodModuleMemberImportHeader:
             '"""Gates."""\n\nfrom .base import DemoGate\n\n__all__ = ("DemoGate",)\n',
             encoding=c.DEFAULT_ENCODING,
         )
+        core = u.Tests.checkout_locked_provider(
+            tm.not_none(u.Infra.project_root(Path(__file__))),
+            u.Tests.repository_ref("flext-core").url,
+            tmp_path / "provider",
+            m.Cli.ProcessOptions(env=dict(hermetic_git_environment)),
+        )
         tm.ok(
             u.Tests.create_python_environment(
                 repository,
-                dependency_projects=u.Tests.python_dependency_projects(repository),
+                dependency_projects=(core,),
                 session_runtime=session_runtime,
             )
         )
