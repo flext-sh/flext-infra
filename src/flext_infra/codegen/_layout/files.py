@@ -33,14 +33,13 @@ class FlextInfraCodegenLayoutFiles:
 
         """
         if not target.exists() and not target.is_symlink():
-            moved = self._move_path(project_dir, source, target)
-            if moved.failure:
-                return r[tuple[t.Infra.LayoutStatus, str]].from_failure(moved)
             applied_status: t.Infra.LayoutStatus = "applied"
-            return r[tuple[t.Infra.LayoutStatus, str]].ok((
-                applied_status,
-                f"moved {source.name} -> {target.name}",
-            ))
+            return self._move_path(project_dir, source, target).map(
+                lambda _: (
+                    applied_status,
+                    f"moved {source.name} -> {target.name}",
+                )
+            )
         before = u.Cli.atomic_read_binary_file_state(source, required=True)
         if before.failure:
             return r[tuple[t.Infra.LayoutStatus, str]].from_failure(before)
@@ -77,23 +76,21 @@ class FlextInfraCodegenLayoutFiles:
             The resulting ``p.Result[tuple[t.Infra.LayoutStatus, str]]``.
 
         """
-        result_type = r[tuple[t.Infra.LayoutStatus, str]]
         paths = (source,)
         if source.is_dir() and not source.is_symlink():
             inventoried = u.Cli.atomic_inventory_physical_tree(source)
             if inventoried.failure:
-                return result_type.from_failure(inventoried)
+                return r[tuple[t.Infra.LayoutStatus, str]].from_failure(inventoried)
             paths = tuple(
                 entry.path
                 for entry in inventoried.value.entries
                 if entry.kind != "directory"
             )
             if not paths:
-                pruned = self._prune_empty_dirs(source)
-                if pruned.failure:
-                    return result_type.from_failure(pruned)
                 empty_status: t.Infra.LayoutStatus = "applied"
-                return result_type.ok((empty_status, f"pruned empty {source.name}"))
+                return self._prune_empty_dirs(source).map(
+                    lambda _: (empty_status, f"pruned empty {source.name}")
+                )
         captured = u.Infra.git_snapshot_worktree_state(
             m.Infra.GitWorktreeStateRequest(
                 repo_root=project_dir,
@@ -101,8 +98,25 @@ class FlextInfraCodegenLayoutFiles:
             ),
         )
         if captured.failure:
-            return result_type.from_failure(captured)
-        snapshot = captured.value
+            return r[tuple[t.Infra.LayoutStatus, str]].from_failure(captured)
+        return self._retire_captured_paths(
+            project_dir, source, paths, inputs, captured.value
+        )
+
+    def _retire_captured_paths(
+        self,
+        project_dir: Path,
+        source: Path,
+        paths: Sequence[Path],
+        inputs: Sequence[p.Cli.AtomicFileState],
+        snapshot: p.Infra.GitWorktreeStateSnapshot,
+    ) -> p.Result[tuple[t.Infra.LayoutStatus, str]]:
+        """Validate committed content and capture its authenticated deletion plans.
+
+        Returns:
+            The retirement outcome or the original validation failure.
+
+        """
         committed = {
             entry.path: (entry.oid, entry.mode) for entry in snapshot.head_entries
         }
@@ -112,7 +126,7 @@ class FlextInfraCodegenLayoutFiles:
             or observed != committed
             or set(committed) != {path.relative_to(project_dir) for path in paths}
         ):
-            return result_type.fail(
+            return r[tuple[t.Infra.LayoutStatus, str]].fail(
                 f"layout retirement requires unchanged content committed in Git: "
                 f"{source.relative_to(project_dir)}",
             )
@@ -120,7 +134,7 @@ class FlextInfraCodegenLayoutFiles:
         for path in paths:
             before = u.Cli.atomic_read_binary_file_state(path, required=True)
             if before.failure:
-                return result_type.from_failure(before)
+                return r[tuple[t.Infra.LayoutStatus, str]].from_failure(before)
             plans.append(
                 m.Infra.CodegenFilePlan(
                     project=project_dir,
@@ -134,19 +148,34 @@ class FlextInfraCodegenLayoutFiles:
             )
         verified = u.Infra.git_verify_worktree_state(snapshot, project_dir)
         if verified.failure:
-            return result_type.from_failure(verified)
+            return r[tuple[t.Infra.LayoutStatus, str]].from_failure(verified)
         if not verified.value:
-            return result_type.fail(
+            return r[tuple[t.Infra.LayoutStatus, str]].fail(
                 "layout source changed before Git-preserved retirement"
             )
+        return self._publish_retirement(project_dir, source, snapshot, plans)
+
+    def _publish_retirement(
+        self,
+        project_dir: Path,
+        source: Path,
+        snapshot: p.Infra.GitWorktreeStateSnapshot,
+        plans: Sequence[p.Infra.CodegenFilePlan],
+    ) -> p.Result[tuple[t.Infra.LayoutStatus, str]]:
+        """Publish verified deletions and retain their receipt through finalization.
+
+        Returns:
+            The retirement outcome with any completed publication effects.
+
+        """
         published = u.Infra.publish_codegen_plans(project_dir, plans)
         if published.failure:
-            return result_type.from_failure(published)
+            return r[tuple[t.Infra.LayoutStatus, str]].from_failure(published)
         finalized = self._finalize_retirement(
             project_dir, source, snapshot.index_entries
         )
         if finalized.failure:
-            return result_type.fail(
+            return r[tuple[t.Infra.LayoutStatus, str]].fail(
                 finalized.error or "layout retirement finalization failed",
                 error_code=finalized.error_code,
                 error_data={
@@ -156,7 +185,7 @@ class FlextInfraCodegenLayoutFiles:
                 exception=finalized.exception,
             )
         applied_status: t.Infra.LayoutStatus = "applied"
-        return result_type.ok((
+        return r[tuple[t.Infra.LayoutStatus, str]].ok((
             applied_status,
             f"retired {source.name}; preserved in Git {snapshot.head}",
         ))
@@ -186,8 +215,8 @@ class FlextInfraCodegenLayoutFiles:
             return self._prune_empty_dirs(source)
         return r[bool].ok(value=True)
 
+    @staticmethod
     def _move_path(
-        self,
         project_dir: Path,
         source: Path,
         target: Path,

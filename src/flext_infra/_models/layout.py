@@ -196,7 +196,9 @@ class FlextInfraModelsLayout:
 
         inputs: Annotated[
             tuple[t.Port[p.Cli.AtomicFileState], ...],
-            m.Field(exclude=True, description="Configuration states selecting this plan"),
+            m.Field(
+                exclude=True, description="Configuration states selecting this plan"
+            ),
         ] = ()
         findings: Annotated[
             tuple[

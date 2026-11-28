@@ -559,7 +559,9 @@ class TestsFlextInfraCodegenLayoutPreservation:
         _, declaration, _ = FlextInfraConfig.config_layer_paths_for_repository(
             project, filename=c.Infra.CODEGEN_CONFIG_FILENAME
         )
-        declaration.write_bytes(declaration.read_bytes() + b"\n# changed after planning\n")
+        declaration.write_bytes(
+            declaration.read_bytes() + b"\n# changed after planning\n"
+        )
 
         tm.fail(engine.apply_project(project, report), has="atomic source changed")
 
@@ -596,10 +598,12 @@ class TestsFlextInfraCodegenLayoutPreservation:
         )
         planned = engine.check_project(project)
         report = m.Infra.LayoutProjectReport.model_validate_json(
-            planned.model_dump_json(exclude_computed_fields=True)
+            planned.model_dump_json(round_trip=True)
         )
 
-        tm.fail(engine.apply_project(project, report), has="captured configuration inputs")
+        tm.fail(
+            engine.apply_project(project, report), has="captured configuration inputs"
+        )
 
         tm.that((project / "output.log").read_bytes(), eq=b"log-line\n")
         tm.that((project / "guides" / "intro.md").read_bytes(), eq=b"intro\n")
