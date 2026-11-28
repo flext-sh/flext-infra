@@ -834,6 +834,12 @@ class TestsFlextInfraGithubGateAttestation(FlextInfraGitAttestationFixtures):
         )
         tm.fail(u.Infra.git_create_gate_attestation(request, self._context(tmp_path)))
 
+
+class TestsFlextInfraGithubGateAttestationVerification(
+    FlextInfraGitAttestationFixtures
+):
+    """Verify signed proof, original execution evidence, and gate coverage."""
+
     @c.Tests.MARK.parametrize(
         "change", ["none", "republish", "remote-suffix", "commit"]
     )
