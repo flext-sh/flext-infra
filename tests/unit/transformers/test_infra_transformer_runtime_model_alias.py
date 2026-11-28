@@ -31,8 +31,8 @@ from __future__ import annotations
 from {c.Infra.PKG_CORE_UNDERSCORE} import m
 
 class _Row(m.BaseModel):
-    skills: t.VariadicTuple[str]
-    rows: t.VariadicTuple[str] = m.Field(alias="rows")
+    skills: t.StrTuple
+    rows: t.StrTuple = m.Field(alias="rows")
 """
 
 _TYPE_CHECKING_USES_ALIAS = """\
@@ -44,7 +44,7 @@ if TYPE_CHECKING:
     pass
 
 
-def render(value: t.SequenceOf[str]) -> tuple[str, str]: ...
+def render(value: t.StrSequence) -> tuple[str, str]: ...
 """
 
 _PLAIN_CLASS_USES_ALIAS = """\
@@ -57,7 +57,7 @@ if TYPE_CHECKING:
 
 
 class Helper:
-    values: t.SequenceOf[str]
+    values: t.StrSequence
 """
 
 _NO_TYPE_CHECKING_BLOCK = """\
@@ -70,7 +70,7 @@ class Version:
     info: t.VariadicTuple[int]
 
     @staticmethod
-    def resolve() -> tuple[str, str]: ...
+    def resolve() -> t.StrTuple: ...
 """
 
 _AUTHORED_PROTOCOL_USES_ALIASES = f"""\
