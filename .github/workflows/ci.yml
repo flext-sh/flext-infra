@@ -167,7 +167,7 @@ jobs:
       - name: Complete check qualification
         id: qualification-check
         if: ${{ !cancelled() && inputs.full_check == true && steps.approval-setup.outcome == 'success' }}
-        run: CI=N make check
+        run: CI=N make check CHECK_PHASE=complete
       # Reports exist once any approval row after setup executed, whichever
       # row failed first (a failed tests row skips every later check row);
       # uploading after a setup failure would only add a second, misleading error.
