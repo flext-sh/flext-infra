@@ -192,10 +192,9 @@ class TestsFlextInfraAuditorCommandContract:
             scope.path / c.Infra.CODEGEN_CONFIG_DIR / c.Infra.CODEGEN_CONFIG_FILENAME
         )
         u.write_file(declaration, "Infra: [\n")
-        loaded = u.Infra.load_codegen_inputs(scope.path)
-        tm.fail(loaded)
-        cause = tm.not_none(loaded.exception)
-        tm.ok(isinstance(cause, u.Yaml.YAMLError))
+        with u.Tests.raises(u.Yaml.YAMLError) as loaded:
+            u.Infra.load_codegen_inputs(scope.path)
+        cause = loaded.value
 
         with u.Tests.raises(type(cause), match=re.escape(str(cause))) as caught:
             u.Infra.docs_command_contract_issues(scope)
@@ -245,14 +244,15 @@ class TestsFlextInfraAuditorCommandContract:
             / c.Infra.CODEGEN_CONFIG_FILENAME
         )
         u.write_file(declaration, "Infra: [\n")
-        loaded = u.Infra.load_codegen_inputs(source_scope.path)
-        tm.fail(loaded)
-        blocked = u.Infra.docs_project_guides_artifacts(
-            scope,
-            repository_root=source_scope.path,
-        )
-        tm.fail(blocked)
-        tm.that(blocked.error, eq=loaded.error)
+        with u.Tests.raises(u.Yaml.YAMLError) as loaded:
+            u.Infra.load_codegen_inputs(source_scope.path)
+        cause = loaded.value
+        with u.Tests.raises(type(cause), match=re.escape(str(cause))) as blocked:
+            u.Infra.docs_project_guides_artifacts(
+                scope,
+                repository_root=source_scope.path,
+            )
+        tm.that(str(blocked.value), eq=str(cause))
 
     @staticmethod
     def test_member_guides_resolve_from_the_containing_workspace(

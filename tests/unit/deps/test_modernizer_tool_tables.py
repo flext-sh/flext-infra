@@ -473,8 +473,12 @@ class TestsFlextInfraDepsModernizerToolTables:
         SSOT's exclusions decide (bead flext-x44z3).
         """
         project_dir = self._workspace_with_exclusion(tmp_path, "scripts")
+        stale_pattern = "stale-pattern.py"
         payload = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python(
-            u.Tests.toml_payload('[project]\nname = "flext-sample"\n'),
+            u.Tests.toml_payload(
+                '[project]\nname = "flext-sample"\n'
+                f'[tool.ruff.lint.per-file-ignores]\n"{stale_pattern}" = ["E402"]\n',
+            ),
         )
         FlextInfraEnsureRuffConfigPhase(
             config.Infra.tooling,
@@ -501,6 +505,10 @@ class TestsFlextInfraDepsModernizerToolTables:
                 u.Infra.native_tool_configuration(config.Infra.tooling, "ruff"),
                 "lint",
             )
+        )
+        tm.that(
+            self._table(payload, "ruff", "lint", "per-file-ignores"),
+            lacks=stale_pattern,
         )
         tm.that(
             self._table(payload, "ruff", "lint").get("per-file-ignores"),

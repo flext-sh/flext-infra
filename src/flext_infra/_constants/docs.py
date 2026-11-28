@@ -64,16 +64,24 @@ class FlextInfraConstantsDocs:
         QUALITY_BODY = (
             (
                 "Consult `make help` for the current command surface. Each verb "
-                "performs only its declared operation; `make check` validates "
-                "without applying repairs. Environment setup delegates tool "
+                "performs its declared operation. Locally, `make check` converges "
+                "generation, repairs and formatting before validating the selected "
+                "phase. CI and commit hooks verify without repairs or publication. "
+                "`make check` defaults to the primary phase; outside commit hooks, "
+                "`CHECK_PHASE=complete` adds projection and documentation validation. "
+                "Environment setup delegates tool "
                 "provisioning to Mise and project/workspace installation to native "
                 "uv declarations and locks. Python runs the installed project; "
                 "no custom Python bootstrap or lock parser precedes installation."
             ),
             (
                 "Consulte `make help` para conhecer os comandos atuais. Cada verbo "
-                "executa apenas sua operação declarada; `make check` valida "
-                "sem aplicar reparos. O setup delega as ferramentas ao Mise e a "
+                "executa sua operação declarada. Na execução local, `make check` "
+                "faz geração, reparos e formatação convergirem antes de validar a "
+                "fase selecionada. CI e hooks de commit verificam sem reparos nem "
+                "publicação. `make check` usa a fase primária por padrão; fora dos "
+                "hooks de commit, `CHECK_PHASE=complete` inclui a validação de "
+                "projeções e documentação. O setup delega as ferramentas ao Mise e a "
                 "instalação do projeto/workspace às declarações e locks nativos "
                 "do uv. Python executa o projeto instalado; nenhum bootstrap Python "
                 "ou parser de lock próprio precede a instalação."
