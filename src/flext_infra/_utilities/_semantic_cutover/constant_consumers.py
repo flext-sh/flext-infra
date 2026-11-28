@@ -278,6 +278,10 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         try:
 
             def rewrite(path: Path, source: str) -> t.Infra.TransformResult:
+                if cls._constant_definition_source(
+                    rope_workspace, rope_workspace.convention(path)
+                ):
+                    return source, ()
                 updated, changes = cls._rewrite_constant_consumer(
                     path, source, rope_workspace, project, paths
                 )
@@ -306,9 +310,8 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
             Proposed source with only identity-proven literal consumer edits.
 
         """
-        convention = workspace.convention(path)
-        layout = convention.project_layout
-        if cls._constant_definition_source(workspace, convention) or layout is None:
+        layout = workspace.convention(path).project_layout
+        if layout is None:
             return source, ()
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         refactors = FlextInfraUtilitiesRopeRuntimeRefactors
@@ -624,10 +627,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         refactors = FlextInfraUtilitiesRopeRuntimeRefactors
-        convention = rope_workspace.convention(path)
-        if cls._constant_definition_source(rope_workspace, convention):
-            return source, ()
-        layout = convention.project_layout
+        layout = rope_workspace.convention(path).project_layout
         if layout is None:
             return source, ()
         resource = project.get_resource(
