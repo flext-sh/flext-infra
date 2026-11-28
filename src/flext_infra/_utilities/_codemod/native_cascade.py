@@ -347,7 +347,7 @@ class FlextInfraUtilitiesCodemodNativeCascade:
             if path.suffix == c.Infra.EXT_PYTHON
             and path.is_relative_to(root)
             and not content.startswith(
-                c.Infra.AUTOGEN_HEADER.encode(c.DEFAULT_ENCODING)
+                c.Infra.AUTOGEN_MARKER.encode(c.DEFAULT_ENCODING)
             )
         }
         if not originals or all(

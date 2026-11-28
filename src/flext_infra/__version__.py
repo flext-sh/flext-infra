@@ -1,4 +1,4 @@
-# AUTO-GENERATED FILE — Regenerate with: make check
+# AUTO-GENERATED FILE — Regenerate with: make gen
 """Package version and metadata for flext-infra.
 
 Subclass of ``FlextVersion`` — overrides only ``_metadata``.

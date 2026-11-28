@@ -343,9 +343,7 @@ class FlextInfraWorkspaceDetector(
         """Build identity from validated checkout metadata and native Git inputs.
 
         ``kind`` comes from the shared native project-fact detector. The role
-        reflects only the checkout's own topology; the caller that holds the
-        attachment fact (the root's discovered members, or the superproject
-        index's gitlinks for a member) settles the final role, so no
+        reflects only the checkout's own topology (ADR-038 decision 9), so no
         per-repository identity query runs here.
 
         Returns:
@@ -633,14 +631,10 @@ class FlextInfraWorkspaceDetector(
         )
         if baseline.failure:
             return result_type.from_failure(baseline)
-        gitlinks = u.Infra.git_index_gitlink_paths(repository_root)
-        if gitlinks.failure:
-            return result_type.from_failure(gitlinks)
         context = m.Infra.SubprojectLoadContext.model_validate({
             "integration_branch": (baseline.value),
             "workspace_beads": (workspace_beads),
             "allow_unprovisioned_members": (allow_unprovisioned_members),
-            "superproject_gitlinks": tuple(gitlinks.value),
         })
         for declaration in declared.value:
             loaded = cls._load_subproject(
@@ -792,17 +786,10 @@ class FlextInfraWorkspaceDetector(
         )
         if repository.failure:
             return result_type.from_failure(repository)
-        # A checkout the superproject index records as a gitlink is attached:
-        # the same fact `rev-parse --show-superproject-working-tree` reads,
-        # taken once for every member.
-        member = (
-            repository.value.model_copy(
-                update={"role": c.Infra.MakeProfile.WORKSPACE},
-            )
-            if path.as_posix() in context.superproject_gitlinks
-            else repository.value
-        )
-        return cls._member_commands_ref(member, inputs.value)
+        # ADR-038 decision 9: the role is read from the member's own
+        # declarations; being attached to a superproject is an execution mode
+        # Make decides at run time and never selects what is generated.
+        return cls._member_commands_ref(repository.value, inputs.value)
 
     @classmethod
     def _beads_route_gate(
@@ -1191,14 +1178,11 @@ class FlextInfraWorkspaceDetector(
             superproject_root,
             policy_branch=config.Infra.codegen.branch_policy.integration_branch,
         )
-        context = baseline.flat_map(
-            lambda branch: u.Infra.git_index_gitlink_paths(superproject_root).map(
-                lambda gitlinks: m.Infra.SubprojectLoadContext.model_validate({
-                    "integration_branch": branch,
-                    "workspace_beads": inherited_beads.value,
-                    "superproject_gitlinks": tuple(gitlinks),
-                }),
-            ),
+        context = baseline.map(
+            lambda branch: m.Infra.SubprojectLoadContext.model_validate({
+                "integration_branch": branch,
+                "workspace_beads": inherited_beads.value,
+            }),
         )
         if context.failure:
             return result_type.from_failure(context)
@@ -1274,21 +1258,13 @@ class FlextInfraWorkspaceDetector(
         if topology.failure:
             return result_type.from_failure(topology)
         subprojects, external, pending = topology.value
-        # An attached checkout (a superproject gitlink) renders the workspace
-        # profile from its own root too, exactly as its parent renders it. A
-        # linked worktree of that repository is attached to no superproject
-        # and keeps the profile of its own topology.
-        identity = u.Infra.git_identity(
-            m.Infra.GitRepoRequest(repo_root=resolved_root),
-            include_status=False,
-        )
-        if identity.failure:
-            return result_type.from_failure(identity)
+        # ADR-038 decision 9: the role is the repository's own topology;
+        # running attached to a workspace is an execution mode Make decides.
         observed_repository = repository.value.model_copy(
             update={
                 "role": (
                     c.Infra.MakeProfile.WORKSPACE
-                    if subprojects or pending or identity.value.is_attached_submodule
+                    if subprojects or pending
                     else c.Infra.MakeProfile.STANDALONE
                 ),
             },

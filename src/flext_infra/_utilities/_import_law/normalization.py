@@ -303,7 +303,7 @@ class FlextInfraUtilitiesImportLawNormalization(
         plans: list[p.Infra.CodegenFilePlan] = []
         for path in files:
             source = sources[path]
-            if source.startswith(c.Infra.AUTOGEN_HEADER):
+            if source.startswith(c.Infra.AUTOGEN_MARKER):
                 continue
             normalized = cls._import_law_normalize_source(
                 location=(project_root, path),

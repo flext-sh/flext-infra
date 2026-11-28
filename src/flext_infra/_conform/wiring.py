@@ -10,10 +10,10 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, codegen, docs, gates, m, r, settings, validate
+from flext_infra import c, codegen, docs, gates, m, r, validate
 from flext_infra._utilities import (
-    FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesProtectedEditLinting,
+    FlextInfraUtilitiesRepository,
 )
 
 if TYPE_CHECKING:
@@ -100,15 +100,10 @@ class FlextInfraConformWiring:
         workspace = codegen.FlextInfraStagedPackage.workspace_root(root)
         if workspace.failure:
             return r[bool].from_failure(workspace)
-        # The declared runtime root (Make's RUNTIME_ROOT) admits the candidate;
-        # undeclared, the checkout's derived runtime owner does.
-        declared = settings.fetch_global().Infra.runtime_root
-        if declared is None:
-            runtime = FlextInfraUtilitiesProjectDiscovery.runtime_owner_root(root)
-            if runtime.failure:
-                return r[bool].from_failure(runtime)
-            declared = runtime.value
-        runtime_root = declared
+        runtime = FlextInfraUtilitiesRepository.invocation_runtime_root(root)
+        if runtime.failure:
+            return r[bool].from_failure(runtime)
+        runtime_root = runtime.value
         repository = candidate / root.relative_to(workspace.value)
         repositories = tuple(
             candidate / project.relative_to(workspace.value) for project in projects

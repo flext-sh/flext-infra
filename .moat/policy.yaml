@@ -37,7 +37,7 @@ deny:
   - id: bg-exec-009
     reason: make-owner-ruff
     title: A bare lint, format or in-place repair outside make
-    why: The repository-wide gate and repairs belong to make check; a named path is a light gate.
+    why: The repository-wide gate and repairs belong to make check and make fix; a named path is a light gate.
     shell:
       - "ruff check $"
       - "ruff check --fix*"

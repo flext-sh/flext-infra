@@ -392,7 +392,8 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
             )
 
             receipt = (
-                workspace / c.Infra.NAMESPACE_ENFORCE_REPORT_RELATIVE_PATH
+                tm.ok(u.Infra.refactor_report_evidence_root(workspace))
+                / c.Infra.NAMESPACE_ENFORCE_REPORT_RELATIVE_PATH
             ).resolve()
             tm.ok(receipt.exists())
             published = json.loads(receipt.read_text(encoding="utf-8"))
@@ -430,7 +431,8 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
 
             tm.fail(result, has="Namespace violations found")
             receipt = (
-                workspace / c.Infra.NAMESPACE_ENFORCE_REPORT_RELATIVE_PATH
+                tm.ok(u.Infra.refactor_report_evidence_root(workspace))
+                / c.Infra.NAMESPACE_ENFORCE_REPORT_RELATIVE_PATH
             ).resolve()
             published = json.loads(receipt.read_text(encoding="utf-8"))
             tm.ok(published["projects"][0]["relocation_findings"] > 0)
@@ -584,7 +586,10 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
             m.Infra.RefactorNamespaceEnforceInput(repository_root=workspace),
         )
         tm.fail(result, has="Namespace violations found")
-        receipt = workspace / c.Infra.NAMESPACE_ENFORCE_REPORT_RELATIVE_PATH
+        receipt = (
+            tm.ok(u.Infra.refactor_report_evidence_root(workspace))
+            / c.Infra.NAMESPACE_ENFORCE_REPORT_RELATIVE_PATH
+        )
         report = m.Infra.WorkspaceEnforcementReport.model_validate_json(
             receipt.read_bytes(),
         ).projects[0]
@@ -640,7 +645,10 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         )
 
         tm.fail(result, has="Namespace violations found")
-        receipt = workspace / c.Infra.NAMESPACE_ENFORCE_REPORT_RELATIVE_PATH
+        receipt = (
+            tm.ok(u.Infra.refactor_report_evidence_root(workspace))
+            / c.Infra.NAMESPACE_ENFORCE_REPORT_RELATIVE_PATH
+        )
         published = m.Infra.WorkspaceEnforcementReport.model_validate_json(
             receipt.read_bytes(),
         )

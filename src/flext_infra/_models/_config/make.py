@@ -1103,14 +1103,13 @@ class FlextInfraModelsConfigMake(
             hook = tuple(
                 step.verb for step in self.workflow if "pre_commit" in step.contexts
             )
-            # A commit runs the fast check (and optionally the fast tests) on
-            # the locked toolchain; provisioning is a lane/CI concern, never a
-            # per-commit step.
-            if set(hook) not in (
-                {c.Infra.VERB_CHECK},
-                {c.Infra.VERB_CHECK, c.Infra.VERB_TEST},
-            ):
-                msg = "the pre-commit hook requires check followed by tests"
+            # The hook runs what CI runs, setup first (ADR-038 decision 7,
+            # operator order 11): setup, the fast check, optionally the tests.
+            if hook not in {
+                (c.Infra.VERB_SETUP, c.Infra.VERB_CHECK),
+                (c.Infra.VERB_SETUP, c.Infra.VERB_CHECK, c.Infra.VERB_TEST),
+            }:
+                msg = "the pre-commit hook requires setup, then check, then tests"
                 raise ValueError(msg)
 
         def _validate_workflow_requirements(self) -> None:

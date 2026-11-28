@@ -43,7 +43,7 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
         "```python\nx = 1\n```\n"
     )
     # rumdl fmt reads the generated .rumdl.toml; the fixtures
-    # materialize that projection the way `make check` does.
+    # materialize that projection the way `make check` generation does.
     RULES_CONFIG = u.Infra.markdown_native_configuration(
         config.Infra.tooling.tools.markdown,
         config.Infra.codegen.markdown_exclude_globs,

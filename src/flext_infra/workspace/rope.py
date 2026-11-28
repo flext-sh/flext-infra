@@ -863,7 +863,8 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
         refresh runs. ``validate_project=False`` is used after those reverted
         previews or an authenticated native source-view transition whose own
         resource observers already ran; neither needs another physical rescan.
-        Normal refresh also invalidates module inventory and project discovery;
+        Normal refresh also begins a new physical source epoch, invalidates
+        module inventory and project discovery;
         reverted previews retain those unchanged indexes. Layouts always
         invalidate.
 
@@ -871,6 +872,12 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
             The resulting ``p.Infra.RopeWorkspaceSession``.
 
         """
+        if not preserve_indexes:
+            if self._rope_project is not None:
+                self._rope_project.rescan_sources()
+            if self._snapshot is not None:
+                self._snapshot.python_files.clear()
+                self._snapshot.directory_facts.clear()
         if validate_project and self._rope_project is not None:
             self._rope_project.validate()
         self._package_context_cache.clear()
@@ -942,7 +949,7 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
         current_pkg = package_entry.package_name if package_entry is not None else ""
         init_resource = self.resource(init_path)
         generated_init = init_resource is not None and init_resource.read().startswith(
-            c.Infra.AUTOGEN_HEADER,
+            c.Infra.AUTOGEN_MARKER,
         )
         context = m.Infra.LazyInitPackageContext(
             pkg_dir=resolved_dir,

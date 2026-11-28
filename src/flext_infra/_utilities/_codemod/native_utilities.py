@@ -173,7 +173,7 @@ class FlextInfraUtilitiesCodemodNative:
                 "has": {
                     "kind": "comment",
                     "nthChild": 1,
-                    "regex": rf"^{re.escape(c.Infra.AUTOGEN_HEADER)}$",
+                    "regex": rf"^{re.escape(c.Infra.AUTOGEN_MARKER)}",
                 },
             },
         }

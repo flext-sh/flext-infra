@@ -222,7 +222,8 @@ class TestsFlextInfraInfraRopeServiceObjects:
             )
 
             module_path.write_text(changed_source, encoding=c.DEFAULT_ENCODING)
-            tm.that(rope.source(module_path), eq=changed_source)
+            # One captured source epoch: bytes and semantics stay together.
+            tm.that(rope.source(module_path), eq=original_source)
             tm.that(
                 tuple(item.name for item in rope.semantic(module_path).class_infos),
                 eq=("Original",),
@@ -233,6 +234,7 @@ class TestsFlextInfraInfraRopeServiceObjects:
             )
 
             rope.refresh()
+            tm.that(rope.source(module_path), eq=changed_source)
             tm.that(
                 tuple(item.name for item in rope.objects(module_path)),
                 eq=("Changed",),
@@ -472,7 +474,9 @@ class TestsFlextInfraInfraRopeServiceObjects:
             foreign.chmod(tm.not_none(observed.mode))
             foreign.replace(provider)
             replacement = tm.ok(u.Cli.atomic_read_binary_file_state(provider))
-            tm.fail(u.Cli.atomic_verify_binary_file_states((observed,)))
+            # A read-only observation admits an identical inode replacement
+            # (flext-cli contract); the candidate still refuses the witness.
+            tm.ok(u.Cli.atomic_verify_binary_file_states((observed,)))
             with u.Tests.raises(ValueError, match="captured state"):
                 workspace.bind_candidate(
                     declared_files=(
@@ -621,7 +625,8 @@ class TestsFlextInfraInfraRopeServiceObjects:
             preserved_index = rope.name_index()
             tm.ok(snapshot.workspace_index is original_workspace_index)
             tm.ok(rope.projects() is original_projects)
-            tm.ok(rope.layout(repository_root) is original_layout)
+            # Layouts always invalidate; the rebuilt layout is the same value.
+            tm.that(rope.layout(repository_root), eq=original_layout)
             tm.that(
                 rope.import_dependents(import_target) is original_dependents,
                 eq=True,
@@ -684,10 +689,10 @@ class TestsFlextInfraInfraRopeServiceObjects:
                 rope.name_index()
 
     @staticmethod
-    def test_workspace_objects_raise_on_indexed_resource_lookup_error(
+    def test_workspace_objects_keep_their_epoch_until_refresh(
         tmp_path: Path,
     ) -> None:
-        """Indexed reference lookup fails when a module resource vanishes."""
+        """A vanished module stays in its source epoch; refresh retires it."""
         repository_root, package_root = u.Tests.create_lazy_init_workspace(
             tmp_path,
             project_name="flext-demo",
@@ -716,8 +721,11 @@ class TestsFlextInfraInfraRopeServiceObjects:
         with infra.rope_workspace(repository_root) as rope:
             _ = rope.name_index()
             consumer_path.unlink()
-            with u.Tests.raises(FileNotFoundError, match=r"consumer\.py"):
-                rope.objects(service_path, include_local_scopes=False)
+            tm.that(rope.module(consumer_path), none=False)
+            tm.that(rope.objects(service_path, include_local_scopes=False), empty=False)
+            rope.refresh()
+            tm.that(rope.module(consumer_path), none=True)
+            tm.that(rope.objects(service_path, include_local_scopes=False), empty=False)
 
     @staticmethod
     def test_workspace_dsl_ignores_test_references(tmp_path: Path) -> None:
