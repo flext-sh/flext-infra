@@ -547,6 +547,7 @@ class TestsFlextInfraCodegenCiMatrixArtifacts(TestsFlextInfraCodegenCiMatrixSupp
     def test_docs_failure_upload_keeps_check_failure_and_scopes_hidden_reports(
         rendered_project: Path,
         tmp_path: Path,
+        *,
         with_docs_reports: bool,
     ) -> None:
         """A failed docs check retains its safe receipts without requiring an audit."""
