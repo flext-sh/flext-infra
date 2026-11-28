@@ -190,6 +190,7 @@ class TestsFlextInfraTypeGates:
         )
         reports = project / ".reports"
         reports.mkdir()
+        u.Tests.provision_checkout(project)
         result = gate_class(project).check(
             project,
             m.Infra.GateContext(repository_root=project, reports_dir=reports),
@@ -278,6 +279,7 @@ class TestsFlextInfraTypeGates:
         gate_class: type[gates.FlextInfraGates],
     ) -> None:
         """A checker invoked without inputs never reads as a clean pass."""
+        u.Tests.initialize_git_repo(tmp_path)
         result = gate_class(tmp_path).check(
             tmp_path,
             m.Infra.GateContext(repository_root=tmp_path, reports_dir=tmp_path),
