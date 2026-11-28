@@ -40,6 +40,7 @@ class TestsFlextInfraLazyMapFreshness:
         v: FlextInfraValidateLazyMapFreshness,
     ) -> None:
         """Test empty workspace yields passing report."""
+        u.Tests.initialize_git_repo(tmp_path)
         report: p.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         tm.that(report, is_=m.Infra.ValidationReport)
         tm.ok(report.passed)
@@ -51,6 +52,7 @@ class TestsFlextInfraLazyMapFreshness:
         v: FlextInfraValidateLazyMapFreshness,
     ) -> None:
         """Test passing summary mentions lazy maps."""
+        u.Tests.initialize_git_repo(tmp_path)
         report: p.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         tm.that(report.summary, has="lazy")
 
@@ -60,6 +62,7 @@ class TestsFlextInfraLazyMapFreshness:
         v: FlextInfraValidateLazyMapFreshness,
     ) -> None:
         """Test report is validation report."""
+        u.Tests.initialize_git_repo(tmp_path)
         report: p.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         tm.that(report, is_=m.Infra.ValidationReport)
 

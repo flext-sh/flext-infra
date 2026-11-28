@@ -10,7 +10,7 @@ from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
 from flext_infra.validate import FlextInfraValidateTestImportDag
-from tests import c, p, tm
+from tests import c, p, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -31,6 +31,7 @@ class TestsFlextInfraImportDag:
             target = project / relative
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(source, encoding="utf-8")
+        u.Tests.initialize_git_repo(project)
         return project
 
     @c.Tests.MARK.parametrize(

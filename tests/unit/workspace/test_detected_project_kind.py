@@ -20,6 +20,7 @@ class TestsFlextInfraDetectedProjectKind:
     ) -> None:
         """A YAML memo cannot freeze facts owned by native package metadata."""
         u.Tests.write_native_resolution_project(tmp_path, "ordinary-project")
+        u.Tests.initialize_git_repo(tmp_path)
         before = tm.ok(u.Infra.load_codegen_inputs(tmp_path))
         tm.that(before.kind, eq=c.Infra.ProjectKind.INTERNAL)
         u.Tests.write_native_resolution_project(
@@ -35,6 +36,7 @@ class TestsFlextInfraDetectedProjectKind:
         u.Tests.write_native_resolution_project(tmp_path, "import-consumer")
         source = tmp_path / "src" / "import_consumer" / "__init__.py"
         source.write_text("from flext_core import m\n", encoding=c.DEFAULT_ENCODING)
+        u.Tests.initialize_git_repo(tmp_path)
         tm.that(
             tm.ok(u.Infra.load_codegen_inputs(tmp_path)).kind,
             eq=c.Infra.ProjectKind.INTERNAL_FLEXT,
@@ -109,6 +111,8 @@ class TestsFlextInfraDetectedProjectKind:
                         f"https://github.example/{owner}/project.git",
                     ),
                 )
+        else:
+            u.Tests.initialize_git_repo(root)
         target = root / "config" / c.Infra.CODEGEN_CONFIG_FILENAME
         for obsolete in (False, True):
             if obsolete:
