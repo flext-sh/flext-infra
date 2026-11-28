@@ -202,6 +202,12 @@ class TestsFlextInfraAuditorCommandContract:
         tm.that(type(caught.value), eq=type(cause))
         tm.that(str(caught.value), eq=str(cause))
 
+        with u.Tests.raises(type(cause), match=re.escape(str(cause))) as selected:
+            u.Infra.iter_scope_markdown_files(scope)
+
+        tm.that(type(selected.value), eq=type(cause))
+        tm.that(str(selected.value), eq=str(cause))
+
     @staticmethod
     def test_guide_projection_resolves_source_repository_contract(
         command_contract_scope: p.Infra.DocScope,
