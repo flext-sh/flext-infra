@@ -112,6 +112,67 @@ class TestsFlextInfraUtilitiesHermeticGit:
             ),
         )
 
+    @classmethod
+    def checkout_locked_provider(
+        cls,
+        producer: Path,
+        provider_url: str,
+        repository: Path,
+        options: p.Cli.ProcessOptions,
+    ) -> Path:
+        """Materialize the provider at the producer's locked Git revision.
+
+        Returns:
+            The checkout with its verified commit and origin.
+
+        """
+        sources = tuple(
+            source
+            for source in cls.locked_git_sources(producer)
+            if source[0] == provider_url
+        )
+        tm.that(len(sources), eq=1)
+        url, _branch, sha = sources[0]
+        tm.ok(
+            u.Cli.run_checked(
+                [
+                    c.Infra.GIT,
+                    "clone",
+                    "--no-checkout",
+                    url,
+                    str(repository),
+                ],
+                cwd=repository.parent,
+                options=options,
+            ),
+        )
+        tm.ok(
+            u.Cli.run_checked(
+                [c.Infra.GIT, "checkout", "--detach", sha],
+                cwd=repository,
+                options=options,
+            ),
+        )
+        tm.that(
+            tm.ok(
+                u.Cli.capture(
+                    [c.Infra.GIT, "rev-parse", c.Infra.GIT_HEAD],
+                    cwd=repository,
+                ),
+            ).strip(),
+            eq=sha,
+        )
+        tm.that(
+            tm.ok(
+                u.Cli.capture(
+                    [c.Infra.GIT, "config", "--get", "remote.origin.url"],
+                    cwd=repository,
+                ),
+            ).strip(),
+            eq=url,
+        )
+        return repository
+
     @staticmethod
     def locked_git_sources(
         project_root: Path,
