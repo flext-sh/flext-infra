@@ -496,4 +496,13 @@ class TestsFlextInfraDepsModernizerToolTables:
         namespace_packages = u.Tests.toml_strings(table.get("namespace-packages", []))
         tm.that(src_roots, lacks="scripts", has="src")
         tm.that(namespace_packages, lacks="scripts")
-        tm.that(self._table(payload, "ruff", "lint"), lacks="per-file-ignores")
+        authorized = tm.not_none(
+            u.Cli.toml_mapping_child(
+                u.Infra.native_tool_configuration(config.Infra.tooling, "ruff"),
+                "lint",
+            )
+        )
+        tm.that(
+            self._table(payload, "ruff", "lint").get("per-file-ignores"),
+            eq=authorized.get("per-file-ignores"),
+        )

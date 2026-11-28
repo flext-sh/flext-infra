@@ -919,13 +919,11 @@ Infra:
         trace_globs:
         - "*.pstats"
       docs:
-        # `make docs` is a docs-only lifecycle (generate -> fix -> fmt ->
-        # build -> check); it never runs the workspace-wide codegen conform as a
-        # prerequisite. `build` renders the MkDocs site into the reports dir —
-        # the docs workflow's Build site step runs this same lifecycle and its
-        # Upload site artifact consumes `.reports/docs/site`, so a lifecycle
-        # without build makes that step untarable on every consumer. `validate`
-        # is the structural check (blocking when the .md set is incomplete).
+        # `make build` renders the MkDocs site into the reports directory.
+        # The docs workflow runs `make check CHECK_PHASE=complete` to verify
+        # documentation and projections; main-branch publication uploads
+        # `.reports/docs/site`.
+        # `validate` checks structure and blocks when the Markdown set is incomplete.
         actions: [ generate, fix, fmt, build, validate, audit ]
         mutable_actions: [ fix, fmt ]
         reports_dir: .reports/docs
