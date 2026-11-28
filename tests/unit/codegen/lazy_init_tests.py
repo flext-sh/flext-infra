@@ -142,54 +142,70 @@ class TestsFlextInfraCodegenLazyInit:
         """Exclude declared artifacts while retaining ordinary source packages."""
 
         @staticmethod
-        def test_nested_vendor_dir_is_scanned(tmp_path: Path) -> None:
-            """Keep nested vendored test packages in source discovery."""
-            src_init = _create_init_file(tmp_path / "src" / "pkg", _VALID_INIT)
-            vendor_init = _create_init_file(
-                tmp_path / "tests" / "vendor" / "pkg",
-                _VALID_TESTS_INIT,
+        def _package_initializer(package: Path) -> Path:
+            """Create a package with a real export eligible for planning.
+
+            Returns:
+                The path of the empty initializer to be rendered.
+
+            """
+            init = _create_init_file(package, "")
+            (package / "provider.py").write_text(
+                "class Owned: pass\n__all__ = ('Owned',)\n",
+                encoding=c.DEFAULT_ENCODING,
             )
-            generator = FlextInfraCodegenLazyInit(repository_root=tmp_path)
+            return init
+
+        @classmethod
+        def test_nested_vendor_dir_is_scanned(cls, tmp_path: Path) -> None:
+            """Keep nested vendored test packages in source discovery."""
+            repository, package = u.Tests.create_lazy_init_workspace(tmp_path)
+            src_init = cls._package_initializer(package)
+            vendor_init = cls._package_initializer(
+                repository / "tests" / "vendor" / "pkg",
+            )
+            generator = FlextInfraCodegenLazyInit(repository_root=repository)
             result = generator.plan_files()
             planned = {plan.path for plan in tm.ok(result)}
             tm.ok(src_init in planned)
             tm.ok(vendor_init.is_file())
             tm.ok(vendor_init in planned)
 
-        @staticmethod
-        def test_venv_dir_excluded(tmp_path: Path) -> None:
+        @classmethod
+        def test_venv_dir_excluded(cls, tmp_path: Path) -> None:
             """Exclude virtual-environment test packages from discovery."""
-            src_init = _create_init_file(tmp_path / "src" / "pkg", _VALID_INIT)
-            excluded_init = _create_init_file(
-                tmp_path / "tests" / ".venv" / "pkg",
-                _VALID_TESTS_INIT,
+            repository, package = u.Tests.create_lazy_init_workspace(tmp_path)
+            src_init = cls._package_initializer(package)
+            excluded_init = cls._package_initializer(
+                repository / "tests" / ".venv" / "pkg",
             )
-            generator = FlextInfraCodegenLazyInit(repository_root=tmp_path)
+            generator = FlextInfraCodegenLazyInit(repository_root=repository)
             result = generator.plan_files()
             planned = {plan.path for plan in tm.ok(result)}
             tm.ok(src_init in planned)
             tm.ok(excluded_init.is_file())
             tm.that(planned, lacks=excluded_init)
 
-        @staticmethod
+        @classmethod
         @c.Tests.MARK.parametrize("environment", ("venv", "runtime"))
         def test_nested_site_packages_dir_excluded(
+            cls,
             tmp_path: Path,
             environment: str,
         ) -> None:
             """Exclude site-packages even without a virtual-environment parent."""
-            src_init = _create_init_file(tmp_path / "src" / "pkg", _VALID_INIT)
-            excluded_init = _create_init_file(
-                tmp_path
+            repository, package = u.Tests.create_lazy_init_workspace(tmp_path)
+            src_init = cls._package_initializer(package)
+            excluded_init = cls._package_initializer(
+                repository
                 / "pkg"
                 / "container"
                 / environment
                 / "lib"
                 / "site-packages"
                 / "bad",
-                _VALID_TESTS_INIT,
             )
-            generator = FlextInfraCodegenLazyInit(repository_root=tmp_path)
+            generator = FlextInfraCodegenLazyInit(repository_root=repository)
             result = generator.plan_files()
             planned = {plan.path for plan in tm.ok(result)}
             tm.ok(src_init in planned)
