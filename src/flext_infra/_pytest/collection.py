@@ -63,6 +63,11 @@ class FlextInfraPytestCollection:
         """Record warnings once; Testmon keeps its native in-checkout default."""
         u.Infra.collection_configure(config)
 
+    @staticmethod
+    def pytest_sessionstart(session: t.Infra.Pytest.Session) -> None:
+        """Bind config-dependency recording once every conftest has configured."""
+        u.Infra.config_dependencies_bind(session.config)
+
     @classmethod
     @u.Infra.Pytest.hookimpl(tryfirst=True)
     def pytest_ignore_collect(
