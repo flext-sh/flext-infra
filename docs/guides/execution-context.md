@@ -4719,6 +4719,8 @@ Postponed annotations do not defer class bases or executable protocol references
 and deferral retains the original provider instead of substituting the local facade.
 If a rewrite removes the last typing guard, normalization also removes its
 unused typing binding before returning the fixed point.
+An own-root import of a facade defined by the current module is retired before
+guarded imports are evaluated for promotion to runtime.
 Unparsable source retains its original `SyntaxError` location. Import and protocol
 projection never delete an unattached decorator to manufacture a parseable input;
 the owning producer must restore the missing declaration or correct its emission.

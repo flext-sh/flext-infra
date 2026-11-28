@@ -819,10 +819,10 @@ class FlextInfraUtilitiesImportLawNormalization(
             lambda: r[tuple[tuple[int, int, Sequence[str]], ...]].ok(
                 value=tuple(cls._import_law_guard_edits(state.tree, lines)),
             ),
-            lambda: cls._import_law_placement_edits(state, lines).map(tuple),
             lambda: r[tuple[tuple[int, int, Sequence[str]], ...]].ok(
                 value=tuple(cls._import_law_root_alias_binding_edits(state, lines)),
             ),
+            lambda: cls._import_law_placement_edits(state, lines).map(tuple),
             lambda: r[tuple[tuple[int, int, Sequence[str]], ...]].ok(
                 value=tuple(
                     cls._import_law_route_edits(
@@ -1029,6 +1029,7 @@ class FlextInfraUtilitiesImportLawNormalization(
         family = FlextInfraUtilitiesCodegenNamespace.facade_families()[
             scope.family_letter
         ]
+        definitions = cls._import_law_local_definitions(state.tree)
         imports: dict[str, tuple[str, str]] = {}
         for node in cls._import_law_iter_imports(state.tree):
             if (
@@ -1046,6 +1047,8 @@ class FlextInfraUtilitiesImportLawNormalization(
                 }:
                     continue
                 bound = alias.asname or alias.name
+                if provider == scope.module and bound in definitions:
+                    continue
                 if bound in imports:
                     message = "Own-family repair has competing imports; use make mod"
                     raise ValueError(message)

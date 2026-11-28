@@ -199,12 +199,16 @@ class TestsFlextInfraRefactorImportNormalizationFamilies(
     def test_leaf_object_routes_through_lazy_package(cls, tmp_path: Path) -> None:
         """A leaf-module object binds through the package that publishes it."""
         project, package = cls._project(tmp_path)
+        (package / "_models" / "record.py").write_text(
+            "class DemoRecord:\n    pass\n\n__all__ = ['DemoRecord']\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
         normalized = cls._normalize(
             project,
             package / "services" / "worker.py",
             "from __future__ import annotations\n"
             "\n"
-            "from demo_pkg_models import DemoRecord\n"
+            "from demo_pkg._models.record import DemoRecord\n"
             "\n"
             "\n"
             "def run() -> object:\n"
@@ -264,7 +268,8 @@ class TestsFlextInfraRefactorImportNormalizationFamilies(
                     "-c",
                     (
                         "from demo_pkg._models import DemoRecord; "
-                        "from demo_pkg_models import DemoRecord as provider; "
+                        "from demo_pkg._models.parts.record import "
+                        "DemoRecord as provider; "
                         "assert DemoRecord is provider"
                     ),
                 ),
@@ -404,7 +409,13 @@ class TestsFlextInfraRefactorImportNormalizationFamilies(
             "    assert DemoApi(c, m, u, DemoApiTestDataHelper)\n",
         )
 
-        tm.that(normalized, has="from tests import c, m, u\n")
+        tier_imports = sorted(
+            alias.name
+            for node in ast.parse(normalized).body
+            if isinstance(node, ast.ImportFrom) and node.module == "tests"
+            for alias in node.names
+        )
+        tm.that(tier_imports, eq=["c", "m", "u"])
         tm.that(normalized, has="from demo_pkg import DemoApi\n")
         tm.that(
             normalized,
@@ -452,18 +463,16 @@ class TestsFlextInfraRefactorImportNormalizationFamilies(
             "constants.py",
             "domain_records.py",
         }
-        provider = (
-            relative[:-3].replace("/", ".")
-            if producer and relative != "domain_records.py"
-            else "facade"
-        )
+        provider = u.Infra.facade_families()["c"].module
+        if producer and relative != "domain_records.py":
+            provider = relative[:-3].replace("/", ".")
         cls._lazy_init(package, {"c": f".{provider}", "r": "ancestor_pkg"})
         if not producer:
-            (package / "facade.py").write_text(
+            (package / f"{provider}.py").write_text(
                 "from ancestor_pkg import c\n__all__ = ['c']\n", encoding="utf-8"
             )
         if relative == "domain_records.py":
-            (package / "facade.py").write_text(
+            (package / f"{provider}.py").write_text(
                 f"from {namespace}.domain_records import DomainConstants\n"
                 "class PublicConstants(DomainConstants):\n    pass\n"
                 "c = PublicConstants\n__all__ = ['c']\n",
@@ -826,8 +835,8 @@ class TestsFlextInfraRefactorImportNormalizationFamilies(
         )
 
     @classmethod
-    def test_tier_root_local_reexport_is_a_fixed_point(cls, tmp_path: Path) -> None:
-        """A tier consumer keeps the root lazy route to a locally re-exported name."""
+    def test_nearest_tier_reexport_is_a_fixed_point(cls, tmp_path: Path) -> None:
+        """A concrete object uses its nearest package's lazy publication."""
         project, _ = cls._project(tmp_path)
         tier = project / "tests"
         fixtures = tier / "fixtures"
@@ -865,6 +874,6 @@ class TestsFlextInfraRefactorImportNormalizationFamilies(
                 source=first,
             )
         )
-        tm.that(first, has="from tests import DemoSettings")
-        tm.that(first, lacks="from tests.fixtures import DemoSettings")
+        tm.that(first, has="from tests.fixtures import DemoSettings")
+        tm.that(first, lacks="from tests.fixtures.settings import DemoSettings")
         tm.that(second, eq=first)
