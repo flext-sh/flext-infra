@@ -1,6 +1,6 @@
 # Execution context
 
-<!-- Revision 2026-11-28.8; Marlon Costa <marlon.costa@datacosmos.com.br>; Datacosmos. -->
+<!-- Revision 2026-11-28.9; Marlon Costa <marlon.costa@datacosmos.com.br>; Datacosmos. -->
 
 <!-- TOC START -->
 
@@ -5054,24 +5054,38 @@ value cannot be replaced with discovered namespaces. A declared empty list remai
 empty; namespace discovery applies only when the list is absent. A bare Python
 annotation does not replace an existing facade binding.
 
-The pytest deadline correction applies the same absolute
-entrypoint clock to complete, incremental, file, coverage and profiled operations.
-Selection mode cannot disable that clock. The typed tooling policy owns the values:
-`ordinary-timeout-seconds` (2 s) measures the test call, `slow-timeout-seconds`
-(20 s) applies to `slow` and the heavy capability markers, and
-`run-timeout-seconds` (240 s) is the fleet-wide suite clock — one invocation owns one
-budget across every member suite, and a per-member reset is rejected. Collection,
-session setup, fixture teardown and plugin bookkeeping belong to the suite deadline,
-which reserves its own shutdown time. Termination grace stays inside that budget.
-Historical 300-, 600- and 1200-second exceptions are superseded by the current
-performance requirement, rather than retained as measurement modes.
+For budgeted pytest operations, each selected project owns one absolute
+entrypoint clock across collection and execution. Workspace dispatch starts a
+new clock for each member, so earlier suites do not consume a later member's
+budget. The typed tooling policy owns the values: `ordinary-timeout-seconds`
+(2 s) measures the test call, `slow-timeout-seconds` (20 s) applies to `slow`
+and the heavy capability markers, and `run-timeout-seconds` (240 s) is the
+per-project suite clock. Collection, session setup, fixture teardown and plugin
+bookkeeping belong to that deadline, which reserves its own shutdown time.
+Termination grace stays inside the budget. Historical 300-, 600- and
+1200-second exceptions are superseded by the current performance requirement,
+rather than retained as measurement modes.
 
-Run-context receipts must carry the absolute deadline even when collection fails.
-The existing process owner retains native timeout and signal outcomes; incomplete
-collection or execution remains red. Disabling a per-item timeout is independent of
-the aggregate operation deadline. This correction does not by itself prove a bound
-on Make activation or Python work outside supervised children. Until the complete
-native boundary is verified, the required outer command deadline still applies.
+Two policy discrepancies remain in the current sources. For FULL outside
+isolated fixtures, the runner elects no suite deadline, as root AGENTS describes;
+ADR-029 still assigns `tests-full` the configured clock. In CI, the runner's
+`GLOBAL_INCREMENTAL` branch deselects `slow` through `carries_slow_items`, while
+`ci-excluded-markers` is empty and the typed tooling model rejects `slow` in
+that list. Changing `slow` marking therefore changes current CI selection as
+well as the item budget. These observations do not settle either policy conflict
+or authorize changes to deadlines, markers or selection. The owners are
+`src/flext_infra/api.py:639`, `src/flext_infra/validate/_pytest_runner/base.py:279`,
+`src/flext_infra/validate/_pytest_runner/command.py:37` and
+`src/flext_infra/_models/deps_tool_config.py:529`,
+alongside root AGENTS and ADR-029.
+
+Run-context receipts carry the project's elected absolute deadline when one
+applies, including when collection fails. The existing process owner retains
+native timeout and signal outcomes; incomplete collection or execution remains
+red. Disabling a per-item timeout is independent of a configured suite deadline.
+This correction does not by itself prove a bound on Make activation or Python
+work outside supervised children. Until the complete native boundary is
+verified, the required outer command deadline still applies.
 Exercise the current public `make tests` operation before changing its regression
 tests; the retired common file and profiling targets are not validation routes.
 
