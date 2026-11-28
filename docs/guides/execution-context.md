@@ -1,6 +1,6 @@
 # Execution context
 
-<!-- Revision 2026-11-28.4; Marlon Costa <marlon.costa@datacosmos.com.br>; Datacosmos. -->
+<!-- Revision 2026-11-28.5; Marlon Costa <marlon.costa@datacosmos.com.br>; Datacosmos. -->
 
 <!-- TOC START -->
 
@@ -4454,8 +4454,11 @@ classification. The original public receipt binds the exact argv digest; command
 and the working directory remain in private execution checkpoints, outside the CI
 artifact allowlist.
 The runtime identity records external scanner availability and fingerprints present
-executables. The native check selects applicable scanners and reports missing
-binaries for applicable gates in its original receipt.
+executables. Each native gate still owns applicability. A missing executable for
+an applicable scanner is an operational error, retained in the native check report;
+it cannot supply an accepted receipt or a signed gate attestation under either
+clean-quality or complete-execution policy. An unselected optional scanner never
+runs and is not recorded as an executed gate.
 
 Admission derives from the original typed reports rather than caller success flags.
 Checks require complete target and requested-gate coverage in SARIF. Tests require

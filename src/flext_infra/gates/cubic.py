@@ -65,6 +65,7 @@ class FlextInfraGatesCubic(FlextInfraGates):
                 (f"{c.Infra.CUBIC_BINARY} binary not found on PATH",),
                 ctx,
                 started,
+                outcome=c.Infra.ToolOutcome.ERROR,
             )
         scan = self._run(
             (binary, *c.Infra.CUBIC_REVIEW_ARGS),
