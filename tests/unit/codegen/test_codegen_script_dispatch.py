@@ -242,7 +242,7 @@ class TestsFlextInfraScriptDispatchMakefile:
         verb_names = {verb.name for verb in make_config.verbs}
         retired = {"gen", "gen-scope", "fmt", "fix", "codegen"}
         tm.ok(c.Infra.VERB_CHECK in verb_names)
-        tm.fail(retired & verb_names)
+        tm.fail(bool(retired & verb_names))
         check = next(
             verb for verb in make_config.verbs if verb.name == c.Infra.VERB_CHECK
         )
@@ -260,7 +260,7 @@ class TestsFlextInfraScriptDispatchMakefile:
         )
         public_verbs = set(public_line.split(":=", 1)[1].split())
         tm.ok(c.Infra.VERB_CHECK in public_verbs)
-        tm.fail(retired & public_verbs)
+        tm.fail(bool(retired & public_verbs))
         tm.that(rendered, has="_builtin-check: _builtin_check_all")
         tm.that(rendered, has="$(SELF_MAKE) _builtin_converge_all")
         for retired_verb in retired:
