@@ -169,8 +169,7 @@ class FlextInfraGatesMarkdownFormat(FlextInfraMarkdownGateBase):
             line=1,
             column=1,
             code=self.gate_id,
-            message="file is not rumdl-formatted (repair belongs to the fmt phase of "
-            "`make check`)",
+            message="file is not rumdl-formatted (repair belongs to `make check`)",
         )
 
     @override

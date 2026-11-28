@@ -478,8 +478,7 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
         MARKDOWN_MKDOCS_ITEM_CONTENT_RULE,
     )
     (
-        "Phase order of ``make check`` re-indent: a nested item moves "
-        "before "
+        "Phase order of the ``make check`` re-indent: a nested item moves before "
         "the content whose column its new position sets."
     )
     MARKDOWN_MKDOCS_LIST_INDENT: ClassVar[int] = 4

@@ -1,5 +1,5 @@
 # Fixture value of the generated `generated-module` utility: a module whose
-# first line is the generator header.
+# first line opens with the stable generator marker.
 id: generated-module
 language: Python
 rule:
@@ -7,4 +7,4 @@ rule:
   has:
     kind: comment
     nthChild: 1
-    regex: "^\\#\\ AUTO\\-GENERATED\\ FILE\\ —\\ Regenerate\\ with:\\ make\\ gen$"
+    regex: "^\\#\\ AUTO\\-GENERATED\\ FILE\\ —\\ "

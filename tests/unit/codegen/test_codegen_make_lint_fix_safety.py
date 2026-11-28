@@ -1,6 +1,6 @@
 """The declared Ruff repair channel and rule policy have one generated owner.
 
-The confirmed baseline enables unsafe fixes in ``make check`` repair. Rules whose fixes
+The confirmed baseline enables unsafe fixes in ``make check``. Rules whose fixes
 destroy information remain governed by the tooling owner's ``unfixable`` policy,
 which the generator must preserve without inventing a different consumer policy.
 

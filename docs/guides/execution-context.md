@@ -339,15 +339,16 @@ toolchain nor a corrupt lock stops it:
    whose own preview is not `[]`; an absent lock previews every tool and is
    regenerated in full. The previews resolve versions only; the lock of a
    changed tool downloads its provenance artifacts for every declared platform.
-   Plain `mise lock` with no tool arguments refreshes every locked entry and
-   re-downloads each provenance artifact, so it runs only on the pruning path:
-   when the whole preview is not `[]` but no declared tool's own preview
-   changes, the change is the removal of entries for tools the configuration
-   no longer declares. Plain `mise lock` keeps the locked versions and prunes
-   those entries, and a whole preview that is still not `[]` afterwards fails
-   the upgrade. Measured 2026-11-01 on a two-member scratch workspace whose root
-   lock still carried six undeclared tools: the prune took 43.7 s, and the next
-   `make upg` reported no locked version changes in every governed checkout.
+   Plain `mise lock` (no `--bump`, locked versions kept) then always runs. The
+   JSON preview reports version changes only, so an entry whose version is
+   current but whose checksum or URL is missing prints `[]`; the locked install
+   refuses that entry. Plain `mise lock` fills those fields, prunes entries for
+   tools the configuration no longer declares, and downloads nothing for a
+   complete entry. A whole preview still not `[]` afterwards fails the upgrade.
+   Measured 2026-11-27 with mise 2026.11.14: over a complete lock (13 tools,
+   4 platforms) it checked 52 targets, downloaded nothing and left the lock
+   byte-identical; over a lock whose `taplo` entry lacked its checksums, the
+   dry run reported each platform as `checksum filled`.
    Regenerating an invalid or absent lock is a repair path with no native
    shortcut: every declared tool is locked again, and Mise downloads each tool's
    provenance artifact for every declared platform to verify its attestation
@@ -1902,21 +1903,30 @@ Every generated `direnv` invocation, in Make and in `.envrc` publication, runs t
 executable the project's locked Mise toolchain resolves (`mise which direnv`), never
 a `direnv` found on the caller's `PATH`.
 Make verbs declare their activation requirement in `make.verbs`; activation is
-required by default before handlers and hooks. Generation and its footprint
-inspection consume the declared physical interpreter and verify its environment
-directly, so they can repair generated activation inputs. The `gen` contract requires
-passing its validated `CodegenGenerateRequest` by reference directly to the single
-projection executor, including guarded `.envrc` publication. It must not construct
-a `CodegenConformRequest` in `APPLY` mode or use a `generation_only` flag. Planning,
+required by default before handlers and hooks. `make check` keeps that boundary:
+a missing or invalid environment stops before hooks or convergence. A local check
+then converges generation, repairs and formatting through its private phase
+handlers; those handlers do not declare public `gen`, `fix` or `fmt` verbs.
+After generation publishes an `.envrc`, the phase authorizes it through the locked
+Direnv executable for the next invocation; it does not activate the environment a
+second time. CI and the commit hook verify without running convergence.
+
+The generation CLI and its footprint inspection consume the declared physical
+interpreter and verify its environment directly. A validated
+`CodegenGenerateRequest` passes by reference to the single projection executor,
+including guarded `.envrc` publication. It must not construct a
+`CodegenConformRequest` in `APPLY` mode or use a `generation_only` flag. Planning,
 publication, physical CAS and staged validation retain one shared implementation.
 Only Conform owns mode, declaration migration, conformance observation, Beads
-identity seeding and routes, and direnv authorization. Preserve the existing family
-names; this contract does not establish implementation or runtime acceptance.
-A declared `_custom-gen` replaces the generation handler.
-Each invocation runs its pre hook, handler and post hook once, and a failure
+identity seeding and routes. Preserve the existing family names; this contract does
+not establish implementation or runtime acceptance.
+A declared `_custom-check` replaces the complete check handler. Each invocation
+activates once, runs its pre hook, handler and post hook once, and a failure
 prevents later effects. Initial provisioning remains the responsibility of
 `make setup`. Public Make commands own the activation boundary and can be
 invoked directly.
+
+<!-- Contract revision 2026-11-28.1; Marlon Costa <marlon.costa@datacosmos.com.br>. -->
 The generation CLI reports repository, planned-file and written-file counts from
 its returned typed publication receipt. A successful repeated invocation with
 zero written files proves that receipt's generated population required no effect;
@@ -2267,7 +2277,7 @@ each declared destination through its own template and project overlays;
 `.qlty/qlty.toml` therefore remains TOML and never receives VS Code JSON.
 Consumed declarations remain inputs to the atomic file plans.
 The root public Make interface
-owns generation; the retired `make check-editor` spelling is not an execution route.
+owns generation; the retired `make gen-editor` spelling is not an execution route.
 Its `${workspaceFolder}` environment tokens remain
 portable in workspace members, independent checkouts and linked worktrees.
 The declared generation-time environment token resolves through the runtime
@@ -2863,8 +2873,8 @@ prefix for these verbs.
   the queue lock. A failed, refused, timed-out or killed run records nothing, so it
   never opens a window. The declared CI token, a remote runner, and prek's pre-push
   stage (`PREK_HOOK_STAGE=pre-push`) are not limited. `CHECK_PHASE=primary`,
-  `make tests`, `gen` and `gen-scope` are not limited either; they still queue for a
-  slot.
+  `make tests` and the generation CLI are not limited either; they still queue
+  for a slot.
 
 Heavy routes resolve the declared toolchain before entering the queue. Generation
 admits the requested root against its workspace topology first. If the admitted
@@ -2992,8 +3002,9 @@ replaces it; invoking another verb is not a repair of that projection. Separate
 bootstrap launchers and lock-convergence scripts are not lifecycle owners.
 
 `toolchain.tools` in the packaged `config/codegen.yaml` owns native tool declarations;
-the toolchain model rejects a Mise `npm:` selector (ADR-025). A tool whose upstream
-release metadata publishes no checksum declares `lock_checksum: false`.
+the toolchain model rejects a Mise `npm:` selector (ADR-025). Every locked tool
+carries a checksum: when the upstream registry publishes none, the plain
+`mise lock` that `make upg` always runs computes it from the downloaded artifact.
 ADR-025's October 9 amendment requires distributed JavaScript tools, including
 FLEXT's, to use one owned Bun project, `package.json` and a frozen lock. It does not
 restore Mise npm backends or retire native Node wrappers where used. Source-owner
@@ -3008,7 +3019,7 @@ runs one. After setup provisions the environment, `make audit` runs the reality 
 order, it stops at the first defect:
 
 1. the `mise.lock` entry exists, names a version the toolchain selector accepts, and
-   carries a checksum for the current platform when `lock_checksum` requires one;
+   carries a checksum for the current platform;
 2. `mise where <key>@<version>` names the install root;
 3. `mise which <binary> --tool <key>@<version>`, and every symlink hop it resolves
    through, stays inside that root;

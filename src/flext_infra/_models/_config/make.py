@@ -361,10 +361,10 @@ class FlextInfraModelsConfigMake(
 
         Operator 2026-09-08: ruff is the style and autofix rule. Every
         invocation uses preview. Never weaken ruff to keep a file; change the
-        code. Single-pass verb law (operator 2026-09-18): the format phase of
-        ``make check`` only formats, and its repair phase owns lint repair
-        through the lint gate — there is deliberately no ``lint_apply`` key,
-        because a lint pass inside the format phase would repeat that fix.
+        code. Single-pass verb law (operator 2026-09-18): the `make check`
+        format pass runs format only and its fix pass owns lint repair through
+        the lint gate — there is deliberately no ``lint_apply`` key, because a
+        lint pass inside fmt would repeat the lint gate's fix.
 
         *** Operator law 2026-10-05 (direct order, OBLIGATORY and NEVER to be
         disabled again): ``make check`` ALWAYS applies Ruff's unsafe fixes —
@@ -395,8 +395,7 @@ class FlextInfraModelsConfigMake(
                 description=(
                     "Flags for ruff check --fix; MANDATORY unsafe-fix channel"
                     " (operator law 2026-10-05): the lint gate's apply mode"
-                    " (make check) always applies safe and unsafe "
-                    "fixes"
+                    " (make check) always applies safe and unsafe fixes"
                 ),
             ),
         ]
@@ -449,10 +448,10 @@ class FlextInfraModelsConfigMake(
             tuple[t.NonEmptyStr, ...],
             m.Field(
                 description=(
-                    "Gates whose mutating side `make check` drives "
+                    "Gates whose mutating side the `make check` format pass drives "
                     "(formatters). "
-                    "The read-only side runs in `make check`; the fix phase of `make "
-                    "check` never "
+                    "The read-only side runs in the `make check` gates; its fix pass "
+                    "never "
                     "repeats them (single-pass verb law)."
                 ),
             ),
@@ -995,8 +994,8 @@ class FlextInfraModelsConfigMake(
                 ValueError: If make public verb names must be unique; or if make
                     workflow verbs must be unique; or if make workflow verbs are not
                     declared public verbs; or if make workflow verbs must exist in every
-                    profile; or if make check gates are not declared gate vocabulary; or
-                    if make docs reports_dir must
+                    profile; or if format-pass gates are not declared gate
+                    vocabulary; or if make docs reports_dir must
                     be repository-relative.
 
             """
@@ -1104,14 +1103,13 @@ class FlextInfraModelsConfigMake(
             hook = tuple(
                 step.verb for step in self.workflow if "pre_commit" in step.contexts
             )
-            # A commit runs the fast check (and optionally the fast tests) on
-            # the locked toolchain; provisioning is a lane/CI concern, never a
-            # per-commit step.
-            if set(hook) not in (
-                {c.Infra.VERB_CHECK},
-                {c.Infra.VERB_CHECK, c.Infra.VERB_TEST},
-            ):
-                msg = "the pre-commit hook requires check followed by tests"
+            # The hook runs what CI runs, setup first (ADR-038 decision 7,
+            # operator order 11): setup, the fast check, optionally the tests.
+            if hook not in {
+                (c.Infra.VERB_SETUP, c.Infra.VERB_CHECK),
+                (c.Infra.VERB_SETUP, c.Infra.VERB_CHECK, c.Infra.VERB_TEST),
+            }:
+                msg = "the pre-commit hook requires setup, then check, then tests"
                 raise ValueError(msg)
 
         def _validate_workflow_requirements(self) -> None:
@@ -1215,7 +1213,7 @@ class FlextInfraModelsConfigMake(
             """Validate formatter ownership and repository-relative report paths.
 
             Raises:
-                ValueError: If make check gates are not declared gate vocabulary; or
+                ValueError: If format-pass gates are not declared gate vocabulary; or
                     if report paths are empty, absolute or escape the repository.
 
             """
@@ -1224,8 +1222,7 @@ class FlextInfraModelsConfigMake(
             )
             if unknown_fmt_gates:
                 msg = (
-                    "make check gates are not declared gate "
-                    "vocabulary: "
+                    "format-pass gates are not declared gate vocabulary: "
                     f"{', '.join(sorted(unknown_fmt_gates))}"
                 )
                 raise ValueError(msg)

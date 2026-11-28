@@ -26,12 +26,12 @@ $(shell awk -v reference="{{ reference }}" 'index($$0, reference) { count++ } EN
 {%- macro local_check_body() -%}
 {{ "\t" }}@$(if $(CHECK_PROFILE),FLEXT_INFRA_PROFILE=$(CHECK_PROFILE) ,)FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/{{ make.check_profile_path }}" $(PROJECT_FLEXT_INFRA) {{ workspace_cli_group }} check --repository-root "$(PROJECT_ROOT)"$(if $(CHECK_PHASE), --phase "$$CHECK_PHASE")
 {%- endmacro -%}
-{#- One convergence pass of make check: projection, repair, then format. -#}
-{%- macro converge_pass() -%}
-$(PROJECT_FLEXT_INFRA) codegen generate --root "$(PROJECT_ROOT)" --scope "$(if $(filter {{ make.ci.value }},$({{ make.ci.variable }})),self,all)" && \
-{{ "\t" }}	{{ check_run("fix", " --scope $(GATE_SCOPE) --apply") }} && \
-{{ "\t" }}	$(PROJECT_FLEXT_INFRA) docs fix --repository-root "$(PROJECT_ROOT)" --output-dir "{{ make.docs.reports_dir }}" --projects . --apply && \
-{{ "\t" }}	{{ check_run("fmt", " --scope $(GATE_SCOPE) --apply") }}
+{%- macro fmt_body() -%}
+{{ "\t" }}@{{ check_run("fmt", " --scope $(GATE_SCOPE) --apply") }}
+{%- endmacro -%}
+{%- macro fix_body() -%}
+{{ "\t" }}@{{ check_run("fix", " --scope $(GATE_SCOPE) --apply") }}
+{{ "\t" }}@$(PROJECT_FLEXT_INFRA) docs fix --repository-root "$(PROJECT_ROOT)" --output-dir "{{ make.docs.reports_dir }}" --projects . --apply
 {%- endmacro -%}
 {#- Select impacted cases from the global inventory using the persistent database. -#}
 {%- macro pytest_test_runner(operation="tests") -%}
@@ -719,6 +719,7 @@ endef
 {% endif %}
 
 .PHONY: $(PUBLIC_VERBS) $(addprefix _builtin-,$(PUBLIC_VERBS))
+.PHONY: _builtin_gen_all
 
 {# Generation can repair activation inputs using its declared physical runtime.
    Operations that consume activation enter direnv before their handlers. -#}
@@ -1018,8 +1019,8 @@ _builtin_build_artifacts:
 	@printf '%s\n' 'INFO: build: repository declares package=false (content-only root); no distribution to build'
 {% endif %}
 
-# Check is read-only: it runs the gates without --apply, so the tree is left
-# unchanged; fix applies the declared repairs of the fixable gates.
+# Check verifies through gates without --apply. Local convergence first runs
+# the private generation, repair and formatting phases; CI and hooks never do.
 # Each gate's declared stage selects its partition: CI={{ make.ci.value }} runs
 # make.check_gates_ci, CI={{ make.ci.pre_commit_value }} (the commit hook) runs
 # make.pre_commit_check_gates, CI={{ make.ci.local_value }} runs
@@ -1040,7 +1041,7 @@ _builtin_converge_all: _builtin_require_environment
 {{ "\t" }}while :; do \
 {{ "\t" }}	pass=$$((pass + 1)); \
 {{ "\t" }}	if [ "$$pass" -gt $(CHECK_CONVERGE_MAX_PASSES) ]; then printf '%s\n' "❌ check: convergence did not reach a fixed point in $(CHECK_CONVERGE_MAX_PASSES) passes" >&2; exit 1; fi; \
-{{ "\t" }}	{{ make.ci.converge_variable }}=1 {{ converge_pass() }} || exit 1; \
+{{ "\t" }}	{{ make.ci.converge_variable }}=1 $(SELF_MAKE) _builtin_gen_all && $(SELF_MAKE) _builtin_fix_all && $(SELF_MAKE) _builtin_fmt_all || exit 1; \
 {{ "\t" }}	after="$$(tree)" || exit 1; \
 {{ "\t" }}	if [ "$$after" = "$$before" ]; then printf '%s\n' "INFO: check: fixed point after $$pass pass(es)"; break; fi; \
 {{ "\t" }}	before="$$after"; \
@@ -1055,16 +1056,45 @@ _builtin_tests_full_all: _builtin_require_environment
 _builtin_tests_harness_all: _builtin_require_environment
 	@{{ pytest_test_runner("tests-harness") | trim }}$(if $(MARKER), --marker "$$MARKER")
 
+# fmt is format-only (single-pass verb law): ruff formats Python, the
+# fmt_gates formatters run once through the checker's apply mode, and every
+# lint repair belongs to `make check`. Every repair requires read-only native
+# verification; remaining findings and tool failures both fail the verb.
+_builtin_fmt_all: _builtin_require_environment
+{{ fmt_body() }}
+
+_builtin_fix_all: _builtin_require_environment
+{{ fix_body() }}
+
 _builtin_clean_generated: _builtin_require_interpreter
 	@$(PROJECT_FLEXT_INFRA) maintenance clean --repository-root "$(PROJECT_ROOT)" --apply
 
 # Heavy verbs (check, tests, tests-full, tests-harness, mod)
 # admit themselves into the per-host FIFO queue and arm their wall-time budget only once
 # admitted (FLEXT ADR-032, config Infra.gate_admission): queue time never
-# counts against a budget. MOD_PROFILE=1 captures cProfile.
+# counts against a budget. GEN_PROFILE=1 / MOD_PROFILE=1 capture cProfile.
+GEN_PROFILE ?=
 MOD_PROFILE ?=
 # Check profiling is opt-in like generation (CHECK_PROFILE=1 make check).
 CHECK_PROFILE ?=
+
+# Generation rewrites .envrc projections, so on a host it re-authorizes direnv
+# for every governed checkout exactly as setup and upg do.
+_builtin_gen_all: _builtin_require_interpreter
+	@set -eu; \
+	root="$(abspath $(or $(strip $(ROOT)),$(PROJECT_ROOT)))"; \
+	what="$(strip $(WHAT))"; \
+	if [ -n "$$what" ] && [ "$$what" != "ALL" ]; then \
+		scope="$(or $(strip $(SCOPE)),self)"; \
+		module_args=""; \
+		if [ -n "$(strip $(MODULE))" ]; then module_args=" --module $(strip $(MODULE))"; fi; \
+		$(if $(GEN_PROFILE),FLEXT_INFRA_PROFILE=$(GEN_PROFILE) ,)FLEXT_INFRA_PROFILE_OUTPUT="$$root/{{ make.generation_profile_path | replace('.pstats', '-scope.pstats') }}" $(PROJECT_FLEXT_INFRA) codegen generate --root "$$root" --what "$$what" --scope "$$scope"$$module_args; \
+	else \
+		scope=all; \
+		if [ "$$root" != "$(PROJECT_ROOT)" ] || [ "$(strip $({{ make.ci.variable }}))" = "{{ make.ci.value }}" ]; then scope=self; fi; \
+		$(if $(GEN_PROFILE),FLEXT_INFRA_PROFILE=$(GEN_PROFILE) ,)FLEXT_INFRA_PROFILE_OUTPUT="$$root/{{ make.generation_profile_path }}" $(PROJECT_FLEXT_INFRA) codegen generate --root "$$root" --scope "$$scope"; \
+	fi; \
+	$(if $(filter {{ make.ci.value }},$({{ make.ci.variable }})),:,{{ direnv_allow_governed() }})
 
 # Structural rewrites run one theme at a time (ADR-028 Decision 18 item 2):
 # LAWS selects ENFORCE law ids, RULES selects exact rule ids; the engine refuses

@@ -2790,7 +2790,11 @@ class FlextInfraUtilitiesFacadeComponents:
         prefix, dropped = cls._facade_owner_prefix(
             current,
             scope,
-            source[: layout.region[0]],
+            # A generated projection re-emits the current ownership header, so
+            # a retired header line never survives regeneration.
+            source[: layout.region[0]].partition("\n")[2]
+            if source.startswith(c.Infra.AUTOGEN_MARKER)
+            else source[: layout.region[0]],
             frozenset(
                 source[first:last]
                 for first, last in layout.bases
@@ -2829,9 +2833,7 @@ class FlextInfraUtilitiesFacadeComponents:
             indentation=" " * step,
             body_source=body_source,
             publications=publications,
-            managed_header=None
-            if source.startswith(c.Infra.AUTOGEN_MARKER)
-            else c.Infra.AUTOGEN_HEADER,
+            managed_header=c.Infra.AUTOGEN_HEADER,
         )
         return cls.generate_module_skeleton(context=context)
 

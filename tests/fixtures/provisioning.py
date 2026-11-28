@@ -377,7 +377,7 @@ _MAKE_UPGRADE_RECEIPT = c.Tests.MAKE_TEMPLATE_UPG_RECEIPT
 _MAKE_CI_SETUP_RECEIPT = c.Tests.MAKE_TEMPLATE_CI_RECEIPT
 _INFRA_SETUP_RECEIPT = "setup-receipt.json"
 _GIT_MIRRORS_RECEIPT = "mirrors-receipt.txt"
-# Every scenario that provisions the candidate's own environment before `gen`.
+# Every scenario provisions the candidate's own environment before `check`.
 _INFRA_CHECKOUT_SCENARIOS = (
     "builtin",
     "custom",

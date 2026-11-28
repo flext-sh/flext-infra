@@ -42,7 +42,7 @@ Infra:
     # rvben.rumdl editor extension reads .rumdl.toml: markdownlint is retired
     # from CLI and editor alike, so its ignore projection is too.
     - path: .markdownlintignore
-      evidence: '# @flext-regenerate: make check'
+      evidence: '# @flext-regenerate:'
     # Pre-marker generations carry no banner; the retired installer's own
     # header proves machine provenance so consumers keep no stale copy.
     - path: .github/scripts/install-git-hooks.sh
@@ -342,10 +342,10 @@ Infra:
       # version_probe is the setup reality proof's data: `binary` is resolved
       # through `mise which` and must live inside the tool's `mise where`
       # root; `arguments` run it; `pattern` (a regex whose `{version}` is the
-      # escaped mise.lock version) must match its output. lock_checksum false
-      # declares a tool whose upstream release metadata publishes no checksum
-      # (mise.lock then carries the URL only); every other tool's current
-      # platform lock section must carry one.
+      # escaped mise.lock version) must match its output. Every tool's current
+      # platform lock section carries a checksum: `make upg` completes every
+      # locked entry with a plain `mise lock`, and mise computes the checksum
+      # from the artifact when the upstream registry publishes none.
       # Base toolchain: only what this generator's own verbs run (python, the
       # self-managed mise, uv, direnv, taplo, ast-grep, gitleaks, scc, qlty,
       # jscpd, waza, prek, gh). A project that needs more
@@ -374,11 +374,8 @@ Infra:
           binary: direnv
           arguments: [ version ]
           pattern: "^{version}$"
-      # The aqua registry entry for tamasfe/taplo declares no checksum, so
-      # mise.lock records the release URL only.
       - name: taplo
         version: latest
-        lock_checksum: false
         version_probe:
           binary: taplo
           arguments: [ --version ]
@@ -868,9 +865,9 @@ Infra:
       - pydantic-field-positional-default
       - pydantic-unset-private-attribute
       workflow:
-      # Setup provisions locally and in CI; the commit hook runs only the
-      # converging check row (3f92d28eed: no setup row in pre_commit).
-      - { identity: setup, verb: setup, contexts: [ local, ci ] }
+      # Setup provisions before check locally, in CI and in the commit hook.
+      # The hook checks in its read-only commit context (ADR-038 decision 7).
+      - { identity: setup, verb: setup, contexts: [ local, ci, pre_commit ] }
       # Initial behavioral admission requires global source evidence, not full check.
       - { identity: check-primary, verb: check, phase: primary, contexts: [ local, ci, pre_commit, pre_push ] }
       # Operator decision 2026-11-22 (supersedes the 2026-11-12 ruling): CI runs
@@ -957,7 +954,7 @@ Infra:
         arguments: [ LAWS, RULES ]
         description: Refactor declared source structure through the shared pipeline and publish the complete coherent change; LAWS (ENFORCE ids) or RULES (rule ids) diagnose or repair one law (ADR-028 Decision 18 item 2).
       - name: check
-        description: Outside CI, converge generation, repairs and formatting to a fixed point and publish them; then validate declarations, projections, environment, documentation and configured gates. In CI it changes nothing and fails when any byte would change (ADR-037).
+        description: Locally, converge generation, repairs and formatting to a fixed point; then validate declarations, projections, environment, documentation and configured gates. CI and commit hooks verify without repairs or publication (ADR-037).
         arguments: [ CHECK_PHASE ]
       - name: tests
         description: Run native incremental tests through the persistent Testmon selection; in a workspace root ALL=Y includes every governed member.

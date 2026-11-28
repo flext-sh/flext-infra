@@ -1,4 +1,4 @@
-"""Real make check generation repairs activation before consuming its own output.
+"""Real make check activates before hooks, convergence and verification.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -12,7 +12,7 @@ from flext_infra import config
 from tests import c, tm, u
 
 # Each scenario's candidate checkout is set up from its committed locks before
-# any item starts. Make test-full owns the native installer and conform boundary.
+# any item starts. Make tests-full owns the native installer and conform boundary.
 pytestmark = [c.Tests.MARK.slow, c.Tests.MARK.remote]
 
 
@@ -38,15 +38,14 @@ class TestsFlextInfraCodegenCheckActivation:
         tm.that(envrc.read_text(encoding="utf-8"), eq=broken_activation)
 
     @staticmethod
-    def test_check_recovers_activation_and_orders_hooks(
+    def test_check_activates_once_and_orders_hooks(
         provisioned_infra_checkout: tuple[str, Path],
     ) -> None:
         """Native failures stop post hooks; a valid producer activates only once."""
         scenario, root = provisioned_infra_checkout
         receipt = root / "check-lifecycle.log"
         envrc = root / c.Infra.ENVRC_FILENAME
-        broken_activation = envrc.read_text(encoding="utf-8") + "\nreturn 73\n"
-        envrc.write_text(broken_activation, encoding="utf-8")
+        activation_before = envrc.read_text(encoding="utf-8")
         (root / c.Infra.ENVRC_LOCAL_RELPATH).write_text(
             "printf 'activated\\n' >> check-lifecycle.log\n"
             'export MAKE_GEN_ACTIVATION_PROOF="$PROJECT_ROOT"\n'
@@ -57,7 +56,7 @@ class TestsFlextInfraCodegenCheckActivation:
             ".PHONY: pre-check post-check\n"
             "pre-check:\n"
             '\t@test -x "$(RUNTIME_PYTHON)"\n'
-            '\t@test -z "$$MAKE_GEN_ACTIVATION_PROOF"\n'
+            '\t@test "$$MAKE_GEN_ACTIVATION_PROOF" = "$(PROJECT_ROOT)"\n'
             "\t@printf 'pre\\n' >> check-lifecycle.log\n"
             "post-check:\n"
             '\t@test "$$MAKE_GEN_ACTIVATION_PROOF" = "$(PROJECT_ROOT)"\n'
@@ -74,7 +73,7 @@ class TestsFlextInfraCodegenCheckActivation:
         )
         if scenario == "producer-failure":
             # Corrupt the real producer's package input. Python must preserve
-            # its native SyntaxError before conform or activation can complete.
+            # its native SyntaxError before convergence or post hooks complete.
             initializer = (
                 root
                 / c.Infra.DEFAULT_SRC_DIR
@@ -104,19 +103,19 @@ class TestsFlextInfraCodegenCheckActivation:
             eq=succeeded,
             msg=process.stdout + process.stderr,
         )
-        if scenario == "producer-failure":
-            tm.that(receipt.read_text().splitlines(), eq=["pre"])
-            tm.that(process.stderr, has="SyntaxError")
-            tm.that(envrc.read_text(encoding="utf-8"), eq=broken_activation)
+        if scenario == "activation-failure":
+            tm.that(receipt.read_text().splitlines(), eq=["activated"])
+            tm.that(process.stderr, has="exit status 43")
+            tm.that(envrc.read_text(encoding="utf-8"), eq=activation_before)
             return
-        tm.fail(envrc.read_text(encoding="utf-8") == broken_activation)
-        expected = ["pre"]
+        if scenario == "producer-failure":
+            tm.that(receipt.read_text().splitlines(), eq=["activated", "pre"])
+            tm.that(process.stderr, has="SyntaxError")
+            tm.that(envrc.read_text(encoding="utf-8"), eq=activation_before)
+            return
+        expected = ["activated", "pre"]
         if scenario == "custom":
             expected.append("custom")
-        expected.append("activated")
-        if succeeded:
-            expected.append("post")
-            tm.that(process.stderr, lacks="mise WARN")
-        else:
-            tm.that(process.stderr, has="exit status 43")
+        expected.append("post")
+        tm.that(process.stderr, lacks="mise WARN")
         tm.that(receipt.read_text().splitlines(), eq=expected)

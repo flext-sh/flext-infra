@@ -30,20 +30,22 @@ class TestsFlextInfraSkillValidator:
         tm.that(list_value, eq=["item1", "item2"])
 
     @staticmethod
-    def test_empty_and_null(tmp_path: Path) -> None:
-        """Empty/null YAML returns empty dict."""
-        (tmp_path / "empty.yml").write_text("")
-        tm.that(dict(u.Cli.yaml_load_mapping(tmp_path / "empty.yml")), eq={})
-        (tmp_path / "null.yml").write_text("null")
-        tm.that(dict(u.Cli.yaml_load_mapping(tmp_path / "null.yml")), eq={})
+    @c.Tests.MARK.parametrize("content", ["", "null"])
+    def test_empty_and_null(tmp_path: Path, content: str) -> None:
+        """An empty or null YAML document fails loudly (flext-cli strict loader)."""
+        path = tmp_path / "empty.yml"
+        path.write_text(content)
+        with u.Tests.raises(RuntimeError, match="YAML document is empty"):
+            u.Cli.yaml_load_mapping(path)
 
     @staticmethod
-    def test_non_dict_returns_empty_mapping(tmp_path: Path) -> None:
-        """Non-mapping YAML normalizes to an empty mapping."""
-        (tmp_path / "list.yml").write_text("- item1\n- item2")
-        tm.that(dict(u.Cli.yaml_load_mapping(tmp_path / "list.yml")), eq={})
-        (tmp_path / "str.yml").write_text("just a string")
-        tm.that(dict(u.Cli.yaml_load_mapping(tmp_path / "str.yml")), eq={})
+    @c.Tests.MARK.parametrize("content", ["- item1\n- item2", "just a string"])
+    def test_non_mapping_fails_loudly(tmp_path: Path, content: str) -> None:
+        """A non-mapping YAML document fails (flext-cli strict loader)."""
+        path = tmp_path / "document.yml"
+        path.write_text(content)
+        with u.Tests.raises(RuntimeError, match="YAML document must be a mapping"):
+            u.Cli.yaml_load_mapping(path)
 
     @staticmethod
     def test_none_returns_empty() -> None:
@@ -114,19 +116,18 @@ class TestsFlextInfraSkillValidator:
         tm.ok(report.passed)
 
     @staticmethod
-    def test_validate_scalar_rules_yml_yields_empty_success(
+    def test_validate_scalar_rules_yml_fails(
         tmp_path: Path,
     ) -> None:
-        """Scalar rules.yml content yields an empty successful report."""
+        """A scalar rules.yml is malformed and its validation fails."""
         validator = FlextInfraSkillValidator(skill="test-skill")
         skill = tmp_path / c.Infra.SKILLS_DIR / "test-skill"
         skill.mkdir(parents=True)
         (skill / "rules.yml").write_text("just a plain string")
-        report: p.Infra.ValidationReport = tm.ok(
+        tm.fail(
             validator.build_report(tmp_path, "test-skill"),
+            has="YAML document must be a mapping",
         )
-        tm.ok(report.passed)
-        tm.that(report.violations, empty=True)
 
     @staticmethod
     def _write_skill(root: Path, rules_yml: str) -> None:

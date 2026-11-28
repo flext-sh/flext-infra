@@ -50,17 +50,17 @@ class FlextInfraUtilitiesGitSemanticIdentity(FlextInfraUtilitiesGitRepo):
         opened = cls._open_repo(request.repo_root)
         if opened.failure:
             return r[p.Infra.GitIdentityReport].from_failure(opened)
-        repo = opened.value
         try:
-            primary = cls._git_primary_worktree_root_path(request.repo_root)
-            if primary.failure:
-                return r[p.Infra.GitIdentityReport].from_failure(primary)
-            report = cls._collect_identity_facts(
-                repo,
-                primary_root=primary.value,
-                requested_path=request.repo_root,
-                include_status=include_status,
-            )
+            with opened.value as repo:
+                primary = cls._git_primary_worktree_root_path(request.repo_root)
+                if primary.failure:
+                    return r[p.Infra.GitIdentityReport].from_failure(primary)
+                report = cls._collect_identity_facts(
+                    repo,
+                    primary_root=primary.value,
+                    requested_path=request.repo_root,
+                    include_status=include_status,
+                )
         except GitCommandError as exc:
             return r[p.Infra.GitIdentityReport].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:

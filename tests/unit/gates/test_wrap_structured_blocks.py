@@ -32,7 +32,7 @@ class TestsFlextInfraWrapStructuredBlocks:
 
     @classmethod
     def test_fix_keeps_a_long_block_line_and_its_finding(cls, tmp_path: Path) -> None:
-        """``make check`` repair leaves block lines byte for byte and reports them."""
+        """``make check`` leaves block lines byte for byte and reports them."""
         project = u.Tests.mk_project(
             tmp_path,
             "block-wrap",
