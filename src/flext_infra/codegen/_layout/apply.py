@@ -1,7 +1,7 @@
 """Apply orchestration for the project-layout engine.
 
 Executes the typed findings produced by the planning mixin, composing the
-file/archive primitives and the gitignore owner through FLEXT.
+file/retirement primitives and the gitignore owner through FLEXT.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -9,9 +9,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
-from flext_infra import p, r, t
+from flext_infra import p, r, t, u
 from flext_infra.codegen._layout import (
     FlextInfraCodegenLayoutFiles,
     FlextInfraCodegenLayoutGitignore,
@@ -35,6 +36,27 @@ class FlextInfraCodegenLayoutApply(
             The resulting ``p.Result[p.Infra.LayoutProjectReport]``.
 
         """
+        if report.actionable and not report.inputs:
+            return r[p.Infra.LayoutProjectReport].fail(
+                "layout apply requires captured configuration inputs",
+            )
+        with u.Infra.state_leases((project_dir,)):
+            verified = u.Cli.atomic_verify_binary_file_states(report.inputs)
+            if verified.failure:
+                return r[p.Infra.LayoutProjectReport].from_failure(verified)
+            return self._apply_findings(project_dir, report)
+
+    def _apply_findings(
+        self,
+        project_dir: Path,
+        report: p.Infra.LayoutProjectReport,
+    ) -> p.Result[p.Infra.LayoutProjectReport]:
+        """Apply one authenticated plan while holding the native writer lease.
+
+        Returns:
+            The updated report or the first original failure.
+
+        """
         findings: list[p.Infra.LayoutFinding] = []
         gitignore_status: t.Infra.LayoutStatus = "noop"
         actionable: tuple[p.Infra.LayoutFinding, ...] = report.actionable
@@ -53,7 +75,7 @@ class FlextInfraCodegenLayoutApply(
             if finding.rule == "gitignore":
                 findings.append(finding.model_copy(update={"status": gitignore_status}))
                 continue
-            executed = self._execute_path_finding(project_dir, finding)
+            executed = self._execute_path_finding(project_dir, finding, report.inputs)
             if executed.failure:
                 return r[p.Infra.LayoutProjectReport].from_failure(executed)
             findings.append(executed.value)
@@ -65,27 +87,36 @@ class FlextInfraCodegenLayoutApply(
         self,
         project_dir: Path,
         finding: p.Infra.LayoutFinding,
+        inputs: Sequence[p.Cli.AtomicFileState],
     ) -> p.Result[p.Infra.LayoutFinding]:
-        """Execute one move/archive finding; missing sources are no-ops.
+        """Execute one path finding; missing sources are no-ops.
 
         Returns:
             The resulting ``p.Result[p.Infra.LayoutFinding]``.
 
         """
         source = project_dir / finding.path
-        if not source.exists():
+        if not source.exists() and not source.is_symlink():
             return r[p.Infra.LayoutFinding].ok(
                 finding.model_copy(update={"status": "noop"}),
             )
         if finding.rule == "move":
-            return self._apply_move(project_dir, finding, source)
-        return self._apply_archive(project_dir, finding, source)
+            return self._apply_move(project_dir, finding, source, inputs)
+        if finding.rule == "prune":
+            pruned = self._prune_empty_dirs(source)
+            if pruned.failure:
+                return r[p.Infra.LayoutFinding].from_failure(pruned)
+            return r[p.Infra.LayoutFinding].ok(
+                finding.model_copy(update={"status": "applied"}),
+            )
+        return self._apply_retire(project_dir, finding, source, inputs)
 
     def _apply_move(
         self,
         project_dir: Path,
         finding: p.Infra.LayoutFinding,
         source: Path,
+        inputs: Sequence[p.Cli.AtomicFileState],
     ) -> p.Result[p.Infra.LayoutFinding]:
         """Move one file/dir to its canonical target, merging dir collisions.
 
@@ -94,23 +125,22 @@ class FlextInfraCodegenLayoutApply(
 
         """
         target = project_dir / finding.target
-        if source.is_dir() and target.exists():
-            merge = self._merge_directory(project_dir, source, target, finding.path)
+        if source.is_dir() and not source.is_symlink() and target.exists():
+            if not target.is_dir() or target.is_symlink():
+                return r[p.Infra.LayoutFinding].fail(
+                    f"layout collision preserves divergent paths: {source} -> {target}",
+                )
+            merge = self._merge_directory(project_dir, source, target, inputs)
             if merge.failure:
                 return r[p.Infra.LayoutFinding].from_failure(merge)
             if source.exists():
-                return r[p.Infra.LayoutFinding].ok(
-                    finding.model_copy(
-                        update={
-                            "status": "skipped",
-                            "message": f"{finding.message} (merge incomplete: review)",
-                        },
-                    ),
+                return r[p.Infra.LayoutFinding].fail(
+                    f"layout merge left preserved source content: {source}",
                 )
             return r[p.Infra.LayoutFinding].ok(
                 finding.model_copy(update={"status": "applied"}),
             )
-        moved = self._move_entry(project_dir, source, target, finding.path)
+        moved = self._move_entry(project_dir, source, target, inputs)
         if moved.failure:
             return r[p.Infra.LayoutFinding].from_failure(moved)
         status, message = moved.value
@@ -118,22 +148,23 @@ class FlextInfraCodegenLayoutApply(
             finding.model_copy(update={"status": status, "message": message}),
         )
 
-    def _apply_archive(
+    def _apply_retire(
         self,
         project_dir: Path,
         finding: p.Infra.LayoutFinding,
         source: Path,
+        inputs: Sequence[p.Cli.AtomicFileState],
     ) -> p.Result[p.Infra.LayoutFinding]:
-        """Archive one entry into the archive root, preserving content.
+        """Retire one entry only after proving its content is preserved in Git.
 
         Returns:
             The resulting ``p.Result[p.Infra.LayoutFinding]``.
 
         """
-        archived = self._archive_path(project_dir, source, finding.path, finding)
-        if archived.failure:
-            return r[p.Infra.LayoutFinding].from_failure(archived)
-        status, message = archived.value
+        retired = self._retire_path(project_dir, source, inputs)
+        if retired.failure:
+            return r[p.Infra.LayoutFinding].from_failure(retired)
+        status, message = retired.value
         return r[p.Infra.LayoutFinding].ok(
             finding.model_copy(update={"status": status, "message": message}),
         )
@@ -143,7 +174,7 @@ class FlextInfraCodegenLayoutApply(
         project_dir: Path,
         source: Path,
         target: Path,
-        source_rel: str,
+        inputs: Sequence[p.Cli.AtomicFileState],
     ) -> p.Result[bool]:
         """Merge a docs dir into an existing target dir file-by-file.
 
@@ -158,12 +189,11 @@ class FlextInfraCodegenLayoutApply(
                 project_dir,
                 file_path,
                 target / rel,
-                f"{source_rel}/{rel}",
+                inputs,
             )
             if moved.failure:
                 return r[bool].from_failure(moved)
-        self._prune_empty_dirs(source)
-        return r[bool].ok(value=True)
+        return self._prune_empty_dirs(source)
 
 
 __all__: list[str] = ["FlextInfraCodegenLayoutApply"]
