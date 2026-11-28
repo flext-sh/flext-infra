@@ -315,7 +315,11 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         resource = project.get_resource(
             path.relative_to(Path(project.root.real_path)).as_posix()
         )
-        module = runtime.build_string_module(project, source, resource=resource)
+        module = FlextInfraUtilitiesRopeRuntimeTypes.require_source_module(
+            project.get_pymodule(resource, force_errors=True)
+        )
+        if module.source_code != source:
+            module = runtime.build_string_module(project, source, resource=resource)
         returns_by_type = {
             literal_type: refactors.semantic_regions(
                 module,
