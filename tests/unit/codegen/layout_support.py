@@ -8,9 +8,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import config
 from flext_infra.codegen import FlextInfraCodegenLayout
-from tests import c, u
+from tests import FlextInfraConfig, c, p, t, tm, u
 
 
 class TestsFlextInfraCodegenLayoutSupport:
@@ -93,14 +92,33 @@ class TestsFlextInfraCodegenLayoutSupport:
         )
 
     @staticmethod
-    def archive_root() -> str:
-        """Archive root from the same typed SSOT the engine consumes.
-
-        Returns:
-            The resulting ``str``.
-
-        """
-        return config.Infra.codegen.layout.archive_root
+    def declare_layout_override(
+        project: Path,
+        override: p.Infra.LayoutProjectOverrideSpec,
+    ) -> None:
+        """Declare a fixture's own layout policy through production YAML."""
+        inputs = tm.ok(u.Infra.load_codegen_inputs(project))
+        name = u.Infra.project_name_from_payload(
+            project / c.PYPROJECT_FILENAME,
+            u.Infra.pyproject_payload(project / c.PYPROJECT_FILENAME),
+        )
+        _, declaration, _ = FlextInfraConfig.config_layer_paths_for_repository(
+            project,
+            filename=c.Infra.CODEGEN_CONFIG_FILENAME,
+        )
+        payload: t.JsonMapping = {
+            "Infra": {
+                "codegen": {
+                    "layout": {
+                        "project_overrides": {name: override.model_dump(mode="json")},
+                    },
+                    "repository": inputs.spec.repository.model_dump(
+                        mode="json", exclude_unset=True
+                    ),
+                },
+            },
+        }
+        tm.ok(u.Cli.yaml_dump(declaration, payload))
 
 
 __all__: list[str] = ["TestsFlextInfraCodegenLayoutSupport"]

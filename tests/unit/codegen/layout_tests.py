@@ -130,7 +130,7 @@ class TestsFlextInfraCodegenLayout:
             )
 
     @staticmethod
-    def test_check_reports_move_archive_review_and_ignore(
+    def test_check_reports_move_retirement_and_review(
         tmp_path: Path,
     ) -> None:
         """Check mode classifies every loose root entry without writing."""
@@ -143,18 +143,11 @@ class TestsFlextInfraCodegenLayout:
         tm.that(by_path["guides"].rule, eq="move")
         tm.that(by_path["guides"].target, eq="docs/guides")
         tm.that(by_path["index.md"].rule, eq="move")
-        tm.that(by_path["output.log"].rule, eq="archive")
-        tm.that(
-            by_path["output.log"].target,
-            eq=f"{TestsFlextInfraCodegenLayoutSupport.archive_root()}/{project.name}/output.log",
-        )
+        tm.that(by_path["output.log"].rule, eq="retire")
+        tm.that(by_path["output.log"].target, eq="")
         tm.that(by_path["loose.txt"].rule, eq="review")
         ignore = [finding for finding in report.findings if finding.rule == "gitignore"]
-        tm.ok(bool(ignore))
-        tm.that(
-            ignore[0].target,
-            eq=f"{TestsFlextInfraCodegenLayoutSupport.archive_root()}/",
-        )
+        tm.that(ignore, eq=[])
 
     @staticmethod
     def test_check_execute_fails_on_layout_findings(
@@ -169,7 +162,7 @@ class TestsFlextInfraCodegenLayout:
         tm.fail(result, has="move guides -> docs/guides")
 
     @staticmethod
-    def test_apply_moves_archives_and_converges_idempotently(
+    def test_apply_moves_retires_and_converges_idempotently(
         tmp_path: Path,
     ) -> None:
         """Apply reorganizes once; a second apply performs zero operations."""
@@ -183,14 +176,7 @@ class TestsFlextInfraCodegenLayout:
         tm.ok(first)
         tm.ok((project / "docs" / "guides" / "intro.md").is_file())
         tm.ok((project / "docs" / "index.md").is_file())
-        archived = (
-            project
-            / TestsFlextInfraCodegenLayoutSupport.archive_root()
-            / project.name
-            / "output.log"
-        )
-        tm.ok(archived.is_file())
-        tm.that(archived.read_text(encoding="utf-8"), eq="log-line\n")
+        tm.that(u.Tests.git_capture(project, "show", "HEAD:output.log"), eq="log-line")
         tm.fail((project / "guides").exists())
         tm.fail((project / "output.log").exists())
         tm.ok((project / "loose.txt").is_file())
@@ -202,10 +188,10 @@ class TestsFlextInfraCodegenLayout:
         tm.that([finding.rule for finding in residual.findings], eq=["review"])
 
     @staticmethod
-    def test_apply_docs_collision_keeps_target_and_archives_source(
+    def test_apply_docs_collision_fails_and_preserves_both_sources(
         tmp_path: Path,
     ) -> None:
-        """Different-content collisions preserve both sides (archive-not-delete)."""
+        """Different-content collisions fail while preserving both original paths."""
         project = TestsFlextInfraCodegenLayoutSupport.build_loose_project(tmp_path)
         existing = project / "docs" / "guides"
         existing.mkdir(parents=True)
@@ -216,24 +202,20 @@ class TestsFlextInfraCodegenLayout:
 
         result = engine.execute()
 
-        tm.ok(result)
+        tm.fail(result, has="layout collision")
         tm.that((existing / "intro.md").read_text(encoding="utf-8"), eq="canonical\n")
-        archived = (
-            project
-            / TestsFlextInfraCodegenLayoutSupport.archive_root()
-            / project.name
-            / "guides"
-            / "intro.md"
+        tm.that(
+            (project / "guides" / "intro.md").read_text(encoding="utf-8"), eq="intro\n"
         )
-        tm.ok(archived.is_file())
-        tm.that(archived.read_text(encoding="utf-8"), eq="intro\n")
-        tm.fail((project / "guides").exists())
 
     @staticmethod
-    def test_apply_override_move_then_archives_emptied_dir(
+    @c.Tests.MARK.parametrize("extra_file", [False, True])
+    def test_apply_override_move_prunes_only_an_empty_dir(
         tmp_path: Path,
+        *,
+        extra_file: bool,
     ) -> None:
-        """Override moves run before the emptied directory is archived."""
+        """Declared moves retain content before pruning their emptied directory."""
         project = tmp_path / "flext-dbt-ldif"
         profiles = project / "profiles"
         package_dir = project / "src" / "flext_dbt_ldif"
@@ -249,20 +231,33 @@ class TestsFlextInfraCodegenLayout:
         engine = TestsFlextInfraCodegenLayoutSupport.layout_engine(
             tmp_path, apply_changes=True
         )
+        TestsFlextInfraCodegenLayoutSupport.declare_layout_override(
+            project,
+            m.Infra.LayoutProjectOverrideSpec(
+                moves=(
+                    m.Infra.LayoutMoveSpec(
+                        source="profiles/profiles.yml", target="profiles.yml"
+                    ),
+                ),
+                prune_empty_dirs=("profiles",),
+                keep_root_files=("profiles.yml",),
+            ),
+        )
+        if extra_file:
+            (profiles / "keep.txt").write_bytes(b"authored content\n")
 
         result = engine.execute()
 
-        tm.ok(result)
-        tm.ok((project / "profiles.yml").is_file())
-        tm.fail((project / "profiles").exists())
+        if extra_file:
+            tm.fail(result, has="directory still contains preserved content")
+            tm.that((profiles / "keep.txt").read_bytes(), eq=b"authored content\n")
+        else:
+            tm.ok(result)
+            tm.fail(profiles.exists())
+        tm.that((project / "profiles.yml").read_bytes(), eq=b"profile: 1\n")
         tm.that(
-            (
-                project
-                / TestsFlextInfraCodegenLayoutSupport.archive_root()
-                / project.name
-                / "profiles"
-            ).is_dir(),
-            eq=True,
+            u.Tests.git_capture(project, "ls-files", "--", "profiles.yml"),
+            eq="profiles.yml",
         )
 
     @staticmethod
@@ -403,10 +398,10 @@ class TestsFlextInfraCodegenLayout:
         tm.that(findings[undeclared_name].rule, eq="review")
 
     @staticmethod
-    def test_duplicate_root_md_archives_when_docs_copy_exists(
+    def test_duplicate_root_md_fails_when_docs_copy_differs(
         tmp_path: Path,
     ) -> None:
-        """Root move_docs_files collide with docs/ -> archive root, keep docs."""
+        """A canonical Markdown destination cannot hide a divergent root source."""
         project = TestsFlextInfraCodegenLayoutSupport.build_loose_project(tmp_path)
         docs = project / "docs"
         docs.mkdir(parents=True, exist_ok=True)
@@ -417,14 +412,194 @@ class TestsFlextInfraCodegenLayout:
 
         result = engine.execute()
 
-        tm.ok(result)
+        tm.fail(result, has="layout collision")
         tm.that((docs / "index.md").read_text(encoding="utf-8"), eq="canonical-index\n")
-        archived = (
-            project
-            / TestsFlextInfraCodegenLayoutSupport.archive_root()
-            / project.name
-            / "index.md"
+        tm.that((project / "index.md").read_text(encoding="utf-8"), eq="index\n")
+
+
+class TestsFlextInfraCodegenLayoutPreservation:
+    """Test Git preservation and authenticated layout publication."""
+
+    @staticmethod
+    @c.Tests.MARK.parametrize("relative", ["index.md", "guides/intro.md"])
+    def test_identical_docs_duplicate_retires_only_the_committed_source(
+        tmp_path: Path, relative: str
+    ) -> None:
+        """Identical destinations remain canonical while Git retains the original."""
+        project = TestsFlextInfraCodegenLayoutSupport.build_loose_project(tmp_path)
+        source = project / relative
+        original = source.read_bytes()
+        target = project / "docs" / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(original)
+        engine = TestsFlextInfraCodegenLayoutSupport.layout_engine(
+            tmp_path, apply_changes=True
         )
-        tm.ok(archived.is_file())
-        tm.that(archived.read_text(encoding="utf-8"), eq="index\n")
-        tm.fail((project / "index.md").exists())
+
+        tm.ok(engine.execute())
+
+        tm.fail(source.exists())
+        tm.that(target.read_bytes(), eq=original)
+        tm.that(
+            u.Tests.git_capture(project, "show", f"HEAD:{relative}"),
+            eq=original.decode(c.DEFAULT_ENCODING).strip(),
+        )
+
+    @staticmethod
+    def test_identical_docs_bytes_with_different_modes_remain_a_collision(
+        tmp_path: Path,
+    ) -> None:
+        """A duplicate's executable mode cannot be discarded by byte equality."""
+        project = TestsFlextInfraCodegenLayoutSupport.build_loose_project(tmp_path)
+        source = project / "index.md"
+        target = project / "docs" / source.name
+        target.parent.mkdir(parents=True)
+        target.write_bytes(source.read_bytes())
+        source.chmod(0o644)
+        target.chmod(0o755)
+        engine = TestsFlextInfraCodegenLayoutSupport.layout_engine(
+            tmp_path, apply_changes=True
+        )
+        original = tm.ok(u.Cli.atomic_read_binary_file_state(source, required=True))
+        canonical = tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True))
+
+        tm.fail(engine.execute(), has="layout collision")
+
+        tm.ok(u.Cli.atomic_verify_binary_file_states((original, canonical)))
+
+    @staticmethod
+    @c.Tests.MARK.parametrize(
+        "state", ["modified", "staged", "index_only", "untracked", "staged_only"]
+    )
+    def test_retirement_preserves_content_not_committed_in_its_current_state(
+        tmp_path: Path, state: str
+    ) -> None:
+        """Uncommitted worktree or index content blocks retirement without loss."""
+        project = TestsFlextInfraCodegenLayoutSupport.build_loose_project(tmp_path)
+        engine = TestsFlextInfraCodegenLayoutSupport.layout_engine(
+            tmp_path, apply_changes=True
+        )
+        source = project / (
+            "new-output.log" if state in {"untracked", "staged_only"} else "output.log"
+        )
+        source.write_bytes(b"unique work in progress\n")
+        if state in {"staged", "staged_only", "index_only"}:
+            tm.ok(u.Tests.git_run(project, "add", "--", source.name))
+        if state == "index_only":
+            source.write_bytes(b"log-line\n")
+        before = tm.ok(u.Cli.atomic_read_binary_file_state(source, required=True))
+        request = m.Infra.GitRelativePathRequest(
+            repo_root=project, relative_path=source.name
+        )
+        index = tm.ok(u.Infra.git_capture_index_file(request))
+
+        tm.fail(engine.execute(), has="requires unchanged content committed in Git")
+
+        tm.ok(u.Cli.atomic_verify_binary_file_states((before,)))
+        tm.that(tm.ok(u.Infra.git_capture_index_file(request)), eq=index)
+
+    @staticmethod
+    @c.Tests.MARK.parametrize("ignored", [False, True])
+    def test_directory_retirement_preserves_uncommitted_descendants(
+        tmp_path: Path, *, ignored: bool
+    ) -> None:
+        """Physical inventory protects ignored and untracked bytes within a tree."""
+        project = TestsFlextInfraCodegenLayoutSupport.build_loose_project(tmp_path)
+        logs = project / "logs"
+        logs.mkdir()
+        committed = logs / "saved.txt"
+        committed.write_bytes(b"committed log\n")
+        engine = TestsFlextInfraCodegenLayoutSupport.layout_engine(
+            tmp_path, apply_changes=True
+        )
+        unique = logs / "current.local"
+        unique.write_bytes(b"uncommitted log\n")
+        if ignored:
+            (project / c.Infra.GITIGNORE).write_text("*.local\n", encoding="utf-8")
+
+        tm.fail(engine.execute(), has="requires unchanged content committed in Git")
+
+        tm.that(committed.read_bytes(), eq=b"committed log\n")
+        tm.that(unique.read_bytes(), eq=b"uncommitted log\n")
+
+    @staticmethod
+    def test_directory_retirement_preserves_exact_bytes_in_git(
+        tmp_path: Path,
+    ) -> None:
+        """Committed binary content remains recoverable after physical retirement."""
+        project = TestsFlextInfraCodegenLayoutSupport.build_loose_project(tmp_path)
+        nested = project / "logs" / "nested"
+        nested.mkdir(parents=True)
+        original = b"\x00saved\xff\r\n"
+        (nested / "saved.bin").write_bytes(original)
+        engine = TestsFlextInfraCodegenLayoutSupport.layout_engine(
+            tmp_path, apply_changes=True
+        )
+
+        tm.ok(engine.execute())
+
+        tm.fail((project / "logs").exists())
+        saved = tm.ok(u.Infra.git_committed_directory_blobs(project, "logs/nested"))
+        tm.that(saved["saved.bin"], eq=original)
+        tm.that(u.Tests.git_capture(project, "ls-files", "--", "logs"), eq="")
+
+    @staticmethod
+    def test_changed_layout_input_blocks_a_previously_planned_retirement(
+        tmp_path: Path,
+    ) -> None:
+        """The configuration selecting deletion is reverified before any effect."""
+        project = TestsFlextInfraCodegenLayoutSupport.build_loose_project(tmp_path)
+        engine = TestsFlextInfraCodegenLayoutSupport.layout_engine(
+            tmp_path, apply_changes=True
+        )
+        TestsFlextInfraCodegenLayoutSupport.declare_layout_override(
+            project, m.Infra.LayoutProjectOverrideSpec()
+        )
+        report = engine.check_project(project)
+        _, declaration, _ = FlextInfraConfig.config_layer_paths_for_repository(
+            project, filename=c.Infra.CODEGEN_CONFIG_FILENAME
+        )
+        declaration.write_bytes(declaration.read_bytes() + b"\n# changed after planning\n")
+
+        tm.fail(engine.apply_project(project, report), has="atomic source changed")
+
+        tm.that((project / "output.log").read_bytes(), eq=b"log-line\n")
+        tm.that((project / "guides" / "intro.md").read_bytes(), eq=b"intro\n")
+
+    @staticmethod
+    def test_git_tracking_failure_cannot_fall_back_to_a_filesystem_move(
+        tmp_path: Path,
+    ) -> None:
+        """A genuine unreadable Git index keeps the source at its original path."""
+        project = TestsFlextInfraCodegenLayoutSupport.build_loose_project(tmp_path)
+        engine = TestsFlextInfraCodegenLayoutSupport.layout_engine(
+            tmp_path, apply_changes=True
+        )
+        report = engine.check_project(project)
+        (project / c.GIT_DIR_NAME / "index").write_bytes(b"invalid Git index\n")
+
+        tm.fail(
+            engine.apply_project(project, report), has="failed to check tracked status"
+        )
+
+        tm.that((project / "guides" / "intro.md").read_bytes(), eq=b"intro\n")
+        tm.fail((project / "docs").exists())
+
+    @staticmethod
+    def test_serialized_report_cannot_apply_without_its_captured_inputs(
+        tmp_path: Path,
+    ) -> None:
+        """A display report does not carry the read authority for deletion."""
+        project = TestsFlextInfraCodegenLayoutSupport.build_loose_project(tmp_path)
+        engine = TestsFlextInfraCodegenLayoutSupport.layout_engine(
+            tmp_path, apply_changes=True
+        )
+        planned = engine.check_project(project)
+        report = m.Infra.LayoutProjectReport.model_validate_json(
+            planned.model_dump_json(exclude_computed_fields=True)
+        )
+
+        tm.fail(engine.apply_project(project, report), has="captured configuration inputs")
+
+        tm.that((project / "output.log").read_bytes(), eq=b"log-line\n")
+        tm.that((project / "guides" / "intro.md").read_bytes(), eq=b"intro\n")

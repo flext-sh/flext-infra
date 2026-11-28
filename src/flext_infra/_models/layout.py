@@ -15,7 +15,7 @@ from typing import Annotated
 
 from flext_cli import m
 
-from flext_infra import t
+from flext_infra import p, t
 from flext_infra._models import (
     FlextInfraModelsMiseToolchainBase,
     FlextInfraModelsMixins,
@@ -34,9 +34,9 @@ class FlextInfraModelsLayout:
     class LayoutProjectOverrideSpec(FlextInfraModelsMiseToolchainBase.SchemaRecord):
         """Per-project layout deltas applied on top of the global rules."""
 
-        archive_names: Annotated[
+        retire_names: Annotated[
             tuple[t.NonEmptyStr, ...],
-            m.Field(description="Extra project-specific archived root entries"),
+            m.Field(description="Extra root entries retired after Git preservation"),
         ] = ()
         gitignore_additions: Annotated[
             tuple[t.NonEmptyStr, ...],
@@ -49,9 +49,9 @@ class FlextInfraModelsLayout:
             ],
             m.Field(description="Explicit nested source/target moves"),
         ] = ()
-        archive_empty_dirs: Annotated[
+        prune_empty_dirs: Annotated[
             tuple[t.NonEmptyStr, ...],
-            m.Field(description="Directories archived once emptied by moves"),
+            m.Field(description="Directories removed once emptied by moves"),
         ] = ()
         keep_root_files: Annotated[
             tuple[t.NonEmptyStr, ...],
@@ -76,10 +76,6 @@ class FlextInfraModelsLayout:
         """Fully modeled content of the ``layout`` section of ``codegen.yaml``."""
 
         version: Annotated[int, m.Field(ge=1, description="Config schema version")]
-        archive_root: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Archive-not-delete root directory"),
-        ]
         docs_target: Annotated[
             t.NonEmptyStr,
             m.Field(description="Canonical documentation directory"),
@@ -132,13 +128,13 @@ class FlextInfraModelsLayout:
             tuple[t.NonEmptyStr, ...],
             m.Field(description="Root diagram globs moved under diagrams_target"),
         ]
-        archive_names: Annotated[
+        retire_names: Annotated[
             tuple[t.NonEmptyStr, ...],
-            m.Field(description="Root entries archived into archive_root"),
+            m.Field(description="Root entries retired after Git preservation"),
         ]
-        archive_globs: Annotated[
+        retire_globs: Annotated[
             tuple[t.NonEmptyStr, ...],
-            m.Field(description="Root entry globs archived into archive_root"),
+            m.Field(description="Root entry globs retired after Git preservation"),
         ]
         special_root_dirs: Annotated[
             tuple[t.NonEmptyStr, ...],
@@ -198,6 +194,10 @@ class FlextInfraModelsLayout:
     ):
         """Per-project layout plan or apply outcome."""
 
+        inputs: Annotated[
+            tuple[t.Port[p.Cli.AtomicFileState], ...],
+            m.Field(exclude=True, description="Configuration states selecting this plan"),
+        ] = ()
         findings: Annotated[
             tuple[
                 FlextInfraModelsLayout.LayoutFinding,

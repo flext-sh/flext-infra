@@ -49,9 +49,7 @@ class FlextInfraCodegenLayout(
                 continue
             applied = self.apply_project(project_dir, planned)
             if applied.failure:
-                return r[str].fail(
-                    applied.error or f"layout apply failed: {project_dir.name}",
-                )
+                return r[str].from_failure(applied)
             residual = self.plan_project(project_dir)
             unresolved = tuple(
                 finding.path

@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra.codegen import FlextInfraCodegenLayout, FlextInfraCodegenMakeBootstrap
-from tests import FlextInfraConfig, c, config, m, t, tm, u
+from tests import c, config, m, tm, u
 from tests.unit.codegen import TestsFlextInfraCodegenLayoutSupport
 
 pytestmark = c.Tests.MARK.slow
@@ -23,29 +23,10 @@ class TestsFlextInfraCodegenLayoutGitignore:
         """Declare the fixture's own policy through the production YAML boundary."""
         artifact = f"{project_name}.local.json"
         override = m.Infra.LayoutProjectOverrideSpec(
-            archive_names=(artifact,),
+            retire_names=(artifact,),
             gitignore_additions=(artifact,),
         )
-        _, declaration, _ = FlextInfraConfig.config_layer_paths_for_repository(
-            root,
-            filename=c.Infra.CODEGEN_CONFIG_FILENAME,
-        )
-        declaration.parent.mkdir(parents=True, exist_ok=True)
-        payload: t.JsonMapping = {
-            "Infra": {
-                "codegen": {
-                    "layout": {
-                        "project_overrides": {
-                            project_name: override.model_dump(mode="json"),
-                        },
-                    },
-                    "repository": tm.ok(
-                        u.Infra.load_codegen_inputs(root)
-                    ).spec.repository.model_dump(mode="json", exclude_unset=True),
-                },
-            },
-        }
-        tm.ok(u.Cli.yaml_dump(declaration, payload))
+        TestsFlextInfraCodegenLayoutSupport.declare_layout_override(root, override)
 
     @classmethod
     def test_apply_adds_ignore_entries_exactly_once(
@@ -57,7 +38,7 @@ class TestsFlextInfraCodegenLayoutGitignore:
         cls._declare_layout_override(project, project.name)
         codegen = tm.ok(u.Infra.load_codegen_inputs(project)).spec
         override = codegen.layout.project_overrides[project.name]
-        artifact = project / override.archive_names[0]
+        artifact = project / override.retire_names[0]
         original = b'{"preserved": true}\n'
         artifact.write_bytes(original)
         tm.ok(
@@ -79,12 +60,10 @@ class TestsFlextInfraCodegenLayoutGitignore:
         entries = ignore.splitlines()
         for pattern in override.gitignore_additions:
             tm.that(entries.count(pattern), eq=1)
-        tm.that(entries.count(f"{codegen.layout.archive_root}/"), eq=1)
+        tm.fail(artifact.exists())
         tm.that(
-            (
-                project / codegen.layout.archive_root / project.name / artifact.name
-            ).read_bytes(),
-            eq=original,
+            u.Tests.git_capture(project, "show", f"HEAD:{artifact.name}"),
+            eq=original.decode(c.DEFAULT_ENCODING).strip(),
         )
 
     @staticmethod
@@ -103,11 +82,7 @@ class TestsFlextInfraCodegenLayoutGitignore:
         tracked_names = set(tracked.value.split())
         tm.ok("docs/guides/intro.md" in tracked_names)
         tm.fail("guides/intro.md" in tracked_names)
-        tm.that(
-            f"{TestsFlextInfraCodegenLayoutSupport.archive_root()}/{project.name}/output.log"
-            in tracked_names,
-            eq=False,
-        )
+        tm.fail("output.log" in tracked_names)
 
     @classmethod
     def test_managed_ignore_render_includes_layout_additions(
@@ -129,7 +104,6 @@ class TestsFlextInfraCodegenLayoutGitignore:
         entries = tm.ok(rendered).splitlines()
         for pattern in override.gitignore_additions:
             tm.that(entries.count(pattern), eq=1)
-        tm.that(entries.count(f"{codegen.layout.archive_root}/"), eq=1)
 
     @staticmethod
     def test_rendered_ignore_keeps_backup_named_python_sources(

@@ -998,10 +998,7 @@ Infra:
     - { name: .benchmarks, analysis_exclude: true }
     # Historical evidence trees (AGENTS.md law: archives are evidence only,
     # never live authority) are not production input to any analyzer.
-    # Archive-not-delete target for the layout engine; the generated
-    # .gitignore projection must never track archived loose files.
     - { name: .archive, source_scan_ignore: true, analysis_exclude: true }
-    - { name: .bkp, analysis_exclude: true }
     - { name: .cache, source_scan_ignore: true, analysis_exclude: true }
     # Agent worktrees are duplicate repositories, never production input.
     - { name: .claude, source_scan_ignore: true, vscode_exclude: false, watch_exclude: false }
@@ -1282,9 +1279,7 @@ Infra:
         - editor.codeActionsOnSave.source.organizeImports
     layout:
       version: 1
-      # Archive-not-delete root: archived entries land in <archive_root>/<project>/.
       allow_hidden: true
-      archive_root: .bkp
       diagrams_target: docs/diagrams
       docs_target: docs
       examples_target: examples
@@ -1404,9 +1399,9 @@ Infra:
       # Diagram sources moved under <diagrams_target>/.
       move_diagram_globs:
       - "*.puml"
-      # Root entries archived into <archive_root>/<project>/ (never deleted).
+      # Retire root entries only when their exact content is preserved in Git.
       # Names match files or directories; globs use fnmatch semantics.
-      archive_names:
+      retire_names:
       - $OUT
       - max
       - "=4.0.0"
@@ -1432,7 +1427,7 @@ Infra:
       - noexec-pipeline
       - probe
       - status-pipeline
-      archive_globs:
+      retire_globs:
       - "*.log"
       - pytest_*.txt
       - test_output.txt
@@ -1443,8 +1438,8 @@ Infra:
       # External reference corpora (same class as docs/references/**).
       reference_root_dirs:
       - external-docs
-      # Per-project overrides: extra archives (with the matching .gitignore
-      # additions), explicit nested moves, and empty-directory archives.
+      # Per-project overrides: extra retirements (with matching .gitignore
+      # additions), explicit nested moves, and empty-directory pruning.
       # Project-specific entries live in each project's own
       # config/codegen.yaml so this file stays an immutable fleet-wide rule
       # set that never lists its consumers.
@@ -2005,8 +2000,6 @@ Infra:
         # .gitignore of sixteen repositories; the pattern belongs here, where
         # every repository inherits it.
         - "**/*.bak.*"
-        - "**/*.bkp"
-        - "**/*.bkp?"
         - "**/*.backup"
         - "**/*.orig"
         - "**/*.md.backup"
