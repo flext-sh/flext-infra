@@ -259,28 +259,31 @@ class TestsFlextInfraCodegenMakeCheckPartition:
             mode="json", exclude_computed_fields=True
         )
         rows = u.Tests.json_rows(base, "workflow")
-        payload = {
-            **base,
-            "workflow": [
-                {
-                    **row,
-                    "contexts": (
-                        [
-                            context
-                            for context in u.Tests.json_strings(row["contexts"])
-                            if context != "pre_commit"
-                        ]
-                        if row["verb"] == c.Infra.VERB_SETUP
-                        else row["contexts"]
-                    ),
-                }
-                for row in rows
-            ],
-        }
-        with u.Tests.raises(
-            e.PydanticValidationError, match="pre-commit hook requires"
-        ):
-            m.Infra.MakeSpec.model_validate(payload)
+        others = [
+            row["verb"]
+            for row in rows
+            if row["verb"] not in {c.Infra.VERB_CHECK, c.Infra.VERB_TEST}
+        ]
+        tm.that(others, empty=False)
+        for verb in others:
+            payload = {
+                **base,
+                "workflow": [
+                    {
+                        **row,
+                        "contexts": (
+                            [*u.Tests.json_strings(row["contexts"]), "pre_commit"]
+                            if row["verb"] == verb
+                            else row["contexts"]
+                        ),
+                    }
+                    for row in rows
+                ],
+            }
+            with u.Tests.raises(
+                e.PydanticValidationError, match="pre-commit hook requires"
+            ):
+                m.Infra.MakeSpec.model_validate(payload)
 
     @staticmethod
     @c.Tests.MARK.parametrize(
