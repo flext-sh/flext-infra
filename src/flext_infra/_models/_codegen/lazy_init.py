@@ -381,13 +381,12 @@ class FlextInfraModelsCodegenLazyInit:
         providers: Annotated[
             Mapping[str, Path],
             m.Field(
-                default_factory=dict,
                 description=(
                     "Generated package initializers by package from the "
                     "workspace inventory"
-                ),
+                )
             ),
-        ]
+        ] = m.Field(default_factory=dict)
         plans: Annotated[
             t.Port[
                 dict[

@@ -1933,6 +1933,10 @@ required by default before handlers and hooks. `make check` keeps that boundary:
 a missing or invalid environment stops before hooks or convergence. A local check
 then converges generation, repairs and formatting through its private phase
 handlers; those handlers do not declare public `gen`, `fix` or `fmt` verbs.
+Convergence snapshots the root and each declared workspace member. Each
+snapshot starts from that repository's `HEAD` in a temporary Git index, then
+captures working tree changes. This preserves gitlinks and the real staging
+areas while detecting changes inside a member whose commit stayed the same.
 After generation publishes an `.envrc`, the phase authorizes it through the locked
 Direnv executable for the next invocation; it does not activate the environment a
 second time. CI and the commit hook verify without running convergence.
@@ -4179,9 +4183,10 @@ including its filename and source text. The complete batch remains unchanged.
 
 The public `flext-infra check run --file` route selects a literal
 repository-relative path through the existing typed request, never bare analyzers
-or a second gate engine. Selection rejects empty, absolute, traversal, missing, non-Python and
-symlink-component paths before creating reports or invoking tools. Only the literal
-file reaches each gate's existing `check_files`; no mutation is permitted.
+or a second gate engine. Selection rejects empty, absolute, traversal, missing,
+non-Python and symlink-component paths before generating reports or running tools.
+Only the literal file reaches each gate's existing `check_files`, which runs without
+mutating it.
 The caller selects registered gates through `RunCommand.gates` and `resolve_gates`;
 no separate gate vocabulary or configuration is introduced. The route requires
 explicit `--gates`, never silently falls back to whole-project gates, and rejects
@@ -4541,8 +4546,9 @@ without exporting their payload. Algorithm usability and trust still require the
 selected native signing or verification action, not this observation.
 The CLI emits the typed report as JSON, excluding native values. Neither this
 observation nor original check/test capture selects signing: capture binds the
-typed target policy and producer evidence. Direct `u.Infra.git_create_gate_attestation` and
-`u.Infra.git_verify_gate_attestation` select signing/publication or signature
+typed target policy and producer evidence. Direct calls to
+`u.Infra.git_create_gate_attestation` and `u.Infra.git_verify_gate_attestation`
+select signing/publication or signature
 verification;
 their required trust input and native key/signature failures remain fail-loud. A valid
 observation is never signed proof, and absent signing material does not gate unrelated

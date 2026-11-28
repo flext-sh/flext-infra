@@ -249,9 +249,7 @@ class TestsFlextInfraGithubGateAttestation(FlextInfraGitAttestationFixtures):
         }):
             captured = tm.ok(
                 u.Infra.git_capture_gate(
-                    m.Infra.GateCaptureRequest(
-                        repository_root=tmp_path, gates=gate_id
-                    ),
+                    m.Infra.GateCaptureRequest(repository_root=tmp_path, gates=gate_id),
                     inputs=inputs,
                     load_inputs=u.Infra.load_codegen_inputs,
                     read_runtime_identity=self._runtime_identity,
@@ -1035,6 +1033,10 @@ class TestsFlextInfraGithubGateAttestation(FlextInfraGitAttestationFixtures):
         )
 
         tm.fail(self._verify(tmp_path, allowed, request.receipt, c.Infra.VERB_CHECK))
+
+
+class TestsFlextInfraGithubGateEvidenceValidation(FlextInfraGitAttestationFixtures):
+    """Validate the receipt evidence required for gate attestations."""
 
     def test_real_make_timeout_cannot_borrow_an_earlier_complete_report(
         self,

@@ -529,7 +529,6 @@ class FlextInfraModelsMiseToolchain:
         dependency_cooldown_exceptions: Annotated[
             Mapping[t.NonEmptyStr, t.NonEmptyStr],
             m.Field(
-                default_factory=dict,
                 description=(
                     "Registry packages released inside the cooldown on purpose, "
                     "each mapped to its advisory id or critical-fix reason: "
@@ -537,9 +536,9 @@ class FlextInfraModelsMiseToolchain:
                     "excluded from the dependabot pip cooldown. Repository "
                     "config overlays add entries; remove one once the fixed "
                     "release ages past the cooldown."
-                ),
+                )
             ),
-        ]
+        ] = m.Field(default_factory=dict)
         uv_link_mode: Annotated[
             t.NonEmptyStr,
             m.Field(description="Portable uv installation link mode"),
@@ -569,14 +568,13 @@ class FlextInfraModelsMiseToolchain:
         editable_sources: Annotated[
             Mapping[str, Path],
             m.Field(
-                default_factory=dict,
                 description=(
                     "Additional installed distributions bound to explicit local "
                     "sources by make setup FLEXT; a relative source resolves "
                     "against that FLEXT workspace; cannot conflict with it"
-                ),
+                )
             ),
-        ]
+        ] = m.Field(default_factory=dict)
         uv_override_dependencies: Annotated[
             tuple[
                 t.NonEmptyStr | FlextInfraModelsMiseToolchain.UvScopedOverride,

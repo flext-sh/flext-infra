@@ -623,10 +623,11 @@ _bootstrap_setup_tools:
 	bootstrap_stage=complete; bootstrap_completed=true
 _bootstrap_setup_tools: _builtin_require_workspace
 
-# A workspace root's verbs act on the workspace project only; ALL=Y extends
-# them to every governed member, processed together in one checker run
+# Test and internal repair/format handlers use this scope. ALL=Y extends
+# them to every governed member, processed together by their existing runner
 # (operator rulings 2026-10-25: never member by member; 2026-11-22, bead
 # flext-bga5y: members only with ALL=Y). CI evaluates only its own repository.
+# Workspace check selects its declared repository independently of this scope.
 GATE_SCOPE := self
 # Local and CI consume the same native project/workspace declarations and lock.
 # Setup always bootstraps: `uv sync --frozen` installs exactly the committed
@@ -884,7 +885,7 @@ VERB_ARGUMENTS_upg :=
 VERB_DESCRIPTION_mod := Refactor declared source structure through the shared pipeline and publish the complete coherent change; LAWS (ENFORCE ids) or RULES (rule ids) diagnose or repair one law (ADR-028 Decision 18 item 2).
 VERB_ARGUMENTS_mod := LAWS RULES
 
-VERB_DESCRIPTION_check := Locally, converge generation, repairs and formatting to a fixed point; then validate declarations, projections, environment, documentation and configured gates. CI and commit hooks verify without repairs or publication (ADR-037).
+VERB_DESCRIPTION_check := Locally, converge generation, repairs and formatting to a fixed point; then run the selected validation phase (primary by default). CHECK_PHASE=complete selects the context'"'"'s full gate partition and, outside commit hooks, projection and documentation validation. CI and commit hooks skip convergence (ADR-037).
 VERB_ARGUMENTS_check := CHECK_PHASE
 
 VERB_DESCRIPTION_tests := Run native incremental tests through the persistent Testmon selection; in a workspace root ALL=Y includes every governed member.
@@ -1463,13 +1464,14 @@ _builtin_build_artifacts:
 
 # Check verifies through gates without --apply. Local convergence first runs
 # the private generation, repair and formatting phases; CI and hooks never do.
-# Each gate's declared stage selects its partition: CI=Y runs
+# Primary selects only make.check_prerequisite_gates. Complete checking uses
+# each gate's declared stage to select its partition: CI=Y runs
 # make.check_gates_ci, CI=C (the commit hook) runs
 # make.pre_commit_check_gates, CI=N runs
 # make.check_gates_local, and an absent CI token runs every active gate.
 # Outside CI and the commit hook, every phase first converges gen -> fix ->
-# fmt to a fixed point: passes repeat until the working tree, hashed as a git
-# tree through a throwaway index, stops changing; a tree still moving after
+# fmt to a fixed point: passes repeat until Git trees for the root and declared
+# members stop changing; a workspace still moving after
 # CHECK_CONVERGE_MAX_PASSES passes fails. CI=Y converges
 # nothing, so its read-only gates fail when any byte would change.
 override CHECK_CONVERGE_MAX_PASSES := 5
@@ -1478,7 +1480,13 @@ _builtin_check_all: _builtin_require_environment
 	@$(if $(CHECK_PROFILE),FLEXT_INFRA_PROFILE=$(CHECK_PROFILE) ,)FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/.reports/check/route.pstats" $(PROJECT_FLEXT_INFRA) workspace check --repository-root "$(PROJECT_ROOT)"$(if $(CHECK_PHASE), --phase "$$CHECK_PHASE")
 
 _builtin_converge_all: _builtin_require_environment
-	@tree() { idx="$$(mktemp -u)"; GIT_INDEX_FILE="$$idx" git -C "$(PROJECT_ROOT)" add -A && GIT_INDEX_FILE="$$idx" git -C "$(PROJECT_ROOT)" write-tree; rc=$$?; rm -f "$$idx"; return $$rc; }; \
+	@snapshot() ( \
+		cd "$(PROJECT_ROOT)/$$1" && prefix="$$(git rev-parse --show-prefix)" || exit; \
+		if [ -n "$$prefix" ]; then printf '%s\n' "ERROR: check: $$1 is not a materialized Git checkout" >&2; exit 1; fi; \
+		scratch="$$(mktemp -d)" || exit; trap 'rm -rf -- "$$scratch"' EXIT; \
+		export GIT_INDEX_FILE="$$scratch/index"; git read-tree HEAD && git add -A && git write-tree \
+	); \
+	tree() { for project in . $(WORKSPACE_SUBPROJECTS); do snapshot "$$project" || return; done; }; \
 	before="$$(tree)" || exit 1; pass=0; \
 	while :; do \
 		pass=$$((pass + 1)); \
