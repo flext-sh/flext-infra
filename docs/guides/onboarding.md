@@ -53,9 +53,6 @@ Never enter a member directory to run a parallel tool command.
 
 ```bash
 make check
-make check repair
-make check formatting
-make check
 make tests
 make check
 ```
@@ -84,7 +81,6 @@ Change the source owner, then regenerate and prove the fixed point:
 ```bash
 make check
 make mod
-make check
 make check
 ```
 

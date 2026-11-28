@@ -55,10 +55,6 @@ make help
 make check
 make mod
 make check
-make check
-make check repair
-make check formatting
-make check
 make tests
 make check
 ```

@@ -39,19 +39,14 @@ parallel command surface.
 4. Regenerate managed surfaces and run the complete native gates.
 
 ```bash
-make check
 make mod
-make check
-make check
-make check repair
-make check formatting
 make check
 make tests
 make check
 ```
 
-The final generation pass proves the fixed point. Test execution remains inside
-`make tests`, which owns selection and the retained Testmon cache.
+The second `make check` changes no byte: that proves the fixed point. Test execution
+remains inside `make tests`, which owns selection and the retained Testmon cache.
 
 ## Command boundaries
 

@@ -45,16 +45,13 @@ fix, or phase selectors to narrow a standard verb.
 5. Run the native gates without bypassing their orchestration.
 
 ```bash
-make check
 make mod
-make check
-make check
-make check repair
-make check formatting
 make check
 make tests
 make check
 ```
+
+The second `make check` changes no byte: that proves the fixed point.
 
 The final generation run proves the fixed point. The test verb always retains and uses
 Testmon; a direct test-runner invocation is invalid evidence.
@@ -77,7 +74,7 @@ Testmon; a direct test-runner invocation is invalid evidence.
 ## Documentation ownership
 
 Root guides are the writable source for generated member guides. Update the root source,
-then use `make check`; never hand-edit generated copies.
+then run `make check`; never hand-edit generated copies.
 
 ## Related guides
 

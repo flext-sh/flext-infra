@@ -4,7 +4,7 @@ The code inside documentation is still code — parseable embedded sources are
 held to the ruff-format contract. This gate extracts fenced ``python`` blocks
 and doctest examples into one temporary source tree and runs ONE ruff format
 invocation per verb (single-pass law): ``check`` renders the format verdict
-read-only, ``fix`` — reached from ``make check`` repair — writes formatting back into
+read-only, ``fix`` — reached from ``make check`` — writes formatting back into
 fenced blocks when every block of a file round-trips cleanly. Invalid Python
 fences fail loudly; docstring write-back stays a human decision.
 

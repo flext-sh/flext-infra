@@ -28,6 +28,7 @@ class TestsFlextInfraAuditorScope:
             path=tmp_path,
             report_dir=tmp_path / "reports",
         )
+        u.Tests.initialize_git_repo(tmp_path)
         issues = auditor.forbidden_term_issues(scope)
         tm.that(len(issues), gte=0)
 
@@ -43,6 +44,7 @@ class TestsFlextInfraAuditorScope:
             path=tmp_path,
             report_dir=tmp_path / "reports",
         )
+        u.Tests.initialize_git_repo(tmp_path)
         issues = auditor.forbidden_term_issues(scope)
         tm.that(len(issues), gte=0)
 
@@ -58,6 +60,7 @@ class TestsFlextInfraAuditorScope:
             path=tmp_path,
             report_dir=tmp_path / "reports",
         )
+        u.Tests.initialize_git_repo(tmp_path)
         issues = auditor.forbidden_term_issues(scope)
         tm.that(len(issues), gte=0)
 
@@ -73,6 +76,7 @@ class TestsFlextInfraAuditorScope:
             path=tmp_path,
             report_dir=tmp_path / "reports",
         )
+        u.Tests.initialize_git_repo(tmp_path)
         issues = auditor.forbidden_term_issues(scope)
         tm.that(len(issues), gte=0)
 
@@ -86,13 +90,13 @@ class TestsFlextInfraAuditorScope:
             path=tmp_path,
             report_dir=tmp_path / "reports",
         )
+        u.Tests.initialize_git_repo(tmp_path)
         issues = auditor.forbidden_term_issues(scope)
         tm.that(len(issues), gte=0)
 
     @staticmethod
     def test_audit_scope_with_links_check(tmp_path: Path) -> None:
         """Test audit_scope runs links check."""
-        u.Tests.initialize_git_repo(tmp_path)
         auditor = FlextInfraDocAuditor()
         scope = m.Infra.DocScope(
             name="test",
@@ -110,7 +114,6 @@ class TestsFlextInfraAuditorScope:
     @staticmethod
     def test_audit_scope_with_forbidden_terms_check(tmp_path: Path) -> None:
         """Test audit_scope runs forbidden-terms check."""
-        u.Tests.initialize_git_repo(tmp_path)
         auditor = FlextInfraDocAuditor()
         scope = m.Infra.DocScope(
             name="test",
@@ -135,6 +138,7 @@ class TestsFlextInfraAuditorScope:
         )
         summary_path = scope.report_dir / c.Infra.DOCS_AUDIT_SUMMARY_FILENAME
         summary_path.mkdir(parents=True)
+        u.Tests.initialize_git_repo(tmp_path)
         with u.Tests.raises(
             OSError,
             match="atomic destination is not a regular file",
@@ -186,6 +190,7 @@ class TestsFlextInfraAuditorScope:
             path=tmp_path,
             report_dir=tmp_path / "reports",
         )
+        u.Tests.initialize_git_repo(tmp_path)
         report = auditor.audit_scope(
             scope,
             params=m.Infra.AuditScopeParams(check="links"),
@@ -225,6 +230,7 @@ class TestsFlextInfraAuditorScope:
             report_dir=tmp_path / "reports",
         )
         (tmp_path / "README.md").write_text(markdown, encoding="utf-8")
+        u.Tests.initialize_git_repo(tmp_path)
         report = auditor.audit_scope(
             scope,
             params=m.Infra.AuditScopeParams(check=check),
@@ -248,6 +254,7 @@ class TestsFlextInfraAuditorScope:
             report_dir=tmp_path / "reports",
         )
         (tmp_path / "README.md").write_text("[Broken](missing.md)\n", encoding="utf-8")
+        u.Tests.initialize_git_repo(tmp_path)
         report = auditor.audit_scope(
             scope,
             params=m.Infra.AuditScopeParams(check="links"),
@@ -271,13 +278,25 @@ class TestsFlextInfraAuditorScope:
             "the image installs to /home/runner/.local/bin\n"
             "the tilde form ~/flext is portable\n",
         )
+        # The repository's projected docs policy declares the container
+        # identities, as the generator projects them from the codegen SSOT.
+        audit_policy = config.Infra.codegen.repository.docs_audit
+        identities = audit_policy.container_home_identities
+        (docs_dir / c.Infra.DOCS_CONFIG_FILENAME).write_bytes(
+            tm.ok(
+                u.Cli.json_dumps(
+                    {"audit": {"container_home_identities": list(identities)}},
+                ),
+            ).encode(),
+        )
         scope = m.Infra.DocScope(
             name="root",
             path=tmp_path,
             report_dir=tmp_path / "reports",
         )
+        u.Tests.initialize_git_repo(tmp_path)
         issues = auditor.machine_path_issues(scope)
-        tm.that(len(issues), eq=2)
+        tm.that(len(issues), eq=2, msg=str([issue.message for issue in issues]))
         tm.that({issue.issue_type for issue in issues}, eq={"machine-path"})
         tm.that(issues[0].message, has="line 1")
         tm.that(issues[0].message, has="/home/someone")
@@ -303,6 +322,7 @@ class TestsFlextInfraAuditorScope:
             path=tmp_path,
             report_dir=tmp_path / "reports",
         )
+        u.Tests.initialize_git_repo(tmp_path)
         issues = auditor.machine_path_issues(scope)
         tm.that(
             {issue.file for issue in issues},
@@ -326,6 +346,7 @@ class TestsFlextInfraAuditorScope:
             report_dir=tmp_path / "reports",
         )
         auditor = FlextInfraDocAuditor()
+        u.Tests.initialize_git_repo(tmp_path)
         tm.that(auditor.placeholder_issues(scope), eq=[])
         (docs / "guide.md").write_text("TODOS are reviewed.\nTODO: finish me.\n")
         issues = auditor.placeholder_issues(scope)
@@ -367,6 +388,7 @@ class TestsFlextInfraAuditorScope:
             report_dir=tmp_path / "reports",
         )
         auditor = FlextInfraDocAuditor()
+        u.Tests.initialize_git_repo(tmp_path)
         tm.that(auditor.placeholder_issues(scope), eq=[])
         tm.that(auditor.forbidden_term_issues(scope), eq=[])
         (docs / "guide.md").write_text(f"{marker}\n")
@@ -392,5 +414,6 @@ class TestsFlextInfraAuditorScope:
             path=tmp_path,
             report_dir=tmp_path / "reports",
         )
+        u.Tests.initialize_git_repo(tmp_path)
         with u.Tests.raises(ValueError, match="historical evidence"):
             FlextInfraDocAuditor().machine_path_issues(scope)

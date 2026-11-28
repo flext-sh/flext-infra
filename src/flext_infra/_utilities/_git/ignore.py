@@ -386,16 +386,6 @@ class FlextInfraUtilitiesGitignore:
             The resulting ``tuple[p.Infra.ScaffoldGitignoreSectionSpec, ...],``.
 
         """
-        # The deny-all root policy exists to whitelist governed subprojects. An
-        # attached member renders the workspace profile (cosmos-8fmi7.1.9.5) yet
-        # has no subprojects of its own, so its ignore policy stays standalone;
-        # otherwise every untracked file under its own trees is swallowed.
-        if (
-            profile is c.Infra.MakeProfile.WORKSPACE
-            and workspace is not None
-            and not workspace.subprojects
-        ):
-            profile = c.Infra.MakeProfile.STANDALONE
         sections = [
             section
             for section in codegen.gitignore_sections

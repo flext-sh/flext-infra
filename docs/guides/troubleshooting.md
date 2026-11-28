@@ -46,10 +46,6 @@ After correcting the source, use only the applicable canonical verbs:
 make check
 make mod
 make check
-make check
-make check repair
-make check formatting
-make check
 make tests
 make check
 ```
@@ -59,8 +55,8 @@ or cache-clearing test runs do not count as evidence.
 
 ## Documentation failures
 
-For stale member guides, change the matching root file under `docs/guides/` and
-run `make check`. Generated member guides carry their source and exact regeneration
+For stale member guides, change the matching root file under `docs/guides/` and run
+`make check`. Generated member guides carry their source and exact regeneration
 command in the header; never patch those projections.
 
 For a docs audit failure, remove the invalid command or test-double example at the
@@ -73,7 +69,7 @@ TODO followed by a colon while ordinary prose remains valid. A dated document th
 records a real machine path may be listed by its exact Markdown path under
 `docs_audit.historical_evidence_files`; a directory prefix does not exempt later
 documents. Add only files whose observed path is necessary to preserve the
-historical record, then run `make check` and `make check` to verify the projection.
+historical record, then run `make check` to verify the projection.
 
 ## Test failures
 

@@ -9,7 +9,7 @@
 # Gated on `cli` being bound from flext_cli in the same module — the declarative
 # form of the transformer's `_cli_symbol` bookkeeping. A module that has no
 # output owner is left to Ruff T201 rather than rewritten to an unbound name;
-# `make check` repair never auto-fixes T201 (tooling.yaml `unfixable`), so that print is
+# `make check` never auto-fixes T201 (tooling.yaml `unfixable`), so that print is
 # reported, never deleted.
 #
 # Diagnostics are rewired, never deleted: Ruff's T201 fix once

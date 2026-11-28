@@ -71,6 +71,7 @@ Repository = "https://github.com/flext-sh/flext-infra"
 
 [dependency-groups]
 dev = [
+  "flext-tests @ git+https://github.com/flext-sh/flext-tests.git@0.12.0-dev",
   "properdocs>=1.6.7",
   "types-networkx",
   "mkdocstrings-python>=2.0.9",
@@ -544,6 +545,9 @@ exclude-newer = "P10D"
 link-mode = "clone"
 override-dependencies = [
   "rope @ git+https://github.com/marlon-costa-dc/rope.git@ecdee0efcbfa1bbdbd070218de3c39716b0299aa",
+  "flext-cli @ git+https://github.com/flext-sh/flext-cli.git@0.12.0-dev",
+  "flext-core @ git+https://github.com/flext-sh/flext-core.git@0.12.0-dev",
+  "flext-tests @ git+https://github.com/flext-sh/flext-tests.git@0.12.0-dev",
 ]
 [[tool.uv.cache-keys]]
 file = "pyproject.toml"
@@ -557,10 +561,26 @@ file = "setup.cfg"
 [[tool.uv.cache-keys]]
 file = "src/**"
 
+[[tool.uv.exclude-dependencies]]
+dependencies = ["flext-infra"]
+
+[tool.uv.exclude-dependencies.package]
+name = "flext-cli"
+
+[[tool.uv.exclude-dependencies]]
+dependencies = ["flext-infra"]
+
+[tool.uv.exclude-dependencies.package]
+name = "flext-core"
+
+[[tool.uv.exclude-dependencies]]
+dependencies = ["flext-infra"]
+
+[tool.uv.exclude-dependencies.package]
+name = "flext-tests"
+
 [tool.uv.exclude-newer-package]
 soupsieve = false
-
-[tool.uv.sources]
 
 [tool.interrogate]
 fail-under = 70

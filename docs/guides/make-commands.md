@@ -128,9 +128,6 @@ Run each required operation explicitly from the workspace root:
 
 ```bash
 make setup
-make check
-make check formatting
-make check repair
 make mod
 make build
 # Exercise the selected public consumer before the final tests.
@@ -311,7 +308,7 @@ configuration values or fallback execution.
 ### Conformance, Environment, and Runtime Bindings
 
 The generated dispatcher invokes conformance checking only through `make check`
-and conformance repair only through `make check` repair. Installing, generating,
+and conformance repair only through its local convergence. Installing, generating,
 upgrading, rewriting or formatting does not implicitly run a global conformance
 check. Each operation still proves the prerequisites and effects it actually
 consumes. Native environment verification, input authentication and publication
@@ -512,11 +509,13 @@ The markdown standard lives once in `flext-infra/src/flext_infra/config/tooling.
   caused native configuration warnings. `.markdownlintignore` and native
   exclusions derive from the same governed scope.
 - `rumdl` is the command-line linter and reads generated `.rumdl.toml`, including
-  the MkDocs dialect used by the documentation renderer. `make check` repair applies its
-  supported repairs; unresolved findings remain failures, not accepted exceptions.
+  the MkDocs dialect used by the documentation renderer. The repair phase of
+  `make check` applies its supported repairs; unresolved findings remain
+  failures, not accepted exceptions.
 - `rumdl fmt` is the formatter and reads the same `.rumdl.toml`:
-  `rumdl fmt --check` and `rumdl fmt` both run in `make check`. rumdl is locked in
-  `uv.lock`; the Mise npm backend remains retired (ADR-025). The amended Bun
+  `rumdl fmt --check` in CI, `rumdl fmt` in the local format phase of
+  `make check`. rumdl is locked in `uv.lock`; the Mise npm backend remains
+  retired (ADR-025). The amended Bun
   project contract for distributed JavaScript tools does not change this formatter.
 - `make check` validates without rewriting. Run generation before repair and
   formatting, then repeat repair and formatting to prove a fixed point. Remaining
@@ -679,8 +678,8 @@ observations do not cover every generated artifact. Repeated `mod`, `fix`
 and `fmt` also require zero relevant effects. Generated projections are
 gate-clean by construction (ADR-028
 Decision 8):
-`make check` followed directly by `make check` is green and `make check`
-are no-ops, with zero post-adjustment, manual or automated — the engine never
+one `make check` is green and a second `make check`
+changes no byte, with zero post-adjustment, manual or automated — the engine never
 runs a fixer or formatter over its own output. A later effective change invalidates the
 affected runtime and gate receipts and requires their renewed validation, never a hidden
 retry or a whole-workspace quiet window.

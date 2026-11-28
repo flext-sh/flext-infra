@@ -1,9 +1,9 @@
-"""FLEXT markdown formatting gate: ``rumdl fmt``, owned by ``make check`` formatting.
+"""FLEXT markdown formatting gate: ``rumdl fmt``, owned by ``make check``.
 
 rumdl is the fleet's markdown linter and formatter (ADR-025). The read-only
 side (``rumdl fmt --check``) validates inside ``make check``; the mutating
 side (``rumdl fmt``) is reached only through the gate's fix contract from
-``make check`` formatting — the gate deliberately never appears in
+``make check`` — the gate deliberately never appears in
 ``CANONICAL_FIXABLE_GATE_IDS``, so every tool runs exactly one operation per
 verb and no verb repeats another's work. Both sides read the generated
 ``.rumdl.toml`` the ``markdown`` gate reads: one rule set, one owner.

@@ -70,7 +70,7 @@ class FlextInfraUtilitiesImportLawNormalization(
        namespace root; an alias imported from the module's own root that the
        module also defines is dropped.
 
-    ``make mod`` runs it over every governed file; ``make check`` repair lint
+    ``make mod`` runs it over every governed file; ``make check`` lint
     recipe ``normalize-imports`` runs it over each file Ruff reports for
     ``import-outside-top-level``, so both verbs converge on one fixed point.
     """

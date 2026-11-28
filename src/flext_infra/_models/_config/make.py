@@ -361,13 +361,13 @@ class FlextInfraModelsConfigMake(
 
         Operator 2026-09-08: ruff is the style and autofix rule. Every
         invocation uses preview. Never weaken ruff to keep a file; change the
-        code. Single-pass verb law (operator 2026-09-18): ``make check`` formatting runs
-        format only and ``make check`` repair owns lint repair through the lint gate —
-        there is deliberately no ``lint_apply`` key, because a lint pass
-        inside fmt would repeat the lint gate's fix.
+        code. Single-pass verb law (operator 2026-09-18): the format phase of
+        ``make check`` only formats, and its repair phase owns lint repair
+        through the lint gate — there is deliberately no ``lint_apply`` key,
+        because a lint pass inside the format phase would repeat that fix.
 
         *** Operator law 2026-10-05 (direct order, OBLIGATORY and NEVER to be
-        disabled again): ``make check`` repair ALWAYS applies Ruff's unsafe fixes —
+        disabled again): ``make check`` ALWAYS applies Ruff's unsafe fixes —
         ``lint_fix`` MUST carry the unsafe-fix flag in every project and
         subproject, forever. A configuration without it fails validation;
         re-adding it after a removal is a mandated repair, and removing it is
@@ -395,7 +395,7 @@ class FlextInfraModelsConfigMake(
                 description=(
                     "Flags for ruff check --fix; MANDATORY unsafe-fix channel"
                     " (operator law 2026-10-05): the lint gate's apply mode"
-                    " (make check repair) always applies safe and unsafe "
+                    " (make check) always applies safe and unsafe "
                     "fixes"
                 ),
             ),
@@ -449,7 +449,7 @@ class FlextInfraModelsConfigMake(
             tuple[t.NonEmptyStr, ...],
             m.Field(
                 description=(
-                    "Gates whose mutating side `make check` formatting drives "
+                    "Gates whose mutating side `make check` drives "
                     "(formatters). "
                     "The read-only side runs in `make check`; the fix phase of `make "
                     "check` never "
@@ -995,7 +995,7 @@ class FlextInfraModelsConfigMake(
                 ValueError: If make public verb names must be unique; or if make
                     workflow verbs must be unique; or if make workflow verbs are not
                     declared public verbs; or if make workflow verbs must exist in every
-                    profile; or if formatting gates are not declared gate vocabulary; or
+                    profile; or if make check gates are not declared gate vocabulary; or
                     if make docs reports_dir must
                     be repository-relative.
 
@@ -1215,7 +1215,7 @@ class FlextInfraModelsConfigMake(
             """Validate formatter ownership and repository-relative report paths.
 
             Raises:
-                ValueError: If formatting gates are not declared gate vocabulary; or
+                ValueError: If make check gates are not declared gate vocabulary; or
                     if report paths are empty, absolute or escape the repository.
 
             """
@@ -1224,7 +1224,7 @@ class FlextInfraModelsConfigMake(
             )
             if unknown_fmt_gates:
                 msg = (
-                    "make check formatting gates are not declared gate "
+                    "make check gates are not declared gate "
                     "vocabulary: "
                     f"{', '.join(sorted(unknown_fmt_gates))}"
                 )

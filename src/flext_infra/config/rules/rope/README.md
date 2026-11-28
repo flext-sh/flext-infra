@@ -19,8 +19,8 @@ unique declared utilities facade of its tier. Rope resolves the original class a
 external consumers before planning a move; classes with pytest cases and unused helpers
 keep their owners. The planner preserves declaration names, rejects ambiguous facades or
 occupied destinations, and stages only content changes in the governed source inventory.
-Existing nesting and publication complete the cutover; `make check` updates the package
-exports. When an existing export needs regeneration, run `make check` before
+Existing nesting and publication complete the cutover; `make check` updates the
+package exports. When an existing export needs regeneration, run `make check` before
 `make mod` so the move observes the current public binding.
 
 Quoted annotations are resolved before relocation loses the original binding, including

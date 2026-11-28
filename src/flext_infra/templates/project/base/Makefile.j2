@@ -24,7 +24,7 @@ $(shell awk -v reference="{{ reference }}" 'index($$0, reference) { count++ } EN
     lane census (outside CI) and documentation. The commit hook token runs
     only the stage-derived commit gates. -#}
 {%- macro local_check_body() -%}
-{{ "\t" }}@$(if $(CHECK_PROFILE),FLEXT_INFRA_PROFILE=$(CHECK_PROFILE) ,)FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/{{ make.check_profile_path }}" $(PROJECT_FLEXT_INFRA) {{ workspace_cli_group }} check --repository-root "$(if $(filter {{ make.ci.value }},$({{ make.ci.variable }})),$(PROJECT_ROOT),$(if $(filter primary,$(CHECK_PHASE)),$(RUNTIME_ROOT),$(PROJECT_ROOT)))"$(if $(CHECK_PHASE), --phase "$$CHECK_PHASE")
+{{ "\t" }}@$(if $(CHECK_PROFILE),FLEXT_INFRA_PROFILE=$(CHECK_PROFILE) ,)FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/{{ make.check_profile_path }}" $(PROJECT_FLEXT_INFRA) {{ workspace_cli_group }} check --repository-root "$(PROJECT_ROOT)"$(if $(CHECK_PHASE), --phase "$$CHECK_PHASE")
 {%- endmacro -%}
 {#- One convergence pass of make check: projection, repair, then format. -#}
 {%- macro converge_pass() -%}
@@ -981,7 +981,7 @@ _upg_toolchain: _builtin_require_workspace _builtin_require_github_credential
 		case "$$checkout" in .) lock_root="$$root" ;; *) lock_root="$$root/$$checkout" ;; esac; \
 		mise_lock="$$lock_root/{{ mise_lock_filename }}"; \
 		{{ toml_projection_preflight('$$mise_reader', '"$$mise_lock"') }} \
-		{{ mise_lock_changed('$$mise_reader', '"$$lock_root"', mise_install_tools, toolchain.mise_platform_tools, '"$(PROJECT_ROOT)"') }} \
+		{{ mise_lock_changed('$$mise_reader', '"$$lock_root"', mise_install_tools, mise_config_filename, toolchain.mise_platform_tools, '"$(PROJECT_ROOT)"') }} \
 	done; \
 	set +f; \
 	{{ mise_install("$(PROJECT_ROOT)", mise_install_tools, mise='"$$mise_reader"', platform_tools=toolchain.mise_platform_tools, locked=true) }} \

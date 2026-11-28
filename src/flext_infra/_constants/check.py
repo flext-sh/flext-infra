@@ -211,7 +211,7 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
     """Sole gate registry; each gate is declared once under its catalog owner.
 
     Each row carries the gate's SARIF tool identity (name, URL), its
-    ``make check`` repair repair policy, whether the checker accepts one declared file
+    ``make check`` repair policy, whether the checker accepts one declared file
     via the file-gate verbs, and the earliest approval stage its cost admits
     (``GateStage``), from which every context's check partition derives.
     """
@@ -426,7 +426,7 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
     class LintFixRecipe(StrEnum):
         """Repair the lint gate applies to a finding Ruff reports without a fix.
 
-        The tooling owner maps each Ruff rule name to one recipe; ``make check`` repair
+        The tooling owner maps each Ruff rule name to one recipe; ``make check``
         applies Ruff's own fixes first and then the recipe of every finding
         left, so no rule code or repair text lives in the gate.
         """
@@ -478,7 +478,7 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
         MARKDOWN_MKDOCS_ITEM_CONTENT_RULE,
     )
     (
-        "Phase order of ``make check`` repair re-indent: a nested item moves "
+        "Phase order of ``make check`` re-indent: a nested item moves "
         "before "
         "the content whose column its new position sets."
     )

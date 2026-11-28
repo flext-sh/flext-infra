@@ -308,8 +308,8 @@ class FlextInfraProtocolsConfigMake:
             """Structural member projected from the owning model.
 
             Flags for ruff check --fix; MANDATORY unsafe-fix channel (operator law
-            2026-10-05): the lint gate's apply mode (make check repair) always
-            applies safe and unsafe fixes.
+            2026-10-05): the lint gate's apply mode (make check) always applies safe
+            and unsafe fixes.
             """
             ...
 
@@ -341,9 +341,9 @@ class FlextInfraProtocolsConfigMake:
         def fmt_gates(self) -> tuple[t.NonEmptyStr, ...]:
             """Structural member projected from the owning model.
 
-            Gates whose mutating side `make check` formatting drives (formatters).
-            The read-only side runs in `make check`; the fix phase of `make check`
-            never repeats them (single-pass verb law).
+            Gates whose mutating side `make check` drives (formatters). The read-
+            only side runs in `make check`; the fix phase of `make check` never
+            repeats them (single-pass verb law).
             """
             ...
 

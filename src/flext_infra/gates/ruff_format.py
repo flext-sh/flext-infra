@@ -153,7 +153,7 @@ class FlextInfraGatesRuffFormat(FlextInfraGatesRuffGate):
         publisher (``make mod``) needs its output formatter-clean at write
         time, because the mod circuit enforces canonical formatting on the
         first pass after applying instead of deferring to a project-wide
-        ``make check`` formatting sweep.
+        ``make check`` sweep.
 
         Returns:
             The resulting ``p.Result[bool]``.
