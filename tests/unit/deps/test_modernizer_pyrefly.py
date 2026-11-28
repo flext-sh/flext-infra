@@ -139,7 +139,7 @@ class TestsFlextInfraModernizerPyrefly:
     def test_root_payload_receives_canonical_fields(self) -> None:
         """Root payloads receive version, default search path, and strict errors."""
         _, pyrefly, changes = self._applied()
-        tm.that(changes, empty=False)
+        tm.that(changes, eq=[f"tool.pyrefly set to {pyrefly}"])
         tm.that(
             pyrefly["python-version"],
             eq=config.Infra.codegen.toolchain.python_version,
@@ -169,7 +169,7 @@ class TestsFlextInfraModernizerPyrefly:
             f'[tool.pyrefly]\n{retired_key} = "python"\n',
         )
         tm.that(pyrefly, lacks=retired_key)
-        tm.that(changes, has=f"tool.pyrefly.{retired_key} removed")
+        tm.that(changes, eq=[f"tool.pyrefly set to {pyrefly}"])
 
     def test_stale_error_keys_are_removed(self) -> None:
         """Error keys outside the strict policy are removed, policy keys stay."""
@@ -189,7 +189,7 @@ class TestsFlextInfraModernizerPyrefly:
                 ),
             },
         )
-        tm.that(changes, has=f"tool.pyrefly.errors.{stale_key} removed")
+        tm.that(changes, eq=[f"tool.pyrefly set to {pyrefly}"])
 
     def test_phase_is_idempotent(self) -> None:
         """A second Pyrefly run over the converged payload changes nothing."""
