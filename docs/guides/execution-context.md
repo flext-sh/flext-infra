@@ -1,6 +1,6 @@
 # Execution context
 
-<!-- Revision 2026-11-28.5; Marlon Costa <marlon.costa@datacosmos.com.br>; Datacosmos. -->
+<!-- Revision 2026-11-28.6; Marlon Costa <marlon.costa@datacosmos.com.br>; Datacosmos. -->
 
 <!-- TOC START -->
 
@@ -1805,9 +1805,13 @@ requiring a prior check receipt. Generated Make consumers use `make tests`; bare
 `make check` selects primary admission. Request `make check CHECK_PHASE=complete`
 for complete validation. `MakeOperationSpec.make_command` carries the phase
 explicitly for each check workflow row, so a complete row does not inherit the
-Makefile's primary default. Every phase, locally and in CI, checks
-only the selected project root while provisioning keeps the containing runtime
-environment; an attached member's commit hook therefore checks the member alone.
+Makefile's primary default. In both phases, locally and in CI, gate capture
+invokes `check run` with `scope=all` explicitly from the selected `PROJECT_ROOT`.
+The checker selects that repository and its governed members declared in
+`.gitmodules`; primary admission requires this unfiltered scope. The lower-level
+`RunCommand.scope=self` default does not narrow the explicit capture request.
+Provisioning elects the containing runtime environment independently of this
+target selection.
 The Make check handler does not forward `ALL` as a checking scope. Test and internal
 repair/format handlers use `GATE_SCOPE`, which selects governed members with `ALL=Y`
 in a workspace profile outside CI (ADR-038 decision 9, flext-bga5y).
@@ -1824,8 +1828,10 @@ The Make handler converges generation, repairs and formatting before either phas
 in the local or unset CI context. CI and commit-hook tokens (`Y` and `C`) skip
 convergence. The native
 `workspace check` route itself is read-only: outside the commit hook, complete
-validation adds conformance observation and documentation validation/audit after
-the captured gates. A primary receipt does not include those additional checks.
+validation adds conformance observation with `scope=self` and documentation
+validation/audit for the invoked root after the captured gates. These additional
+root checks have their own target selection. A primary receipt does not include
+those additional checks.
 The CI workflow also exposes an optional `full_check` boolean on
 `workflow_dispatch` and `workflow_call`, defaulting to false. It runs the
 complete phase with `make.ci.value`, in addition to the unchanged required CI
