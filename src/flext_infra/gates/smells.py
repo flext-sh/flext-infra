@@ -83,7 +83,10 @@ class FlextInfraGatesSmells(FlextInfraGates):
                 "project_dir": (project_dir),
                 "verdict": (not issues),
                 "outcome": (
-                    c.Infra.ToolOutcome.FINDINGS
+                    c.Infra.ToolOutcome.ERROR
+                    if scan.outcome.raw_return_code
+                    == c.Infra.PROCESS_COMMAND_NOT_FOUND_EXIT_CODE
+                    else c.Infra.ToolOutcome.FINDINGS
                     if issues
                     else c.Infra.ToolOutcome.CLEAN
                 ),

@@ -28,145 +28,41 @@ _MODULE_IMPORT = f"from {c.Infra.PKG_CORE_UNDERSCORE} import t\n"
 _MODEL_USES_ALIAS = f"""\
 from __future__ import annotations
 
-from collections.abc import (
-    Iterable,
-    Iterator,
-    Mapping,
-    MutableMapping,
-    MutableSequence,
-    Sequence,
-)
-
-from collections.abc import (
-    Iterable,
-    Iterator,
-    Mapping,
-    MutableMapping,
-    MutableSequence,
-    Sequence,
-)
-
-import re
-from collections.abc import (
-    Iterable,
-    Iterator,
-    Mapping,
-    MutableMapping,
-    MutableSequence,
-    Sequence,
-)
-from {c.Infra.PKG_CORE_UNDERSCORE} import m, p
+from {c.Infra.PKG_CORE_UNDERSCORE} import m
 
 class _Row(m.BaseModel):
-    skills: tuple[str, ...]
-    rows: tuple[str, ...], = m.Field(alias="rows")
+    skills: t.StrTuple
+    rows: t.StrTuple = m.Field(alias="rows")
 """
 
 _TYPE_CHECKING_USES_ALIAS = """\
 from __future__ import annotations
 
-from collections.abc import (
-    Iterable,
-    Iterator,
-    Mapping,
-    MutableMapping,
-    MutableSequence,
-    Sequence,
-)
-
-from collections.abc import (
-    Iterable,
-    Iterator,
-    Mapping,
-    MutableMapping,
-    MutableSequence,
-    Sequence,
-)
-
-import re
-from collections.abc import (
-    Iterable,
-    Iterator,
-    Mapping,
-    MutableMapping,
-    MutableSequence,
-    Sequence,
-)
 from typing import TYPE_CHECKING
 
+if TYPE_CHECKING:
+    pass
 
 
-def render(value: Sequence[str]) -> tuple[str, str]: ...
+def render(value: t.StrSequence) -> tuple[str, str]: ...
 """
 
 _PLAIN_CLASS_USES_ALIAS = """\
 from __future__ import annotations
 
-from collections.abc import (
-    Iterable,
-    Iterator,
-    Mapping,
-    MutableMapping,
-    MutableSequence,
-    Sequence,
-)
-
-from collections.abc import (
-    Iterable,
-    Iterator,
-    Mapping,
-    MutableMapping,
-    MutableSequence,
-    Sequence,
-)
-
-import re
-from collections.abc import (
-    Iterable,
-    Iterator,
-    Mapping,
-    MutableMapping,
-    MutableSequence,
-    Sequence,
-)
 from typing import TYPE_CHECKING
 
+if TYPE_CHECKING:
+    pass
 
 
 class Helper:
-    values: Sequence[str]
+    values: t.StrSequence
 """
 
 _NO_TYPE_CHECKING_BLOCK = """\
 from __future__ import annotations
 
-from collections.abc import (
-    Iterable,
-    Iterator,
-    Mapping,
-    MutableMapping,
-    MutableSequence,
-    Sequence,
-)
-
-from collections.abc import (
-    Iterable,
-    Iterator,
-    Mapping,
-    MutableMapping,
-    MutableSequence,
-    Sequence,
-)
-
-import re
-from collections.abc import (
-    Iterable,
-    Iterator,
-    Mapping,
-    MutableMapping,
-    MutableSequence,
-    Sequence,
-)
 from email.utils import parseaddr
 
 
@@ -174,7 +70,7 @@ class Version:
     info: tuple[int, int, int]
 
     @staticmethod
-    def resolve() -> tuple[str, str]: ...
+    def resolve() -> t.StrTuple: ...
 """
 
 _AUTHORED_PROTOCOL_USES_ALIASES = f"""\

@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import shutil
 import sys
 from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
@@ -219,6 +220,70 @@ class TestsFlextInfraGithubGateAttestation(FlextInfraGitAttestationFixtures):
             unavailable = tm.ok(self._runtime_identity((c.Infra.CUBIC,)))
             without_scanner = tm.ok(self._runtime_identity(()))
         tm.that(unavailable, ne=without_scanner)
+
+    @c.Tests.MARK.parametrize("gate_id", (c.Infra.CUBIC, c.Infra.SMELLS))
+    def test_missing_scanner_cannot_supply_complete_execution_receipt(
+        self,
+        tmp_path: Path,
+        signed_repository_factory: Callable[[Path], Path],
+        gate_id: str,
+    ) -> None:
+        """Native scanner absence retains its report but cannot supply signed proof."""
+        signed_repository_factory(tmp_path)
+        config_dir = tmp_path / c.Infra.CODEGEN_CONFIG_DIR
+        config_dir.mkdir()
+        policy = c.Infra.GateAcceptancePolicy.COMPLETE_EXECUTION
+        (config_dir / c.Infra.CODEGEN_CONFIG_FILENAME).write_text(
+            "Infra:\n  codegen:\n    make:\n"
+            f"      gate_acceptance_policy: {policy.value}\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        git_only_path = tmp_path / "git-only-path"
+        git_only_path.mkdir()
+        (git_only_path / "git").symlink_to(tm.not_none(shutil.which("git")))
+        inputs = tm.ok(u.Infra.load_codegen_inputs(tmp_path))
+        tm.that(inputs.spec.make.gate_acceptance_policy, eq=policy)
+        with u.Tests.env_vars_context({
+            "PATH": str(git_only_path),
+            c.Infra.CUBIC_API_KEY_ENV: "missing-scanner-fixture",
+        }):
+            captured = tm.ok(
+                u.Infra.git_capture_gate(
+                    m.Infra.GateCaptureRequest(
+                        repository_root=tmp_path, gates=gate_id
+                    ),
+                    inputs=inputs,
+                    load_inputs=u.Infra.load_codegen_inputs,
+                    read_runtime_identity=self._runtime_identity,
+                )
+            )
+
+        tm.ok(captured.process.raw_return_code != 0)
+        tm.that(captured.receipt, none=True)
+        tm.that(
+            tuple(issue.message for issue in captured.issues),
+            eq=("check report contains an operational failure",),
+        )
+        reports = tuple(
+            (tmp_path / inputs.spec.make.gate_receipts_directory).rglob(
+                c.Infra.CHECK_REPORT_SARIF_FILENAME
+            )
+        )
+        tm.that(len(reports), eq=1)
+        summary = tm.not_none(
+            m.Infra.SarifReport.model_validate_json(reports[0].read_bytes()).properties
+        )
+        tm.ok(summary.complete)
+        tm.that(tuple(summary.requested_gates), eq=(gate_id,))
+        tm.that(len(summary.results), eq=1)
+        execution = summary.results[0].gates[gate_id]
+        gate = tm.not_none(FlextInfraGateRegistry.default().get(gate_id))
+        tm.fail(execution.result.passed)
+        tm.that(execution.outcome, eq=c.Infra.ToolOutcome.ERROR)
+        tm.that(
+            tuple(issue.message for issue in execution.issues),
+            eq=(f"{gate.scanner_binary} binary not found on PATH",),
+        )
 
     @c.Tests.MARK.parametrize("phase", tuple(c.Infra.CheckPhase))
     def test_original_capture_publishes_distinct_receipts_with_stable_context(
