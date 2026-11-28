@@ -80,6 +80,7 @@ class TestsFlextInfraRuntimeModuleOwners:
                 },
             )
         )
+        u.Tests.initialize_git_repo(tmp_path)
         declared = tm.ok(u.Infra.load_codegen_inputs(tmp_path)).spec
         expected = declared.runtime_module_overrides["ai-hub"]
         for project_name in ("ai-hub", "flext-core", "flext-infra", "flext-demo"):

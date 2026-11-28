@@ -49,6 +49,7 @@ class TestsFlextInfraConfigLocalOverrides:
         change keeps both loads equal.
         """
         baseline = FlextInfraConfig.fetch_global()
+        u.Tests.initialize_git_repo(tmp_path)
         inputs = tm.ok(u.Infra.load_codegen_inputs(tmp_path))
         tm.that(
             inputs.spec.loc_cap.max_lines,
@@ -61,6 +62,7 @@ class TestsFlextInfraConfigLocalOverrides:
     ) -> None:
         """Repository codegen parsing retains the explicit packaged worker policy."""
         baseline = FlextInfraConfig.fetch_global().Infra.codegen.make
+        u.Tests.initialize_git_repo(tmp_path)
         inherited = tm.ok(u.Infra.load_codegen_inputs(tmp_path)).spec.make
         tm.that(
             inherited.check_prerequisite_pyrefly_workers,
@@ -118,6 +120,7 @@ class TestsFlextInfraConfigLocalOverrides:
             "            - example\n",
             encoding="utf-8",
         )
+        u.Tests.initialize_git_repo(tmp_path)
         inputs = tm.ok(u.Infra.load_codegen_inputs(tmp_path))
         overrides = inputs.spec.layout.project_overrides
         tm.that(set(overrides), eq={*baseline, "example-project"})
@@ -140,6 +143,7 @@ class TestsFlextInfraConfigLocalOverrides:
             "        overview_preview_limits:\n          aliases: 31\n",
             encoding="utf-8",
         )
+        u.Tests.initialize_git_repo(root)
         inputs = tm.ok(u.Infra.load_codegen_inputs(root))
         tm.that(inputs.spec.make.docs.overview_preview_limits.aliases, eq=31)
         tm.that(
@@ -188,6 +192,7 @@ class TestsFlextInfraConfigLocalOverrides:
                     },
                 ),
             )
+        u.Tests.initialize_git_repo(tmp_path)
         captured = tm.ok(u.Infra.load_codegen_inputs(tmp_path))
         tm.that(
             captured.spec.toolchain.tools,

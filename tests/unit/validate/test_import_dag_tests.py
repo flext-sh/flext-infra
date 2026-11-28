@@ -10,7 +10,7 @@ from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
 from flext_infra.validate import FlextInfraValidateTestImportDag
-from tests import c, p, tm
+from tests import c, p, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -31,6 +31,7 @@ class TestsFlextInfraImportDag:
             target = project / relative
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(source, encoding="utf-8")
+        u.Tests.initialize_git_repo(project)
         return project
 
     @c.Tests.MARK.parametrize(
@@ -60,26 +61,22 @@ class TestsFlextInfraImportDag:
         tm.fail(report.passed)
 
     @c.Tests.MARK.parametrize(
-        ("source", "case"),
+        ("source", "imported"),
         [
-            ("tests/unit/test_behavior.py", "absolute"),
-            ("tests/unit/test_behavior.py", "relative"),
-            ("tests/conftest.py", "plugin"),
+            ("tests/unit/test_behavior.py", "from tests.fixtures.users import user\n"),
+            ("tests/unit/test_behavior.py", "from ..fixtures import users\n"),
+            ("tests/conftest.py", "import tests.fixtures.users\n"),
+            ("tests/fixtures/runtime.py", "from tests.fixtures.users import user\n"),
         ],
     )
     def test_artifact_imports_fail_from_every_test_layer(
         self,
         tmp_path: Path,
-        fixture_tree: p.Tests.FixtureTree,
         source: str,
-        case: str,
+        imported: str,
     ) -> None:
         """Reject imports of artifact data from ordinary tests and conftest."""
-        scenario = fixture_tree("artifact-imports", destination=tmp_path / "scenarios")
-        project = self._project(
-            tmp_path,
-            {source: (scenario / f"{case}.py").read_text(encoding=c.DEFAULT_ENCODING)},
-        )
+        project = self._project(tmp_path, {source: imported})
         report: p.Infra.ValidationReport = tm.ok(
             FlextInfraValidateTestImportDag().build_report(project),
         )
@@ -102,9 +99,12 @@ class TestsFlextInfraImportDag:
     def test_python_artifacts_are_data_without_source_parsing(
         self, tmp_path: Path
     ) -> None:
-        """Ignore root and nested Python artifacts without decoding their bytes."""
+        """Ignore scenario files at both depths without decoding their bytes."""
         project = self._project(tmp_path, {"src/sample/api.py": "value = 1\n"})
-        for relative in ("tests/fixtures/input.py", "tests/fixtures/scenario/input.py"):
+        for relative in (
+            "tests/fixtures/scenario/input.py",
+            "tests/fixtures/scenario/nested/input.py",
+        ):
             artifact = project / relative
             artifact.parent.mkdir(parents=True, exist_ok=True)
             artifact.write_bytes(b"\xff\xfe\x00")

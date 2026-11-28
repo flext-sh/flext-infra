@@ -121,7 +121,7 @@ class TestsFlextInfraReleaseCheckoutCredentials:
             ),
         )
         head = u.Cli.JSON_MAPPING_ADAPTER.validate_python(steps[1])
-        tm.that(str(head["run"]), has="ref=$(git rev-parse HEAD^{commit})")
+        tm.that(str(head["run"]), has='ref=$(git rev-parse "HEAD^{commit}")')
 
     def test_dispatch_selects_release_by_tag_and_version_otherwise(self) -> None:
         """The only dispatch input is the tag; no job carries a lane receipt."""

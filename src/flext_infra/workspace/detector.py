@@ -377,14 +377,17 @@ class FlextInfraWorkspaceDetector(
             return r[p.Infra.RepositoryRef].from_failure(origin)
         origin_url, provider_name = origin.value
         remote = u.Infra.validate_git_remote_url(declared_url or origin_url)
-        if remote.failure:
-            return r[p.Infra.RepositoryRef].from_failure(remote)
+        project_paths = remote.map(
+            lambda _: u.Infra.workspace_project_paths(repository_root)
+        )
+        if project_paths.failure:
+            return r[p.Infra.RepositoryRef].from_failure(project_paths)
         # Only a governed member makes a workspace: a checkout whose
         # .gitmodules declares just flext-managed = false submodules stays
         # standalone.
         role = (
             c.Infra.MakeProfile.WORKSPACE
-            if u.Infra.workspace_project_paths(repository_root)
+            if project_paths.value
             else c.Infra.MakeProfile.STANDALONE
         )
         _, separator, repository_name = u.Infra.git_remote_identity(

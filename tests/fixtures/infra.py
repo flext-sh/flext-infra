@@ -657,6 +657,7 @@ def modernizer_workspace(tmp_path: Path) -> Path:
         issue_prefix="workspace",
     )
     _write_modernizer_codegen_config(workspace)
+    u.Tests.initialize_git_repo(workspace)
     return workspace
 
 

@@ -41,6 +41,7 @@ class TestsFlextInfraDepsModernizerToolTables:
         package_dir.mkdir(parents=True, exist_ok=True)
         # A live package: the first-party owner derives importable packages.
         (package_dir / c.Infra.INIT_PY).write_text('"""Package."""\n', encoding="utf-8")
+        u.Tests.initialize_git_repo(project_dir)
         payload = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python(
             u.Tests.toml_payload(
                 '[project]\nname = "flext-sample"\n'
@@ -293,6 +294,7 @@ class TestsFlextInfraDepsModernizerToolTables:
             '[project]\nname = "demo-distribution"\n',
             encoding="utf-8",
         )
+        u.Tests.initialize_git_repo(project_dir)
         namespaces = FlextInfraToolTablesPhase.first_party_namespaces(path=project_dir)
         tm.that(namespaces, has="demo_app", lacks="demo_distribution")
 
@@ -319,6 +321,7 @@ class TestsFlextInfraDepsModernizerToolTables:
             skip_check=True,
         )
         root_path = tmp_path / c.PYPROJECT_FILENAME
+        u.Tests.initialize_git_repo(tmp_path)
         root_codegen = tm.ok(u.Infra.load_codegen_inputs(tmp_path)).spec
         root_topology = m.Infra.PyprojectDeclaredTopology(project_kind="platform")
         member_topology = m.Infra.PyprojectDeclaredTopology()
@@ -332,6 +335,7 @@ class TestsFlextInfraDepsModernizerToolTables:
         )
         member_path = tmp_path / "arbitrary-member" / c.PYPROJECT_FILENAME
         member_path.parent.mkdir()
+        u.Tests.initialize_git_repo(member_path.parent)
         member_codegen = tm.ok(u.Infra.load_codegen_inputs(member_path.parent)).spec
         member_first: str = tm.ok(
             modernizer.conform_source(

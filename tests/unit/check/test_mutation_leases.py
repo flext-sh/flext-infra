@@ -60,6 +60,7 @@ class TestsFlextInfraMutationLeases:
             repository_root=root,
             reports_dir=root / "reports",
             apply_fixes=True,
+            selected_files=(target,) if not git_owned else (),
         )
         with ThreadPoolExecutor(max_workers=1) as pool:
             with u.Cli.file_changes_lock(u.Infra.mutation_lock_path(root).unwrap()):
@@ -70,7 +71,7 @@ class TestsFlextInfraMutationLeases:
             tm.ok(applied.result().result.passed)
         tm.that(target.read_text(encoding="utf-8"), ne=before)
         tm.that(target.read_text(encoding="utf-8"), has="import os")
-        tm.ok(gate.check(root, context).result.passed)
+        tm.ok(gate.check_files(context.selected_files, root, context).result.passed)
 
     @staticmethod
     def test_malformed_git_marker_is_not_a_file_scope(tmp_path: Path) -> None:

@@ -33,12 +33,17 @@ class TestsFlextInfraTypeGates:
     @staticmethod
     @c.Tests.MARK.parametrize(
         "field",
-        ["data_home_environment_variable", "user_home_environment_variable"],
+        [
+            "database_filename",
+            "target_directory",
+            "reports_directory",
+            "config_receipts_directory",
+        ],
     )
-    def test_required_cache_environment_fields_do_not_inherit_defaults(
+    def test_required_testmon_fields_do_not_inherit_defaults(
         field: str,
     ) -> None:
-        """Testmon keeps its explicitly required YAML environment contract."""
+        """Testmon requires its declared checkout database and runner paths."""
         configured = config.Infra.codegen.make
         policy = configured.testmon_cache
         payload = policy.model_dump(
@@ -185,6 +190,7 @@ class TestsFlextInfraTypeGates:
         )
         reports = project / ".reports"
         reports.mkdir()
+        u.Tests.provision_checkout(project)
         result = gate_class(project).check(
             project,
             m.Infra.GateContext(repository_root=project, reports_dir=reports),
@@ -273,6 +279,7 @@ class TestsFlextInfraTypeGates:
         gate_class: type[gates.FlextInfraGates],
     ) -> None:
         """A checker invoked without inputs never reads as a clean pass."""
+        u.Tests.initialize_git_repo(tmp_path)
         result = gate_class(tmp_path).check(
             tmp_path,
             m.Infra.GateContext(repository_root=tmp_path, reports_dir=tmp_path),

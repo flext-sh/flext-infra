@@ -104,6 +104,7 @@ class TestsFlextInfraVscodeOwnerMerge:
                 },
             ),
         )
+        u.Tests.initialize_git_repo(root)
         captured = tm.ok(u.Infra.load_codegen_inputs(root))
         tm.that(captured.spec.make.gate_acceptance_policy, eq=chosen)
         tm.that(

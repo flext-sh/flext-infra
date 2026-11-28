@@ -59,6 +59,7 @@ class TestsFlextInfraExtendedConfigFixer:
             pyproject = tmp_path / c.PYPROJECT_FILENAME
             original = "[tool.pyrefly]\nsearch-path = []\n"
             pyproject.write_text(original)
+            u.Tests.initialize_git_repo(tmp_path)
             result = fixer.process_file(pyproject, dry_run=True)
             tm.ok(result)
             tm.that(pyproject.read_text(), eq=original)
@@ -71,6 +72,7 @@ class TestsFlextInfraExtendedConfigFixer:
             (tmp_path / "typings" / "generated").mkdir(parents=True)
             pyproject = tmp_path / c.PYPROJECT_FILENAME
             pyproject.write_text("[tool.pyrefly]\nsearch-path = []\n", encoding="utf-8")
+            u.Tests.initialize_git_repo(tmp_path)
 
             result = FlextInfraConfigFixer(repository_root=tmp_path).process_file(
                 pyproject,
@@ -115,6 +117,7 @@ class TestsFlextInfraExtendedConfigFixer:
                 ),
                 encoding="utf-8",
             )
+            u.Tests.initialize_git_repo(tmp_path)
 
             result = FlextInfraConfigFixer(repository_root=tmp_path).process_file(
                 pyproject,
@@ -157,6 +160,7 @@ class TestsFlextInfraExtendedConfigFixer:
                 ),
                 encoding="utf-8",
             )
+            u.Tests.initialize_git_repo(tmp_path)
 
             result = FlextInfraConfigFixer(repository_root=tmp_path).process_file(
                 pyproject,
@@ -187,6 +191,7 @@ class TestsFlextInfraExtendedConfigFixer:
                 ),
                 encoding="utf-8",
             )
+            u.Tests.initialize_git_repo(tmp_path)
 
             result = FlextInfraConfigFixer(repository_root=tmp_path).process_file(
                 pyproject,
@@ -212,6 +217,7 @@ class TestsFlextInfraExtendedConfigFixer:
                 ('[tool.pyrefly]\nsearch-path = ["src"]\nproject-excludes = []\n'),
                 encoding="utf-8",
             )
+            u.Tests.initialize_git_repo(tmp_path)
 
             fixer = FlextInfraConfigFixer(repository_root=tmp_path)
             result = fixer.process_file(pyproject)

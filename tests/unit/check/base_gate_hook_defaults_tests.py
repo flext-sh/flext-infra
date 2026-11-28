@@ -281,6 +281,7 @@ class TestsFlextInfraGateHookDefaults:
         (source / "sample.py").write_text("value = 1\n", encoding="utf-8")
         reports = project / "reports"
         reports.mkdir()
+        u.Tests.initialize_git_repo(project)
         return project, reports
 
     @staticmethod
