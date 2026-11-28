@@ -68,6 +68,7 @@ class TestsFlextInfraCodegenVersionFile:
         pkg.mkdir(parents=True)
         (pkg / "__init__.py").write_text("", encoding="utf-8")
         u.Tests.declare_workspace_projects(ws, (project_name,))
+        u.Tests.initialize_git_repo(proj)
         return ws, proj, pkg
 
     def test_generates_version_file_for_project(self, tmp_path: Path) -> None:
@@ -170,6 +171,7 @@ class TestsFlextInfraCodegenVersionFile:
             pkg = proj / "src" / name.replace("-", "_")
             pkg.mkdir(parents=True)
             (pkg / "__init__.py").write_text("", encoding="utf-8")
+            u.Tests.initialize_git_repo(proj)
         u.Tests.declare_workspace_projects(
             ws,
             c.Tests.PROJECT_MEMBERS_BY_SCENARIO["filtered"],
@@ -229,6 +231,11 @@ class TestsFlextInfraCodegenVersionFile:
             ),
             encoding="utf-8",
         )
+        u.Tests.declare_workspace_projects(ws, (c.Tests.PROJECT_NO_SRC_NAME,))
+        u.Tests.initialize_git_repo(no_src)
+        [project_info] = tm.ok(u.Infra.discover_projects(ws))
+        tm.that(project_info.path, eq=no_src)
+        tm.fail(project_info.has_src)
         svc = FlextInfraCodegenVersionFile.model_validate({"repository_root": ws})
 
         result = svc.execute()

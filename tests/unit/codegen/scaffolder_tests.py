@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
 from pathlib import Path
 
 from flext_infra.codegen import FlextInfraCodegenScaffolder
@@ -96,17 +97,36 @@ class TestsFlextInfraCodegenScaffolder:
         for mod, _suffix, _base, _description in c.Infra.TESTS_MODULES:
             tm.ok((tests_dir / mod).exists())
         constants_source = (tests_dir / "constants.py").read_text(encoding="utf-8")
-        tm.that(constants_source, has="from flext_tests import FlextTestsConstants")
-        tm.that(constants_source, has="from test_project import c")
+        module = ast.parse(constants_source)
         tm.that(
-            constants_source,
-            has="class TestsTestProjectConstants(FlextTestsConstants, c):",
+            [
+                (node.level, node.module, alias.name, alias.asname)
+                for node in module.body
+                if isinstance(node, ast.ImportFrom)
+                and node.module in {"flext_tests", "test_project"}
+                for alias in node.names
+            ],
+            eq=[
+                (0, "flext_tests", "c", "test_c"),
+                (0, "test_project", "c", "source_c"),
+            ],
         )
+        [constants] = [node for node in module.body if isinstance(node, ast.ClassDef)]
+        tm.that(constants.name, eq="TestsTestProjectConstants")
+        tm.that([ast.unparse(base) for base in constants.bases], eq=["source_c"])
+        [namespace] = [
+            node for node in constants.body if isinstance(node, ast.ClassDef)
+        ]
+        tm.that(namespace.name, eq="TestsTestProject")
+        tm.that([ast.unparse(base) for base in namespace.bases], eq=["test_c.Tests"])
         tm.that(
-            constants_source,
-            has="class TestsTestProject(FlextTestsConstants.Tests, c.TestProject):",
+            [
+                ast.unparse(node)
+                for node in module.body
+                if isinstance(node, ast.Assign)
+            ],
+            eq=["c = TestsTestProjectConstants"],
         )
-        tm.that(constants_source, has="c = TestsTestProjectConstants")
 
     def test_skips_tests_modules_when_no_tests_dir(self, tmp_path: Path) -> None:
         """Test skips tests modules when no tests dir."""

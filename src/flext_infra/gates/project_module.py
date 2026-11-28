@@ -73,6 +73,8 @@ class FlextInfraGatesProjectModule(FlextInfraGates):
         ctx: p.Infra.GateContext,
         result: p.Cli.CommandOutput,
         started: float,
+        *,
+        parsed: tuple[bool, Sequence[p.Infra.Issue]] | None = None,
     ) -> p.Infra.GateExecution:
         """Add the original process to the shared parsed execution.
 
@@ -82,7 +84,7 @@ class FlextInfraGatesProjectModule(FlextInfraGates):
         """
         return (
             super()
-            ._parsed_gate_execution(project_dir, ctx, result, started)
+            ._parsed_gate_execution(project_dir, ctx, result, started, parsed=parsed)
             .model_copy(
                 update={
                     "process": m.Cli.ProcessOutcome.model_validate(
