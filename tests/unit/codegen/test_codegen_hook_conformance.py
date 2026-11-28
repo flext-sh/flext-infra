@@ -330,7 +330,6 @@ class TestsFlextInfraCodegenHookConformance:
             u.Cli.template_render(
                 _HOOK_TEMPLATE,
                 m.Infra.MakeWorkflowRenderSpec(
-                    scenario_data_roots=config.Infra.codegen.exclusions.scenario_data_roots,
                     dist="flext-demo",
                     make=config.Infra.codegen.make.model_copy(
                         update={"pre_push": True},

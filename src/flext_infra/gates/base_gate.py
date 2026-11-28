@@ -227,7 +227,7 @@ class FlextInfraGates:
             file=c.PYPROJECT_FILENAME,
             line=1,
             column=0,
-            code=self.gate_id,
+            code=c.Infra.ToolOutcome.ERROR.value,
             message=scan.stderr or f"{self.scanner_binary} execution failed",
             severity=str(c.Infra.GateSeverity.ERROR.value),
         )
@@ -369,8 +369,14 @@ class FlextInfraGates:
         ctx: p.Infra.GateContext,
         result: p.Cli.CommandOutput,
         started: float,
+        *,
+        parsed: tuple[bool, Sequence[p.Infra.Issue]] | None = None,
     ) -> p.Infra.GateExecution:
         """Parse one tool result and assemble the gate execution it reports.
+
+        A caller that already parsed the report supplies that result once.
+        Its issues survive interruption beside the native failure diagnostic.
+        Other callers parse only after the process completes uninterrupted.
 
         Returns:
             The resulting ``m.Infra.GateExecution``.
@@ -382,44 +388,41 @@ class FlextInfraGates:
         process = m.Cli.ProcessOutcome.model_validate(
             result.outcome, from_attributes=True
         )
+        issues: Sequence[p.Infra.Issue]
         if (
             process.timed_out
             or process.forwarded_signal is not None
             or process.raw_return_code < 0
         ):
-            return self._gate_execution_from(
-                m.Infra.GateExecutionParams.model_validate({
-                    "project_dir": (project_dir),
-                    "verdict": (False),
-                    "outcome": (c.Infra.ToolOutcome.ERROR),
-                    "issues": ((
-                        self._command_error_issue(
-                            result, self.gate_id, str(project_dir)
-                        ),
-                    )),
-                    "raw_output": (evidence.raw_output),
-                    "started": (started),
-                }),
-                evidence,
-            ).model_copy(update={"process": process})
-        passed, issues = self._parse_check_output(result, project_dir, ctx)
-        if self.gate_id == c.Infra.LINT and result.stderr.strip():
-            issues = (
-                *issues,
-                self._native_error_issue(project_dir, result.stderr),
-            )
             passed = False
-        outcome = u.Infra.tool_outcome(
-            result.outcome,
-            findings=len(issues),
-            findings_exit_codes=self._findings_exit_codes(),
-        )
-        if any(
-            issue.code == c.Infra.ToolOutcome.ERROR
-            or issue.code in {f"{self.gate_id}-stderr", f"{self.gate_id}-exec"}
-            for issue in issues
-        ):
+            issues = (
+                self._command_error_issue(result, self.gate_id, str(project_dir)),
+                *(parsed[1] if parsed is not None else ()),
+            )
             outcome = c.Infra.ToolOutcome.ERROR
+        else:
+            passed, issues = (
+                self._parse_check_output(result, project_dir, ctx)
+                if parsed is None
+                else parsed
+            )
+            if self.gate_id == c.Infra.LINT and result.stderr.strip():
+                issues = (
+                    *issues,
+                    self._native_error_issue(project_dir, result.stderr),
+                )
+                passed = False
+            outcome = u.Infra.tool_outcome(
+                result.outcome,
+                findings=len(issues),
+                findings_exit_codes=self._findings_exit_codes(),
+            )
+            if any(
+                issue.code == c.Infra.ToolOutcome.ERROR
+                or issue.code in {f"{self.gate_id}-stderr", f"{self.gate_id}-exec"}
+                for issue in issues
+            ):
+                outcome = c.Infra.ToolOutcome.ERROR
         return self._gate_execution_from(
             m.Infra.GateExecutionParams(
                 project_dir=project_dir,

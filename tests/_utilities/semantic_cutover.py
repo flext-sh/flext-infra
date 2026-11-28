@@ -11,6 +11,7 @@ from pathlib import Path
 
 from flext_infra import infra, p, u as flext_infra_u
 from tests import c, m
+from tests._utilities import TestsFlextInfraUtilitiesGit
 
 
 class TestsFlextInfraUtilitiesSemanticCutover:
@@ -106,6 +107,7 @@ class TestsFlextInfraUtilitiesSemanticCutover:
         )
         module_path = repository_root / relative
         module_path.parent.mkdir(parents=True, exist_ok=True)
+        TestsFlextInfraUtilitiesGit.initialize_git_repo(repository_root)
         finding = cls.semantic_cutover_finding(
             module_path,
             repository_root,

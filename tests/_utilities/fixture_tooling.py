@@ -19,7 +19,10 @@ from tempfile import TemporaryDirectory, mkdtemp
 
 from flext_infra import r, u, validate, workspace
 from tests import c, config, m, p, t, tm
-from tests._utilities import TestsFlextInfraUtilitiesGit
+from tests._utilities import (
+    TestsFlextInfraUtilitiesGit,
+    TestsFlextInfraUtilitiesHermeticGit,
+)
 
 
 class TestsFlextInfraUtilitiesToolingFixture:
@@ -262,20 +265,22 @@ class TestsFlextInfraUtilitiesToolingFixture:
         }
 
     @classmethod
-    def python_dependency_projects(cls, root: Path) -> tuple[Path, ...]:
-        """Resolve declared fixture dependencies to actual workspace source owners.
+    def python_dependency_projects(
+        cls,
+        root: Path,
+        *,
+        session_runtime: p.Tests.SessionRuntime,
+    ) -> tuple[Path, ...]:
+        """Resolve fixture dependencies to their workspace or locked Git sources.
 
-        Only dependencies that are declared workspace members are resolved;
-        external (PyPI) dependencies are skipped because they have no local
-        source owner. A dependency that looks like a workspace member (its
-        name is in the workspace spec) but is missing from the filesystem
-        is a configuration error and is not silently skipped.
+        Declared workspace members keep their actual source trees. Independent
+        checkouts materialize the owning lock's Git dependencies from objects
+        provisioned by setup. Registry dependencies remain owned by the wheel
+        installer's native resolver; a missing internal source remains a failure.
+        Source-election ``ValueError`` is propagated from the shared Git owner.
 
         Returns:
-            The declared projects and their local runtime dependency closure.
-
-        Raises:
-            ValueError: When a ``flext-`` dependency has no workspace source owner.
+            The declared projects and their real runtime dependency closure.
 
         """
         projects = cls.workspace_source_projects()
@@ -285,23 +290,32 @@ class TestsFlextInfraUtilitiesToolingFixture:
         while pending:
             requirement = pending.pop()
             name = u.Infra.dep_name(requirement)
-            if name in selected or name is None:
+            if name is None:
                 continue
-            if name not in projects:
-                if name.startswith("flext-"):
-                    msg = (
-                        f"Fixture dependency has no workspace source owner: "
-                        f"{requirement}"
+            if name in projects:
+                project = projects[name]
+            elif name.startswith("flext-"):
+                project = (
+                    TestsFlextInfraUtilitiesHermeticGit.locked_dependency_project(
+                        tm.not_none(u.Infra.project_root(Path(__file__))),
+                        session_runtime.storage,
+                        requirement,
                     )
-                    raise ValueError(msg)
+                )
+            else:
                 continue
-            project = projects[name]
+            if name in selected:
+                continue
             selected[name] = project
             dependency = tm.ok(u.Infra.read_project_metadata_result(project))
             pending.extend(
                 value
                 for value in dependency.project.dependencies
-                if u.Infra.dep_name(value) in projects
+                if (dependency_name := u.Infra.dep_name(value)) is not None
+                and (
+                    dependency_name in projects
+                    or dependency_name.startswith("flext-")
+                )
             )
         return tuple(selected.values())
 
@@ -542,8 +556,10 @@ class TestsFlextInfraUtilitiesToolingFixture:
         dependency_projects = tuple(
             dict.fromkeys((
                 checkout,
-                *cls.python_dependency_projects(checkout),
-                *cls.python_dependency_projects(root),
+                *cls.python_dependency_projects(
+                    checkout, session_runtime=session_runtime
+                ),
+                *cls.python_dependency_projects(root, session_runtime=session_runtime),
             ))
         )
         return cls.create_python_environment(

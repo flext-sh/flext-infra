@@ -558,7 +558,6 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
             ("[project]\nname='test-project'\ndependencies=['flext-core>=0.1.0']\n"),
             encoding="utf-8",
         )
-        (project / c.GIT_DIR_NAME).mkdir()
         TestsFlextInfraUtilitiesProjectFixture.write_project_beads_config(
             project,
             "test-project",
@@ -572,6 +571,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
                     f"class TestProject{mod.split('.')[0].title()}:\n    pass\n",
                     encoding="utf-8",
                 )
+        TestsFlextInfraUtilitiesGit.initialize_git_repo(project)
         return project
 
     class WorktreeFixture:
@@ -867,7 +867,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
                     root,
                     dependency_projects=(
                         TestsFlextInfraUtilitiesToolingFixture.python_dependency_projects(
-                            root
+                            root, session_runtime=session_runtime
                         )
                     ),
                     session_runtime=session_runtime,

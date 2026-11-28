@@ -60,7 +60,9 @@ class TestsFlextInfraCodegenAutofixWorkspace:
         tm.ok(
             u.Tests.create_python_environment(
                 managed_project,
-                dependency_projects=u.Tests.python_dependency_projects(managed_project),
+                dependency_projects=u.Tests.python_dependency_projects(
+                    managed_project, session_runtime=session_runtime
+                ),
                 session_runtime=session_runtime,
             ),
         )
@@ -108,7 +110,9 @@ class TestsFlextInfraCodegenAutofixWorkspace:
         tm.ok(
             u.Tests.create_python_environment(
                 project,
-                dependency_projects=u.Tests.python_dependency_projects(project),
+                dependency_projects=u.Tests.python_dependency_projects(
+                    project, session_runtime=session_runtime
+                ),
                 session_runtime=session_runtime,
             ),
         )

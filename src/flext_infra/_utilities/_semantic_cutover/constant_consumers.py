@@ -17,6 +17,7 @@ from __future__ import annotations
 import ast
 import operator
 from collections.abc import Mapping, MutableMapping, Sequence
+from contextlib import closing
 from pathlib import Path
 
 from flext_cli import cli
@@ -25,6 +26,7 @@ from flext_infra import c, e, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesProjectManagedArtifacts,
+    FlextInfraUtilitiesWorkspaceSnapshot,
 )
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeCore,
@@ -63,6 +65,16 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         changes: MutableMapping[Path, list[str]] = {}
         retired: set[Path] = set()
         source_project = rope_workspace.rope_project
+
+        def collect_edits(edits: Sequence[p.Infra.SemanticMigrationEdit]) -> None:
+            """Accumulate phase edits against their original source witnesses."""
+            for edit in edits:
+                originals.setdefault(edit.file_path, sources[edit.file_path])
+                working[edit.file_path] = edit.updated_source
+                changes.setdefault(edit.file_path, []).extend(edit.changes)
+                if edit.retire_file:
+                    retired.add(edit.file_path)
+
         with (
             rope_workspace.open_workspace(
                 rope_workspace.repository_root,
@@ -70,20 +82,23 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                 source_project=source_project,
             ) as workspace,
         ):
-            for phase in (
-                cls._constant_declarations,
-                cls._retire_flat_constant_declarations,
-                cls._plan_constant_imports,
-            ):
-                result = phase(workspace, working)
-                if result.failure:
-                    return result
-                for edit in result.value:
-                    originals.setdefault(edit.file_path, sources[edit.file_path])
-                    working[edit.file_path] = edit.updated_source
-                    changes.setdefault(edit.file_path, []).extend(edit.changes)
-                    if edit.retire_file:
-                        retired.add(edit.file_path)
+            result = cls._constant_declarations(workspace, working)
+            if result.failure:
+                return result
+            collect_edits(result.value)
+            with closing(
+                FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
+                    source_project, working
+                )
+            ) as project:
+                for phase in (
+                    cls._retire_flat_constant_declarations,
+                    cls._plan_constant_imports,
+                ):
+                    result = phase(workspace, working, project=project)
+                    if result.failure:
+                        return result
+                    collect_edits(result.value)
         return r[tuple[p.Infra.SemanticMigrationEdit, ...]].ok(
             tuple(
                 m.Infra.SemanticMigrationEdit(
@@ -103,6 +118,8 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         cls,
         workspace: p.Infra.RopeWorkspaceDsl,
         sources: Mapping[Path, str],
+        *,
+        project: p.Infra.RopeProject,
     ) -> p.Result[tuple[p.Infra.SemanticMigrationEdit, ...]]:
         """Retire flat facts only at equivalent explicit authored class owners.
 
@@ -111,8 +128,9 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
 
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        project = runtime.snapshot_project(workspace.rope_project, sources)
-        try:
+        with FlextInfraUtilitiesWorkspaceSnapshot.workspace_planned_source_view(
+            project, sources
+        ):
 
             def rewrite(path: Path, source: str) -> t.Infra.TransformResult:
                 convention = workspace.convention(path)
@@ -179,8 +197,6 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                 )
 
             return cls._semantic_edits(cls._editable_sources(sources), rewrite)
-        finally:
-            project.close()
 
     @staticmethod
     def _equivalent_constant_declarations(
@@ -264,6 +280,8 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         cls,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         sources: Mapping[Path, str],
+        *,
+        project: p.Infra.RopeProject,
     ) -> p.Result[tuple[p.Infra.SemanticMigrationEdit, ...]]:
         """Resolve imported constants in one closed Rope graph.
 
@@ -271,32 +289,34 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
             The complete identity-bound consumer edits.
 
         """
-        runtime = FlextInfraUtilitiesRopeRuntimeModules
         cli.display_text(f"census: resolve constants imports in {len(sources)} modules")
-        project = runtime.snapshot_project(rope_workspace.rope_project, sources)
         paths: MutableMapping[str, Mapping[str, p.Infra.RopePyName]] = {}
-        try:
+        codegen_inputs: MutableMapping[Path, p.Infra.CodegenInputs] = {}
+        source_context = (rope_workspace, codegen_inputs)
+        with FlextInfraUtilitiesWorkspaceSnapshot.workspace_planned_source_view(
+            project, sources
+        ):
 
             def rewrite(path: Path, source: str) -> t.Infra.TransformResult:
                 updated, changes = cls._rewrite_constant_consumer(
-                    path, source, rope_workspace, project, paths
+                    path, source, source_context, project, paths
                 )
                 reused, literal_changes = cls._reuse_literal_constants(
-                    path, updated, rope_workspace, project, paths
+                    path, updated, source_context, project, paths
                 )
                 return reused, (*changes, *literal_changes)
 
             with FlextInfraUtilitiesRopeRuntimeRefactors.semantic_matching_context():
                 return cls._semantic_edits(cls._editable_sources(sources), rewrite)
-        finally:
-            project.close()
 
     @classmethod
     def _reuse_literal_constants(
         cls,
         path: Path,
         source: str,
-        workspace: p.Infra.RopeWorkspaceDsl,
+        source_context: tuple[
+            p.Infra.RopeWorkspaceDsl, MutableMapping[Path, p.Infra.CodegenInputs]
+        ],
         project: p.Infra.RopeProject,
         paths: MutableMapping[str, Mapping[str, p.Infra.RopePyName]],
     ) -> t.Infra.TransformResult:
@@ -306,16 +326,23 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
             Proposed source with only identity-proven literal consumer edits.
 
         """
-        convention = workspace.convention(path)
+        convention = source_context[0].convention(path)
         layout = convention.project_layout
-        if cls._constant_definition_source(workspace, convention) or layout is None:
+        if (
+            cls._constant_definition_source(source_context, convention)
+            or layout is None
+        ):
             return source, ()
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         refactors = FlextInfraUtilitiesRopeRuntimeRefactors
         resource = project.get_resource(
             path.relative_to(Path(project.root.real_path)).as_posix()
         )
-        module = runtime.build_string_module(project, source, resource=resource)
+        module = FlextInfraUtilitiesRopeRuntimeTypes.require_source_module(
+            project.get_pymodule(resource, force_errors=True)
+        )
+        if module.source_code != source:
+            module = runtime.build_string_module(project, source, resource=resource)
         returns_by_type = {
             literal_type: refactors.semantic_regions(
                 module,
@@ -608,7 +635,9 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         cls,
         path: Path,
         source: str,
-        rope_workspace: p.Infra.RopeWorkspaceDsl,
+        source_context: tuple[
+            p.Infra.RopeWorkspaceDsl, MutableMapping[Path, p.Infra.CodegenInputs]
+        ],
         project: p.Infra.RopeProject,
         paths: MutableMapping[str, Mapping[str, p.Infra.RopePyName]],
     ) -> t.Infra.TransformResult:
@@ -620,8 +649,9 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         refactors = FlextInfraUtilitiesRopeRuntimeRefactors
+        rope_workspace = source_context[0]
         convention = rope_workspace.convention(path)
-        if cls._constant_definition_source(rope_workspace, convention):
+        if cls._constant_definition_source(source_context, convention):
             return source, ()
         layout = convention.project_layout
         if layout is None:
@@ -634,7 +664,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
             FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(resource, path),
         )
         statements = cls._constant_imports(project, module)
-        if not cls._has_constant_imports(rope_workspace, project, module, statements):
+        if not cls._has_constant_imports(source_context, project, module, statements):
             return source, ()
         package = cls._constant_facade_package(statements, layout.package_name, path)
         facade_module = Path(c.Infra.CONSTANTS_PY).stem
@@ -799,7 +829,9 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
     @classmethod
     def _has_constant_imports(
         cls,
-        workspace: p.Infra.RopeWorkspaceDsl,
+        source_context: tuple[
+            p.Infra.RopeWorkspaceDsl, MutableMapping[Path, p.Infra.CodegenInputs]
+        ],
         project: p.Infra.RopeProject,
         module: p.Infra.RopePyModule,
         statements: Sequence[tuple[p.Infra.RopeFromImport, p.Infra.LogicalStatement]],
@@ -810,6 +842,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
             Whether a resolved import declares the constants family.
 
         """
+        workspace = source_context[0]
         bindings = FlextInfraUtilitiesRopeRuntimeModules.scope_at(module, 0).get_names()
         for info, _statement in statements:
             for name, alias in info.names_and_aliases:
@@ -824,14 +857,16 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                     continue
                 resource = declaration.get_module().get_resource()
                 if resource is not None and cls._constant_definition_source(
-                    workspace, workspace.convention(Path(resource.real_path))
+                    source_context, workspace.convention(Path(resource.real_path))
                 ):
                     return True
         return False
 
     @staticmethod
     def _constant_definition_source(
-        workspace: p.Infra.RopeWorkspaceDsl,
+        source_context: tuple[
+            p.Infra.RopeWorkspaceDsl, MutableMapping[Path, p.Infra.CodegenInputs]
+        ],
         convention: p.Infra.RopeModuleConvention,
     ) -> bool:
         """Exclude constants and configured layer-zero owners from consumer edits.
@@ -840,23 +875,24 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
             Whether this module owns declarations rather than consuming them.
 
         """
+        workspace, codegen_inputs = source_context
         path = convention.file_path
         policy = convention.module_policy
         layout = convention.project_layout
-        runtime_owner = (
-            layout is not None
-            and path.parent == layout.package_dir
-            and path.stem
-            in FlextInfraUtilitiesCodegenNamespace.runtime_module_names(
-                project_name=layout.project_name,
-                codegen=FlextInfraUtilitiesProjectManagedArtifacts
-                .load_codegen_inputs(
-                    layout.project_root, source_project=workspace.rope_project
+        runtime_owner = False
+        if layout is not None and path.parent == layout.package_dir:
+            if layout.project_root not in codegen_inputs:
+                codegen_inputs[layout.project_root] = (
+                    FlextInfraUtilitiesProjectManagedArtifacts.load_codegen_inputs(
+                        layout.project_root, source_project=workspace.rope_project
+                    ).unwrap()
                 )
-                .unwrap()
-                .spec,
-            ).values()
-        )
+            runtime_owner = path.stem in (
+                FlextInfraUtilitiesCodegenNamespace.runtime_module_names(
+                    project_name=layout.project_name,
+                    codegen=codegen_inputs[layout.project_root].spec,
+                ).values()
+            )
         return (
             policy.expected_alias == "c"
             or policy.expected_family == "Constants"

@@ -30,7 +30,9 @@ class TestsFlextInfraLazyInitWorkspaceElection:
             u.Tests.create_python_environment(
                 workspace,
                 dependency_projects=(
-                    *u.Tests.python_dependency_projects(checkout),
+                    *u.Tests.python_dependency_projects(
+                        checkout, session_runtime=session_runtime
+                    ),
                     checkout,
                 ),
                 session_runtime=session_runtime,

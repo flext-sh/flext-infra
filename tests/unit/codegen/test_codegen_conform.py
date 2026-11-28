@@ -106,7 +106,9 @@ class TestsFlextInfraCodegenConform:
         tm.ok(
             u.Tests.create_python_environment(
                 template,
-                dependency_projects=u.Tests.python_dependency_projects(template),
+                dependency_projects=u.Tests.python_dependency_projects(
+                    template, session_runtime=session_runtime
+                ),
                 session_runtime=session_runtime,
             )
         )
@@ -714,7 +716,9 @@ class TestsFlextInfraCodegenConform:
         tm.ok(
             u.Tests.create_python_environment(
                 root,
-                dependency_projects=u.Tests.python_dependency_projects(root),
+                dependency_projects=u.Tests.python_dependency_projects(
+                    root, session_runtime=session_runtime
+                ),
                 session_runtime=session_runtime,
             )
         )

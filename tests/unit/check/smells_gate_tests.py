@@ -6,7 +6,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import signal
+from collections.abc import Mapping, Sequence
 from pathlib import Path
+from typing import override
 
 from flext_infra.check import FlextInfraGateRegistry, FlextInfraWorkspaceChecker
 from flext_infra.gates import FlextInfraGatesSmells
@@ -17,6 +20,49 @@ pytestmark = c.Tests.MARK.slow
 
 class TestsFlextInfraSmellsGate:
     """Exercise observable gate behavior with the real setup-provisioned tool."""
+
+    class _TerminatedAfterScan(u.Cli):
+        """Run the real scanner, then terminate its supervisor with SIGTERM."""
+
+        @classmethod
+        @override
+        def run_raw(
+            cls,
+            cmd: Sequence[str],
+            cwd: t.Cli.TextPath | None = None,
+            timeout: int | None = None,
+            *,
+            options: p.Cli.ProcessOptions | None = None,
+            capture: bool = True,
+            env: Mapping[str, str] | None = None,
+            remove_env_keys: Sequence[str] | None = None,
+        ) -> p.Result[p.Cli.CommandOutput]:
+            """Retain the scanner streams and the supervisor's real signal status.
+
+            Returns:
+                The unmodified native process result.
+
+            """
+            return super().run_raw(
+                (
+                    "sh",
+                    "-c",
+                    (
+                        '"$@"\n'
+                        "status=$?\n"
+                        'if [ "$status" -ne 0 ]; then exit "$status"; fi\n'
+                        'kill -TERM "$$"\n'
+                    ),
+                    c.Infra.QLTY_BINARY,
+                    *cmd,
+                ),
+                cwd=cwd,
+                timeout=timeout,
+                options=options,
+                capture=capture,
+                env=env,
+                remove_env_keys=remove_env_keys,
+            )
 
     @u.Tests.fixture
     @staticmethod
@@ -237,11 +283,40 @@ class TestsFlextInfraSmellsGate:
         )
 
         tm.fail(execution.result.passed)
+        tm.that(execution.outcome, eq=c.Infra.ToolOutcome.ERROR)
         tm.that(len(execution.issues), eq=1)
         tm.that(execution.issues[0].severity, eq=str(c.Infra.GateSeverity.ERROR.value))
         tm.that(
             "generated qlty configuration is absent" in execution.issues[0].message,
             eq=True,
+        )
+
+    def test_invalid_project_configuration_is_an_operational_error(
+        self,
+        tmp_path: Path,
+        smells_project: Path,
+    ) -> None:
+        """Preserve the real scanner's failed configuration parse and receipt."""
+        self._configure(tmp_path)
+        config_path = (
+            tmp_path / c.Infra.QLTY_CONFIG_DIRNAME / c.Infra.QLTY_CONFIG_FILENAME
+        )
+        config_path.write_text("[", encoding=c.DEFAULT_ENCODING)
+
+        execution = FlextInfraGatesSmells(tmp_path).check(
+            smells_project,
+            self._ctx(tmp_path),
+        )
+
+        tm.fail(execution.result.passed)
+        tm.that(execution.outcome, eq=c.Infra.ToolOutcome.ERROR)
+        process = tm.not_none(execution.process)
+        tm.fail(process.raw_return_code == c.Cli.EXIT_CODE_SUCCESS)
+        tm.ok(bool(execution.raw_output.strip()))
+        receipt = tm.not_none(execution.raw_receipt)
+        tm.that(
+            receipt.read_text(encoding=c.DEFAULT_ENCODING),
+            eq=execution.raw_output,
         )
 
     @staticmethod
@@ -273,6 +348,11 @@ class TestsFlextInfraSmellsGate:
         )
 
         tm.ok(execution.result.passed)
+        tm.that(execution.outcome, eq=c.Infra.ToolOutcome.CLEAN)
+        tm.that(
+            tm.not_none(execution.process).raw_return_code,
+            eq=c.Cli.EXIT_CODE_SUCCESS,
+        )
         tm.that(len(execution.issues), eq=0)
 
     def test_finding_states_the_concrete_problem_and_the_fix(
@@ -296,10 +376,85 @@ class TestsFlextInfraSmellsGate:
         )
 
         tm.fail(execution.result.passed)
+        tm.that(execution.outcome, eq=c.Infra.ToolOutcome.FINDINGS)
+        tm.that(
+            tm.not_none(execution.process).raw_return_code,
+            eq=c.Cli.EXIT_CODE_SUCCESS,
+        )
         messages = [issue.message for issue in execution.issues]
         tm.ok(any("wide" in message for message in messages))
         tm.fail(any("{" in message for message in messages))
         tm.ok(all(" Fix: " in message for message in messages))
+
+    def test_signal_retains_every_published_finding_and_native_receipt(
+        self,
+        tmp_path: Path,
+        smells_project: Path,
+    ) -> None:
+        """A real SIGTERM retains the completed scanner's findings and fails."""
+        self._configure(tmp_path)
+        config_path = (
+            tmp_path / c.Infra.QLTY_CONFIG_DIRNAME / c.Infra.QLTY_CONFIG_FILENAME
+        )
+        comparison_policy: t.JsonDict = {
+            "mode": "block",
+            "identical_code": {"enabled": True},
+        }
+        tm.ok(
+            u.Cli.toml_write_mapping(
+                config_path,
+                u.config_merge(
+                    tm.ok(u.Cli.toml_read_json(config_path)),
+                    {
+                        "smells": comparison_policy,
+                        "language": {
+                            "python": {"enabled": True, "smells": comparison_policy},
+                        },
+                    },
+                ),
+            ),
+        )
+        tm.ok(
+            self._write_comparisons(
+                self._detector_config(tmp_path),
+                self._package(smells_project),
+            ),
+        )
+        completed = FlextInfraGatesSmells(tmp_path).check(
+            smells_project,
+            u.Tests.gate_context(tmp_path, tmp_path / "completed"),
+        )
+        tm.that(completed.outcome, eq=c.Infra.ToolOutcome.FINDINGS)
+        tm.ok(bool(completed.issues))
+
+        interrupted = FlextInfraGatesSmells(
+            tmp_path,
+            runner=self._TerminatedAfterScan,
+        ).check(
+            smells_project,
+            u.Tests.gate_context(tmp_path, tmp_path / "interrupted"),
+        )
+
+        tm.fail(interrupted.result.passed)
+        tm.that(interrupted.outcome, eq=c.Infra.ToolOutcome.ERROR)
+        process = tm.not_none(interrupted.process)
+        tm.that(process.raw_return_code, eq=-signal.SIGTERM)
+        tm.fail(process.timed_out)
+        tm.that(process.forwarded_signal, none=True)
+        tm.that(interrupted.issues[0].code, eq=c.Infra.ToolOutcome.ERROR.value)
+        tm.that(
+            interrupted.issues[0].message,
+            eq=(
+                f"{c.Infra.SMELLS} exited with code {-signal.SIGTERM}: "
+                "timed_out=False; forwarded_signal=None"
+            ),
+        )
+        tm.that(tuple(interrupted.issues[1:]), eq=tuple(completed.issues))
+        receipt = tm.not_none(interrupted.raw_receipt)
+        tm.that(
+            receipt.read_text(encoding=c.DEFAULT_ENCODING),
+            eq=interrupted.raw_output,
+        )
 
     def test_ignored_check_file_is_never_scanned(
         self,

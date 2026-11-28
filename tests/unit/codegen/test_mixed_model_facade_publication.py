@@ -193,7 +193,9 @@ def test_models_infra_inherited_members_keep_native_static_types(
     tm.ok(
         u.Tests.create_python_environment(
             root,
-            dependency_projects=u.Tests.python_dependency_projects(root),
+            dependency_projects=u.Tests.python_dependency_projects(
+                root, session_runtime=session_runtime
+            ),
             session_runtime=session_runtime,
         )
     )

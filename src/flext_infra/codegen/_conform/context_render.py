@@ -249,7 +249,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         self,
         render_inputs: p.Infra.CodegenRenderInputs,
     ) -> p.Result[p.Infra.MakeRenderContext]:
-        """Build the typed context consumed by the generated Makefile.
+        """Build the typed context consumed by the generated ``custom.mk``.
 
         Returns:
             The resulting ``p.Result[p.Infra.MakeRenderContext]``.
@@ -324,7 +324,6 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 ),
                 "extra_verbs": (extra_verbs),
                 "script_dispatch": (repository.script_dispatch),
-                "verb_groups": (repository.verb_groups),
             }),
         )
 

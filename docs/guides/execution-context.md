@@ -1,6 +1,6 @@
 # Execution context
 
-<!-- Revision 2026-11-28.5; Marlon Costa <marlon.costa@datacosmos.com.br>; Datacosmos. -->
+<!-- Revision 2026-11-28.12; Marlon Costa <marlon.costa@datacosmos.com.br>; Datacosmos. -->
 
 <!-- TOC START -->
 
@@ -1260,6 +1260,13 @@ their source and canonical regeneration.
 Shared TOML ingress owns Pydantic mapping validation. Pyproject, documentation and
 text-rule consumers reuse its validated output directly.
 
+The shared configuration `SchemaRecord` inherits unknown-field rejection from
+`ContractModel`. Schema coercion, frozen values and verbatim rendered text remain
+separate properties: accepting a numeric string or retaining a final newline does
+not admit an undeclared option. Documentation lifecycle, toolchain and codegen
+records consume this same preset; a retired field fails at the input boundary
+instead of disappearing before its consumer can report it.
+
 Rope DSL closed operation and transform vocabularies belong to `c.Infra`;
 `m` validates the composed declarations, while `p` defines injected ports consumed
 through Pydantic `t.Port` fields.
@@ -1805,9 +1812,13 @@ requiring a prior check receipt. Generated Make consumers use `make tests`; bare
 `make check` selects primary admission. Request `make check CHECK_PHASE=complete`
 for complete validation. `MakeOperationSpec.make_command` carries the phase
 explicitly for each check workflow row, so a complete row does not inherit the
-Makefile's primary default. Every phase, locally and in CI, checks
-only the selected project root while provisioning keeps the containing runtime
-environment; an attached member's commit hook therefore checks the member alone.
+Makefile's primary default. In both phases, locally and in CI, gate capture
+invokes `check run` with `scope=all` explicitly from the selected `PROJECT_ROOT`.
+The checker selects that repository and its governed members declared in
+`.gitmodules`; primary admission requires this unfiltered scope. The lower-level
+`RunCommand.scope=self` default does not narrow the explicit capture request.
+Provisioning elects the containing runtime environment independently of this
+target selection.
 The Make check handler does not forward `ALL` as a checking scope. Test and internal
 repair/format handlers use `GATE_SCOPE`, which selects governed members with `ALL=Y`
 in a workspace profile outside CI (ADR-038 decision 9, flext-bga5y).
@@ -1824,8 +1835,10 @@ The Make handler converges generation, repairs and formatting before either phas
 in the local or unset CI context. CI and commit-hook tokens (`Y` and `C`) skip
 convergence. The native
 `workspace check` route itself is read-only: outside the commit hook, complete
-validation adds conformance observation and documentation validation/audit after
-the captured gates. A primary receipt does not include those additional checks.
+validation adds conformance observation with `scope=self` and documentation
+validation/audit for the invoked root after the captured gates. These additional
+root checks have their own target selection. A primary receipt does not include
+those additional checks.
 The CI workflow also exposes an optional `full_check` boolean on
 `workflow_dispatch` and `workflow_call`, defaulting to false. It runs the
 complete phase with `make.ci.value`, in addition to the unchanged required CI
@@ -2601,13 +2614,18 @@ member removes only its generated contributions. The public conform and overlay
 paths use canonical resolver-key ordering and preserve these ownership comments
 so repeated generation reaches a byte-identical fixed point.
 
-Each internal `flext-*` requirement declares its integration line in `pyproject.toml`,
-never a commit: the resolved commit exists only in `uv.lock`, and only `make upg` moves
-it to the line tip. The manifest does not pin revisions. A commit left in the
-`pyproject.toml` projection is residue: `make check` re-renders it on the detected line.
-When the projection carries no line, a hand-written `project.flext_source` in the
-manifest declares it, and a commit in a hand-written source fails. Fix the setup or
-`upg` owner and regenerate through `make check`; manual installs do not replace the cycle.
+Dependency conformance preserves each explicit Git requirement's URL and ref,
+including a declared commit, as required by `AGENTS.md`. A detected provider branch
+does not replace that declaration. Only `make upg` advances resolved lock provenance;
+`make check` does not choose another revision or write the lock.
+
+Integration-line detection is a separate concern: a commit ref supplies no branch
+selector. When the declarations carry no infrastructure line, the existing manifest
+or hand-written `project.flext_source` must provide it. That scaffold source declares
+a line and rejects a commit. These rules belong to `_pyproject/requirements.py` and
+`repository.py`, respectively; preserving a dependency ref does not establish an
+integration line, resolve it or prove its runtime. Fix the owning declaration and
+regenerate through `make check`; manual installs do not replace the cycle.
 
 A workspace root preserves declared Git requirements and publishes its declared
 package members in `[tool.uv.workspace].members`. Its `[tool.uv.sources]` entries
@@ -2630,6 +2648,15 @@ workspace and lock noneditably. An independent checkout resolves its own declare
 sources without discovering neighboring repositories or borrowing their environment.
 When composition changes, regenerate its declaring owner, upgrade its lock and
 install that resolution through the separate lifecycle operations.
+
+Dependency-backed test fixtures elect source owners from the same native resolution
+context. Declared workspace members supply their authenticated source trees;
+independent checkouts use the exact Git sources and commits recorded in the owning
+`uv.lock`. The hermetic Git fixture owner materializes those sources only from
+objects already provisioned by setup, retaining distribution identity and refusing
+missing or ambiguous ownership. Shared fixture tooling passes the resulting source
+projects to its existing real wheel builder and installer. This dependency-backed
+path does not borrow the invoking environment or substitute an editable install.
 
 Resolver-wide source election is explicit policy in
 `Infra.codegen.toolchain.uv_override_dependencies`, not inferred from an installed
@@ -4179,9 +4206,10 @@ including its filename and source text. The complete batch remains unchanged.
 
 The public `flext-infra check run --file` route selects a literal
 repository-relative path through the existing typed request, never bare analyzers
-or a second gate engine. Selection rejects empty, absolute, traversal, missing, non-Python and
-symlink-component paths before creating reports or invoking tools. Only the literal
-file reaches each gate's existing `check_files`; no mutation is permitted.
+or a second gate engine. Selection rejects empty, absolute, traversal, missing,
+non-Python and symlink-component paths before creating reports or invoking tools.
+Only the literal file reaches each gate's existing `check_files`; no mutation is
+permitted.
 The caller selects registered gates through `RunCommand.gates` and `resolve_gates`;
 no separate gate vocabulary or configuration is introduced. The route requires
 explicit `--gates`, never silently falls back to whole-project gates, and rejects
@@ -4459,6 +4487,15 @@ an applicable scanner is an operational error, retained in the native check repo
 it cannot supply an accepted receipt or a signed gate attestation under either
 clean-quality or complete-execution policy. An unselected optional scanner never
 runs and is not recorded as an executed gate.
+Requested gates remain visible in the report; pending work contains only gates
+selected by the captured per-target applicability.
+
+Cubic and Qlty classify operational failures, invalid reports and process
+interruptions as `ERROR`. Executed commands retain their native process outcome
+and raw receipt.
+Findings already parsed from a published report remain present after the native
+interruption diagnostic; retaining those findings does not make the execution
+successful or eligible for an accepted gate attestation.
 
 Admission derives from the original typed reports rather than caller success flags.
 Checks require complete target and requested-gate coverage in SARIF. Tests require
@@ -4541,10 +4578,10 @@ without exporting their payload. Algorithm usability and trust still require the
 selected native signing or verification action, not this observation.
 The CLI emits the typed report as JSON, excluding native values. Neither this
 observation nor original check/test capture selects signing: capture binds the
-typed target policy and producer evidence. Direct `u.Infra.git_create_gate_attestation` and
-`u.Infra.git_verify_gate_attestation` select signing/publication or signature
-verification;
-their required trust input and native key/signature failures remain fail-loud. A valid
+typed target policy and producer evidence. Direct
+`u.Infra.git_create_gate_attestation` and `u.Infra.git_verify_gate_attestation`
+select signing/publication or signature verification; their required trust input and
+native key/signature failures remain fail-loud. A valid
 observation is never signed proof, and absent signing material does not gate unrelated
 offline producers.
 
@@ -5038,24 +5075,38 @@ value cannot be replaced with discovered namespaces. A declared empty list remai
 empty; namespace discovery applies only when the list is absent. A bare Python
 annotation does not replace an existing facade binding.
 
-The pytest deadline correction applies the same absolute
-entrypoint clock to complete, incremental, file, coverage and profiled operations.
-Selection mode cannot disable that clock. The typed tooling policy owns the values:
-`ordinary-timeout-seconds` (2 s) measures the test call, `slow-timeout-seconds`
-(20 s) applies to `slow` and the heavy capability markers, and
-`run-timeout-seconds` (240 s) is the fleet-wide suite clock — one invocation owns one
-budget across every member suite, and a per-member reset is rejected. Collection,
-session setup, fixture teardown and plugin bookkeeping belong to the suite deadline,
-which reserves its own shutdown time. Termination grace stays inside that budget.
-Historical 300-, 600- and 1200-second exceptions are superseded by the current
-performance requirement, rather than retained as measurement modes.
+For budgeted pytest operations, each selected project owns one absolute
+entrypoint clock across collection and execution. Workspace dispatch starts a
+new clock for each member, so earlier suites do not consume a later member's
+budget. The typed tooling policy owns the values: `ordinary-timeout-seconds`
+(2 s) measures the test call, `slow-timeout-seconds` (20 s) applies to `slow`
+and the heavy capability markers, and `run-timeout-seconds` (240 s) is the
+per-project suite clock. Collection, session setup, fixture teardown and plugin
+bookkeeping belong to that deadline, which reserves its own shutdown time.
+Termination grace stays inside the budget. Historical 300-, 600- and
+1200-second exceptions are superseded by the current performance requirement,
+rather than retained as measurement modes.
 
-Run-context receipts must carry the absolute deadline even when collection fails.
-The existing process owner retains native timeout and signal outcomes; incomplete
-collection or execution remains red. Disabling a per-item timeout is independent of
-the aggregate operation deadline. This correction does not by itself prove a bound
-on Make activation or Python work outside supervised children. Until the complete
-native boundary is verified, the required outer command deadline still applies.
+Two policy discrepancies remain in the current sources. For FULL outside
+isolated fixtures, the runner elects no suite deadline, as root AGENTS describes;
+ADR-029 still assigns `tests-full` the configured clock. In CI, the runner's
+`GLOBAL_INCREMENTAL` branch deselects `slow` through `carries_slow_items`, while
+`ci-excluded-markers` is empty and the typed tooling model rejects `slow` in
+that list. Changing `slow` marking therefore changes current CI selection as
+well as the item budget. These observations do not settle either policy conflict
+or authorize changes to deadlines, markers or selection. The owners are
+`src/flext_infra/api.py:639`, `src/flext_infra/validate/_pytest_runner/base.py:279`,
+`src/flext_infra/validate/_pytest_runner/command.py:37` and
+`src/flext_infra/_models/deps_tool_config.py:529`,
+alongside root AGENTS and ADR-029.
+
+Run-context receipts carry the project's elected absolute deadline when one
+applies, including when collection fails. The existing process owner retains
+native timeout and signal outcomes; incomplete collection or execution remains
+red. Disabling a per-item timeout is independent of a configured suite deadline.
+This correction does not by itself prove a bound on Make activation or Python
+work outside supervised children. Until the complete native boundary is
+verified, the required outer command deadline still applies.
 Exercise the current public `make tests` operation before changing its regression
 tests; the retired common file and profiling targets are not validation routes.
 

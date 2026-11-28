@@ -54,7 +54,7 @@ class TestsFlextInfraCodegenLazyInit:
     def governed_project(
         tmp_path: Path,
     ) -> Path:
-        """Provide the project manifest every scanned package belongs to.
+        """Provide the Git checkout and manifest every scanned package belongs to.
 
         Lazy-init plans a package only inside a physical project, and the
         generated notice names the manifest's first author and its license.
@@ -69,6 +69,7 @@ class TestsFlextInfraCodegenLazyInit:
             'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n',
             encoding="utf-8",
         )
+        u.Tests.initialize_git_repo(tmp_path)
         return tmp_path
 
     class TestsAllDirectoriesScanned:
@@ -138,49 +139,134 @@ class TestsFlextInfraCodegenLazyInit:
             tm.that(tests_init.read_text(encoding="utf-8"), eq=original_content)
 
     class TestsExcludedDirectories:
-        """Vendor and .venv directories are excluded."""
+        """Exclude declared artifacts while retaining ordinary source packages."""
 
         @staticmethod
-        def test_vendor_dir_excluded(tmp_path: Path) -> None:
-            """Exclude vendored test packages from discovery."""
-            _create_init_file(tmp_path / "src" / "pkg", _VALID_INIT)
-            _create_init_file(
-                tmp_path / "tests" / "vendor" / "pkg",
-                _VALID_TESTS_INIT,
+        def _package_initializer(package: Path, content: str = "") -> Path:
+            """Create an authored initializer or an export eligible for planning.
+
+            Returns:
+                The initializer whose source and write effects are exercised.
+
+            """
+            init = _create_init_file(package, content)
+            if not content:
+                (package / "provider.py").write_text(
+                    "class Owned: pass\n__all__ = ('Owned',)\n",
+                    encoding=c.DEFAULT_ENCODING,
+                )
+            return init
+
+        @classmethod
+        @c.Tests.MARK.parametrize("authored", (True, False))
+        def test_nested_vendor_dir_is_scanned(
+            cls, tmp_path: Path, *, authored: bool
+        ) -> None:
+            """Keep nested vendored packages in discovery with their write policy."""
+            repository, package = (
+                (tmp_path, tmp_path / "src" / "pkg")
+                if authored
+                else u.Tests.create_lazy_init_workspace(tmp_path)
             )
-            generator = FlextInfraCodegenLazyInit(repository_root=tmp_path)
-            result = generator.plan_files()
-            tm.ok(result.success)
-
-        @staticmethod
-        def test_venv_dir_excluded(tmp_path: Path) -> None:
-            """Exclude virtual-environment test packages from discovery."""
-            _create_init_file(tmp_path / "src" / "pkg", _VALID_INIT)
-            _create_init_file(
-                tmp_path / "tests" / ".venv" / "pkg",
-                _VALID_TESTS_INIT,
+            src_init = cls._package_initializer(
+                package, _VALID_INIT if authored else ""
             )
-            generator = FlextInfraCodegenLazyInit(repository_root=tmp_path)
-            result = generator.plan_files()
-            tm.ok(result.success)
+            vendor_init = cls._package_initializer(
+                repository / "tests" / "vendor" / "pkg",
+                _VALID_TESTS_INIT if authored else "",
+            )
+            original = (src_init.read_bytes(), vendor_init.read_bytes())
+            with u.Infra.facade_source_project(repository) as (source_project, sources):
+                planned = {
+                    plan.path
+                    for plan in tm.ok(
+                        FlextInfraCodegenLazyInit(repository_root=repository).plan_files(
+                            source_project=source_project
+                        )
+                    )
+                }
+                tm.ok(src_init in sources)
+                tm.ok(vendor_init in sources)
+            tm.that(src_init in planned, eq=not authored)
+            tm.that(vendor_init in planned, eq=not authored)
+            tm.that((src_init.read_bytes(), vendor_init.read_bytes()), eq=original)
 
-        @staticmethod
-        def test_nested_site_packages_dir_excluded(tmp_path: Path) -> None:
-            """Exclude nested site-packages directories from discovery."""
-            _create_init_file(tmp_path / "src" / "pkg", _VALID_INIT)
-            _create_init_file(
-                tmp_path
+        @classmethod
+        @c.Tests.MARK.parametrize("authored", (True, False))
+        def test_venv_dir_excluded(cls, tmp_path: Path, *, authored: bool) -> None:
+            """Exclude physical virtual-environment packages from both inventories."""
+            repository, package = (
+                (tmp_path, tmp_path / "src" / "pkg")
+                if authored
+                else u.Tests.create_lazy_init_workspace(tmp_path)
+            )
+            src_init = cls._package_initializer(
+                package, _VALID_INIT if authored else ""
+            )
+            excluded_init = cls._package_initializer(
+                repository / "tests" / ".venv" / "pkg",
+                _VALID_TESTS_INIT if authored else "",
+            )
+            original = (src_init.read_bytes(), excluded_init.read_bytes())
+            with u.Infra.facade_source_project(repository) as (source_project, sources):
+                planned = {
+                    plan.path
+                    for plan in tm.ok(
+                        FlextInfraCodegenLazyInit(repository_root=repository).plan_files(
+                            source_project=source_project
+                        )
+                    )
+                }
+                tm.ok(src_init in sources)
+                tm.that(sources, lacks=excluded_init)
+            tm.that(src_init in planned, eq=not authored)
+            tm.that(planned, lacks=excluded_init)
+            tm.that((src_init.read_bytes(), excluded_init.read_bytes()), eq=original)
+
+        @classmethod
+        @c.Tests.MARK.parametrize("authored", (True, False))
+        @c.Tests.MARK.parametrize("environment", ("venv", "runtime"))
+        def test_nested_site_packages_dir_excluded(
+            cls,
+            tmp_path: Path,
+            environment: str,
+            *,
+            authored: bool,
+        ) -> None:
+            """Exclude site-packages even without a virtual-environment parent."""
+            repository, package = (
+                (tmp_path, tmp_path / "src" / "pkg")
+                if authored
+                else u.Tests.create_lazy_init_workspace(tmp_path)
+            )
+            src_init = cls._package_initializer(
+                package, _VALID_INIT if authored else ""
+            )
+            excluded_init = cls._package_initializer(
+                repository
                 / "pkg"
                 / "container"
-                / "venv"
+                / environment
                 / "lib"
                 / "site-packages"
                 / "bad",
-                _VALID_TESTS_INIT,
+                _VALID_TESTS_INIT if authored else "",
             )
-            generator = FlextInfraCodegenLazyInit(repository_root=tmp_path)
-            result = generator.plan_files()
-            tm.ok(result.success)
+            original = (src_init.read_bytes(), excluded_init.read_bytes())
+            with u.Infra.facade_source_project(repository) as (source_project, sources):
+                planned = {
+                    plan.path
+                    for plan in tm.ok(
+                        FlextInfraCodegenLazyInit(repository_root=repository).plan_files(
+                            source_project=source_project
+                        )
+                    )
+                }
+                tm.ok(src_init in sources)
+                tm.that(sources, lacks=excluded_init)
+            tm.that(src_init in planned, eq=not authored)
+            tm.that(planned, lacks=excluded_init)
+            tm.that((src_init.read_bytes(), excluded_init.read_bytes()), eq=original)
 
         @staticmethod
         def test_runtime_scratch_dir_excluded_from_plans(tmp_path: Path) -> None:
@@ -341,6 +427,7 @@ class TestsFlextInfraCodegenLazyInit:
                     manifest,
                     encoding="utf-8",
                 )
+                u.Tests.initialize_git_repo(tmp_path / repository)
             src_dir_a = tmp_path / "a" / "src" / "pkg"
             _create_init_file(src_dir_a, src_content)
             tm.that(u.Tests.run_lazy_init(tmp_path / "a"), eq=0)
