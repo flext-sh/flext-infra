@@ -17,6 +17,7 @@ from __future__ import annotations
 import ast
 import operator
 from collections.abc import Mapping, MutableMapping, Sequence
+from contextlib import closing
 from pathlib import Path
 
 from flext_cli import cli
@@ -25,6 +26,7 @@ from flext_infra import c, e, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesProjectManagedArtifacts,
+    FlextInfraUtilitiesWorkspaceSnapshot,
 )
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeCore,
@@ -63,6 +65,16 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         changes: MutableMapping[Path, list[str]] = {}
         retired: set[Path] = set()
         source_project = rope_workspace.rope_project
+
+        def collect_edits(edits: Sequence[p.Infra.SemanticMigrationEdit]) -> None:
+            """Accumulate phase edits against their original source witnesses."""
+            for edit in edits:
+                originals.setdefault(edit.file_path, sources[edit.file_path])
+                working[edit.file_path] = edit.updated_source
+                changes.setdefault(edit.file_path, []).extend(edit.changes)
+                if edit.retire_file:
+                    retired.add(edit.file_path)
+
         with (
             rope_workspace.open_workspace(
                 rope_workspace.repository_root,
@@ -70,20 +82,23 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                 source_project=source_project,
             ) as workspace,
         ):
-            for phase in (
-                cls._constant_declarations,
-                cls._retire_flat_constant_declarations,
-                cls._plan_constant_imports,
-            ):
-                result = phase(workspace, working)
-                if result.failure:
-                    return result
-                for edit in result.value:
-                    originals.setdefault(edit.file_path, sources[edit.file_path])
-                    working[edit.file_path] = edit.updated_source
-                    changes.setdefault(edit.file_path, []).extend(edit.changes)
-                    if edit.retire_file:
-                        retired.add(edit.file_path)
+            result = cls._constant_declarations(workspace, working)
+            if result.failure:
+                return result
+            collect_edits(result.value)
+            with closing(
+                FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
+                    source_project, working
+                )
+            ) as project:
+                for phase in (
+                    cls._retire_flat_constant_declarations,
+                    cls._plan_constant_imports,
+                ):
+                    result = phase(workspace, working, project=project)
+                    if result.failure:
+                        return result
+                    collect_edits(result.value)
         return r[tuple[p.Infra.SemanticMigrationEdit, ...]].ok(
             tuple(
                 m.Infra.SemanticMigrationEdit(
@@ -103,6 +118,8 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         cls,
         workspace: p.Infra.RopeWorkspaceDsl,
         sources: Mapping[Path, str],
+        *,
+        project: p.Infra.RopeProject,
     ) -> p.Result[tuple[p.Infra.SemanticMigrationEdit, ...]]:
         """Retire flat facts only at equivalent explicit authored class owners.
 
@@ -111,8 +128,9 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
 
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        project = runtime.snapshot_project(workspace.rope_project, sources)
-        try:
+        with FlextInfraUtilitiesWorkspaceSnapshot.workspace_planned_source_view(
+            project, sources
+        ):
 
             def rewrite(path: Path, source: str) -> t.Infra.TransformResult:
                 convention = workspace.convention(path)
@@ -179,8 +197,6 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                 )
 
             return cls._semantic_edits(cls._editable_sources(sources), rewrite)
-        finally:
-            project.close()
 
     @staticmethod
     def _equivalent_constant_declarations(
@@ -264,6 +280,8 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         cls,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         sources: Mapping[Path, str],
+        *,
+        project: p.Infra.RopeProject,
     ) -> p.Result[tuple[p.Infra.SemanticMigrationEdit, ...]]:
         """Resolve imported constants in one closed Rope graph.
 
@@ -271,11 +289,11 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
             The complete identity-bound consumer edits.
 
         """
-        runtime = FlextInfraUtilitiesRopeRuntimeModules
         cli.display_text(f"census: resolve constants imports in {len(sources)} modules")
-        project = runtime.snapshot_project(rope_workspace.rope_project, sources)
         paths: MutableMapping[str, Mapping[str, p.Infra.RopePyName]] = {}
-        try:
+        with FlextInfraUtilitiesWorkspaceSnapshot.workspace_planned_source_view(
+            project, sources
+        ):
 
             def rewrite(path: Path, source: str) -> t.Infra.TransformResult:
                 updated, changes = cls._rewrite_constant_consumer(
@@ -288,8 +306,6 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
 
             with FlextInfraUtilitiesRopeRuntimeRefactors.semantic_matching_context():
                 return cls._semantic_edits(cls._editable_sources(sources), rewrite)
-        finally:
-            project.close()
 
     @classmethod
     def _reuse_literal_constants(

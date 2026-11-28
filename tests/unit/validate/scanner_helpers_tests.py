@@ -20,11 +20,11 @@ class TestsFlextInfraScannerHelpers:
     @staticmethod
     def test_iter_matching_files_glob_patterns(tmp_path: Path) -> None:
         """Canonical file selection respects include/exclude glob patterns."""
-        u.Tests.git_bootstrap(tmp_path, ("init",))
         (tmp_path / "file1.py").write_text("")
         (tmp_path / "file2.txt").write_text("")
         (tmp_path / "file3.py").write_text("")
         (tmp_path / "test.py").write_text("")
+        u.Tests.initialize_git_repo(tmp_path)
         included = u.Infra.iter_matching_files(tmp_path, includes=["*.py"])
         tm.that(len(included), eq=3)
         excluded = u.Infra.iter_matching_files(
@@ -37,9 +37,9 @@ class TestsFlextInfraScannerHelpers:
     @staticmethod
     def test_iter_matching_files_skips_directories(tmp_path: Path) -> None:
         """Canonical file selection skips directories."""
-        u.Tests.git_bootstrap(tmp_path, ("init",))
         (tmp_path / "file.txt").write_text("")
         (tmp_path / "subdir").mkdir()
+        u.Tests.initialize_git_repo(tmp_path)
         files = u.Infra.iter_matching_files(tmp_path, includes=["*"])
         tm.that(len(files), eq=1)
 
