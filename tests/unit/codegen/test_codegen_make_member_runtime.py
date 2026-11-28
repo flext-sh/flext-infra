@@ -286,7 +286,7 @@ class TestsFlextInfraCodegenMakeMemberRuntime:
         member_source = runtime_reader
         workspace = self._workspace_with_member(tmp_path, member_source)
         member = workspace / member_source.name
-        # A workspace path outside the member, as `make gen` reads examples/.
+        # A workspace path outside the member, as `make check` reads examples/.
         probe = workspace / "examples"
         probe.mkdir()
 

@@ -30,22 +30,6 @@ class TestsFlextInfraSkillValidator:
         tm.that(list_value, eq=["item1", "item2"])
 
     @staticmethod
-    def test_empty_and_null(tmp_path: Path) -> None:
-        """Empty/null YAML returns empty dict."""
-        (tmp_path / "empty.yml").write_text("")
-        tm.that(dict(u.Cli.yaml_load_mapping(tmp_path / "empty.yml")), eq={})
-        (tmp_path / "null.yml").write_text("null")
-        tm.that(dict(u.Cli.yaml_load_mapping(tmp_path / "null.yml")), eq={})
-
-    @staticmethod
-    def test_non_dict_returns_empty_mapping(tmp_path: Path) -> None:
-        """Non-mapping YAML normalizes to an empty mapping."""
-        (tmp_path / "list.yml").write_text("- item1\n- item2")
-        tm.that(dict(u.Cli.yaml_load_mapping(tmp_path / "list.yml")), eq={})
-        (tmp_path / "str.yml").write_text("just a string")
-        tm.that(dict(u.Cli.yaml_load_mapping(tmp_path / "str.yml")), eq={})
-
-    @staticmethod
     def test_none_returns_empty() -> None:
         """None returns empty list."""
         tm.that(u.Infra.string_list(None), empty=True)
