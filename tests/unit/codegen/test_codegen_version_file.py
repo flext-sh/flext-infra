@@ -67,6 +67,7 @@ class TestsFlextInfraCodegenVersionFile:
         pkg = proj / "src" / pkg_name
         pkg.mkdir(parents=True)
         (pkg / "__init__.py").write_text("", encoding="utf-8")
+        u.Tests.initialize_git_repo(proj)
         u.Tests.declare_workspace_projects(ws, (project_name,))
         return ws, proj, pkg
 
@@ -170,6 +171,7 @@ class TestsFlextInfraCodegenVersionFile:
             pkg = proj / "src" / name.replace("-", "_")
             pkg.mkdir(parents=True)
             (pkg / "__init__.py").write_text("", encoding="utf-8")
+            u.Tests.initialize_git_repo(proj)
         u.Tests.declare_workspace_projects(
             ws,
             c.Tests.PROJECT_MEMBERS_BY_SCENARIO["filtered"],

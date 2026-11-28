@@ -96,16 +96,10 @@ class TestsFlextInfraCodegenScaffolder:
         for mod, _suffix, _base, _description in c.Infra.TESTS_MODULES:
             tm.ok((tests_dir / mod).exists())
         constants_source = (tests_dir / "constants.py").read_text(encoding="utf-8")
-        tm.that(constants_source, has="from flext_tests import FlextTestsConstants")
-        tm.that(constants_source, has="from test_project import c")
-        tm.that(
-            constants_source,
-            has="class TestsTestProjectConstants(FlextTestsConstants, c):",
-        )
-        tm.that(
-            constants_source,
-            has="class TestsTestProject(FlextTestsConstants.Tests, c.TestProject):",
-        )
+        tm.that(constants_source, has="from flext_tests import c as test_c")
+        tm.that(constants_source, has="from test_project import c as source_c")
+        tm.that(constants_source, has="class TestsTestProjectConstants(source_c):")
+        tm.that(constants_source, has="class TestsTestProject(test_c.Tests):")
         tm.that(constants_source, has="c = TestsTestProjectConstants")
 
     def test_skips_tests_modules_when_no_tests_dir(self, tmp_path: Path) -> None:
