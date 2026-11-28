@@ -210,7 +210,7 @@ def _provision_consumer_template(
     for verb, receipt in (
         ("upg", _CONSUMER_UPGRADE_RECEIPT),
         ("setup", _INFRA_SETUP_RECEIPT),
-        ("gen", "generation-receipt.json"),
+        ("check", "generation-receipt.json"),
         ("build", _CONSUMER_BUILD_RECEIPT),
     ):
         output = tm.ok(
@@ -238,10 +238,10 @@ def _provision_consumer_template(
                 ),
             )
             u.Tests.git_bootstrap(root, ("commit", "-q", "-m", "upg: resolved locks"))
-        if verb == "gen":
+        if verb == "check":
             u.Tests.git_bootstrap(root, ("add", "--", c.Infra.DIR_DOCS))
             u.Tests.git_bootstrap(
-                root, ("commit", "-q", "-m", "gen: materialize consumer documentation")
+                root, ("commit", "-q", "-m", "check: materialize consumer documentation")
             )
     environment = u.Infra.runtime_environment_dir(root)
     tm.fail(environment.is_symlink())
@@ -377,7 +377,7 @@ _MAKE_UPGRADE_RECEIPT = c.Tests.MAKE_TEMPLATE_UPG_RECEIPT
 _MAKE_CI_SETUP_RECEIPT = c.Tests.MAKE_TEMPLATE_CI_RECEIPT
 _INFRA_SETUP_RECEIPT = "setup-receipt.json"
 _GIT_MIRRORS_RECEIPT = "mirrors-receipt.txt"
-# Every scenario that provisions the candidate's own environment before `gen`.
+# Every scenario provisions the candidate's own environment before `check`.
 _INFRA_CHECKOUT_SCENARIOS = (
     "builtin",
     "custom",

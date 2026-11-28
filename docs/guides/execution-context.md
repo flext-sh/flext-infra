@@ -1290,8 +1290,8 @@ The configured `.trigger-tree/` pattern keeps the agent's local session history,
 session state and lock outside versioned project content; it does not remove those
 files or exclude product changes from capture.
 
-`make fix-toolchain` repairs one explicitly selected native installation through
-Mise, using the exact version and checksum authority of the current lock. Set
+`flext-infra codegen mise-repair` repairs one explicitly selected native installation
+through Mise, using the exact version and checksum authority of the current lock. Set
 `FLEXT_INFRA_TOOLCHAIN_REPAIR_TOOL` to a tool name already declared by the project.
 Missing or undeclared selections fail before installation. The operation
 revalidates its captured configuration and lock, streams the native installer
@@ -1903,21 +1903,30 @@ Every generated `direnv` invocation, in Make and in `.envrc` publication, runs t
 executable the project's locked Mise toolchain resolves (`mise which direnv`), never
 a `direnv` found on the caller's `PATH`.
 Make verbs declare their activation requirement in `make.verbs`; activation is
-required by default before handlers and hooks. Generation and its footprint
-inspection consume the declared physical interpreter and verify its environment
-directly, so they can repair generated activation inputs. The `gen` contract requires
-passing its validated `CodegenGenerateRequest` by reference directly to the single
-projection executor, including guarded `.envrc` publication. It must not construct
-a `CodegenConformRequest` in `APPLY` mode or use a `generation_only` flag. Planning,
+required by default before handlers and hooks. `make check` keeps that boundary:
+a missing or invalid environment stops before hooks or convergence. A local check
+then converges generation, repairs and formatting through its private phase
+handlers; those handlers do not declare public `gen`, `fix` or `fmt` verbs.
+After generation publishes an `.envrc`, the phase authorizes it through the locked
+Direnv executable for the next invocation; it does not activate the environment a
+second time. CI and the commit hook verify without running convergence.
+
+The generation CLI and its footprint inspection consume the declared physical
+interpreter and verify its environment directly. A validated
+`CodegenGenerateRequest` passes by reference to the single projection executor,
+including guarded `.envrc` publication. It must not construct a
+`CodegenConformRequest` in `APPLY` mode or use a `generation_only` flag. Planning,
 publication, physical CAS and staged validation retain one shared implementation.
 Only Conform owns mode, declaration migration, conformance observation, Beads
-identity seeding and routes, and direnv authorization. Preserve the existing family
-names; this contract does not establish implementation or runtime acceptance.
-A declared `_custom-gen` replaces the generation handler.
-Each invocation runs its pre hook, handler and post hook once, and a failure
+identity seeding and routes. Preserve the existing family names; this contract does
+not establish implementation or runtime acceptance.
+A declared `_custom-check` replaces the complete check handler. Each invocation
+activates once, runs its pre hook, handler and post hook once, and a failure
 prevents later effects. Initial provisioning remains the responsibility of
 `make setup`. Public Make commands own the activation boundary and can be
 invoked directly.
+
+<!-- Contract revision 2026-11-28.1; Marlon Costa <marlon.costa@datacosmos.com.br>. -->
 The generation CLI reports repository, planned-file and written-file counts from
 its returned typed publication receipt. A successful repeated invocation with
 zero written files proves that receipt's generated population required no effect;
@@ -2864,8 +2873,8 @@ prefix for these verbs.
   the queue lock. A failed, refused, timed-out or killed run records nothing, so it
   never opens a window. The declared CI token, a remote runner, and prek's pre-push
   stage (`PREK_HOOK_STAGE=pre-push`) are not limited. `CHECK_PHASE=primary`,
-  `make tests`, `gen` and `gen-scope` are not limited either; they still queue for a
-  slot.
+  `make tests` and the generation CLI are not limited either; they still queue
+  for a slot.
 
 Heavy routes resolve the declared toolchain before entering the queue. Generation
 admits the requested root against its workspace topology first. If the admitted

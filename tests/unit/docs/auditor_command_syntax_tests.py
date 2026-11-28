@@ -219,7 +219,7 @@ PYTHONPATH=src python -m pytest tests/unit
         )
 
         tm.that(len(issues), eq=1)
-        tm.that(issues[0].message, has="bypasses `make test`")
+        tm.that(issues[0].message, has="bypasses `make tests`")
 
     @staticmethod
     def test_rejects_direct_tool_execution() -> None:

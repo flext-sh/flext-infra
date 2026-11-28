@@ -42,11 +42,11 @@ parallel command surface.
 make mod
 make check
 make tests
+make check
 ```
 
-`make check` converges generation, fixes and formatting to a fixed point. Test execution
-remains inside
-`make tests`, which owns selection and the retained Testmon cache.
+The second `make check` changes no byte: that proves the fixed point. Test execution
+remains inside `make tests`, which owns selection and the retained Testmon cache.
 
 ## Command boundaries
 

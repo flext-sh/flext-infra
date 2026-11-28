@@ -152,7 +152,7 @@ class FlextInfraProtocolsConfigRelease:
             """Structural member projected from the owning model.
 
             Hash-pinned build-backend requirements every release artifact is built
-            with; projected to config/build-constraints.txt.
+            with; rendered into the release policy directory at build time.
             """
             ...
 

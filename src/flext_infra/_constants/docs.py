@@ -374,7 +374,7 @@ class FlextInfraConstantsDocs:
     docstrings; full Args/Returns sections are authored-source law),
     ``print`` is the fence demonstrating its output, ``assert`` and the
     pytest-idiom rules are the test-idiom contract of executable fences,
-    which the pytest markdown-docs plugin runs as tests during ``make test``
+    which the pytest markdown-docs plugin runs as tests during ``make tests``
     (the fleet's justified per-rule S101/PT test-idiom exception) — fences
     teaching exception semantics show real ``except`` blocks, the
     boolean-trap call-site rule is inapplicable because a fence must

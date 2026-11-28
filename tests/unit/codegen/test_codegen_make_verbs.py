@@ -295,7 +295,10 @@ class TestsFlextInfraCodegenMakeVerbs:
 
         tm.that(
             makefile,
-            has="upg: _bootstrap_setup_tools",
+            has=(
+                "upg: _builtin_require_workspace _builtin_require_github_credential "
+                "_upg_toolchain"
+            ),
         )
         # A fresh checkout is trusted before anything resolves a Mise-managed
         # executable; the credential command runs only in the reread Makefile.
@@ -307,30 +310,19 @@ class TestsFlextInfraCodegenMakeVerbs:
                 "_bootstrap_setup_tools"
             ),
         )
-        tm.that(makefile, has="ifneq ($(MAKECMDGOALS),setup)")
-        tm.that(makefile, has="upg: TOOL_BOOTSTRAP_LIFECYCLE := _upg_lifecycle")
-        tm.that(makefile, has="_builtin-fmt: _builtin_fmt_all")
-        tm.that(makefile, has="_builtin-fix: _builtin_fix_all")
-        tm.that(makefile, lacks="fix-enforcement")
-        tm.that(makefile, has="_builtin-fix-namespace: _builtin_fix_namespace")
-        tm.that(makefile, has="_builtin-fix-accessors: _builtin_fix_accessors")
+        tm.that(makefile, has="ifneq ($(MAKECMDGOALS),help)")
+        tm.that(makefile, has="_builtin-check: _builtin_check_all")
+        tm.that(makefile, has="_builtin_gen_all: _builtin_require_interpreter")
+        for phase in ("fmt", "fix"):
+            tm.that(
+                makefile,
+                has=f"_builtin_{phase}_all: _builtin_require_environment",
+            )
+        for retired in ("gen", "gen-scope", "fmt", "fix"):
+            tm.that(makefile, lacks=f"_builtin-{retired}:")
         # Each repository evaluates only itself: no _builtin-self-* fan-out.
         tm.that(makefile, lacks="_builtin-self-")
-        tm.that(makefile, has="_builtin-sonarcloud-sync: _builtin_sonarcloud_sync_all")
-        tm.that(
-            makefile,
-            has="_builtin_sonarcloud_sync_all: _builtin_require_environment",
-        )
-        tm.that(
-            makefile,
-            has=(
-                "@$(PROJECT_FLEXT_INFRA) maintenance sonarcloud-sync "
-                '--repository-root "$(PROJECT_ROOT)"'
-            ),
-        )
-        tm.that(makefile, has="_builtin-gen: _builtin_gen_all")
         tm.that(makefile, has="_builtin-mod: _builtin_mod_apply")
-        tm.that(makefile, has="mode=--apply ;;")
         profile = c.Infra.MakeProfile.STANDALONE
         for verb in config.Infra.codegen.make.verbs:
             if profile not in verb.profiles:

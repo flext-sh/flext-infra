@@ -336,7 +336,7 @@ class TestsFlextInfraCodegenMakeEnvironment:
             )
 
     @staticmethod
-    @c.Tests.MARK.parametrize("verb", ["setup", "check", "gen", "status"])
+    @c.Tests.MARK.parametrize("verb", ["setup", "check", "status"])
     @c.Tests.MARK.parametrize("broken", [False, True])
     @c.Tests.MARK.parametrize(
         "environment_part",

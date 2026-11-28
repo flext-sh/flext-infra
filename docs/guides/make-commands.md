@@ -129,7 +129,6 @@ Run each required operation explicitly from the workspace root:
 ```bash
 make setup
 make mod
-make check
 make build
 # Exercise the selected public consumer before the final tests.
 make check
@@ -229,18 +228,18 @@ Each verb enters its existing domain owner. Generation and conformance share the
 same projection planner and transaction publisher; they do not share permission
 to repair authored declarations.
 
-| Verb            | Owned operation                                                                                                                                                                                                                         | Inputs          |
-| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- |
-| `setup`         | Install the declared frozen locks, synchronize the physical environment and configure local integrations; FLEXT=<path> reinstalls the FLEXT distributions that workspace provides as editable (local only).                             | FLEXT, RECREATE |
-| `upg`           | Resolve declared dependency and tool updates and publish their resolution metadata and locks.                                                                                                                                           | —               |
-| `mod`           | Refactor declared source structure through the shared pipeline and publish the complete coherent change; LAWS (ENFORCE ids) or RULES (rule ids) diagnose or repair one law (ADR-028 Decision 18 item 2).                                | LAWS, RULES     |
-| `check`         | Validate declarations, projections, environment, documentation and configured gates without repairs or publication.                                                                                                                     | CHECK_PHASE     |
-| `tests`         | Run native incremental tests through the persistent Testmon selection; in a workspace root ALL=Y includes every governed member.                                                                                                        | ALL             |
-| `tests-full`    | Run the complete selected inventory once and record it in Testmon; in a workspace root ALL=Y includes every governed member.                                                                                                            | ALL             |
-| `tests-harness` | Run only the harness gate tests, through the persistent Testmon selection, under the harness that provides their inputs; MARKER=<harness gate marker> narrows the run to one; in a workspace root ALL=Y includes every governed member. | ALL, MARKER     |
-| `help`          | Discover the declared public interface without effects.                                                                                                                                                                                 | —               |
-| `build`         | Build local distribution and documentation artifacts without publishing them.                                                                                                                                                           | —               |
-| `clean`         | Remove only declared disposable resources owned by the selected target.                                                                                                                                                                 | —               |
+| Verb            | Owned operation                                                                                                                                                                                                                                               | Inputs          |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- |
+| `setup`         | Install the declared frozen locks, synchronize the physical environment and configure local integrations; FLEXT=<path> reinstalls the FLEXT distributions that workspace provides as editable (local only).                                                   | FLEXT, RECREATE |
+| `upg`           | Resolve declared dependency and tool updates and publish their resolution metadata and locks.                                                                                                                                                                 | —               |
+| `mod`           | Refactor declared source structure through the shared pipeline and publish the complete coherent change; LAWS (ENFORCE ids) or RULES (rule ids) diagnose or repair one law (ADR-028 Decision 18 item 2).                                                      | LAWS, RULES     |
+| `check`         | Outside CI, converge generation, repairs and formatting to a fixed point and publish them; then validate declarations, projections, environment, documentation and configured gates. In CI it changes nothing and fails when any byte would change (ADR-037). | CHECK_PHASE     |
+| `tests`         | Run native incremental tests through the persistent Testmon selection; in a workspace root ALL=Y includes every governed member.                                                                                                                              | ALL             |
+| `tests-full`    | Run the complete selected inventory once and record it in Testmon; in a workspace root ALL=Y includes every governed member.                                                                                                                                  | ALL             |
+| `tests-harness` | Run only the harness gate tests, through the persistent Testmon selection, under the harness that provides their inputs; MARKER=<harness gate marker> narrows the run to one; in a workspace root ALL=Y includes every governed member.                       | ALL, MARKER     |
+| `help`          | Discover the declared public interface without effects.                                                                                                                                                                                                       | —               |
+| `build`         | Build local distribution and documentation artifacts without publishing them.                                                                                                                                                                                 | —               |
+| `clean`         | Remove only declared disposable resources owned by the selected target.                                                                                                                                                                                       | —               |
 
 ### Profiling and Semantic Publication Boundaries
 
@@ -308,8 +307,8 @@ configuration values or fallback execution.
 
 ### Conformance, Environment, and Runtime Bindings
 
-The generated dispatcher invokes conformance checking and repair only through
-`make check`. Installing, generating,
+The generated dispatcher invokes conformance checking only through `make check`
+and conformance repair only through its local convergence. Installing, generating,
 upgrading, rewriting or formatting does not implicitly run a global conformance
 check. Each operation still proves the prerequisites and effects it actually
 consumes. Native environment verification, input authentication and publication
@@ -510,12 +509,13 @@ The markdown standard lives once in `flext-infra/src/flext_infra/config/tooling.
   caused native configuration warnings. `.markdownlintignore` and native
   exclusions derive from the same governed scope.
 - `rumdl` is the command-line linter and reads generated `.rumdl.toml`, including
-  the MkDocs dialect used by the documentation renderer. `make check` applies its
-  supported repairs; unresolved findings remain failures, not accepted exceptions.
+  the MkDocs dialect used by the documentation renderer. The repair phase of
+  `make check` applies its supported repairs; unresolved findings remain
+  failures, not accepted exceptions.
 - `rumdl fmt` is the formatter and reads the same `.rumdl.toml`:
-  `rumdl fmt --check` in `make check`, `rumdl fmt` also inside its convergence. rumdl is
-  locked in
-  `uv.lock`; the Mise npm backend remains retired (ADR-025). The amended Bun
+  `rumdl fmt --check` in CI, `rumdl fmt` in the local format phase of
+  `make check`. rumdl is locked in `uv.lock`; the Mise npm backend remains
+  retired (ADR-025). The amended Bun
   project contract for distributed JavaScript tools does not change this formatter.
 - `make check` validates without rewriting. Run generation before repair and
   formatting, then repeat repair and formatting to prove a fixed point. Remaining
@@ -616,8 +616,7 @@ environment. A standalone checkout owns its runtime environment and runs
 runtime supplier: its `setup`, `upg` and `lock` refuse before any effect with
 exit 2 and point to a workspace-shaped lane that attaches the member.
 Manifest exclusions remain authoritative. Generated Make surfaces and documentation
-are changed at their template or configuration owner, then regenerated with `make
-check`.
+are changed at their template or configuration owner, then regenerated with `make check`.
 
 ### Scaffolding, Codemod Census, and Template Ownership
 
@@ -679,8 +678,8 @@ observations do not cover every generated artifact. Repeated `mod`, `fix`
 and `fmt` also require zero relevant effects. Generated projections are
 gate-clean by construction (ADR-028
 Decision 8):
-`make check` converges directly: generation, fix and format are no-ops, with zero
-post-adjustment, manual or automated — the engine never
+one `make check` is green and a second `make check`
+changes no byte, with zero post-adjustment, manual or automated — the engine never
 runs a fixer or formatter over its own output. A later effective change invalidates the
 affected runtime and gate receipts and requires their renewed validation, never a hidden
 retry or a whole-workspace quiet window.

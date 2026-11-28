@@ -186,7 +186,8 @@ class FlextInfraUtilitiesGitWorktreeStatus(FlextInfraUtilitiesGitRepo):
         if opened.failure:
             return r[str].from_failure(opened)
         try:
-            return r[str].ok(opened.value.head.commit.hexsha)
+            with opened.value as repo:
+                return r[str].ok(repo.head.commit.hexsha)
         except (ValueError, TypeError, OSError) as exc:
             return r[str].fail(f"failed to resolve HEAD: {exc}", exception=exc)
 

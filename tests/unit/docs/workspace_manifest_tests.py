@@ -169,9 +169,14 @@ class TestsFlextInfraWorkspaceManifest:
                 },
             ),
         )
+        u.Tests.initialize_git_repo(tmp_path)
         loaded = u.Infra.load_codegen_inputs(tmp_path)
         tm.fail(loaded, has="project_scan_dirs")
-        tm.ok(isinstance(loaded.exception, c.ValidationError))
-        with u.Tests.raises(RuntimeError, match="project_scan_dirs") as raised:
+        error = tm.not_none(loaded.exception)
+        tm.ok(isinstance(error, ValueError))
+        tm.that(str(error), has=str(tmp_path))
+        tm.ok(isinstance(error.__cause__, c.ValidationError))
+        with u.Tests.raises(ValueError, match="project_scan_dirs") as raised:
             u.Infra.load_refactor_config(tmp_path)
+        tm.that(str(raised.value), has=str(tmp_path))
         tm.ok(isinstance(raised.value.__cause__, c.ValidationError))

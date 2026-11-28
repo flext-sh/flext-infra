@@ -274,16 +274,14 @@ print(
             msg=process.stdout + process.stderr,
         )
         tm.that(process.stdout, has="generated config: frozen YAML")
-        for verb in ("gen", "check", "test-full"):
+        for verb in ("check", "tests-full"):
             output = tm.ok(
                 u.Tests.run_isolated_make(
                     [verb],
                     cwd=root,
                     env={
                         "GITHUB_TOKEN": settings.env_required("GITHUB_TOKEN"),
-                        config.Infra.codegen.make.ci.variable: (
-                            config.Infra.codegen.make.ci.value if verb == "gen" else ""
-                        ),
+                        config.Infra.codegen.make.ci.variable: (""),
                         c.Infra.ENV_VAR_GITHUB_ACTIONS: (
                             c.ParserBooleanToken.TRUE.value
                         ),

@@ -54,6 +54,7 @@ Never enter a member directory to run a parallel tool command.
 ```bash
 make check
 make tests
+make check
 ```
 
 Tests run only through the retained Testmon cache. Apply the root
@@ -78,6 +79,7 @@ Warnings, empty collection, missing tools, and suppressed failures remain explic
 Change the source owner, then regenerate and prove the fixed point:
 
 ```bash
+make check
 make mod
 make check
 ```

@@ -43,9 +43,11 @@ changed-only, fix, or phase selectors.
 After correcting the source, use only the applicable canonical verbs:
 
 ```bash
+make check
 make mod
 make check
 make tests
+make check
 ```
 
 Test diagnosis still runs through `make tests`, with the retained Testmon cache. Direct
@@ -54,9 +56,8 @@ or cache-clearing test runs do not count as evidence.
 ## Documentation failures
 
 For stale member guides, change the matching root file under `docs/guides/` and run
-`make check`. Generated member guides carry their source and exact regeneration command
-in
-the header; never patch those projections.
+`make check`. Generated member guides carry their source and exact regeneration
+command in the header; never patch those projections.
 
 For a docs audit failure, remove the invalid command or test-double example at the
 canonical root source. Do not add an allowlist or weaken the audit.

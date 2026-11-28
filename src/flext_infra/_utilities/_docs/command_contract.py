@@ -108,7 +108,7 @@ class FlextInfraUtilitiesDocsCommandContract:
         """
         make_match = c.Infra.DOCS_MAKE_COMMAND_RE.match(candidate)
         if c.Infra.DOCS_RAW_PYTEST_COMMAND_RE.match(candidate):
-            return "direct pytest command bypasses `make test`"
+            return "direct pytest command bypasses `make tests`"
         if c.Infra.DOCS_RAW_TOOL_COMMAND_RE.match(candidate):
             return "direct tool command bypasses the root Make dispatcher"
         if make_match is None:

@@ -226,8 +226,9 @@ Do not edit a member projection by hand.
 Budgets are configuration-owned by `flext-infra/src/flext_infra/config/tooling.yaml`:
 `ordinary-timeout-seconds` (2 s) measures the test call, `slow-timeout-seconds`
 (20 s) applies to `slow` and the heavy capability markers, and
-`run-timeout-seconds` (240 s) is the fleet-wide suite clock — one invocation owns one
-budget across every member suite, and a per-member reset is rejected.
+`run-timeout-seconds` (240 s) is the per-member suite clock — each member owns its
+own budget from the moment it is dispatched, and a shared clock that leaves later
+members only the budget their predecessors did not spend is rejected.
 `harness-run-timeout-seconds` (fleet default 240 s) is the suite clock of
 `make tests-harness`, which also pays for the provisioning its harness fixtures
 own; a repository whose measured harness needs more declares it in its own
@@ -236,6 +237,22 @@ session setup, fixture teardown and plugin bookkeeping belong to the suite deadl
 item budget never pays for them. A test that starts a child process is a
 process-boundary test and carries the `slow` marker instead of straining the ordinary
 budget.
+
+At the suite deadline the runner sends SIGINT, then SIGTERM and SIGKILL at
+fractions of `termination-grace-seconds`. That reserve is what lets each worker
+flush its pending Testmon results and publish its profile before it is killed; a
+reserve too short loses both.
+
+`make tests` selects only the tests affected by a change. Besides the Python lines
+a test executes, Testmon records the config leaves the test reads: one receipt per
+leaf in the `config_receipts_directory` that `codegen.yaml` declares beside the
+Testmon database. Editing a YAML value then reselects only that value's consumers;
+without receipts every test depends on every config file and each run reselects
+the whole suite. A fresh checkout starts with an empty database, so its first
+runs select everything; each run stores the results its workers flushed, and the
+selection shrinks until a run fits the suite budget. Slow tests delay that warm-up
+directly, which is why a test over the ordinary budget is fixed or marked `slow`,
+never left to consume the suite clock.
 
 CLI coverage runs in-process through `u.Tests.cli_in_process`, which owns stream
 capture, the environment scope and termination-handler restoration; the caller keeps

@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import re
 from collections.abc import MutableMapping
 from pathlib import Path
 
@@ -232,27 +233,22 @@ class TestsFlextInfraScriptDispatchMakefile:
         tm.fail("tr '-' '_'" in rendered)
         tm.fail("scripts.dispatch" in rendered)
 
-    def test_gen_replaces_codegen_as_the_single_conform_verb(
+    def test_check_owns_generation_without_retired_public_verbs(
         self,
         tmp_path: Path,
     ) -> None:
-        """``make check`` is THE conform verb; ``codegen`` no longer exists.
-
-        The convergence spine fuses codegen+conform under the
-        single short ``gen`` verb: one verb, one meaning. The old ``codegen``
-        Make verb is fully replaced across config, rendered handlers, and the
-        regeneration header.
-        """
+        """Check owns convergence; its private phases are not public verbs."""
         make_config = config.Infra.codegen.make
         verb_names = {verb.name for verb in make_config.verbs}
-        tm.ok("gen" in verb_names)
-        tm.fail("codegen" in verb_names)
-        gen = next(verb for verb in make_config.verbs if verb.name == "gen")
-        # WHAT selectors were exterminated: one verb, one meaning, declared once.
-        gen_fields = type(gen).model_fields
-        tm.fail("default_what" in gen_fields)
-        tm.fail("_apply_flag_exterminated" in gen_fields)
-        tm.ok("initialize" in verb_names)
+        retired = {"gen", "gen-scope", "fmt", "fix", "codegen"}
+        tm.ok(c.Infra.VERB_CHECK in verb_names)
+        tm.fail(bool(retired & verb_names))
+        check = next(
+            verb for verb in make_config.verbs if verb.name == c.Infra.VERB_CHECK
+        )
+        check_fields = type(check).model_fields
+        tm.fail("default_what" in check_fields)
+        tm.fail("_apply_flag_exterminated" in check_fields)
         tm.fail("serialization" in type(make_config).model_fields)
         rendered = self._render_root_makefile(
             tmp_path,
@@ -262,73 +258,40 @@ class TestsFlextInfraScriptDispatchMakefile:
         public_line = next(
             line for line in rendered.splitlines() if line.startswith("PUBLIC_VERBS :=")
         )
-        tm.ok(" gen" in public_line)
-        tm.fail(" codegen" in public_line)
-        tm.fail("_DEFAULT_gen" in rendered)
-        # S1 (operator law 2026-09-14): gen dispatches unconditionally to
-        # _builtin_gen_all; there is no CHECK_ONLY selector, no separate
-        # check-mode recipe, and no `conform` verb left at all.
-        tm.ok("_builtin-gen: _builtin_gen_all" in rendered)
-        tm.fail("_builtin-conform" in rendered)
-        tm.fail("_builtin_gen_check" in rendered)
-        tm.fail("_builtin_gen_apply" in rendered)
-        tm.ok("_builtin_gen_init:" in rendered)
-        tm.ok("_builtin_gen_all:" in rendered)
-        tm.fail("_builtin_codegen_check" in rendered)
-        tm.fail("_builtin_codegen_apply" in rendered)
-        builtin_line = next(
-            line
-            for line in rendered.splitlines()
-            if line.startswith("BUILTIN_VERBS :=")
-        )
-        tm.ok(" gen" in builtin_line)
-        tm.fail(" codegen" in builtin_line)
-        phony_line = next(
-            line
-            for line in rendered.splitlines()
-            if line.startswith(".PHONY:") and "_builtin_gen_" in line
-        )
-        tm.that(phony_line, eq=".PHONY: _builtin_gen_init _builtin_gen_all")
-        # The handler delegates the entire publication to the generation pipeline.
+        public_verbs = set(public_line.split(":=", 1)[1].split())
+        tm.ok(c.Infra.VERB_CHECK in public_verbs)
+        tm.fail(bool(retired & public_verbs))
+        tm.that(rendered, has="_builtin-check: _builtin_check_all")
+        tm.that(rendered, has="$(SELF_MAKE) _builtin_converge_all")
+        for retired_verb in retired:
+            tm.that(rendered, lacks=f"_builtin-{retired_verb}:")
+        for phase in ("gen", "fix", "fmt"):
+            tm.that(rendered, has=f"$(SELF_MAKE) _builtin_{phase}_all")
         gen_all_body = rendered.split("_builtin_gen_all:", 1)[1].split("\n\n", 1)[0]
-        tm.that(gen_all_body.count("codegen generate"), eq=1)
-        tm.that(gen_all_body, has="$(PROJECT_FLEXT_INFRA)")
+        tm.that(gen_all_body, has="$(PROJECT_FLEXT_INFRA) codegen generate")
+        tm.that(gen_all_body, has='$(DIRENV) allow "$$allow_root"')
         tm.that(
             gen_all_body,
             lacks=[
-                "_builtin_require_environment",
                 "$(FLEXT_INFRA_BOOTSTRAP)",
                 "codegen conform",
                 "codegen init",
                 "deps modernize",
                 "--mode apply",
                 "--mode check",
+                "codegen lazy-init",
+                "docs generate",
             ],
         )
-        tm.that(
-            gen_all_body,
-            lacks=["codegen lazy-init", "docs generate", "_generated_docs"],
-        )
-        tm.fail("define _generated_docs" in rendered)
-        gen_init_body = rendered.split("_builtin_gen_init:", 1)[1].split("\n\n", 1)[0]
-        tm.that(gen_init_body.count("codegen init"), eq=1)
-        tm.that(
-            gen_init_body,
-            has=[
-                'set -- --kind "$$KIND";',
-                'codegen init --repository-root "$(PROJECT_ROOT)" "$$@"',
-            ],
-        )
-        tm.that(gen_init_body, lacks=["codegen conform", "REPOSITORY_ROOT", "bd"])
-        # The regeneration contract published on every projection speaks gen.
         tm.ok("# @flext-regenerate: make check" in rendered)
-        # The custom-surface policy names gen (not codegen) for hooks/handlers.
         handler_policies: MutableMapping[str, p.Infra.CustomHandlerPolicy] = dict(
-            config.Infra.codegen.make.custom_handler_policies,
+            make_config.custom_handler_policies,
         )
         for policy in handler_policies.values():
-            tm.ok("|gen|" in policy.target_pattern)
-            tm.fail("|codegen|" in policy.target_pattern)
+            for retired_verb in retired:
+                tm.fail(re.fullmatch(policy.target_pattern, retired_verb) is not None)
+            for target in ("pre-check", "_custom-check", "post-check"):
+                tm.ok(re.fullmatch(policy.target_pattern, target) is not None)
 
     def test_make_initialize_requires_its_provisioned_interpreter(
         self,
