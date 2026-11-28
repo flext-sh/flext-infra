@@ -43,7 +43,7 @@ class TestsFlextInfraManagedMaintenanceHeaders:
             ),
         )
         tm.that(makefile_fields.get("@flext-generated"), eq="continuous")
-        tm.that(makefile_fields.get("@flext-regenerate"), eq="make gen")
+        tm.that(makefile_fields.get("@flext-regenerate"), eq="make check")
         tm.that(makefile_fields.get("@flext-owner", ""), has="config/codegen.yaml")
         tm.that(makefile_fields.get("@flext-adjust", ""), has="never this projection")
 
@@ -55,7 +55,7 @@ class TestsFlextInfraManagedMaintenanceHeaders:
         tm.that(pyproject, starts=c.Infra.BANNER)
         pyproject_fields = self._fields(pyproject)
         tm.that(pyproject_fields.get("@flext-generated"), eq="continuous")
-        tm.that(pyproject_fields.get("@flext-regenerate"), eq="make gen")
+        tm.that(pyproject_fields.get("@flext-regenerate"), eq="make check")
         tm.that(pyproject_fields.get("@flext-owner", ""), has="config/codegen.yaml")
         tm.that(pyproject_fields.get("@flext-adjust", ""), has="overwrite_project_keys")
         tm.that(pyproject_fields.get("@flext-adjust", ""), has="conflict_sections")

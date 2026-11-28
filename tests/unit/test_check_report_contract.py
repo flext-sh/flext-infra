@@ -1,7 +1,7 @@
 """Public contract of the ``check`` verb: read-only gates and a readable report.
 
 ``make check`` renders ``check run`` without ``--apply`` so validation never
-rewrites the tree; ``make fix`` keeps ``--apply``. Findings survive the run in
+rewrites the tree; its fix phase keeps ``--apply``. Findings survive the run in
 the SARIF report, which validates back into ``m.Infra.SarifReport`` and is read
 through ``u.Infra.check_report_findings``.
 
@@ -138,8 +138,11 @@ class TestsFlextInfraCheckReportContract:
     def test_public_check_preserves_native_diagnostic_levels_and_failure(
         tmp_path: Path,
         capsys: t.Tests.CaptureFixture[str],
+        suite_runtime_root: Path,
+        monkeypatch: t.Tests.MonkeyPatch,
     ) -> None:
         """Real Pyrefly findings produce readable SARIF, not a validation crash."""
+        monkeypatch.setenv("RUNTIME_ROOT", str(suite_runtime_root))
         project = u.Tests.mk_project(
             tmp_path,
             "diagnostic-levels",
@@ -160,11 +163,13 @@ class TestsFlextInfraCheckReportContract:
         )
         before = u.Cli.sha256_bytes(source.read_bytes())
         reports = tmp_path / "reports"
+        (tmp_path / "native").mkdir()
         native = FlextInfraGatesPyrefly(repository_root=project).check(
             project,
             m.Infra.GateContext.model_validate({
                 "repository_root": project,
                 "reports_dir": tmp_path / "native",
+                "runtime_root": suite_runtime_root,
             }),
         )
 

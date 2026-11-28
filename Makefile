@@ -154,7 +154,7 @@ WORKSPACE_SUBPROJECTS :=
 export CHECK_PHASE MARKER
 PYTEST_REPORTS_DIR := .reports/tests
 override PYTEST_RUN_TIMEOUT_SECONDS := 240
-override PYTEST_TERMINATION_GRACE_SECONDS := 10
+override PYTEST_TERMINATION_GRACE_SECONDS := 2
 override PYTEST_TIMEOUT_EXIT_CODE := 124
 override PYTEST_ENFORCEMENT_PLUGIN := flext_tests.enforcement_plugin
 override PYTEST_PROGRESS_ARGS := --verbose --failed-first
@@ -1351,19 +1351,18 @@ _upg_toolchain: _builtin_require_workspace _builtin_require_github_credential
 	else \
 		changed_tools=""; \
 		for tool in "python" "github:jdx/mise" "uv" "github:direnv/direnv" "taplo" "aqua:ast-grep/ast-grep" "gitleaks" "aqua:boyter/scc" "github:qltysh/qlty" "github:kucherenko/jscpd" "github:microsoft/waza" "aqua:j178/prek" "gh"; do \
+			"$$mise_reader" config get -f "$$lock_root"/.mise.toml "tools.\"$$tool\"" >/dev/null 2>&1 || continue; \
 			if [ "$$("$$mise_reader" -C "$$lock_root" lock --bump --dry-run --json "$$tool")" != "[]" ]; then changed_tools="$$changed_tools $$tool"; fi; \
 		done; \
-		if [ -z "$$changed_tools" ]; then \
-			printf 'upg: %s: pruning lock entries no declared tool owns\n' "$$lock_root"; \
-			"$$mise_reader" -C "$$lock_root" lock; \
-			if [ "$$("$$mise_reader" -C "$$lock_root" lock --bump --dry-run --json)" != "[]" ]; then \
-				printf 'ERROR[upg] %s: mise still previews a lock change that no declared tool owns\n' "$$lock_root" >&2; \
-				exit 2; \
-			fi; \
-		else \
+		if [ -n "$$changed_tools" ]; then \
 			printf 'upg: %s: locking%s\n' "$$lock_root" "$$changed_tools"; \
 			"$$mise_reader" -C "$$lock_root" lock --bump $$changed_tools; \
 		fi; \
+	fi; \
+	"$$mise_reader" -C "$$lock_root" lock; \
+	if [ "$$("$$mise_reader" -C "$$lock_root" lock --bump --dry-run --json)" != "[]" ]; then \
+		printf 'ERROR[upg] %s: mise still previews a lock change that no declared tool owns\n' "$$lock_root" >&2; \
+		exit 2; \
 	fi; \
 	done; \
 	set +f; \
@@ -1476,7 +1475,7 @@ _builtin_build_artifacts:
 override CHECK_CONVERGE_MAX_PASSES := 5
 _builtin_check_all: _builtin_require_environment
 	@$(if $(filter Y C,$(CI)),,$(SELF_MAKE) _builtin_converge_all)
-	@$(if $(CHECK_PROFILE),FLEXT_INFRA_PROFILE=$(CHECK_PROFILE) ,)FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/.reports/check/route.pstats" $(PROJECT_FLEXT_INFRA) workspace check --repository-root "$(if $(filter Y,$(CI)),$(PROJECT_ROOT),$(if $(filter primary,$(CHECK_PHASE)),$(RUNTIME_ROOT),$(PROJECT_ROOT)))"$(if $(CHECK_PHASE), --phase "$$CHECK_PHASE")
+	@$(if $(CHECK_PROFILE),FLEXT_INFRA_PROFILE=$(CHECK_PROFILE) ,)FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/.reports/check/route.pstats" $(PROJECT_FLEXT_INFRA) workspace check --repository-root "$(PROJECT_ROOT)"$(if $(CHECK_PHASE), --phase "$$CHECK_PHASE")
 
 _builtin_converge_all: _builtin_require_environment
 	@tree() { idx="$$(mktemp -u)"; GIT_INDEX_FILE="$$idx" git -C "$(PROJECT_ROOT)" add -A && GIT_INDEX_FILE="$$idx" git -C "$(PROJECT_ROOT)" write-tree; rc=$$?; rm -f "$$idx"; return $$rc; }; \

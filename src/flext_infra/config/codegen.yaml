@@ -342,10 +342,10 @@ Infra:
       # version_probe is the setup reality proof's data: `binary` is resolved
       # through `mise which` and must live inside the tool's `mise where`
       # root; `arguments` run it; `pattern` (a regex whose `{version}` is the
-      # escaped mise.lock version) must match its output. lock_checksum false
-      # declares a tool whose upstream release metadata publishes no checksum
-      # (mise.lock then carries the URL only); every other tool's current
-      # platform lock section must carry one.
+      # escaped mise.lock version) must match its output. Every tool's current
+      # platform lock section carries a checksum: `make upg` completes every
+      # locked entry with a plain `mise lock`, and mise computes the checksum
+      # from the artifact when the upstream registry publishes none.
       # Base toolchain: only what this generator's own verbs run (python, the
       # self-managed mise, uv, direnv, taplo, ast-grep, gitleaks, scc, qlty,
       # jscpd, waza, prek, gh). A project that needs more
@@ -374,11 +374,8 @@ Infra:
           binary: direnv
           arguments: [ version ]
           pattern: "^{version}$"
-      # The aqua registry entry for tamasfe/taplo declares no checksum, so
-      # mise.lock records the release URL only.
       - name: taplo
         version: latest
-        lock_checksum: false
         version_probe:
           binary: taplo
           arguments: [ --version ]
@@ -870,7 +867,7 @@ Infra:
       workflow:
       # Setup provisions locally and in CI; the commit hook runs only the
       # converging check row (3f92d28eed: no setup row in pre_commit).
-      - { identity: setup, verb: setup, contexts: [ local, ci ] }
+      - { identity: setup, verb: setup, contexts: [ local, ci, pre_commit ] }
       # Initial behavioral admission requires global source evidence, not full check.
       - { identity: check-primary, verb: check, phase: primary, contexts: [ local, ci, pre_commit, pre_push ] }
       # Operator decision 2026-11-22 (supersedes the 2026-11-12 ruling): CI runs

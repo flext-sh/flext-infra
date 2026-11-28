@@ -378,17 +378,6 @@ class FlextInfraModelsMiseToolchain:
                 description="Native source build or qualification after installation"
             ),
         ] = None
-        lock_checksum: Annotated[
-            bool,
-            m.Field(
-                default=True,
-                description=(
-                    "Whether the tool's current-platform mise.lock section "
-                    "must carry a checksum; false only for a tool whose "
-                    "upstream release metadata publishes none"
-                ),
-            ),
-        ] = True
         version_probe: Annotated[
             FlextInfraModelsMiseToolchain.MiseToolVersionProbe,
             m.Field(

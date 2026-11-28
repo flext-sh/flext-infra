@@ -20,7 +20,7 @@ from urllib.parse import urlsplit
 from packaging.version import Version
 
 from flext_infra import config
-from tests import c, m, tm, u
+from tests import FlextInfraCodegenMiseToolchainProof, c, m, tm, u
 
 pytestmark = c.Tests.MARK.slow
 
@@ -539,8 +539,102 @@ class TestsFlextInfraMisePinBootstrap:
         self,
         tmp_path: Path,
     ) -> None:
-        """The declared release writes the tool under the declared lock key."""
+        """The declared release writes the tool under the declared lock key.
+
+        The rewrite locks the tool through ``mise lock --bump``, the newly
+        declared tool path, which records no checksum by itself; the locked
+        install requires it, so upg must leave the entry checksummed.
+        """
         self._writer_project(tmp_path)
+        lock_path = tmp_path / c.Infra.MISE_LOCK_FILENAME
+        foreign = u.Tests.toml_mapping(
+            u.Tests.toml_list(
+                u.Tests.toml_mapping(
+                    u.Tests.toml_payload(
+                        lock_path.read_text(encoding=c.DEFAULT_ENCODING)
+                    )["tools"]
+                )["direnv"]
+            )[0]
+        )
+        host_key = c.Infra.MISE_LOCK_PLATFORM_KEY.format(
+            platform=tm.ok(FlextInfraCodegenMiseToolchainProof.current_platform())
+        )
+        checksummed = {
+            key
+            for key, value in foreign.items()
+            if key == host_key and "checksum" in u.Tests.toml_mapping(value)
+        }
+        tm.that(checksummed, empty=False)
+        upgrade = tm.ok(
+            u.Tests.run_isolated_make(
+                ["upg"], cwd=tmp_path, env=self.environment(tmp_path)
+            )
+        )
+        tm.that(
+            u.Cli.process_succeeded(upgrade.outcome),
+            eq=True,
+            msg=upgrade.stdout + upgrade.stderr,
+        )
+        tools = u.Tests.toml_mapping(
+            u.Tests.toml_payload(lock_path.read_text(encoding=c.DEFAULT_ENCODING))[
+                "tools"
+            ]
+        )
+        selector = config.Infra.codegen.toolchain.tool_keys["direnv"]
+        tm.ok(selector in tools)
+        entries = u.Tests.toml_list(tools[selector])
+        entry = u.Tests.toml_mapping(entries[0])
+        tm.that(entry["version"], is_=str)
+        tm.that(entry["specifiers"], eq=["latest"])
+        for platform in checksummed:
+            tm.that(u.Tests.toml_mapping(entry[platform]), has="checksum")
+
+    @c.Tests.MARK.slow
+    def test_lock_stage_fills_the_checksum_of_a_current_version(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """A current version locked without its checksum gets one.
+
+        The aqua ``tamasfe/taplo`` entry keeps its version but lacks its
+        checksums: the JSON preview prints ``[]`` for it, and the locked install
+        refuses it, so upg's plain ``mise lock`` must fill the checksum.
+        """
+        self._writer_project(tmp_path, "taplo")
+        upgrade = tm.ok(
+            u.Tests.run_isolated_make(
+                ["upg"], cwd=tmp_path, env=self.environment(tmp_path)
+            )
+        )
+        tm.that(
+            u.Cli.process_succeeded(upgrade.outcome),
+            eq=True,
+            msg=upgrade.stdout + upgrade.stderr,
+        )
+        selector = config.Infra.codegen.toolchain.tool_keys["taplo"]
+        entry = u.Tests.toml_mapping(
+            u.Tests.toml_list(
+                u.Tests.toml_mapping(
+                    u.Tests.toml_payload(
+                        (tmp_path / c.Infra.MISE_LOCK_FILENAME).read_text(
+                            encoding=c.DEFAULT_ENCODING
+                        )
+                    )["tools"]
+                )[selector]
+            )[0]
+        )
+        host_key = c.Infra.MISE_LOCK_PLATFORM_KEY.format(
+            platform=tm.ok(FlextInfraCodegenMiseToolchainProof.current_platform())
+        )
+        tm.that(u.Tests.toml_mapping(entry[host_key]), has="checksum")
+
+    def test_lock_stage_skips_tools_the_checkout_does_not_declare(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """A tool only another checkout declares is never previewed or locked."""
+        undeclared = "kubectl"
+        self._writer_project(tmp_path, extra_tools=(undeclared,))
         upgrade = tm.ok(
             u.Tests.run_isolated_make(
                 ["upg"], cwd=tmp_path, env=self.environment(tmp_path)
@@ -556,30 +650,98 @@ class TestsFlextInfraMisePinBootstrap:
                 (tmp_path / "mise.lock").read_text(encoding=c.DEFAULT_ENCODING)
             )["tools"]
         )
-        selector = config.Infra.codegen.toolchain.tool_keys["direnv"]
-        tm.ok(selector in tools)
-        entries = u.Tests.toml_list(tools[selector])
-        entry = u.Tests.toml_mapping(entries[0])
-        tm.that(entry["version"], is_=str)
-        tm.that(entry["specifiers"], eq=["latest"])
+        tm.that(undeclared in tools, eq=False)
 
     @staticmethod
-    def _writer_project(tmp_path: Path) -> None:
-        """Render only the upgrade lock stage over a committed tree."""
+    def _writer_project(
+        tmp_path: Path,
+        tool: str = "direnv",
+        extra_tools: tuple[str, ...] = (),
+    ) -> None:
+        """Render only the upgrade lock stage over a committed tree.
+
+        ``direnv`` keeps its lock entry under a foreign key; any other tool
+        keeps its current version without checksums. ``extra_tools`` reach
+        the stage without being declared by the checkout.
+        """
         u.Tests.initialize_git_repo(tmp_path)
         (tmp_path / "home").mkdir()
         toolchain = config.Infra.codegen.toolchain
-        shutil.copyfile(
-            Path(__file__).resolve().parents[3] / c.Infra.MISE_TOML_FILENAME,
-            tmp_path / c.Infra.MISE_TOML_FILENAME,
+        selector = toolchain.tool_keys[tool]
+        # Only the self entry and the tool under test are declared, so the
+        # stage locks one tool instead of the whole toolchain over the network.
+        declared = (toolchain.mise_selector, selector)
+        host = tm.ok(FlextInfraCodegenMiseToolchainProof.current_platform())
+        in_tools = False
+        kept: list[str] = []
+        for source in (
+            (Path(__file__).resolve().parents[3] / c.Infra.MISE_TOML_FILENAME)
+            .read_text(encoding=c.DEFAULT_ENCODING)
+            .splitlines(keepends=True)
+        ):
+            line = (
+                f'lockfile_platforms = ["{host}"]\n'
+                if source.startswith("lockfile_platforms")
+                else source
+            )
+            if line.startswith("["):
+                in_tools = line.strip() == "[tools]"
+            key = line.split("=", 1)[0].strip().strip('"')
+            if (
+                in_tools
+                and "=" in line
+                and not line.startswith("#")
+                and key not in declared
+            ):
+                continue
+            kept.append(line)
+        (tmp_path / c.Infra.MISE_TOML_FILENAME).write_text(
+            "".join(kept), encoding=c.DEFAULT_ENCODING
         )
-        selector = toolchain.tool_keys["direnv"]
-        lock = u.Tests.repo_mise_lock()
-        (tmp_path / c.Infra.MISE_LOCK_FILENAME).write_text(
-            lock.replace(f'[[tools."{selector}"]]', "[[tools.direnv]]").replace(
+        # The lock holds exactly the declared tools, so no prune hides the case
+        # under test and no undeclared entry costs work.
+        heads = (
+            f'[[tools."{selector}"]]',
+            f'[tools."{selector}".',
+            f"[[tools.{selector}]]",
+            f"[tools.{selector}.",
+        )
+        owned = tuple(
+            head
+            for key in declared
+            for head in (
+                f'[[tools."{key}"]]',
+                f'[tools."{key}".',
+                f"[[tools.{key}]]",
+                f"[tools.{key}.",
+            )
+        )
+        section = "header"
+        remaining: list[str] = []
+        for line in u.Tests.repo_mise_lock().splitlines(keepends=True):
+            if line.startswith(("[tools", "[[tools")):
+                section = (
+                    "tool"
+                    if line.startswith(heads)
+                    else "kept"
+                    if line.startswith(owned)
+                    else "dropped"
+                )
+            # Any tool but direnv keeps its version without its checksums.
+            if section == "dropped" or (
+                tool != "direnv"
+                and section == "tool"
+                and line.startswith("checksum = ")
+            ):
+                continue
+            remaining.append(line)
+        lock = "".join(remaining)
+        if tool == "direnv":
+            lock = lock.replace(f'[[tools."{selector}"]]', "[[tools.direnv]]").replace(
                 f'[tools."{selector}".', "[tools.direnv."
-            ),
-            encoding=c.DEFAULT_ENCODING,
+            )
+        (tmp_path / c.Infra.MISE_LOCK_FILENAME).write_text(
+            lock, encoding=c.DEFAULT_ENCODING
         )
         template_root = u.Infra.codegen_templates_root(config.Infra.codegen)
         shutil.copyfile(
@@ -601,7 +763,8 @@ class TestsFlextInfraMisePinBootstrap:
             '\t{{ mise_acquisition("$(PROJECT_ROOT)", toolchain) }} \\\n'
             '\t{{ mise_declared_reader("$(PROJECT_ROOT)", toolchain) }}\n'
             "\t{{ mise_lock_changed('$$mise_reader', "
-            "'\"$(PROJECT_ROOT)\"', install_tools) }}\n",
+            "'\"$(PROJECT_ROOT)\"', install_tools, "
+            f"'{c.Infra.MISE_TOML_FILENAME}') }}}}\n",
             encoding="utf-8",
         )
         recipe = tm.ok(
@@ -609,7 +772,7 @@ class TestsFlextInfraMisePinBootstrap:
                 template,
                 TestsFlextInfraMisePinBootstrap.WriterRenderContext(
                     toolchain=toolchain,
-                    install_tools=toolchain.mise_install_keys,
+                    install_tools=(*declared, *extra_tools),
                 ),
             ),
         )

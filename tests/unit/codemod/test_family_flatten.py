@@ -126,8 +126,9 @@ class TestsFlextInfraFamilyFlatten:
                 edit.file_path: edit.updated_source for edit in result.value
             })
             tm.that(proposed[consumer], has="class Consumer(u.Tests):")
-            tm.that(proposed[consumer], has="VALUE = u.Tests.Entity.VALUE")
-            tm.that(proposed[declaration], has="class Entity:")
+            # The moved single wrapper then follows the family flatten law.
+            tm.that(proposed[consumer], has="VALUE = u.Tests.EntityVALUE")
+            tm.that(proposed[declaration], has="EntityVALUE = 'payload'")
             tm.that(proposed[path], lacks="class Support:")
         for item, original in sources.items():
             tm.that(item.read_text(encoding="utf-8"), eq=original)
@@ -176,15 +177,17 @@ class TestsFlextInfraFamilyFlatten:
         module = ".".join(path.relative_to(package).with_suffix("").parts)
         references = (
             f"from {package.name}.{module} import {owner} as Part\n\n"
-            "class Public(Part):\n    pass\n\n"
-            "VALUE = Public.Wrapper.Entity.VALUE\n"
-            "TEXT = Part.Wrapper.TEXT\n"
+            "class Public(Part):\n"
+            "    TEXT = Part.Wrapper.TEXT\n\n"
+            "    @staticmethod\n"
+            "    def value() -> str:\n"
+            "        return Public.Wrapper.Entity.VALUE\n"
         )
         consumer.write_text(references, encoding="utf-8")
         homonym = package / "unrelated.py"
         unrelated = (
             "class Other:\n    class Wrapper:\n        TEXT = 'unrelated'\n"
-            "VALUE = Other.Wrapper.TEXT\n"
+            "    VALUE = Wrapper.TEXT\n"
         )
         homonym.write_text(unrelated, encoding="utf-8")
         return WrapperFamilyFixture(
@@ -232,6 +235,7 @@ class TestsFlextInfraFamilyFlatten:
             f"    class {project}({owner}):\n"
             "        pass\n\n"
             f"m = {facade_name}\n"
+            f"__all__ = ['{facade_name}', 'm']\n"
         )
         facade_path = package / "models.py"
         facade_path.write_text(facade, encoding="utf-8")
@@ -299,7 +303,7 @@ class TestsFlextInfraFamilyFlatten:
                 proposed[path],
                 has="'''first\n        literal indentation\n        last'''",
             )
-            tm.that(proposed[consumer], has=f"VALUE = Public.{expected_member}.VALUE")
+            tm.that(proposed[consumer], has=f"return Public.{expected_member}.VALUE")
             tm.that(proposed[consumer], has="TEXT = Part.GroupingTEXT")
             tm.that(proposed[homonym], eq=unrelated)
             remaining = u.Infra.plan_semantic_cutover(
@@ -361,11 +365,11 @@ class TestsFlextInfraFamilyFlatten:
     @c.Tests.MARK.parametrize(
         "reference",
         [
-            "ALIAS = {owner}.Wrapper",
-            "different_name = {owner}.Wrapper",
-            "first = {owner}.Wrapper\nsecond = first",
-            "instance = {owner}.Wrapper()",
-            'alias: "{owner}.Wrapper"',
+            "ALIAS = Wrapper",
+            "different_name = Wrapper",
+            "first = Wrapper\n    second = first",
+            "instance = Wrapper()",
+            'alias: "Wrapper"',
         ],
     )
     def test_wrapper_used_as_an_entity_is_preserved_without_edits(
@@ -382,7 +386,7 @@ class TestsFlextInfraFamilyFlatten:
         owner = f"{u.derive_class_stem(root.name)}ConstantsPayload"
         source = (
             f"class {owner}:\n    class Wrapper:\n        VALUE = 1\n\n"
-            f"{reference.format(owner=owner)}\n\n__all__ = ['{owner}']\n"
+            f"    {reference}\n\n__all__ = ['{owner}']\n"
         )
         path.write_text(source, encoding="utf-8")
         with infra.rope_workspace(root) as rope:

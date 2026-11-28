@@ -339,15 +339,16 @@ toolchain nor a corrupt lock stops it:
    whose own preview is not `[]`; an absent lock previews every tool and is
    regenerated in full. The previews resolve versions only; the lock of a
    changed tool downloads its provenance artifacts for every declared platform.
-   Plain `mise lock` with no tool arguments refreshes every locked entry and
-   re-downloads each provenance artifact, so it runs only on the pruning path:
-   when the whole preview is not `[]` but no declared tool's own preview
-   changes, the change is the removal of entries for tools the configuration
-   no longer declares. Plain `mise lock` keeps the locked versions and prunes
-   those entries, and a whole preview that is still not `[]` afterwards fails
-   the upgrade. Measured 2026-11-01 on a two-member scratch workspace whose root
-   lock still carried six undeclared tools: the prune took 43.7 s, and the next
-   `make upg` reported no locked version changes in every governed checkout.
+   Plain `mise lock` (no `--bump`, locked versions kept) then always runs. The
+   JSON preview reports version changes only, so an entry whose version is
+   current but whose checksum or URL is missing prints `[]`; the locked install
+   refuses that entry. Plain `mise lock` fills those fields, prunes entries for
+   tools the configuration no longer declares, and downloads nothing for a
+   complete entry. A whole preview still not `[]` afterwards fails the upgrade.
+   Measured 2026-11-27 with mise 2026.11.14: over a complete lock (13 tools,
+   4 platforms) it checked 52 targets, downloaded nothing and left the lock
+   byte-identical; over a lock whose `taplo` entry lacked its checksums, the
+   dry run reported each platform as `checksum filled`.
    Regenerating an invalid or absent lock is a repair path with no native
    shortcut: every declared tool is locked again, and Mise downloads each tool's
    provenance artifact for every declared platform to verify its attestation
@@ -1790,13 +1791,14 @@ cold lane (a fresh worktree, or a lock or toolchain change) and the next
 incremental execution. Checks and tests are independent native operations.
 `flext-infra workspace tests --repository-root <root> --scope all` runs without
 requiring a prior check receipt. Generated Make consumers use `make tests`; bare
-`make check` retains complete acceptance. Outside CI, an attached member's primary
-check uses its containing runtime workspace, never member-only evidence. In CI,
-every phase checks only the selected project root while provisioning keeps the
-containing runtime environment. The generated Make transport selects that root
-before the checker reads repository governance; it does not substitute workspace
-policy or bypass the selected project's declaration. The primary
-phase derives its gates from `make.check_prerequisite_gates`; the complete phase
+`make check` retains complete acceptance. Every phase, locally and in CI, checks
+only the selected project root while provisioning keeps the containing runtime
+environment; an attached member's commit hook therefore checks the member alone,
+and workspace scope is selected only by `ALL=Y` (ADR-038 decision 9,
+flext-bga5y). The generated Make transport selects that root before the
+checker reads repository governance; it does not substitute workspace policy
+or bypass the selected project's declaration. The primary phase
+derives its gates from `make.check_prerequisite_gates`; the complete phase
 retains the full configured check inventory and its context partitions. Both use
 the same native checker, original capture and SARIF publisher. Test owners execute
 their native engines and report the original outcome; missing, red or old check
@@ -2991,8 +2993,9 @@ replaces it; invoking another verb is not a repair of that projection. Separate
 bootstrap launchers and lock-convergence scripts are not lifecycle owners.
 
 `toolchain.tools` in the packaged `config/codegen.yaml` owns native tool declarations;
-the toolchain model rejects a Mise `npm:` selector (ADR-025). A tool whose upstream
-release metadata publishes no checksum declares `lock_checksum: false`.
+the toolchain model rejects a Mise `npm:` selector (ADR-025). Every locked tool
+carries a checksum: when the upstream registry publishes none, the plain
+`mise lock` that `make upg` always runs computes it from the downloaded artifact.
 ADR-025's October 9 amendment requires distributed JavaScript tools, including
 FLEXT's, to use one owned Bun project, `package.json` and a frozen lock. It does not
 restore Mise npm backends or retire native Node wrappers where used. Source-owner
@@ -3007,7 +3010,7 @@ runs one. After setup provisions the environment, `make audit` runs the reality 
 order, it stops at the first defect:
 
 1. the `mise.lock` entry exists, names a version the toolchain selector accepts, and
-   carries a checksum for the current platform when `lock_checksum` requires one;
+   carries a checksum for the current platform;
 2. `mise where <key>@<version>` names the install root;
 3. `mise which <binary> --tool <key>@<version>`, and every symlink hop it resolves
    through, stays inside that root;

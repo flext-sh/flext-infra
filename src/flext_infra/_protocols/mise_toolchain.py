@@ -333,16 +333,6 @@ class FlextInfraProtocolsMiseToolchain:
             ...
 
         @property
-        def lock_checksum(self) -> bool:
-            """Structural member projected from the owning model.
-
-            Whether the tool's current-platform mise.lock section must carry a
-            checksum; false only for a tool whose upstream release metadata
-            publishes none.
-            """
-            ...
-
-        @property
         def version_probe(
             self,
         ) -> FlextInfraProtocolsMiseToolchain.MiseToolVersionProbe:

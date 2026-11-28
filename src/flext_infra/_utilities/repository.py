@@ -23,6 +23,7 @@ from flext_infra import c, m, p, r, settings, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesDependencies,
     FlextInfraUtilitiesGit,
+    FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesProjectManagedArtifacts,
 )
 from flext_infra._utilities._git import (
@@ -37,6 +38,22 @@ from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConfor
 
 class FlextInfraUtilitiesRepository(FlextInfraUtilitiesGitRequirementSource):
     """Resolve detected identity and branch policy for one governed repository."""
+
+    @staticmethod
+    def invocation_runtime_root(project_root: Path) -> p.Result[Path]:
+        """Elect the runtime of one invocation: declared, else the checkout's owner.
+
+        The generated Makefile declares ``RUNTIME_ROOT``; undeclared, the
+        checkout's native runtime owner is derived from Git.
+
+        Returns:
+            The declared or derived runtime root, or the discovery failure.
+
+        """
+        declared = settings.fetch_global().Infra.runtime_root
+        if declared is not None:
+            return r[Path].ok(declared)
+        return FlextInfraUtilitiesProjectDiscovery.runtime_owner_root(project_root)
 
     @classmethod
     def rewrite_git_requirement_reference(

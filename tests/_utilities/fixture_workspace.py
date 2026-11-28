@@ -741,6 +741,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
                 ),
             )
             member = parent / "apps" / "member"
+            member.parent.mkdir(parents=True, exist_ok=True)
             TestsFlextInfraUtilitiesToolingFixture.reflink_copy_tree(source, member)
             return member
 

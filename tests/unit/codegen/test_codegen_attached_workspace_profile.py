@@ -1,8 +1,9 @@
-"""An attached member renders the workspace profile from every scope.
+"""An attached member's projection does not depend on its checkout.
 
-Operator decision on cosmos-8fmi7.1.9.5: a superproject gitlink renders the
-WORKSPACE profile whether the superproject or the member runs generation, and
-the workspace runtime provides the tools its attached members declare.
+ADR-038 decision 9 (operator order 2026-11-26): a repository's projections are
+a function of its own declarations, so an attached member renders the same
+bytes as its standalone linked worktree, and the workspace runtime provides
+the tools its attached members declare.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -146,10 +147,10 @@ class TestsFlextInfraCodegenAttachedWorkspaceProfile:
         tm.that(set(from_root), has=Path(c.Infra.MAKEFILE_FILENAME))
         tm.that(from_member, eq=from_root)
 
-    def test_linked_worktree_of_attached_member_keeps_its_own_profile(
+    def test_attached_member_and_linked_worktree_render_identical_makefiles(
         self, tmp_path: Path
     ) -> None:
-        """A linked worktree outside the superproject is not attached to it."""
+        """Attachment never changes the member's standalone projection."""
         _, member = self._attached_workspace(tmp_path)
         lane = tmp_path / "lane"
         tm.ok(
@@ -179,18 +180,20 @@ class TestsFlextInfraCodegenAttachedWorkspaceProfile:
             )
         )
         makefile = Path(c.Infra.MAKEFILE_FILENAME)
+        attached_text = u.Tests.codegen_file_text(
+            next(item for item in attached.files if item.path == member / makefile)
+        )
         tm.that(
-            u.Tests.codegen_file_text(
-                next(item for item in attached.files if item.path == member / makefile)
-            ),
-            has=f"MAKE_PROFILE := {c.Infra.MakeProfile.WORKSPACE}",
+            attached_text,
+            has=f"MAKE_PROFILE := {c.Infra.MakeProfile.STANDALONE}",
         )
         tm.that(
             u.Tests.codegen_file_text(
                 next(item for item in linked.files if item.path == lane / makefile)
             ),
-            has=f"MAKE_PROFILE := {c.Infra.MakeProfile.STANDALONE}",
+            eq=attached_text,
         )
+        tm.that(attached_text, has='--repository-root "$(PROJECT_ROOT)"')
 
     def test_workspace_runtime_provides_attached_member_tools(
         self, tmp_path: Path
