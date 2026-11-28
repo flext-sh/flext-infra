@@ -91,7 +91,22 @@ class TestsFlextInfraConstantsCodegenQualityGate:
         )
         report_result = gate.build_report()
         tm.ok(report_result)
-        tm.that(report_result.value, has="verdict")
+        report = report_result.value
+        tm.that(u.Cli.json_pick_str(report, "verdict"), eq="PASS")
+        tm.that(u.Cli.json_deep_mapping_list(report, "projects"), length=0)
+        tm.that(
+            u.Cli.json_deep_mapping_list(report, "duplicate_constant_groups"),
+            length=0,
+        )
+        after = u.Cli.json_deep_mapping(report, "after")
+        for metric in (
+            "projects_total",
+            "projects_passed",
+            "projects_failed",
+            "total_violations",
+            "duplicate_groups",
+        ):
+            tm.that(u.Cli.json_pick_int(after, metric), eq=0)
 
     @staticmethod
     @c.Tests.MARK.slow
