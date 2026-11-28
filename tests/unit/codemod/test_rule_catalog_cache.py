@@ -68,6 +68,7 @@ class TestsFlextInfraRuleCatalogCache:
             f"message: '{message}'\nrule:\n  pattern: only($VALUE)\n",
             encoding="utf-8",
         )
+        u.Tests.provision_checkout(project)
         return project, rule
 
     def test_unchanged_catalog_preserves_the_public_plan(

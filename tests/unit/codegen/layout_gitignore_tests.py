@@ -142,7 +142,7 @@ class TestsFlextInfraCodegenLayoutGitignore:
             project_name="flext-cli",
         )
         tm.ok(rendered)
-        (tmp_path / ".ignore").write_text(rendered.value, encoding="utf-8")
+        (tmp_path / c.Infra.GITIGNORE).write_text(rendered.value, encoding="utf-8")
         tm.ok(u.Cli.capture([c.Infra.GIT, "init"], cwd=tmp_path))
         source = tmp_path / "src" / "demo_app" / "workspace_backup_request.py"
         source.parent.mkdir(parents=True)
