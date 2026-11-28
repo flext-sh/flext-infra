@@ -58,6 +58,7 @@ class TestsFlextInfraAuditorLinks:
         @staticmethod
         def test_broken_link_issues_empty_scope(tmp_path: Path) -> None:
             """Test docs_broken_link_issues with no markdown files."""
+            u.Tests.initialize_git_repo(tmp_path)
             scope = m.Infra.DocScope(
                 name="test",
                 path=tmp_path,
@@ -100,6 +101,7 @@ class TestsFlextInfraAuditorLinks:
             docs_dir = tmp_path / "docs"
             docs_dir.mkdir(parents=True, exist_ok=True)
             (docs_dir / "test.md").write_text(markdown)
+            u.Tests.initialize_git_repo(tmp_path)
             scope = m.Infra.DocScope(
                 name="test",
                 path=tmp_path,
@@ -114,6 +116,7 @@ class TestsFlextInfraAuditorLinks:
             docs_dir = tmp_path / "docs"
             docs_dir.mkdir(parents=True, exist_ok=True)
             (docs_dir / "test.md").write_text("[link](missing.md)")
+            u.Tests.initialize_git_repo(tmp_path)
             scope = m.Infra.DocScope(
                 name="test",
                 path=tmp_path,
@@ -136,6 +139,7 @@ class TestsFlextInfraAuditorLinks:
                 "Intro text that wraps\nonto [a link](gone.md) here.\n\n"
                 "![diagram](gone.png)\n\n[ref link][r]\n\n[r]: absent.md\n",
             )
+            u.Tests.initialize_git_repo(tmp_path)
             scope = m.Infra.DocScope(
                 name="test",
                 path=tmp_path,
@@ -162,6 +166,7 @@ class TestsFlextInfraAuditorLinks:
                 "[other project](../../flext-core/docs/index.md)",
                 encoding="utf-8",
             )
+            u.Tests.initialize_git_repo(tmp_path)
             scope = m.Infra.DocScope(
                 name="test",
                 path=tmp_path,
@@ -186,6 +191,7 @@ class TestsFlextInfraAuditorLinks:
             docs_dir = tmp_path / "docs"
             docs_dir.mkdir(parents=True, exist_ok=True)
             (docs_dir / "test.md").write_text("[link](some text)")
+            u.Tests.initialize_git_repo(tmp_path)
             scope = m.Infra.DocScope(
                 name="test",
                 path=tmp_path,

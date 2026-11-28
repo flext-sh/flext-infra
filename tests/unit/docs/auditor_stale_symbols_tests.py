@@ -86,6 +86,7 @@ class TestsFlextInfraAuditorStaleSymbols:
                 '__all__ = ["LiveSymbol"]\n'
             ),
         )
+        u.Tests.initialize_git_repo(project)
         return m.Infra.DocScope(
             name="flext-demo",
             path=project,

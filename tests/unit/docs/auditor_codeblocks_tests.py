@@ -78,6 +78,7 @@ class TestsFlextInfraAuditorCodeblocks:
             "```\n",
             encoding="utf-8",
         )
+        u.Tests.initialize_git_repo(tmp_path)
         scope = m.Infra.DocScope(
             name="test",
             path=tmp_path,
@@ -99,6 +100,7 @@ class TestsFlextInfraAuditorCodeblocks:
             "```python\nresult = unavailable_name()\n```\n",
             encoding="utf-8",
         )
+        u.Tests.initialize_git_repo(tmp_path)
         scope = m.Infra.DocScope(
             name="test",
             path=tmp_path,
@@ -127,6 +129,7 @@ class TestsFlextInfraAuditorCodeblocks:
             "```\n",
             encoding="utf-8",
         )
+        u.Tests.initialize_git_repo(tmp_path)
         scope = m.Infra.DocScope(
             name="test",
             path=tmp_path,
@@ -151,6 +154,7 @@ class TestsFlextInfraAuditorCodeblocks:
             "```python\n**Happy coding!** 🚀\n```\n",
             encoding="utf-8",
         )
+        u.Tests.initialize_git_repo(tmp_path)
         scope = m.Infra.DocScope(
             name="test",
             path=tmp_path,
@@ -181,6 +185,7 @@ class TestsFlextInfraAuditorCodeblocks:
         )
         evidence = docs_dir / "scanner-triage.md"
         evidence.write_text(f"```python\n{excerpt}```\n", encoding="utf-8")
+        u.Tests.initialize_git_repo(tmp_path)
         scope = m.Infra.DocScope(
             name="test",
             path=tmp_path,
