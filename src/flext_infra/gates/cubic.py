@@ -234,7 +234,8 @@ class FlextInfraGatesCubic(FlextInfraGates):
                     return value
         return default
 
-    def _failure_issue(self, message: str | None) -> p.Infra.Issue:
+    @staticmethod
+    def _failure_issue(message: str | None) -> p.Infra.Issue:
         """Represent malformed or absent review output as a blocking issue.
 
         Returns:

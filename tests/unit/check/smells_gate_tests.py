@@ -47,10 +47,12 @@ class TestsFlextInfraSmellsGate:
                 (
                     "sh",
                     "-c",
-                    '"$@"\n'
-                    "status=$?\n"
-                    'if [ "$status" -ne 0 ]; then exit "$status"; fi\n'
-                    'kill -TERM "$$"\n',
+                    (
+                        '"$@"\n'
+                        "status=$?\n"
+                        'if [ "$status" -ne 0 ]; then exit "$status"; fi\n'
+                        'kill -TERM "$$"\n'
+                    ),
                     c.Infra.QLTY_BINARY,
                     *cmd,
                 ),
