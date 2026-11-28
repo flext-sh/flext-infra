@@ -599,6 +599,25 @@ class FlextInfraUtilitiesImportLawRoutes(
         return True
 
     @classmethod
+    def _import_law_local_definitions(cls, tree: ast.Module) -> Mapping[str, ast.stmt]:
+        """Find bindings defined by this module's top-level declarations.
+
+        Returns:
+            The resulting ``Mapping[str, ast.stmt]``.
+
+        """
+        return cls._module_bindings(
+            ast.Module(
+                body=[
+                    statement
+                    for statement in tree.body
+                    if not isinstance(statement, c.Infra.AST_IMPORT_TYPES)
+                ],
+                type_ignores=[],
+            ),
+        )
+
+    @classmethod
     def _import_law_root_alias_binding_edits(
         cls,
         state: p.Infra.ImportLawPass,
@@ -616,18 +635,7 @@ class FlextInfraUtilitiesImportLawRoutes(
 
         """
         scope = state.scope
-        defined = frozenset(
-            cls._module_bindings(
-                ast.Module(
-                    body=[
-                        statement
-                        for statement in state.tree.body
-                        if not isinstance(statement, c.Infra.AST_IMPORT_TYPES)
-                    ],
-                    type_ignores=[],
-                ),
-            ),
-        )
+        defined = cls._import_law_local_definitions(state.tree)
         edits: MutableSequence[tuple[int, int, Sequence[str]]] = []
         for node in cls._import_law_iter_imports(state.tree):
             if (

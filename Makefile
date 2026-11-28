@@ -1470,8 +1470,8 @@ _builtin_build_artifacts:
 # make.pre_commit_check_gates, CI=N runs
 # make.check_gates_local, and an absent CI token runs every active gate.
 # Outside CI and the commit hook, every phase first converges gen -> fix ->
-# fmt to a fixed point: passes repeat until the working tree, hashed as a git
-# tree through a throwaway index, stops changing; a tree still moving after
+# fmt to a fixed point: passes repeat until Git trees for the root and declared
+# members stop changing; a workspace still moving after
 # CHECK_CONVERGE_MAX_PASSES passes fails. CI=Y converges
 # nothing, so its read-only gates fail when any byte would change.
 override CHECK_CONVERGE_MAX_PASSES := 5
@@ -1480,7 +1480,13 @@ _builtin_check_all: _builtin_require_environment
 	@$(if $(CHECK_PROFILE),FLEXT_INFRA_PROFILE=$(CHECK_PROFILE) ,)FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/.reports/check/route.pstats" $(PROJECT_FLEXT_INFRA) workspace check --repository-root "$(PROJECT_ROOT)"$(if $(CHECK_PHASE), --phase "$$CHECK_PHASE")
 
 _builtin_converge_all: _builtin_require_environment
-	@tree() { idx="$$(mktemp -u)"; GIT_INDEX_FILE="$$idx" git -C "$(PROJECT_ROOT)" add -A && GIT_INDEX_FILE="$$idx" git -C "$(PROJECT_ROOT)" write-tree; rc=$$?; rm -f "$$idx"; return $$rc; }; \
+	@snapshot() ( \
+		cd "$(PROJECT_ROOT)/$$1" && prefix="$$(git rev-parse --show-prefix)" || exit; \
+		if [ -n "$$prefix" ]; then printf '%s\n' "ERROR: check: $$1 is not a materialized Git checkout" >&2; exit 1; fi; \
+		scratch="$$(mktemp -d)" || exit; trap 'rm -rf -- "$$scratch"' EXIT; \
+		export GIT_INDEX_FILE="$$scratch/index"; git read-tree HEAD && git add -A && git write-tree \
+	); \
+	tree() { for project in . $(WORKSPACE_SUBPROJECTS); do snapshot "$$project" || return; done; }; \
 	before="$$(tree)" || exit 1; pass=0; \
 	while :; do \
 		pass=$$((pass + 1)); \

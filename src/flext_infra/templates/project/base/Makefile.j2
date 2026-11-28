@@ -1028,8 +1028,8 @@ _builtin_build_artifacts:
 # make.pre_commit_check_gates, CI={{ make.ci.local_value }} runs
 # make.check_gates_local, and an absent CI token runs every active gate.
 # Outside CI and the commit hook, every phase first converges gen -> fix ->
-# fmt to a fixed point: passes repeat until the working tree, hashed as a git
-# tree through a throwaway index, stops changing; a tree still moving after
+# fmt to a fixed point: passes repeat until Git trees for the root and declared
+# members stop changing; a workspace still moving after
 # CHECK_CONVERGE_MAX_PASSES passes fails. CI={{ make.ci.value }} converges
 # nothing, so its read-only gates fail when any byte would change.
 override CHECK_CONVERGE_MAX_PASSES := 5
@@ -1038,7 +1038,13 @@ _builtin_check_all: _builtin_require_environment
 {{ local_check_body() }}
 
 _builtin_converge_all: _builtin_require_environment
-{{ "\t" }}@tree() { idx="$$(mktemp -u)"; GIT_INDEX_FILE="$$idx" git -C "$(PROJECT_ROOT)" add -A && GIT_INDEX_FILE="$$idx" git -C "$(PROJECT_ROOT)" write-tree; rc=$$?; rm -f "$$idx"; return $$rc; }; \
+{{ "\t" }}@snapshot() ( \
+{{ "\t" }}	cd "$(PROJECT_ROOT)/$$1" && prefix="$$(git rev-parse --show-prefix)" || exit; \
+{{ "\t" }}	if [ -n "$$prefix" ]; then printf '%s\n' "ERROR: check: $$1 is not a materialized Git checkout" >&2; exit 1; fi; \
+{{ "\t" }}	scratch="$$(mktemp -d)" || exit; trap 'rm -rf -- "$$scratch"' EXIT; \
+{{ "\t" }}	export GIT_INDEX_FILE="$$scratch/index"; git read-tree HEAD && git add -A && git write-tree \
+{{ "\t" }}); \
+{{ "\t" }}tree() { for project in . $(WORKSPACE_SUBPROJECTS); do snapshot "$$project" || return; done; }; \
 {{ "\t" }}before="$$(tree)" || exit 1; pass=0; \
 {{ "\t" }}while :; do \
 {{ "\t" }}	pass=$$((pass + 1)); \

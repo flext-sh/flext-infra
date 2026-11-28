@@ -50,7 +50,7 @@ class TestsFlextInfraScriptDispatchMakefile:
             project=u.Tests.project_spec("demo-root"),
         )
         root = tmp_path / root_repository.name
-        root.mkdir()
+        u.Tests.standalone_workspace(root, name=root_repository.name)
         for relative, command in commands:
             u.Tests.write_promoted_command(root / relative, command)
         u.Tests.initialize_git_repo(root, origin_url=root_repository.url)
@@ -160,8 +160,8 @@ class TestsFlextInfraScriptDispatchMakefile:
         tm.ok("_builtin-charts:" in rendered)
         # It forwards to the declared dispatcher through uv, not a raw builtin.
         tm.ok("python -m scripts.dispatch " in rendered)
-        # Script dispatch roots are recorded for operator visibility.
-        tm.ok("apps/demo-app/scripts" in rendered)
+        # Selectors reach the dispatcher as literal environment data.
+        tm.that(rendered, has="override export WHAT := $(value WHAT)")
 
     def test_extra_verb_dispatch_target_is_emitted_exactly_once(
         self,
@@ -183,22 +183,18 @@ class TestsFlextInfraScriptDispatchMakefile:
         makefile = tmp_path / "demo-root" / c.Infra.MAKEFILE_FILENAME
         makefile.write_text(rendered, encoding=c.DEFAULT_ENCODING)
         observed = tm.ok(
-            u.Cli.run(
-                (
-                    c.Infra.MAKE,
-                    "--no-print-directory",
-                    "--dry-run",
-                    "--print-data-base",
-                    "--eval=__flext_fixture_probe__:",
-                    "__flext_fixture_probe__",
-                ),
+            u.Tests.run_isolated_make(
+                ["--no-print-directory", "help"],
                 cwd=makefile.parent,
             ),
         )
-        deploy_targets = [
-            line for line in observed.stdout.splitlines() if line.startswith("deploy:")
+        tm.that(u.Cli.process_succeeded(observed.outcome), eq=True, msg=observed.stderr)
+        deploy_entries = [
+            line
+            for line in observed.stdout.splitlines()
+            if line.split(maxsplit=1)[:1] == ["deploy"]
         ]
-        tm.that(len(deploy_targets), eq=1)
+        tm.that(len(deploy_entries), eq=1)
         tm.that(observed.stderr, lacks="overriding recipe for target")
 
     def test_dispatch_routes_custom_what_before_allowlist(self, tmp_path: Path) -> None:
@@ -293,37 +289,77 @@ class TestsFlextInfraScriptDispatchMakefile:
             for target in ("pre-check", "_custom-check", "post-check"):
                 tm.ok(re.fullmatch(policy.target_pattern, target) is not None)
 
-    def test_make_initialize_requires_its_provisioned_interpreter(
+    def test_check_convergence_preserves_gitlinks_and_staging(
         self,
         tmp_path: Path,
     ) -> None:
-        """The public initializer validates the pinned toolchain before effects."""
+        """Check convergence with a tracked checkout and staged edits."""
         rendered = self._render_root_makefile(
             tmp_path,
             extra_verbs=(),
             script_dispatch=None,
         )
-        root = tmp_path / "declared-target"
-        package = root / "src" / "demo_root"
-        package.mkdir(parents=True)
-        makefile = root / c.Infra.MAKEFILE_FILENAME
-        makefile.write_text(rendered, encoding="utf-8")
-        # Every public verb except help/clean/upg requires the Mise pin
-        # (db516968e); seed it so the run reaches the interpreter check.
-        u.Tests.copy_tracked_mise_seeds(root)
+        root = tmp_path / "workspace"
+        member = root / "member"
+        member.mkdir(parents=True)
         u.Tests.initialize_git_repo(root)
-        invoked = u.Tests.run_isolated_make(
-            ["--no-print-directory", "-f", str(makefile), "initialize"],
-            cwd=root,
+        u.Tests.initialize_git_repo(member)
+        member_head = u.Tests.git_capture(member, "rev-parse", c.Infra.GIT_HEAD).strip()
+        u.Tests.git_run(
+            root,
+            "update-index",
+            "--add",
+            "--cacheinfo",
+            f"{c.Infra.GIT_GITLINK_MODE_TEXT},{member_head},{member.name}",
+        )
+        u.Tests.commit_git_changes(root, "attach member")
+        document = root / "README.md"
+        document.write_text("staged\n", encoding="utf-8")
+        u.Tests.git_run(root, "add", "--", document.name)
+        document.write_text("working tree\n", encoding="utf-8")
+        member_document = member / document.name
+        member_document.write_text("staged in member\n", encoding="utf-8")
+        u.Tests.git_run(member, "add", "--", member_document.name)
+        member_document.write_text("working tree in member\n", encoding="utf-8")
+        staged = u.Tests.git_capture(root, "ls-files", "--stage")
+        member_staged = u.Tests.git_capture(member, "ls-files", "--stage")
+        convergence = rendered.split("_builtin_converge_all:", 1)[1].split(
+            "\n\n",
+            1,
+        )[0]
+        pass_limit = next(
+            line
+            for line in rendered.splitlines()
+            if line.startswith("override CHECK_CONVERGE_MAX_PASSES :=")
+        )
+        makefile = tmp_path / c.Infra.MAKEFILE_FILENAME
+        makefile.write_text(
+            "PROJECT_ROOT := .\n"
+            f"WORKSPACE_SUBPROJECTS := {member.name}\n"
+            'SELF_MAKE := $(MAKE) --no-print-directory -f "$(firstword '
+            '$(MAKEFILE_LIST))"\n'
+            f"{pass_limit}\n"
+            "_builtin_require_environment: ;\n"
+            f"_builtin_converge_all:{convergence}\n\n"
+            "_builtin_gen_all: ;\n"
+            "_builtin_fix_all: ;\n"
+            f"_builtin_fmt_all:\n\t@printf 'projected\\n' > "
+            f"{member.name}/projected.txt\n",
+            encoding="utf-8",
         )
 
-        tm.ok(invoked)
-        tm.fail(u.Cli.process_succeeded(invoked.value.outcome))
-        tm.that(
-            invoked.value.stderr,
-            has=["missing environment interpreter", "make setup creates it"],
+        command = tm.ok(
+            u.Tests.run_isolated_make(
+                ["--no-print-directory", "-f", str(makefile), "_builtin_converge_all"],
+                cwd=root,
+            ),
         )
-        tm.fail((package / c.Infra.INIT_PY).exists())
+
+        tm.ok(u.Cli.process_succeeded(command.outcome))
+        tm.that(command.stdout, has="fixed point after 2 pass(es)")
+        tm.that(command.stderr, lacks="embedded git repository")
+        tm.that(u.Tests.git_capture(root, "ls-files", "--stage"), eq=staged)
+        tm.that(u.Tests.git_capture(member, "ls-files", "--stage"), eq=member_staged)
 
     def test_work_lifecycle_is_not_projected(self, tmp_path: Path) -> None:
         """Gas City owns lanes; generated repositories expose no second lifecycle."""
@@ -342,133 +378,69 @@ class TestsFlextInfraScriptDispatchMakefile:
         tm.that(rendered, lacks="_builtin_work_")
         tm.that(rendered, lacks="workspace work")
 
-    def test_profile_test_verb_profiles_the_canonical_pytest_entry(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """profile-test profiles the entry and its central collection children.
-
-        Cold-run diagnosis (flext-itpd1.3.7) needs the same persistent testmon
-        database guard and environment as the bounded gate, but the diagnostic
-        omits the outer PYTEST_BOUNDED wrapper, not the runner's own deadline.
-        """
+    def test_mod_profile_is_bound_to_the_selected_project(self, tmp_path: Path) -> None:
+        """The public mod route passes its configured profile path to Infra."""
         rendered = self._render_root_makefile(
             tmp_path,
             extra_verbs=(),
             script_dispatch=None,
         )
+        profile = config.Infra.codegen.make.modification_profile_path
         tm.that(
             rendered,
             has=[
-                "_builtin-profile-test: _builtin_require_environment\n",
-                "_builtin-profile-test-report: _builtin_require_environment\n",
+                f'FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/{profile}"',
+                (
+                    "$(PROJECT_FLEXT_INFRA) refactor mod --repository-root "
+                    '"$(PROJECT_ROOT)"'
+                ),
             ],
-        )
-        profile_test = rendered.split("_builtin-profile-test:", 1)[1].split(
-            "\n\n",
-            1,
-        )[0]
-        gate_runner = rendered.split("_builtin_test_all:", 1)[1].split("\n\n", 1)[0]
-        # Testmon keeps its native in-checkout default: no recipe exports a path.
-        tm.that(profile_test, lacks=c.Infra.PYTEST_ENV_TESTMON_DATAFILE)
-        # The thin entry delegates profiling to the execution adapter.
-        tm.that(profile_test, has="-m flext_infra._pytest.entry profile")
-        tm.that(profile_test, lacks="import cProfile")
-        tm.that(profile_test, has="$(PROFILE_REPORTS_DIR)/pytest.pstats")
-        # Only the bounded gate adds the outer hard wall clock wrapper.
-        tm.that(profile_test, lacks="PYTEST_BOUNDED")
-        tm.that(gate_runner, has="PYTEST_BOUNDED")
-        report = rendered.split("_builtin-profile-test-report:", 1)[1].split(
-            "\n\n",
-            1,
-        )[0]
-        tm.that(report, has="flext_infra._cprofile.entry")
-        tm.that(report, has="$(PROFILE_REPORTS_DIR)/pytest.pstats")
-        tm.that(report, has="$(PROFILE_REPORTS_DIR)/pytest.pstats.json")
-
-    def test_profile_mod_report_uses_the_selected_project_root(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """The report adapter runs in the selected Makefile's root, not caller CWD."""
-        rendered = self._render_root_makefile(
-            tmp_path,
-            extra_verbs=(),
-            script_dispatch=None,
-        )
-        report = rendered.split("_builtin-profile-mod-report:", 1)[1].split(
-            "\n\n",
-            1,
-        )[0]
-        tm.that(
-            report,
-            has=(
-                '\t@cd "$(PROJECT_ROOT)" || exit $$?; \\\n'
-                "\t\t$(PROJECT_INFRA_RUN) -m flext_infra._cprofile.entry \\\n"
-                '\t\t"$(PROFILE_REPORTS_DIR)/mod.pstats"'
-            ),
+            lacks="_builtin-profile-mod-report:",
         )
 
     def test_test_verbs_share_the_persistent_testmon_database(
         self,
         tmp_path: Path,
     ) -> None:
-        """Public test verbs share one persistent testmon execution path.
-
-        Make exports no database location, so each checkout owns its native
-        testmon database at its root. Complete
-        validation runs incremental then complete through one unbounded
-        ``full`` entry, also used by the shipped test-full command.
-        """
+        """Each test verb uses the native workspace runner and its checkout state."""
         rendered = self._render_root_makefile(
             tmp_path,
             extra_verbs=(),
             script_dispatch=None,
         )
-        public_verbs = (
-            next(
-                line
-                for line in rendered.splitlines()
-                if line.startswith("PUBLIC_VERBS :=")
-            )
-            .split(":=", 1)[1]
-            .split()
+        make = config.Infra.codegen.make
+        public_line = next(
+            line for line in rendered.splitlines() if line.startswith("PUBLIC_VERBS :=")
         )
-        expected_verbs = [
-            verb.name
-            for verb in config.Infra.codegen.make.verbs
-            if c.Infra.MakeProfile.STANDALONE in verb.profiles
-        ]
-        tm.that(public_verbs, eq=expected_verbs)
-        tm.that(public_verbs, has="tests")
+        tm.that(
+            public_line.split(":=", 1)[1].split(),
+            eq=[
+                verb.name
+                for verb in make.verbs
+                if c.Infra.MakeProfile.STANDALONE in verb.profiles
+            ],
+        )
         tm.that(
             rendered,
-            has=[
-                ".PHONY: $(PUBLIC_VERBS) $(addprefix _builtin-,$(PUBLIC_VERBS))",
-                "_builtin-test: _builtin_test_all\n",
-                "_builtin-tests: _builtin_test_full_all\n",
-                "_builtin-test-full: _builtin_test_full_all\n",
+            has=f'FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/{make.tests_profile_path}"',
+            lacks=[
+                c.Infra.PYTEST_ENV_TESTMON_DATAFILE,
+                "_builtin-test:",
+                "_builtin-test-full:",
+                "_builtin-profile-test:",
             ],
         )
-        tm.that(rendered, has="PROJECT_NAME := demo-root\n")
-        tm.that(rendered, lacks=c.Infra.PYTEST_ENV_TESTMON_DATAFILE)
-        incremental = rendered.split("_builtin_test_all:", 1)[1].split("\n\n", 1)[0]
-        full = rendered.split("_builtin_test_full_all:", 1)[1].split("\n\n", 1)[0]
-        tm.that(
-            incremental,
-            has=["PYTEST_BOUNDED"],
-        )
-        tm.that(full.count("-m flext_infra._pytest.entry"), eq=1)
-        tm.ok(full.rstrip().endswith("-m flext_infra._pytest.entry full"))
-        tm.that(full, lacks="PYTEST_BOUNDED")
-        tm.that(
-            full,
-            has=[
-                "_builtin_require_environment",
-                'if [ -n "$(strip $(FILE))" ]; then',
-                'export FLEXT_PYTEST_TARGET_FILE="$(FILE)";',
-            ],
-        )
+        for verb in (c.Infra.VERB_TEST, "tests-full", "tests-harness"):
+            handler = verb.replace("-", "_")
+            tm.that(rendered, has=f"_builtin-{verb}: _builtin_{handler}_all\n")
+            body = rendered.split(f"_builtin_{handler}_all:", 1)[1].split(
+                "\n\n",
+                1,
+            )[0]
+            tm.that(
+                body,
+                has=f'workspace {verb} --repository-root "$(PROJECT_ROOT)"',
+            )
 
     # A test asserting a downstream consumer's verbs from this
     # engine's catalog was removed. The engine is consumer-agnostic: a consumer

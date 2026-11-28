@@ -1946,6 +1946,10 @@ required by default before handlers and hooks. `make check` keeps that boundary:
 a missing or invalid environment stops before hooks or convergence. A local check
 then converges generation, repairs and formatting through its private phase
 handlers; those handlers do not declare public `gen`, `fix` or `fmt` verbs.
+Convergence snapshots the root and each declared workspace member. Each
+snapshot starts from that repository's `HEAD` in a temporary Git index, then
+captures working tree changes. This preserves gitlinks and the real staging
+areas while detecting changes inside a member whose commit stayed the same.
 After generation publishes an `.envrc`, the phase authorizes it through the locked
 Direnv executable for the next invocation; it does not activate the environment a
 second time. CI and the commit hook verify without running convergence.
@@ -4027,6 +4031,10 @@ binding resolves to the declared destination. Assignment expressions with effect
 ambiguous writes and local-function bindings are not retirement candidates. Native
 consumer, quoted-annotation, import and export completeness checks remain mandatory;
 no source scanner or alternate publisher participates.
+For wildcard consumers, alias relocation checks the provider's native public
+bindings when it has no module export declaration. A read of a declared
+export list can change or escape the list, so the declaration alone cannot
+prove that it excludes the relocated identity.
 
 Installed-distribution import metadata supplies candidates, not executable facade
 providers. Provider election resolves each candidate package initializer through the
@@ -4748,6 +4756,10 @@ construction and runtime model schemas keep the imports they execute.
 Header injection and cold protocol normalization share that classification.
 Postponed annotations do not defer class bases or executable protocol references,
 and deferral retains the original provider instead of substituting the local facade.
+If a rewrite removes the last typing guard, normalization also removes its
+unused typing binding before returning the fixed point.
+An own-root import of a facade defined by the current module is retired before
+guarded imports are evaluated for promotion to runtime.
 Unparsable source retains its original `SyntaxError` location. Import and protocol
 projection never delete an unattached decorator to manufacture a parseable input;
 the owning producer must restore the missing declaration or correct its emission.

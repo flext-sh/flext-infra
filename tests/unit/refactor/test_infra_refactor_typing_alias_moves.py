@@ -142,7 +142,15 @@ class TestsFlextInfraRefactorInfraRefactorTypingAliasMoves:
         tm.that(source_text, lacks="PayloadMap: TypeAlias = Mapping[str, str]")
         tm.that(typings_text, has="type PayloadMap = Mapping[str, str]")
         tm.that(typings_text, lacks="from typing import TypeAlias")
-        tm.that(typings_text, has="from flext_core import t")
+        tm.that(
+            u.Tests.run_lazy_init_probe(
+                "from collections.abc import Mapping\n"
+                "from demo_pkg.typings import PayloadMap\n"
+                "print(PayloadMap.__value__ == Mapping[str, str])\n",
+                python_paths=(str(package_root.parent),),
+            ),
+            eq=["True"],
+        )
         tm.that(self._non_module_files(package_root), eq=())
 
     def test_typing_alias_move_keeps_class_publications_pep613(
@@ -222,7 +230,7 @@ class TestsFlextInfraRefactorInfraRefactorTypingAliasMoves:
 
         source = source_file.read_text(encoding="utf-8")
         target = (package_root / "typings.py").read_text(encoding="utf-8")
-        tm.that(source, has='value = "retained"')
+        tm.that(source, has="value = 'retained'")
         tm.that(source, has="def retained() -> str:")
         tm.that(source, lacks="from typing import Literal")
         tm.that(source, lacks=declaration)
