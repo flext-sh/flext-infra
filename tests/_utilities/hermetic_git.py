@@ -18,7 +18,6 @@ import json
 import os
 import sys
 from collections.abc import Mapping, MutableMapping, Sequence
-from functools import cache
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from urllib.parse import parse_qs, unquote, urlsplit
@@ -27,7 +26,6 @@ from flext_infra import u
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, config, m, p, t, tm
 from tests._utilities import (
-    TestsFlextInfraUtilitiesGit,
     TestsFlextInfraUtilitiesProjectFixture,
     TestsFlextInfraUtilitiesToml,
 )
@@ -132,7 +130,23 @@ class TestsFlextInfraUtilitiesHermeticGit:
             if source[0] == provider_url
         )
         tm.that(len(sources), eq=1)
-        url, _branch, sha = sources[0]
+        identity = cls._checkout_provider(sources[0], repository, options)
+        cls._authenticate_provider(repository, sources[0], identity)
+        return repository
+
+    @staticmethod
+    def _checkout_provider(
+        source: tuple[str, str, str],
+        repository: Path,
+        options: p.Cli.ProcessOptions,
+    ) -> p.Infra.GitIdentityReport:
+        """Check out the already elected source through the native Git owner.
+
+        Returns:
+            The materialized checkout's single native identity observation.
+
+        """
+        url, _branch, sha = source
         tm.ok(
             u.Cli.run_checked(
                 [
@@ -153,25 +167,9 @@ class TestsFlextInfraUtilitiesHermeticGit:
                 options=options,
             ),
         )
-        tm.that(
-            tm.ok(
-                u.Cli.capture(
-                    [c.Infra.GIT, "rev-parse", c.Infra.GIT_HEAD],
-                    cwd=repository,
-                ),
-            ).strip(),
-            eq=sha,
+        return tm.ok(
+            u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=repository))
         )
-        tm.that(
-            tm.ok(
-                u.Cli.capture(
-                    [c.Infra.GIT, "config", "--get", "remote.origin.url"],
-                    cwd=repository,
-                ),
-            ).strip(),
-            eq=url,
-        )
-        return repository
 
     @staticmethod
     def locked_git_sources(
@@ -247,9 +245,9 @@ class TestsFlextInfraUtilitiesHermeticGit:
         )
         return tuple(sources.values())
 
-    @staticmethod
-    @cache
+    @classmethod
     def locked_dependency_project(
+        cls,
         project_root: Path,
         storage: Path,
         requirement: str,
@@ -264,7 +262,42 @@ class TestsFlextInfraUtilitiesHermeticGit:
                 selectors are unsupported, or its project identity differs.
 
         """
-        fixture = TestsFlextInfraUtilitiesHermeticGit
+        name = tm.not_none(u.Infra.dep_name(requirement))
+        source = cls._locked_dependency_source(project_root, requirement)
+        owner = storage / "dependency-sources" / name
+        destination = owner / hashlib.sha256("\0".join(source).encode()).hexdigest()
+        owner.mkdir(parents=True, exist_ok=True)
+        with u.Cli.file_changes_lock(owner.with_suffix(".lock")):
+            if destination.is_dir():
+                identity = tm.ok(
+                    u.Infra.git_identity(
+                        m.Infra.GitRepoRequest(repo_root=destination),
+                    )
+                )
+                cls._authenticate_dependency_project(
+                    destination, name, source, identity
+                )
+            else:
+                cls._materialize_dependency_project(
+                    project_root, destination, name, source
+                )
+        return destination
+
+    @classmethod
+    def _locked_dependency_source(
+        cls,
+        project_root: Path,
+        requirement: str,
+    ) -> tuple[str, str, str]:
+        """Elect one dependency from the current native resolution context.
+
+        Returns:
+            The declared URL, ref and exact commit selected by the lock.
+
+        Raises:
+            ValueError: If the dependency has no unique locked Git owner.
+
+        """
         name = tm.not_none(u.Infra.dep_name(requirement))
         context = tm.ok(FlextInfraWorkspaceDetector.resolution_context(project_root))
         document = tm.ok(u.Cli.toml_read_json(context.lock_path))
@@ -275,9 +308,31 @@ class TestsFlextInfraUtilitiesHermeticGit:
             if u.Infra.distribution_identity(package.name) == name
         )
         if len(packages) != 1 or packages[0].source.git is None:
-            msg = f"Fixture dependency has no unique locked Git source owner: {requirement}"
+            msg = (
+                "Fixture dependency has no unique locked Git source owner: "
+                f"{requirement}"
+            )
             raise ValueError(msg)
-        source = tm.not_none(packages[0].source.git)
+        return cls._fixture_git_source(packages[0], requirement)
+
+    @staticmethod
+    def _fixture_git_source(
+        package: p.Infra.LockedPackage,
+        requirement: str,
+    ) -> tuple[str, str, str]:
+        """Retain the lock's Git source and reject unsupported source selectors.
+
+        The existing mirror contract carries URL, ref and commit; subdirectory
+        and multiple-ref selectors cannot be silently reduced to that contract.
+
+        Returns:
+            The source tuple consumed by the existing mirror and checkout owners.
+
+        Raises:
+            ValueError: If selectors are unsupported or the declared source differs.
+
+        """
+        source = tm.not_none(package.source.git)
         parts = urlsplit(source)
         selectors = parse_qs(parts.query, keep_blank_values=True)
         if (
@@ -292,41 +347,89 @@ class TestsFlextInfraUtilitiesHermeticGit:
         rev = selectors["rev"][0]
         sha = parts.fragment
         declared = tm.ok(u.Infra.declared_git_source(requirement))
-        resolved = tm.ok(u.Infra.declared_git_source(f"{name} @ git+{url}@{rev}"))
+        resolved = tm.ok(
+            u.Infra.declared_git_source(f"{package.name} @ git+{url}@{rev}")
+        )
         if declared != ("", "") and declared not in {
             resolved,
             (resolved[0], sha),
         }:
-            msg = f"Fixture dependency differs from its locked Git source: {requirement}"
+            msg = (
+                "Fixture dependency differs from its locked Git source: "
+                f"{requirement}"
+            )
             raise ValueError(msg)
-        owner = storage / "dependency-sources" / name
-        destination = owner / hashlib.sha256(source.encode()).hexdigest()
-        owner.mkdir(parents=True, exist_ok=True)
-        with u.Cli.file_changes_lock(owner.with_suffix(".lock")):
-            if not destination.is_dir():
-                with TemporaryDirectory(dir=owner, prefix=".staging-") as temporary:
-                    staging = Path(temporary)
-                    mirrors = staging / "mirrors"
-                    fixture.build_git_mirrors(project_root, mirrors, ((url, rev, sha),))
-                    environment = fixture.hermetic_git_environment(mirrors)
-                    mirror = mirrors / parts.netloc / parts.path.lstrip("/")
-                    project = staging / "project"
-                    TestsFlextInfraUtilitiesGit.git_bootstrap(
-                        staging,
-                        ("clone", "--no-local", "--no-checkout", str(mirror), str(project)),
-                        overrides=environment,
-                    )
-                    TestsFlextInfraUtilitiesGit.git_bootstrap(
-                        project,
-                        ("checkout", "--detach", sha),
-                        overrides=environment,
-                    )
-                    metadata = tm.ok(u.Infra.read_project_metadata_result(project))
-                    if u.Infra.distribution_identity(metadata.project.name) != name:
-                        msg = f"Locked fixture source does not own {name}: {source}"
-                        raise ValueError(msg)
-                    project.rename(destination)
-        return destination
+        return url, rev, sha
+
+    @classmethod
+    def _materialize_dependency_project(
+        cls,
+        project_root: Path,
+        destination: Path,
+        name: str,
+        source: tuple[str, str, str],
+    ) -> None:
+        """Publish an authenticated source tree from provisioned local Git objects."""
+        with TemporaryDirectory(
+            dir=destination.parent,
+            prefix=".staging-",
+        ) as temporary:
+            staging = Path(temporary)
+            mirrors = staging / "mirrors"
+            cls.build_git_mirrors(project_root, mirrors, (source,))
+            project = staging / "project"
+            identity = cls._checkout_provider(
+                source,
+                project,
+                m.Cli.ProcessOptions(
+                    env=cls.hermetic_git_environment(mirrors),
+                    remove_env_keys=c.Tests.GIT_LOCAL_ENV_KEYS,
+                ),
+            )
+            cls._authenticate_dependency_project(project, name, source, identity)
+            project.rename(destination)
+
+    @classmethod
+    def _authenticate_dependency_project(
+        cls,
+        project: Path,
+        name: str,
+        source: tuple[str, str, str],
+        identity: p.Infra.GitIdentityReport,
+    ) -> None:
+        """Authenticate a fresh or reused tree against its elected locked source.
+
+        Raises:
+            ValueError: If native Git identity, source state or distribution differs.
+
+        """
+        cls._authenticate_provider(project, source, identity)
+        metadata = tm.ok(u.Infra.read_project_metadata_result(project))
+        if u.Infra.distribution_identity(metadata.project.name) != name:
+            msg = f"Locked fixture source does not own {name}: {project}"
+            raise ValueError(msg)
+
+    @staticmethod
+    def _authenticate_provider(
+        project: Path,
+        source: tuple[str, str, str],
+        identity: p.Infra.GitIdentityReport,
+    ) -> None:
+        """Bind the existing native identity observation to the elected source.
+
+        Raises:
+            ValueError: If the checkout's root, commit, origin or source state differs.
+
+        """
+        if (
+            project.is_symlink()
+            or identity.repo_root != project.resolve()
+            or identity.head_oid != source[2]
+            or identity.origin_remote != source[0]
+            or identity.dirty
+        ):
+            msg = f"Fixture source differs from its locked checkout: {project}"
+            raise ValueError(msg)
 
     @staticmethod
     def _commit_origins(

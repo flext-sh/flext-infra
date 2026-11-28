@@ -13,13 +13,12 @@ class FlextInfraModelsMiseToolchainBase:
     """Models namespace owning the preset of schema-loaded configuration records."""
 
     class SchemaRecord(m.ContractModel):
-        """Immutable coercing preset shared by schema-loaded configuration records."""
+        """Immutable closed records with schema coercion and verbatim text."""
 
         # Rendered payloads are byte contracts; preserve their final newline.
         model_config = m.ConfigDict(
             strict=False,
             frozen=True,
-            extra="ignore",
             str_strip_whitespace=False,
         )
 

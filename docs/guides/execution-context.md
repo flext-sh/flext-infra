@@ -1,6 +1,6 @@
 # Execution context
 
-<!-- Revision 2026-11-28.11; Marlon Costa <marlon.costa@datacosmos.com.br>; Datacosmos. -->
+<!-- Revision 2026-11-28.12; Marlon Costa <marlon.costa@datacosmos.com.br>; Datacosmos. -->
 
 <!-- TOC START -->
 
@@ -1259,6 +1259,13 @@ their source and canonical regeneration.
 
 Shared TOML ingress owns Pydantic mapping validation. Pyproject, documentation and
 text-rule consumers reuse its validated output directly.
+
+The shared configuration `SchemaRecord` inherits unknown-field rejection from
+`ContractModel`. Schema coercion, frozen values and verbatim rendered text remain
+separate properties: accepting a numeric string or retaining a final newline does
+not admit an undeclared option. Documentation lifecycle, toolchain and codegen
+records consume this same preset; a retired field fails at the input boundary
+instead of disappearing before its consumer can report it.
 
 Rope DSL closed operation and transform vocabularies belong to `c.Infra`;
 `m` validates the composed declarations, while `p` defines injected ports consumed
