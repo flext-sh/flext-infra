@@ -167,9 +167,7 @@ class TestsFlextInfraUtilitiesHermeticGit:
                 options=options,
             ),
         )
-        return tm.ok(
-            u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=repository))
-        )
+        return tm.ok(u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=repository)))
 
     @staticmethod
     def locked_git_sources(
@@ -354,8 +352,7 @@ class TestsFlextInfraUtilitiesHermeticGit:
             (resolved[0], sha),
         }:
             msg = (
-                "Fixture dependency differs from its locked Git source: "
-                f"{requirement}"
+                f"Fixture dependency differs from its locked Git source: {requirement}"
             )
             raise ValueError(msg)
         return url, rev, sha

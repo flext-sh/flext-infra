@@ -120,11 +120,7 @@ class TestsFlextInfraCodegenScaffolder:
         tm.that(namespace.name, eq="TestsTestProject")
         tm.that([ast.unparse(base) for base in namespace.bases], eq=["test_c.Tests"])
         tm.that(
-            [
-                ast.unparse(node)
-                for node in module.body
-                if isinstance(node, ast.Assign)
-            ],
+            [ast.unparse(node) for node in module.body if isinstance(node, ast.Assign)],
             eq=["c = TestsTestProjectConstants"],
         )
 

@@ -295,12 +295,10 @@ class TestsFlextInfraUtilitiesToolingFixture:
             if name in projects:
                 project = projects[name]
             elif name.startswith("flext-"):
-                project = (
-                    TestsFlextInfraUtilitiesHermeticGit.locked_dependency_project(
-                        tm.not_none(u.Infra.project_root(Path(__file__))),
-                        session_runtime.storage,
-                        requirement,
-                    )
+                project = TestsFlextInfraUtilitiesHermeticGit.locked_dependency_project(
+                    tm.not_none(u.Infra.project_root(Path(__file__))),
+                    session_runtime.storage,
+                    requirement,
                 )
             else:
                 continue
@@ -313,8 +311,7 @@ class TestsFlextInfraUtilitiesToolingFixture:
                 for value in dependency.project.dependencies
                 if (dependency_name := u.Infra.dep_name(value)) is not None
                 and (
-                    dependency_name in projects
-                    or dependency_name.startswith("flext-")
+                    dependency_name in projects or dependency_name.startswith("flext-")
                 )
             )
         return tuple(selected.values())
