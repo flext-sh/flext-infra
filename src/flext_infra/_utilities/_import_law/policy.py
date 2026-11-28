@@ -1,4 +1,3 @@
-# AUTO-GENERATED FILE — Regenerate with: make gen
 """Import policy facade over publication and namespace facts.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.

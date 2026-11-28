@@ -197,7 +197,7 @@ class TestsFlextInfraRefactorMainCli:
     )
 
     _LAZY_CASCADE_INIT = (
-        "# AUTO-GENERATED FILE — Regenerate with: make gen\n"
+        "# AUTO-GENERATED FILE — Regenerate with: make check\n"
         '"""Sample package."""\n\n'
         "from __future__ import annotations\n\n"
         "import typing as _t\n\n"

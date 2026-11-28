@@ -2,7 +2,7 @@
 
 The layout is a pure function of the plan, the static Python model and the
 owning project's declarations; Ruff isort/format owns every ordering and
-wrapping rule reproduced here, so ``make check`` and ``make check`` converge.
+wrapping rule reproduced here, so the `make check` generation and fix passes converge.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT

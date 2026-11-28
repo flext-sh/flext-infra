@@ -48,7 +48,7 @@ rule:
 message: >-
   Utility method `$NAME` reads instance state: declare it @staticmethod or
   @classmethod.
-  Detection only: the method reads instance state; methods that never read self are repaired by make check static-method recipe (no-self-use).
+  Detection only: the method reads instance state; methods that never read self are repaired by the make check static-method recipe (no-self-use).
 metadata:
   enforce: [ENFORCE-102]
   scope:

@@ -341,9 +341,9 @@ class FlextInfraProtocolsConfigMake:
         def fmt_gates(self) -> tuple[t.NonEmptyStr, ...]:
             """Structural member projected from the owning model.
 
-            Gates whose mutating side `make check` drives (formatters). The read-
-            only side runs in `make check`; the fix phase of `make check` never
-            repeats them (single-pass verb law).
+            Gates whose mutating side the `make check` format pass drives
+            (formatters). The read-only side runs in the `make check` gates; its fix
+            pass never repeats them (single-pass verb law).
             """
             ...
 

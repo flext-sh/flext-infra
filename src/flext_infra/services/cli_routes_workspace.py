@@ -276,7 +276,10 @@ class FlextInfraWorkspaceRoutes:
             result = cls._check_admitted(params, root, inputs)
         if complete and result.success:
             u.Infra.gate_repeat_record(ticket)
-        u.Infra.gate_health_record(root, "check", success=result.success)
+        # A workspace check proves every repository it covered, so each one's
+        # heavy verbs (``make mod`` in a member) read this run's health.
+        for covered in (root, *(root / member.path for member in members)):
+            u.Infra.gate_health_record(covered, "check", success=result.success)
         return result
 
     @classmethod

@@ -1,4 +1,4 @@
-"""``make check`` fixes move the MkDocs list blocks rumdl reports without a repair.
+"""``make check`` moves the MkDocs list blocks rumdl reports without a repair.
 
 The documents are scenario data under ``tests/fixtures/markdown-mkdocs-list-indent``
 modeled on the consumer findings: under the MkDocs flavor rumdl reports MD007 for
