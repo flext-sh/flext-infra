@@ -152,10 +152,10 @@ class TestsFlextInfraModernizerPyrefly:
             u.Tests.toml_mapping(pyrefly["errors"]),
             eq={
                 **u.Infra.native_tool_settings(config.Infra.tooling, "pyrefly.errors"),
-                **{
-                    rule: "ignore"
-                    for rule in config.Infra.tooling.tools.pyrefly.ruling_disabled_rules
-                },
+                **dict.fromkeys(
+                    config.Infra.tooling.tools.pyrefly.ruling_disabled_rules,
+                    "ignore",
+                ),
             },
         )
 
@@ -183,10 +183,10 @@ class TestsFlextInfraModernizerPyrefly:
             errors,
             eq={
                 **u.Infra.native_tool_settings(config.Infra.tooling, "pyrefly.errors"),
-                **{
-                    rule: "ignore"
-                    for rule in config.Infra.tooling.tools.pyrefly.ruling_disabled_rules
-                },
+                **dict.fromkeys(
+                    config.Infra.tooling.tools.pyrefly.ruling_disabled_rules,
+                    "ignore",
+                ),
             },
         )
         tm.that(changes, has=f"tool.pyrefly.errors.{stale_key} removed")
