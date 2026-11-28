@@ -47,8 +47,12 @@ class TestsFlextInfraWorkspaceMemberLockOwnership:
         root, project = self._repository(tmp_path, attached=attached)
         context = tm.ok(FlextInfraWorkspaceDetector.resolution_context(project))
         tm.that(context.runtime_root, eq=root)
-        legacy = project / c.Infra.UV_LOCK_FILENAME
-        legacy.write_text("package = []\n", encoding="utf-8")
+        unselected_root = (
+            project if attached else u.Tests.git_repository(tmp_path, "unselected")
+        )
+        unselected_lock = unselected_root / c.Infra.UV_LOCK_FILENAME
+        tm.ok(unselected_lock != context.lock_path)
+        unselected_lock.write_text("package = []\n", encoding="utf-8")
 
         tm.fail(
             FlextInfraWorkspaceLockCompleteness.verify_lock(project),
@@ -56,7 +60,7 @@ class TestsFlextInfraWorkspaceMemberLockOwnership:
         )
 
         tm.fail(context.lock_path.exists())
-        tm.that(legacy.read_text(encoding="utf-8"), eq="package = []\n")
+        tm.that(unselected_lock.read_text(encoding="utf-8"), eq="package = []\n")
 
     @c.Tests.MARK.parametrize("attached", [False, True])
     def test_conform_preserves_existing_locks(

@@ -72,21 +72,12 @@ class FlextInfraGatesCubic(FlextInfraGates):
             project_dir,
             ctx,
         )
-        issues = self._report_issues(scan)
-        return self._build_gate_execution(
-            m.Infra.GateExecutionParams.model_validate({
-                "project_dir": (project_dir),
-                "verdict": (not issues),
-                "outcome": (
-                    c.Infra.ToolOutcome.FINDINGS
-                    if issues
-                    else c.Infra.ToolOutcome.CLEAN
-                ),
-                "issues": (tuple(issues)),
-                "raw_output": (self._raw_output(scan)),
-                "started": (started),
-            }),
-            ctx=ctx,
+        return self._parsed_gate_execution(
+            project_dir,
+            ctx,
+            scan,
+            started,
+            parsed=self._parse_check_output(scan, project_dir, ctx),
         )
 
     @override
@@ -243,7 +234,8 @@ class FlextInfraGatesCubic(FlextInfraGates):
                     return value
         return default
 
-    def _failure_issue(self, message: str | None) -> p.Infra.Issue:
+    @staticmethod
+    def _failure_issue(message: str | None) -> p.Infra.Issue:
         """Represent malformed or absent review output as a blocking issue.
 
         Returns:
@@ -254,7 +246,7 @@ class FlextInfraGatesCubic(FlextInfraGates):
             file=c.PYPROJECT_FILENAME,
             line=1,
             column=0,
-            code=self.gate_id,
+            code=c.Infra.ToolOutcome.ERROR.value,
             message=message or "cubic returned no parseable JSON review output",
             severity=str(c.Infra.GateSeverity.ERROR.value),
         )

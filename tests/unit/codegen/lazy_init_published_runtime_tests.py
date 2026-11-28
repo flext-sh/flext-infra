@@ -325,7 +325,9 @@ class TestsFlextInfraLazyInitPublishedRuntime:
         tm.ok(
             u.Tests.create_python_environment(
                 repository,
-                dependency_projects=u.Tests.python_dependency_projects(repository),
+                dependency_projects=u.Tests.python_dependency_projects(
+                    repository, session_runtime=session_runtime
+                ),
                 session_runtime=session_runtime,
             )
         )
@@ -414,7 +416,9 @@ class TestsFlextInfraLazyInitPublishedRuntime:
         tm.ok(
             u.Tests.create_python_environment(
                 repository,
-                dependency_projects=u.Tests.python_dependency_projects(repository),
+                dependency_projects=u.Tests.python_dependency_projects(
+                    repository, session_runtime=session_runtime
+                ),
                 session_runtime=session_runtime,
             )
         )

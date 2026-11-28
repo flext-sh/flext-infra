@@ -626,8 +626,8 @@ _bootstrap_setup_tools: _builtin_require_workspace
 # Test and internal repair/format handlers use this scope. ALL=Y extends
 # them to every governed member, processed together by their existing runner
 # (operator rulings 2026-10-25: never member by member; 2026-11-22, bead
-# flext-bga5y: members only with ALL=Y). CI evaluates only its own repository.
-# Workspace check selects its declared repository independently of this scope.
+# flext-bga5y: members only with ALL=Y). CI keeps these handlers at scope=self.
+# Workspace check captures its gates with scope=all independently of GATE_SCOPE.
 GATE_SCOPE := self
 # Local and CI consume the same native project/workspace declarations and lock.
 # Setup always bootstraps: `uv sync --frozen` installs exactly the committed

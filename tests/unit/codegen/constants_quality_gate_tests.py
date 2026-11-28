@@ -25,6 +25,7 @@ class TestsFlextInfraConstantsCodegenQualityGate:
     @staticmethod
     def test_dispatch_returns_int(tmp_path: Path) -> None:
         """main() dispatches constants-quality-gate command to handler."""
+        u.Tests.initialize_git_repo(tmp_path)
         result = FlextInfraCli.infra_main([
             "codegen",
             "constants-quality-gate",
@@ -36,6 +37,7 @@ class TestsFlextInfraConstantsCodegenQualityGate:
     @staticmethod
     def test_json_format_exits_with_int(tmp_path: Path) -> None:
         """JSON mode returns an integer exit code."""
+        u.Tests.initialize_git_repo(tmp_path)
         result = FlextInfraCli.infra_main([
             "codegen",
             "constants-quality-gate",
@@ -49,6 +51,7 @@ class TestsFlextInfraConstantsCodegenQualityGate:
     @staticmethod
     def test_text_format_exits_with_int(tmp_path: Path) -> None:
         """Text mode returns an integer exit code."""
+        u.Tests.initialize_git_repo(tmp_path)
         result = FlextInfraCli.infra_main([
             "codegen",
             "constants-quality-gate",
@@ -80,6 +83,7 @@ class TestsFlextInfraConstantsCodegenQualityGate:
     @staticmethod
     def test_real_workspace_run_returns_report(tmp_path: Path) -> None:
         """Quality gate runs on real empty workspace without errors."""
+        u.Tests.initialize_git_repo(tmp_path)
         gate = FlextInfraGatesCodegenQuality(
             workspace_factory=infra.rope_workspace,
             repository_root=tmp_path,
@@ -87,7 +91,22 @@ class TestsFlextInfraConstantsCodegenQualityGate:
         )
         report_result = gate.build_report()
         tm.ok(report_result)
-        tm.that(report_result.value, has="verdict")
+        report = report_result.value
+        tm.that(u.Cli.json_pick_str(report, "verdict"), eq="PASS")
+        tm.that(u.Cli.json_deep_mapping_list(report, "projects"), length=0)
+        tm.that(
+            u.Cli.json_deep_mapping_list(report, "duplicate_constant_groups"),
+            length=0,
+        )
+        after = u.Cli.json_deep_mapping(report, "after")
+        for metric in (
+            "projects_total",
+            "projects_passed",
+            "projects_failed",
+            "total_violations",
+            "duplicate_groups",
+        ):
+            tm.that(u.Cli.json_pick_int(after, metric), eq=0)
 
     @staticmethod
     @c.Tests.MARK.slow

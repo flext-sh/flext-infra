@@ -729,10 +729,10 @@ class FlextInfraUtilitiesRepository(FlextInfraUtilitiesGitRequirementSource):
         """Return the exact distribution source declared by the pyproject.
 
         Internal dependencies share a provider, not necessarily a ref.
-        uv.lock alone records the commit each line resolves to, so a
-        commit ref left in the projection declares no line. A plain
-        (source-less) requirement names a workspace dependency whose URL the
-        workspace manifest owns. Other distributions never supply its ref.
+        An explicit commit remains dependency provenance but does not name an
+        integration branch. A plain (source-less) requirement names a workspace
+        dependency whose URL the workspace manifest owns. Other distributions
+        never supply its ref.
 
         Returns:
             The exact distribution's source, or its declared workspace source.

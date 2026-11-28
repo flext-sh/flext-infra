@@ -54,10 +54,7 @@ RUN metadata_bare="$(git --git-dir=/workspace/.git rev-parse --is-bare-repositor
 # Source: template (clean-machine bootstrap through the canonical verb)
 # The image exists to PROVE that a clean machine can bootstrap this project
 # with nothing but the declared toolchain. It therefore runs the canonical
-# setup verb fail-closed: any non-zero status fails the build. An earlier
-# revision wrapped this in `set +e` and soft-passed whenever the output
-# mentioned uv.lock/flext-core, which turned the proof into a bypass -- a
-# broken bootstrap still produced a green image.
+# setup verb directly: any non-zero status fails the build.
 # The setup RUN receives GitHub's credential only through a BuildKit secret.
 # Never persist build credentials in ARG, ENV, layers, or image configuration.
 ENV CI=Y

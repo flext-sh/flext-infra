@@ -9,7 +9,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from tests import c, m, p, t, tm, u
+from tests import c, infra, m, p, t, tm, u
 
 
 class TestsFlextInfraConstantsLiteral:
@@ -98,11 +98,10 @@ class TestsFlextInfraConstantsLiteral:
     @c.Tests.MARK.parametrize("case", ["shadowed", "ambiguous"])
     def test_unproven_literal_owner_fails_before_publication(
         constants_workspace: tuple[Path, Path],
-        constant_candidate: t.Tests.SourceCandidate,
         case: str,
     ) -> None:
         """Lexical facade collisions and competing string owners fail closed."""
-        _root, package = constants_workspace
+        root, package = constants_workspace
         owner = package / c.Infra.CONSTANTS_PY
         consumer = package / "consumer.py"
         extra = (
@@ -128,5 +127,21 @@ class TestsFlextInfraConstantsLiteral:
             if case == "shadowed"
             else "literal return has ambiguous public constant owners"
         )
-        with u.Tests.raises(ValueError, match=message):
-            constant_candidate(sources, ())
+        for path, content in sources.items():
+            tm.ok(u.Cli.atomic_write_text_file(path, content))
+        before = {path: path.read_bytes() for path in sources}
+        with infra.rope_workspace(root) as workspace:
+            planned = u.Infra.plan_semantic_cutover(
+                c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS,
+                rope_workspace=workspace,
+                sources=sources,
+            )
+        tm.fail(planned, has=f"{message} in {consumer}")
+        tm.that(
+            tm.not_none(planned.error_data)[c.Infra.MOD_FAILURE_MODULE_KEY],
+            eq=str(consumer),
+        )
+        if case == "ambiguous":
+            tm.that(planned.error, has="c.TOKEN")
+            tm.that(planned.error, has="c.OTHER")
+        tm.that({path: path.read_bytes() for path in sources}, eq=before)

@@ -20,6 +20,60 @@ class TestsFlextInfraCheckReportProgress:
     """Observe real native receipts and interrupted aggregate reports."""
 
     @staticmethod
+    @c.Tests.MARK.parametrize("include_security", [False, True])
+    def test_failed_prerequisite_keeps_only_applicable_gates_pending(
+        tmp_path: Path,
+        *,
+        include_security: bool,
+    ) -> None:
+        """An unelected gate does not hide completed findings or pending execution."""
+        project = u.Tests.mk_project(
+            tmp_path,
+            "accounting",
+            pyproject='[project]\nname = "accounting"\nversion = "0.1.0"\n',
+            with_src=True,
+        )
+        (project / c.Infra.DEFAULT_SRC_DIR / "consumer.py").write_text(
+            "import os\n", encoding=c.DEFAULT_ENCODING
+        )
+        u.Tests.commit_git_changes(project, "fixture")
+        reports = tmp_path / "reports"
+        later = (c.Infra.SECURITY,) if include_security else ()
+        requested = (c.Infra.LINT, c.Infra.CUBIC, *later)
+
+        with u.Tests.env_vars_context({c.Infra.CUBIC_API_KEY_ENV: ""}):
+            summary = tm.ok(
+                check.FlextInfraWorkspaceChecker(
+                    repository_root=project,
+                ).run_projects_report(
+                    projects=(
+                        m.Infra.CheckProjectTarget(name=project.name, path=project),
+                    ),
+                    gates=requested,
+                    ctx=u.Tests.gate_context(project, reports),
+                ),
+            )
+
+        tm.that(tuple(summary.requested_gates), eq=requested)
+        tm.that(tuple(summary.pending_gates), eq=later)
+        tm.that(summary.complete, eq=not include_security)
+        tm.that(summary.targets, length=1)
+        tm.that(tuple(summary.targets[0].applicable_gates), eq=(c.Infra.LINT, *later))
+        tm.that(summary.results, length=1)
+        tm.that(tuple(summary.results[0].gates), eq=(c.Infra.LINT,))
+        execution = summary.results[0].gates[c.Infra.LINT]
+        tm.fail(execution.result.passed)
+        tm.that(execution.outcome, eq=c.Infra.ToolOutcome.FINDINGS)
+        tm.ok(any(issue.code == "F401" for issue in execution.issues))
+        tm.ok(tm.not_none(execution.raw_receipt).is_file())
+        (report_path,) = reports.glob(f"*/{c.Infra.CHECK_REPORT_SARIF_FILENAME}")
+        persisted = m.Infra.SarifReport.model_validate_json(report_path.read_bytes())
+        tm.that(
+            tm.not_none(persisted.properties).model_dump(mode="json"),
+            eq=summary.model_dump(mode="json"),
+        )
+
+    @staticmethod
     def _register_members(workspace: Path, *members: Path) -> None:
         """Commit each member and register it as a submodule of ``workspace``.
 

@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import venv
 from collections.abc import Mapping
 from pathlib import Path
 
@@ -37,7 +38,7 @@ class TestsFlextInfraCodegenMakeCheckPartition:
 
     @staticmethod
     def test_sonarcloud_render_contract_round_trips_typed_configuration() -> None:
-        """Resolve the full public render schema before filesystem scaffolding."""
+        """Round-trip owned inputs and reject fields belonging to artifact policy."""
         codegen = config.Infra.codegen
         policy = m.Infra.SonarcloudSpec.model_validate(
             codegen.sonarcloud.model_dump(),
@@ -53,13 +54,18 @@ class TestsFlextInfraCodegenMakeCheckPartition:
         rendered = m.Infra.SonarcloudRenderSpec(
             sonarcloud=policy,
             tests_dir=c.Infra.DIR_TESTS,
-            generated_source_globs=codegen.generated_source_globs,
         )
         restored = m.Infra.SonarcloudRenderSpec.model_validate_json(
             rendered.model_dump_json(),
         )
         tm.that(restored, eq=rendered)
         tm.that(restored.sonarcloud, eq=codegen.sonarcloud)
+        tm.that(restored.tests_dir, eq=c.Infra.DIR_TESTS)
+        with u.Tests.raises(e.PydanticValidationError, match="generated_source_globs"):
+            m.Infra.SonarcloudRenderSpec.model_validate({
+                **rendered.model_dump(),
+                "generated_source_globs": codegen.generated_source_globs,
+            })
 
     @staticmethod
     def test_registry_declares_one_kind_per_gate() -> None:
@@ -517,7 +523,7 @@ class TestsFlextInfraCodegenMakeCheckPartition:
             tmp_path,
             c.Infra.MakeProfile.STANDALONE,
         )
-        tm.ok(u.Tests.create_python_environment(root))
+        venv.create(u.Infra.runtime_environment_dir(root))
         policy = config.Infra.codegen.make
         environment: Mapping[str, str]
         if context == "ci":

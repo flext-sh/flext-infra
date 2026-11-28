@@ -156,6 +156,7 @@ class TestsFlextInfraGitSubmoduleComposition:
         parent = self._workspace(tmp_path, {"alpha": ((), ())})
         committed = u.Tests.git_capture(parent, "rev-parse", "HEAD:alpha")
         member = parent / "alpha"
+        u.Tests.configure_git_identity(member)
         (member / "CHANGELOG.md").write_text(
             "moved\n",
             encoding=c.DEFAULT_ENCODING,

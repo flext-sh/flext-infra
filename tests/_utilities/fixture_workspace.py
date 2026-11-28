@@ -404,13 +404,12 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
         package_root = project_dir / "src" / name.replace("-", "_")
         package_root.mkdir(parents=True, exist_ok=True)
         (package_root / "__init__.py").write_text("", encoding="utf-8")
-        project_spec = TestsFlextInfraUtilitiesProjectFixture.project_spec(name)
         (project_dir / c.PYPROJECT_FILENAME).write_text(
             "[project]\n"
             f'name = "{name}"\n'
-            f'authors = [{{name = "{project_spec.author_name}", '
-            f'email = "{project_spec.author_email}"}}]\n'
-            f'license = "{project_spec.license}"\n'
+            f'authors = [{{name = "{spec.author_name}", '
+            f'email = "{spec.author_email}"}}]\n'
+            f'license = "{spec.license}"\n'
             'version = "0.1.0"\n'
             f'requires-python = "{python_required}"\n'
             f'dependencies = ["{upstream_source}"]\n'
@@ -447,13 +446,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
             url=origin.text.strip(),
         )
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(project_dir))
-        return workspace.model_copy(
-            update={
-                "project": TestsFlextInfraUtilitiesProjectFixture.project_spec(
-                    name,
-                ),
-            },
-        )
+        return workspace.model_copy(update={"project": spec})
 
     @staticmethod
     def required_beads(workspace: p.Infra.WorkspaceSpec) -> p.Infra.BeadsProjectSpec:
@@ -558,7 +551,6 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
             ("[project]\nname='test-project'\ndependencies=['flext-core>=0.1.0']\n"),
             encoding="utf-8",
         )
-        (project / c.GIT_DIR_NAME).mkdir()
         TestsFlextInfraUtilitiesProjectFixture.write_project_beads_config(
             project,
             "test-project",
@@ -572,6 +564,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
                     f"class TestProject{mod.split('.')[0].title()}:\n    pass\n",
                     encoding="utf-8",
                 )
+        TestsFlextInfraUtilitiesGit.initialize_git_repo(project)
         return project
 
     class WorktreeFixture:
@@ -867,7 +860,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
                     root,
                     dependency_projects=(
                         TestsFlextInfraUtilitiesToolingFixture.python_dependency_projects(
-                            root
+                            root, session_runtime=session_runtime
                         )
                     ),
                     session_runtime=session_runtime,

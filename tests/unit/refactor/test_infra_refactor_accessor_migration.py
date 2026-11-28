@@ -257,7 +257,9 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
         tm.ok(
             u.Tests.create_python_environment(
                 workspace,
-                dependency_projects=u.Tests.python_dependency_projects(project),
+                dependency_projects=u.Tests.python_dependency_projects(
+                    project, session_runtime=session_runtime
+                ),
                 session_runtime=session_runtime,
             )
         )

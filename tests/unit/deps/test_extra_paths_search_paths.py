@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 
 from flext_infra import config
 from flext_infra.deps import FlextInfraExtraPathsManager
-from tests import c, tm
+from tests import c, tm, u
 from tests.unit.deps.extra_paths_support import TestsFlextInfraExtraPathsSupport
 
 if TYPE_CHECKING:
@@ -49,6 +49,7 @@ class TestsFlextInfraExtraPathsSearchPaths:
             "VALUE = 1\n",
             encoding="utf-8",
         )
+        u.Tests.initialize_git_repo(tmp_path)
 
         manager = TestsFlextInfraExtraPathsSupport.manager(tmp_path)
         result = manager.pyrefly_search_paths(project_dir=tmp_path)

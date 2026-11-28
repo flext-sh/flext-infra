@@ -76,7 +76,7 @@ class TestsFlextInfraMakeDocsActionsConfig:
     @staticmethod
     def test_warning_posture_is_not_a_docs_option() -> None:
         """Test warning posture is not a docs option."""
-        with u.Tests.raises(c.ValidationError):
+        with u.Tests.raises(c.ValidationError, match="warning_actions"):
             m.Infra.MakeDocsSpec.model_validate(
                 _spec_payload(warning_actions=["audit"]),
             )

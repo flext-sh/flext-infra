@@ -140,7 +140,8 @@ class FlextInfraUtilitiesDocsScopePolicy(FlextInfraUtilitiesDocsScopeState):
 
         The typed codegen policy is loaded once for the complete candidate set;
         reloading it per path revalidates the whole configuration for every
-        Markdown file in the scope.
+        Markdown file in the scope. Path exclusions consume the strict policy
+        without classifying unrelated project sources.
 
         Returns:
             The excluded subset of ``relative_paths``.
@@ -148,9 +149,8 @@ class FlextInfraUtilitiesDocsScopePolicy(FlextInfraUtilitiesDocsScopeState):
         """
         codegen = (
             FlextInfraUtilitiesProjectManagedArtifacts
-            .load_codegen_inputs(project_root)
+            .load_codegen_policy(project_root)
             .unwrap()
-            .spec
         )
         return frozenset(
             relative_path

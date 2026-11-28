@@ -97,12 +97,23 @@ class TestsFlextInfraDepsLockIntegrity:
         tm.that(error, has="missing committed generated lock")
 
     def test_root_lock_does_not_replace_the_selected_view(self, tmp_path: Path) -> None:
-        """A stale legacy lock cannot turn an absent selected lock into success."""
+        """A parent's locks cannot replace the selected checkout's missing lock."""
         for filename in (c.Infra.MISE_LOCK_FILENAME, c.Infra.UV_LOCK_FILENAME):
             (tmp_path / filename).write_text("version = 1\n", encoding="utf-8")
 
+        selected = u.Tests.git_repository(tmp_path, "selected")
+        (selected / c.Infra.MISE_LOCK_FILENAME).write_text(
+            "version = 1\n",
+            encoding="utf-8",
+        )
+        context = tm.ok(FlextInfraWorkspaceDetector.resolution_context(selected))
+        tm.that(context.runtime_root, eq=selected.resolve())
+        tm.that(context.lock_path, eq=selected / c.Infra.UV_LOCK_FILENAME)
+        tm.that(context.lock_path.is_file(), eq=False)
+
         tm.fail(
-            self._verifier(tmp_path).execute(), has="missing committed generated lock"
+            self._verifier(selected).execute(),
+            has=f"{c.Infra.UV_LOCK_FILENAME}: missing committed generated lock",
         )
 
     def test_verify_pin_convergence_passes_on_single_repo(self, tmp_path: Path) -> None:

@@ -22,7 +22,7 @@ class FlextInfraCodegenLayoutPlan:
     """Build the per-project layout plan from the declarative layout SSOT."""
 
     @staticmethod
-    def _codegen_spec(project_dir: Path) -> p.Infra.CodegenConfigSpec:
+    def _codegen_inputs(project_dir: Path) -> p.Infra.CodegenInputs:
         """Layout SSOT: the selected project's layered codegen contract.
 
         Gates and the generator read the SAME ordered strict source (packaged
@@ -33,11 +33,10 @@ class FlextInfraCodegenLayoutPlan:
         entry the generator projects.
 
         Returns:
-            The selected project's validated layered codegen policy.
+            The selected project's validated policy and its captured sources.
 
         """
-        layered = u.Infra.load_codegen_inputs(project_dir)
-        return layered.map(lambda inputs: inputs.spec).unwrap()
+        return u.Infra.load_codegen_inputs(project_dir).unwrap()
 
     @staticmethod
     def layout_project_name(project_dir: Path) -> str:
@@ -79,7 +78,8 @@ class FlextInfraCodegenLayoutPlan:
             The resulting ``m.Infra.LayoutProjectReport``.
 
         """
-        codegen = self._codegen_spec(project_dir)
+        inputs = self._codegen_inputs(project_dir)
+        codegen = inputs.spec
         spec = codegen.layout
         project_name = self.layout_project_name(project_dir)
         override = self._resolve_override(spec, project_name)
@@ -91,39 +91,32 @@ class FlextInfraCodegenLayoutPlan:
         git_root_names = u.Infra.git_tracked_top_level_dir_names(project_dir)
         for entry in sorted(project_dir.iterdir()):
             name = entry.name
-            if git_root_names is not None and name not in git_root_names:
-                continue
             if spec.allow_hidden and name.startswith("."):
                 continue
             if self._is_ignored_root(spec, override, name):
                 continue
-            if override is not None and name in override.archive_names:
-                findings.append(
-                    self._finding(
-                        "archive",
-                        name,
-                        f"{spec.archive_root}/{project_name}/{name}",
-                    ),
-                )
+            if override is not None and name in override.retire_names:
+                finding = self._finding("retire", name)
+            elif name in allowed or name in override_roots:
                 continue
-            if name in allowed or name in override_roots:
+            else:
+                finding = self._classify_root_entry(spec, override, entry)
+            if (
+                git_root_names is not None
+                and name not in git_root_names
+                and finding.rule != "retire"
+            ):
                 continue
-            findings.append(
-                self._classify_root_entry(spec, override, project_name, entry),
-            )
+            findings.append(finding)
         if override is not None:
             findings.extend(self._override_move_findings(override, project_dir))
             findings.extend(
-                self._override_empty_dir_findings(
-                    spec,
-                    override,
-                    project_dir,
-                    project_name,
-                ),
+                self._override_empty_dir_findings(override, project_dir),
             )
-        findings.extend(self._gitignore_findings(spec, override, project_dir))
+        findings.extend(self._gitignore_findings(override, project_dir))
         return m.Infra.LayoutProjectReport(
             project=project_name,
+            inputs=inputs.sources,
             findings=tuple(findings),
         )
 
@@ -238,7 +231,7 @@ class FlextInfraCodegenLayoutPlan:
         """Root names owned by per-project override rules (never generic rules).
 
         Declared ``keep_root_files`` are owned too: they are exempt from the
-        generic loose-root classification instead of being archived or moved.
+        generic loose-root classification instead of being retired or moved.
 
         Returns:
             The resulting ``frozenset[str]``.
@@ -248,7 +241,7 @@ class FlextInfraCodegenLayoutPlan:
             return frozenset()
         return frozenset({
             *(Path(move.source).parts[0] for move in override.moves),
-            *override.archive_empty_dirs,
+            *override.prune_empty_dirs,
             *override.keep_root_files,
         })
 
@@ -256,17 +249,16 @@ class FlextInfraCodegenLayoutPlan:
         self,
         spec: p.Infra.LayoutSpec,
         override: p.Infra.LayoutProjectOverrideSpec | None,
-        project_name: str,
         entry: Path,
     ) -> p.Infra.LayoutFinding:
-        """Classify one non-canonical root entry into move/archive/review.
+        """Classify one non-canonical root entry into move/retire/review.
 
         Returns:
             The resulting ``m.Infra.LayoutFinding``.
 
         """
         name = entry.name
-        docs_finding = self._classify_docs_entry(spec, project_name, entry)
+        docs_finding = self._classify_docs_entry(spec, entry)
         if docs_finding is not None:
             return docs_finding
         if entry.is_file() and name in spec.move_example_files:
@@ -276,24 +268,19 @@ class FlextInfraCodegenLayoutPlan:
         ):
             return self._finding("move", name, f"{spec.diagrams_target}/{name}")
         if (
-            name in spec.archive_names
-            or (override is not None and name in override.archive_names)
-            or any(fnmatchcase(name, glob) for glob in spec.archive_globs)
+            name in spec.retire_names
+            or (override is not None and name in override.retire_names)
+            or any(fnmatchcase(name, glob) for glob in spec.retire_globs)
         ):
-            return self._finding(
-                "archive",
-                name,
-                f"{spec.archive_root}/{project_name}/{name}",
-            )
+            return self._finding("retire", name)
         return self._finding("review", name)
 
     def _classify_docs_entry(
         self,
         spec: p.Infra.LayoutSpec,
-        project_name: str,
         entry: Path,
     ) -> p.Infra.LayoutFinding | None:
-        """Classify a docs move or an archived docs conflict, else None.
+        """Classify a docs move; apply verifies any existing destination.
 
         Returns:
             The resulting ``m.Infra.LayoutFinding | None``.
@@ -304,16 +291,6 @@ class FlextInfraCodegenLayoutPlan:
             return self._finding("move", name, f"{spec.docs_target}/{name}")
         if entry.is_file() and name in spec.move_docs_files:
             target = f"{spec.docs_target}/{name}"
-            if (entry.parent / target).exists():
-                return self._finding(
-                    "archive",
-                    name,
-                    f"{spec.archive_root}/{project_name}/{name}",
-                    message=(
-                        f"archive {name} -> {spec.archive_root}/{project_name}/{name} "
-                        f"(canonical docs/{name} kept)"
-                    ),
-                )
             return self._finding("move", name, target)
         return None
 
@@ -336,41 +313,23 @@ class FlextInfraCodegenLayoutPlan:
 
     def _override_empty_dir_findings(
         self,
-        spec: p.Infra.LayoutSpec,
         override: p.Infra.LayoutProjectOverrideSpec,
         project_dir: Path,
-        project_name: str,
     ) -> Sequence[p.Infra.LayoutFinding]:
-        """Override directories archived once override moves have emptied them.
+        """Override directories pruned once override moves have emptied them.
 
         Returns:
             The resulting ``Sequence[p.Infra.LayoutFinding]``.
 
         """
-        findings: list[p.Infra.LayoutFinding] = []
-        move_sources = {move.source for move in override.moves}
-        for name in override.archive_empty_dirs:
-            path = project_dir / name
-            if not path.is_dir():
-                continue
-            target = f"{spec.archive_root}/{project_name}/{name}"
-            if not any(path.iterdir()):
-                findings.append(self._finding("archive", name, target))
-                continue
-            remaining = {
-                entry.relative_to(project_dir).as_posix()
-                for entry in path.rglob("*")
-                if entry.is_file()
-            }
-            if remaining and remaining <= move_sources:
-                findings.append(self._finding("archive", name, target))
-                continue
-            findings.append(self._finding("review", name))
-        return tuple(findings)
+        return tuple(
+            self._finding("prune", name)
+            for name in override.prune_empty_dirs
+            if (project_dir / name).is_dir()
+        )
 
     def _gitignore_findings(
         self,
-        spec: p.Infra.LayoutSpec,
         override: p.Infra.LayoutProjectOverrideSpec | None,
         project_dir: Path,
     ) -> Sequence[p.Infra.LayoutFinding]:
@@ -380,9 +339,7 @@ class FlextInfraCodegenLayoutPlan:
             The resulting ``Sequence[p.Infra.LayoutFinding]``.
 
         """
-        required = [f"{spec.archive_root}/"]
-        if override is not None:
-            required.extend(override.gitignore_additions)
+        required = () if override is None else override.gitignore_additions
         current = ""
         gitignore_path = project_dir / c.Infra.GITIGNORE
         if gitignore_path.is_file():
@@ -413,7 +370,8 @@ class FlextInfraCodegenLayoutPlan:
         """
         messages: Mapping[t.Infra.LayoutRule, str] = {
             "move": f"move {path} -> {target}",
-            "archive": f"archive {path} -> {target}",
+            "retire": f"retire {path} after Git preservation",
+            "prune": f"prune empty directory {path}",
             "gitignore": f"add .gitignore entry: {target}",
             "review": f"non-canonical root entry requires review: {path}",
         }

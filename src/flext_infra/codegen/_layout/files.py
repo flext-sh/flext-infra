@@ -1,9 +1,8 @@
 """Filesystem and Git primitives for the layout engine apply path.
 
-Archive-not-delete law: nothing is ever destroyed; collisions and duplicates
-move content into ``<archive_root>/<project>/``. Git checkouts use ``git mv``
-for moves and ``git rm --cached`` plus rename for archives; plain directories
-degrade to plain renames.
+Moves retain their Git history. Retirement requires unchanged committed bytes,
+and publishes captured deletions through the native file transaction. Divergent
+destinations and content without Git preservation remain untouched.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -11,120 +10,234 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
-from flext_infra import config, m, p, r, t, u
-from flext_infra.codegen._layout import FlextInfraCodegenLayoutPlan
+from flext_infra import m, p, r, t, u
 
 
 class FlextInfraCodegenLayoutFiles:
-    """Move/archive primitives shared by the layout apply orchestration."""
+    """Move/retire primitives shared by the layout apply orchestration."""
 
     def _move_entry(
         self,
         project_dir: Path,
         source: Path,
         target: Path,
-        archive_rel: str,
+        inputs: Sequence[p.Cli.AtomicFileState],
     ) -> p.Result[tuple[t.Infra.LayoutStatus, str]]:
-        """Move one entry; collisions archive the source (never delete).
+        """Move one entry or retire a Git-preserved identical duplicate.
 
         Returns:
             The resulting ``p.Result[tuple[t.Infra.LayoutStatus, str]]``.
 
         """
-        if not target.exists():
-            moved = self._move_path(project_dir, source, target)
-            if moved.failure:
-                return r[tuple[t.Infra.LayoutStatus, str]].from_failure(moved)
+        if not target.exists() and not target.is_symlink():
             applied_status: t.Infra.LayoutStatus = "applied"
-            return r[tuple[t.Infra.LayoutStatus, str]].ok((
-                applied_status,
-                f"moved {source.name} -> {target.name}",
-            ))
+            return self._move_path(project_dir, source, target).map(
+                lambda _: (
+                    applied_status,
+                    f"moved {source.name} -> {target.name}",
+                )
+            )
+        before = u.Cli.atomic_read_binary_file_state(source, required=True)
+        if before.failure:
+            return r[tuple[t.Infra.LayoutStatus, str]].from_failure(before)
+        destination = u.Cli.atomic_read_binary_file_state(target, required=True)
+        if destination.failure:
+            return r[tuple[t.Infra.LayoutStatus, str]].from_failure(destination)
         if (
-            source.is_file()
-            and target.is_file()
-            and source.read_bytes() == target.read_bytes()
+            before.value.content != destination.value.content
+            or before.value.mode != destination.value.mode
         ):
-            archived = self._archive_path(project_dir, source, archive_rel)
-            if archived.failure:
-                return r[tuple[t.Infra.LayoutStatus, str]].from_failure(archived)
-            status, message = archived.value
-            return r[tuple[t.Infra.LayoutStatus, str]].ok((
-                status,
-                f"identical target kept; {message}",
-            ))
-        archived = self._archive_path(project_dir, source, archive_rel)
-        if archived.failure:
-            return r[tuple[t.Infra.LayoutStatus, str]].from_failure(archived)
-        status, message = archived.value
+            return r[tuple[t.Infra.LayoutStatus, str]].fail(
+                f"layout collision preserves divergent paths: {source} -> {target}",
+            )
+        retired = self._retire_path(
+            project_dir, source, (*inputs, before.value, destination.value)
+        )
+        if retired.failure:
+            return r[tuple[t.Infra.LayoutStatus, str]].from_failure(retired)
+        status, message = retired.value
         return r[tuple[t.Infra.LayoutStatus, str]].ok((
             status,
-            f"collision: target kept; {message}",
+            f"identical target kept; {message}",
         ))
 
-    def _archive_path(
+    def _retire_path(
         self,
         project_dir: Path,
         source: Path,
-        rel: str,
-        finding: p.Infra.LayoutFinding | None = None,
+        inputs: Sequence[p.Cli.AtomicFileState],
     ) -> p.Result[tuple[t.Infra.LayoutStatus, str]]:
-        """Move one entry under ``archive_root/<project>/`` (idempotent).
+        """Retire exact HEAD content through authenticated native publication.
 
         Returns:
             The resulting ``p.Result[tuple[t.Infra.LayoutStatus, str]]``.
 
         """
-        spec = config.Infra.codegen.layout
-        project_name = FlextInfraCodegenLayoutPlan.layout_project_name(project_dir)
-        target = project_dir / spec.archive_root / project_name / rel
-        base_message = finding.message if finding is not None else source.name
-        if target.exists():
-            if (
-                source.is_file()
-                and target.is_file()
-                and source.read_bytes() == target.read_bytes()
-            ):
-                removed = self._remove_tracked_or_unlinked(project_dir, source)
-                if removed.failure:
-                    return r[tuple[t.Infra.LayoutStatus, str]].from_failure(removed)
-                applied_status: t.Infra.LayoutStatus = "applied"
-                return r[tuple[t.Infra.LayoutStatus, str]].ok((
-                    applied_status,
-                    f"{base_message} (already archived; duplicate removed)",
-                ))
-            skipped_status: t.Infra.LayoutStatus = "skipped"
-            return r[tuple[t.Infra.LayoutStatus, str]].ok((
-                skipped_status,
-                f"{base_message} (archive target exists; manual review)",
-            ))
-        moved = self._archive_move(project_dir, source, target)
-        if moved.failure:
-            return r[tuple[t.Infra.LayoutStatus, str]].from_failure(moved)
-        final_applied_status: t.Infra.LayoutStatus = "applied"
+        paths = (source,)
+        if source.is_dir() and not source.is_symlink():
+            inventoried = u.Cli.atomic_inventory_physical_tree(source)
+            if inventoried.failure:
+                return r[tuple[t.Infra.LayoutStatus, str]].from_failure(inventoried)
+            paths = tuple(
+                entry.path
+                for entry in inventoried.value.entries
+                if entry.kind != "directory"
+            )
+            if not paths:
+                empty_status: t.Infra.LayoutStatus = "applied"
+                return self._prune_empty_dirs(source).map(
+                    lambda _: (empty_status, f"pruned empty {source.name}")
+                )
+        captured = u.Infra.git_snapshot_worktree_state(
+            m.Infra.GitWorktreeStateRequest(
+                repo_root=project_dir,
+                paths=(source.relative_to(project_dir),),
+            ),
+        )
+        if captured.failure:
+            return r[tuple[t.Infra.LayoutStatus, str]].from_failure(captured)
+        return self._retire_captured_paths(
+            project_dir, source, paths, inputs, captured.value
+        )
+
+    def _retire_captured_paths(
+        self,
+        project_dir: Path,
+        source: Path,
+        paths: Sequence[Path],
+        inputs: Sequence[p.Cli.AtomicFileState],
+        snapshot: p.Infra.GitWorktreeStateSnapshot,
+    ) -> p.Result[tuple[t.Infra.LayoutStatus, str]]:
+        """Validate committed content and capture its authenticated deletion plans.
+
+        Returns:
+            The retirement outcome or the original validation failure.
+
+        """
+        committed = {
+            entry.path: (entry.oid, entry.mode) for entry in snapshot.head_entries
+        }
+        observed = {entry.path: (entry.oid, entry.mode) for entry in snapshot.files}
+        if (
+            snapshot.index_entries != snapshot.head_entries
+            or observed != committed
+            or set(committed) != {path.relative_to(project_dir) for path in paths}
+        ):
+            return r[tuple[t.Infra.LayoutStatus, str]].fail(
+                f"layout retirement requires unchanged content committed in Git: "
+                f"{source.relative_to(project_dir)}",
+            )
+        plans: list[p.Infra.CodegenFilePlan] = []
+        for path in paths:
+            before = u.Cli.atomic_read_binary_file_state(path, required=True)
+            if before.failure:
+                return r[tuple[t.Infra.LayoutStatus, str]].from_failure(before)
+            plans.append(
+                m.Infra.CodegenFilePlan(
+                    project=project_dir,
+                    path=path,
+                    before=before.value,
+                    desired_content=None,
+                    desired_mode=None,
+                    inputs=tuple(inputs),
+                    owner="codegen",
+                ),
+            )
+        verified = u.Infra.git_verify_worktree_state(snapshot, project_dir)
+        if verified.failure:
+            return r[tuple[t.Infra.LayoutStatus, str]].from_failure(verified)
+        if not verified.value:
+            return r[tuple[t.Infra.LayoutStatus, str]].fail(
+                "layout source changed before Git-preserved retirement"
+            )
+        return self._publish_retirement(project_dir, source, snapshot, plans)
+
+    def _publish_retirement(
+        self,
+        project_dir: Path,
+        source: Path,
+        snapshot: p.Infra.GitWorktreeStateSnapshot,
+        plans: Sequence[p.Infra.CodegenFilePlan],
+    ) -> p.Result[tuple[t.Infra.LayoutStatus, str]]:
+        """Publish verified deletions and retain their receipt through finalization.
+
+        Returns:
+            The retirement outcome with any completed publication effects.
+
+        """
+        published = u.Infra.publish_codegen_plans(project_dir, plans)
+        if published.failure:
+            return r[tuple[t.Infra.LayoutStatus, str]].from_failure(published)
+        finalized = self._finalize_retirement(
+            project_dir, source, snapshot.index_entries
+        )
+        if finalized.failure:
+            return r[tuple[t.Infra.LayoutStatus, str]].fail(
+                finalized.error or "layout retirement finalization failed",
+                error_code=finalized.error_code,
+                error_data={
+                    **(finalized.error_data or {}),
+                    "written_files": [str(path) for path in published.value],
+                },
+                exception=finalized.exception,
+            )
+        applied_status: t.Infra.LayoutStatus = "applied"
         return r[tuple[t.Infra.LayoutStatus, str]].ok((
-            final_applied_status,
-            base_message,
+            applied_status,
+            f"retired {source.name}; preserved in Git {snapshot.head}",
         ))
 
-    def _move_path(
+    def _finalize_retirement(
         self,
+        project_dir: Path,
+        source: Path,
+        entries: Sequence[p.Infra.GitWorktreeIndexEntry],
+    ) -> p.Result[bool]:
+        """Retire exact versioned index entries and prune emptied directories.
+
+        Returns:
+            Success after finalization, or the original Git or filesystem failure.
+
+        """
+        for entry in entries:
+            retired = u.Infra.git_retire_index_file(
+                m.Infra.GitIndexRetirementRequest.model_validate({
+                    "repo_root": project_dir,
+                    "entry": entry,
+                }),
+            )
+            if retired.failure:
+                return r[bool].from_failure(retired)
+        if source.is_dir():
+            return self._prune_empty_dirs(source)
+        return r[bool].ok(value=True)
+
+    @staticmethod
+    def _move_path(
         project_dir: Path,
         source: Path,
         target: Path,
     ) -> p.Result[bool]:
-        """Move via ``git mv`` when tracked, plain rename otherwise.
+        """Move tracked entries via Git and untracked entries without staging.
 
         Returns:
             The resulting ``p.Result[bool]``.
 
         """
-        target.parent.mkdir(parents=True, exist_ok=True)
         source_rel = source.relative_to(project_dir).as_posix()
         target_rel = target.relative_to(project_dir).as_posix()
-        if self._git_tracked(project_dir, source_rel):
+        tracked = u.Infra.git_is_tracked(
+            m.Infra.GitRelativePathRequest(
+                repo_root=project_dir, relative_path=source_rel
+            ),
+        )
+        if tracked.failure:
+            return r[bool].from_failure(tracked)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        if tracked.value.value:
             moved = u.Infra.git_mv_path(
                 m.Infra.GitPathPairRequest(
                     repo_root=project_dir,
@@ -138,84 +251,24 @@ class FlextInfraCodegenLayoutFiles:
         source.rename(target)
         return r[bool].ok(value=True)
 
-    def _archive_move(
-        self,
-        project_dir: Path,
-        source: Path,
-        target: Path,
-    ) -> p.Result[bool]:
-        """Untrack a git-tracked source, then move it into the archive root.
-
-        Archives leave Git tracking (``git rm --cached``) so the preserved
-        content under ``archive_root`` is ignored, never committed.
+    @staticmethod
+    def _prune_empty_dirs(root: Path) -> p.Result[bool]:
+        """Remove only the captured empty directory tree left by moves.
 
         Returns:
-            The resulting ``p.Result[bool]``.
+            Success after guarded cleanup, or the original failure.
 
         """
-        target.parent.mkdir(parents=True, exist_ok=True)
-        source_rel = source.relative_to(project_dir).as_posix()
-        if self._git_tracked(project_dir, source_rel):
-            untracked = u.Infra.git_rm_cached(
-                m.Infra.GitRelativePathRequest(
-                    repo_root=project_dir,
-                    relative_path=source_rel,
-                ),
-            )
-            if untracked.failure:
-                return r[bool].from_failure(untracked)
-        source.rename(target)
-        return r[bool].ok(value=True)
-
-    def _remove_tracked_or_unlinked(
-        self,
-        project_dir: Path,
-        source: Path,
-    ) -> p.Result[bool]:
-        """Remove a byte-identical duplicate whose content is already archived.
-
-        Returns:
-            The resulting ``p.Result[bool]``.
-
-        """
-        source_rel = source.relative_to(project_dir).as_posix()
-        if self._git_tracked(project_dir, source_rel):
-            removed = u.Infra.git_rm_path(
-                m.Infra.GitRelativePathRequest(
-                    repo_root=project_dir,
-                    relative_path=source_rel,
-                ),
-            )
-            if removed.failure:
-                return r[bool].from_failure(removed)
+        if not root.exists():
             return r[bool].ok(value=True)
-        source.unlink()
-        return r[bool].ok(value=True)
-
-    @staticmethod
-    def _git_tracked(project_dir: Path, rel: str) -> bool:
-        """Whether a path is git-tracked; False for plain directories.
-
-        Returns:
-            The resulting ``bool``.
-
-        """
-        listed = u.Infra.git_is_tracked(
-            m.Infra.GitRelativePathRequest(repo_root=project_dir, relative_path=rel),
-        )
-        return listed.success and listed.value.value
-
-    @staticmethod
-    def _prune_empty_dirs(root: Path) -> None:
-        """Remove directories left empty by a merge, deepest first."""
-        dirs = sorted(
-            (path for path in root.rglob("*") if path.is_dir()),
-            key=u.Infra.path_depth,
-            reverse=True,
-        )
-        for path in (*dirs, root):
-            if path.is_dir() and not any(path.iterdir()):
-                path.rmdir()
+        inventoried = u.Cli.atomic_inventory_physical_tree(root)
+        if inventoried.failure:
+            return r[bool].from_failure(inventoried)
+        if any(entry.kind != "directory" for entry in inventoried.value.entries):
+            return r[bool].fail(
+                f"layout directory still contains preserved content: {root}"
+            )
+        return u.Cli.atomic_cleanup_physical_tree_guarded(inventoried.value)
 
 
 __all__: list[str] = ["FlextInfraCodegenLayoutFiles"]
