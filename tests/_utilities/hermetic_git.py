@@ -377,12 +377,17 @@ class TestsFlextInfraUtilitiesHermeticGit:
             mirrors = staging / "mirrors"
             cls.build_git_mirrors(project_root, mirrors, (source,))
             project = staging / "project"
+            environment = cls.hermetic_git_environment(mirrors)
             identity = cls._checkout_provider(
                 source,
                 project,
                 m.Cli.ProcessOptions(
-                    env=cls.hermetic_git_environment(mirrors),
-                    remove_env_keys=c.Tests.GIT_LOCAL_ENV_KEYS,
+                    env=environment,
+                    remove_env_keys=tuple(
+                        key
+                        for key in c.Tests.GIT_LOCAL_ENV_KEYS
+                        if key not in environment
+                    ),
                 ),
             )
             cls._authenticate_dependency_project(project, name, source, identity)

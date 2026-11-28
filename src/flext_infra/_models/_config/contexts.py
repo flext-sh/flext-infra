@@ -279,7 +279,7 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
         ]
 
     class MakeRenderContext(MakeCommandContext):
-        """Typed input consumed by the generated Make surface."""
+        """Typed input consumed by the generated custom Make surface."""
 
         owns_workspace_manifest: Annotated[
             bool,
