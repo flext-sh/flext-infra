@@ -387,13 +387,12 @@ class TestsFlextInfraRuntimeRoot:
             ),
             desired_mode=0o644,
         )
-        with u.Tests.raises(
-            ValueError, match=rf"{re.escape(c.PYPROJECT_FILENAME)}' not found"
-        ):
+        # A missing required manifest escapes as the native read failure.
+        with u.Tests.raises(FileNotFoundError, match=re.escape(c.PYPROJECT_FILENAME)):
             u.Infra.workspace_dependency_order(tmp_path, (consumer, provider))
         if invalid:
             messages = {
-                "malformed": "invalid planned manifest",
+                "malformed": "invalid workspace manifest",
                 "duplicate": "duplicate planned manifest paths",
                 "cycle": "cyclic dependency graph",
                 "foreign": "planned manifest has no owning payload",

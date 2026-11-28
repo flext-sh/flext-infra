@@ -166,6 +166,20 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
                             child.name
                         )
 
+        def rescan(self) -> None:
+            """Begin a new physical epoch: drop first-read captures, keep plans.
+
+            Shared captures are cleared in place, so every derived view enters
+            the same epoch. A closed observation is a fixed candidate and has no
+            physical reads to renew.
+            """
+            if self._closed_observations:
+                return
+            self._physical.clear()
+            self._states.clear()
+            self._observed_children.clear()
+            self._observed_directories.clear()
+
         def bind_reads(
             self,
             *,
@@ -670,6 +684,20 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
         if isinstance(files, self.OverlayFiles):
             return files.source_state(path, required=required)
         return u.Cli.atomic_read_binary_file_state(path, required=required).unwrap()
+
+    def rescan_sources(self) -> None:
+        """Begin a new physical source epoch for a first-read overlay view.
+
+        Captures renew and the resolver epoch restarts as for a source-view
+        transition; Rope's own validation then reports the changed resources.
+        """
+        files = self.fscommands
+        if not isinstance(files, self.OverlayFiles):
+            return
+        files.rescan()
+        FlextInfraUtilitiesRopeRuntime.invalidate_annotation_alias_indices()
+        self._refresh_source_finders()
+        FlextInfraUtilitiesRopeRuntime.project_core(self).module_cache.forget_all_data()
 
     @property
     def source_plans(self) -> tuple[p.Infra.CodegenFilePlan, ...]:

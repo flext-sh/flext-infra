@@ -1791,13 +1791,14 @@ cold lane (a fresh worktree, or a lock or toolchain change) and the next
 incremental execution. Checks and tests are independent native operations.
 `flext-infra workspace tests --repository-root <root> --scope all` runs without
 requiring a prior check receipt. Generated Make consumers use `make tests`; bare
-`make check` retains complete acceptance. Outside CI, an attached member's primary
-check uses its containing runtime workspace, never member-only evidence. In CI,
-every phase checks only the selected project root while provisioning keeps the
-containing runtime environment. The generated Make transport selects that root
-before the checker reads repository governance; it does not substitute workspace
-policy or bypass the selected project's declaration. The primary
-phase derives its gates from `make.check_prerequisite_gates`; the complete phase
+`make check` retains complete acceptance. Every phase, locally and in CI, checks
+only the selected project root while provisioning keeps the containing runtime
+environment; an attached member's commit hook therefore checks the member alone,
+and workspace scope is selected only by `ALL=Y` (ADR-038 decision 9,
+flext-bga5y). The generated Make transport selects that root before the
+checker reads repository governance; it does not substitute workspace policy
+or bypass the selected project's declaration. The primary phase
+derives its gates from `make.check_prerequisite_gates`; the complete phase
 retains the full configured check inventory and its context partitions. Both use
 the same native checker, original capture and SARIF publisher. Test owners execute
 their native engines and report the original outcome; missing, red or old check
