@@ -44,21 +44,22 @@ class FlextInfraUtilitiesGitSemanticIndex(FlextInfraUtilitiesGitStateFiles):
         opened = cls._open_repo(repo_root)
         if opened.failure:
             return r[Mapping[str, bytes]].from_failure(opened)
-        try:
-            tree = opened.value.commit(revision).tree / relative_dir
-        except KeyError:
-            # GitPython's only signal for a path absent from the tree.
-            return r[Mapping[str, bytes]].ok({})
-        try:
-            return r[Mapping[str, bytes]].ok({
-                blob.name: cls._state_blob_payload(repo_root, blob.hexsha)
-                for blob in tree.blobs
-            })
-        except (OSError, ValueError) as exc:
-            return r[Mapping[str, bytes]].fail_op(
-                f"read committed blobs {relative_dir} at {repo_root}",
-                exc,
-            )
+        with opened.value as repo:
+            try:
+                tree = repo.commit(revision).tree / relative_dir
+            except KeyError:
+                # GitPython's only signal for a path absent from the tree.
+                return r[Mapping[str, bytes]].ok({})
+            try:
+                return r[Mapping[str, bytes]].ok({
+                    blob.name: cls._state_blob_payload(repo_root, blob.hexsha)
+                    for blob in tree.blobs
+                })
+            except (OSError, ValueError) as exc:
+                return r[Mapping[str, bytes]].fail_op(
+                    f"read committed blobs {relative_dir} at {repo_root}",
+                    exc,
+                )
 
     @classmethod
     def git_head_numstat(
