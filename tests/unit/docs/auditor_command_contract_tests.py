@@ -70,11 +70,29 @@ class TestsFlextInfraAuditorCommandContract:
         u.write_file(excluded, "```bash\nruff check src\n```\n")
         u.write_file(
             infra_test_workspace / c.PYPROJECT_FILENAME,
-            (
-                "[project]\nname='infra-pkg'\nversion='0.0.0'\n\n"
-                "[tool.flext.docs]\n"
-                'exclude_docs=["standards/historical/**"]\n'
-            ),
+            "[project]\nname='infra-pkg'\nversion='0.0.0'\n",
+        )
+        defaults = tm.ok(
+            u.Infra.load_codegen_inputs(infra_test_workspace),
+        ).spec.exclusions
+        tm.ok(
+            u.Cli.yaml_dump(
+                infra_test_workspace
+                / c.Infra.CODEGEN_CONFIG_DIR
+                / c.Infra.CODEGEN_CONFIG_FILENAME,
+                {
+                    "Infra": {
+                        "codegen": {
+                            "exclusions": {
+                                "docs_copy": [
+                                    *defaults.docs_copy,
+                                    "docs/standards/historical/**",
+                                ],
+                            },
+                        },
+                    },
+                },
+            )
         )
         issues = u.Infra.docs_command_contract_issues(command_contract_scope)
 
