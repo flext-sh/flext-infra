@@ -40,7 +40,8 @@ Declare targets under `Infra.codegen.repository.candidate_bootstrap_targets` in
 canonical `what` surface.
 The same target declaration supports `flext-infra codegen candidate-bootstrap`
 to project the declared recovery surface without importing the candidate package.
-A candidate worktree may appear only once per invocation. Recover a conflicted pyproject with
+A candidate worktree may appear only once per invocation.
+Recover a conflicted pyproject with
 `what: pyproject`, then use the internal `codegen init` adapter from its
 preinstalled generation tool runtime to regenerate the existing candidate's
 Makefile and run `make check` to complete generation. The bootstrap authenticates the

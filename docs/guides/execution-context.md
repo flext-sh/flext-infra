@@ -4179,7 +4179,8 @@ including its filename and source text. The complete batch remains unchanged.
 
 The public `flext-infra check run --file` route selects a literal
 repository-relative path through the existing typed request, never bare analyzers
-or a second gate engine. Selection rejects empty, absolute, traversal, missing, non-Python and
+or a second gate engine. Selection rejects empty, absolute, traversal, missing,
+non-Python and
 symlink-component paths before creating reports or invoking tools. Only the literal
 file reaches each gate's existing `check_files`; no mutation is permitted.
 The caller selects registered gates through `RunCommand.gates` and `resolve_gates`;
@@ -4541,7 +4542,8 @@ without exporting their payload. Algorithm usability and trust still require the
 selected native signing or verification action, not this observation.
 The CLI emits the typed report as JSON, excluding native values. Neither this
 observation nor original check/test capture selects signing: capture binds the
-typed target policy and producer evidence. Direct `u.Infra.git_create_gate_attestation` and
+typed target policy and producer evidence.
+Direct `u.Infra.git_create_gate_attestation` and
 `u.Infra.git_verify_gate_attestation` select signing/publication or signature
 verification;
 their required trust input and native key/signature failures remain fail-loud. A valid

@@ -75,8 +75,7 @@ class TestsFlextInfraCiCompleteCheck:
         tm.that(
             optional["run"],
             eq=(
-                f"{spec.make.ci.variable}={spec.make.ci.value} "
-                f"{complete.make_command}"
+                f"{spec.make.ci.variable}={spec.make.ci.value} {complete.make_command}"
             ),
         )
         tm.that(optional["run"], has=f"CHECK_PHASE={c.Infra.CheckPhase.COMPLETE}")
