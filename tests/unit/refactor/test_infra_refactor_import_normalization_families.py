@@ -50,13 +50,13 @@ class TestsFlextInfraRefactorImportNormalizationFamilies(
             )
         target = scripts / "run" / "media_source_stage.py"
         source = (
-            "from demo_pkg import c, m, p, u\n"
+            "from demo_pkg import c, m, u\n"
             "def stage(value: str) -> str:\n"
             "    return u.render(m.render(c.render(value)))\n"
         )
         target.write_text(source, encoding=c.DEFAULT_ENCODING)
         normalized = cls._normalize(project, target, source)
-        tm.that(normalized, has="from scripts import c, m, p, u")
+        tm.that(normalized, has="from scripts import c, m, u")
         target.write_text(normalized, encoding=c.DEFAULT_ENCODING)
         process = tm.ok(
             u.Cli.run(
@@ -131,7 +131,7 @@ class TestsFlextInfraRefactorImportNormalizationFamilies(
         module = tier / "consumer.py"
         source = (
             "from __future__ import annotations\n"
-            "from tests import c, m\n"
+            "from tests import m\n"
             f"from flext_tests import {imported_name} as {local_alias}\n\n"
             "local_models = m\n"
             "class ClassScope:\n    m = 'class-local'\n\n"
@@ -165,8 +165,8 @@ class TestsFlextInfraRefactorImportNormalizationFamilies(
                     "-c",
                     (
                         "from typing import get_type_hints; "
-                        "from flext_tests import m, p, tm; "
-                        "from tests import c, m as local_m; "
+                        "from flext_tests import m, tm; "
+                        "from tests import m as local_m; "
                         "from tests.consumer import "
                         "ClassScope, build, local, local_models, sibling; "
                         "user = m.Tests.User.model_validate("
@@ -802,6 +802,7 @@ class TestsFlextInfraRefactorImportNormalizationFamilies(
         """Every family retains private MRO sources and rejects its own facade."""
         project, package = cls._project(tmp_path)
         family = u.Infra.facade_families()[letter]
+        cls._lazy_init(package, {letter: f".{family.module}"})
         directory = package / family.directory
         directory.mkdir(exist_ok=True)
         module = directory / "declaration.py"
@@ -814,7 +815,7 @@ class TestsFlextInfraRefactorImportNormalizationFamilies(
             u.Infra.normalize_import_source(
                 project_root=project, file_path=module, source=source
             ),
-            has="family imports its own facade",
+            has=[str(module), f"demo_pkg.{letter}"],
         )
         native = f"from demo_pkg.{family.directory}.part import Declaration\n"
         tm.ok(

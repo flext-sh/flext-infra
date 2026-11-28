@@ -4717,6 +4717,8 @@ construction and runtime model schemas keep the imports they execute.
 Header injection and cold protocol normalization share that classification.
 Postponed annotations do not defer class bases or executable protocol references,
 and deferral retains the original provider instead of substituting the local facade.
+If a rewrite removes the last typing guard, normalization also removes its
+unused typing binding before returning the fixed point.
 Unparsable source retains its original `SyntaxError` location. Import and protocol
 projection never delete an unattached decorator to manufacture a parseable input;
 the owning producer must restore the missing declaration or correct its emission.

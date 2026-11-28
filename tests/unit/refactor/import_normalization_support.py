@@ -31,6 +31,8 @@ class TestsFlextInfraRefactorImportNormalizationSupport:
             "\n"
             "from flext_core.lazy import install_lazy_exports\n"
             "\n"
+            f"__all__ = {tuple(exports)!r}\n"
+            "\n"
             "install_lazy_exports(\n"
             "    __name__,\n"
             "    globals(),\n"

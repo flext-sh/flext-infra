@@ -441,6 +441,12 @@ class FlextInfraUtilitiesImportLawNormalization(
                 rope_project=inputs[2],
                 member_resolver=member_resolver,
             )
+            if updated.success and updated.value == current != history[0]:
+                updated = cls._clean_typing_scaffold(
+                    cls._import_law_native_project((inputs[2], member_resolver)),
+                    state.scope.file_path,
+                    current,
+                )
             if updated.failure:
                 return updated
             if updated.value == current:
@@ -604,8 +610,9 @@ class FlextInfraUtilitiesImportLawNormalization(
             },
         )
 
-    @staticmethod
+    @classmethod
     def _import_law_candidate_module(
+        cls,
         project: p.Infra.RopeProject,
         file_path: Path,
         source: str,
@@ -630,17 +637,25 @@ class FlextInfraUtilitiesImportLawNormalization(
         )
         if unaliased.failure:
             return unaliased
-        declared = FlextInfraUtilitiesWorkspaceSnapshot.workspace_declared_sources(
-            Path(project.root.real_path),
-            (),
-            {file_path: unaliased.value},
-            source_project=project,
-        )
-        with project.source_view(
-            declared_files=declared, additional_source_folders=None
-        ):
+        return cls._clean_typing_scaffold(project, file_path, unaliased.value)
+
+    @staticmethod
+    def _clean_typing_scaffold(
+        project: p.Infra.RopeProject, file_path: Path, source: str
+    ) -> p.Result[str]:
+        """Retire unused typing guards and bindings in the current candidate.
+
+        Returns:
+            The candidate text after native typing cleanup or its failure.
+
+        """
+        resource = FlextInfraUtilitiesRopeRuntime.file_resource_at(project, file_path)
+        native = FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource)
+        with FlextInfraUtilitiesRopeModulePatch.candidate_module(
+            native, source
+        ) as candidate:
             return FlextInfraUtilitiesRopeModulePatch.strip_type_checking_scaffold(
-                FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource)
+                candidate
             )
 
     @classmethod
