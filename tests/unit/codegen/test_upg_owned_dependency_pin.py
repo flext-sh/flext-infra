@@ -1,10 +1,9 @@
-"""uv.lock, written only by ``make upg``, owns every internal dependency pin.
+"""Conformance preserves authored Git refs; only ``make upg`` writes uv.lock.
 
-Each ``flext-*`` requirement renders on its integration line. ``make upg``
-re-resolves that line (``uv lock --upgrade --refresh``) to the branch tip and
-records the commit in uv.lock; generation re-renders any commit left in the
-pyproject projection on the detected line instead of writing it back, and no
-manifest or override pins one beside the lock (flext-oe420).
+An explicit requirement retains its declared URL and ref, including a commit.
+Detecting an integration line is a separate operation: a commit supplies no
+branch, and a hand-authored ``project.flext_source`` must declare that line.
+Generation removes obsolete projected overrides without inventing a new ref.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -19,7 +18,7 @@ from tests import c, m, p, t, tm, u
 
 
 class TestsFlextInfraUpgOwnedDependencyPin:
-    """Generation keeps the line; only the lock carries the commit."""
+    """Conformance preserves sources while upgrade owns lock resolution."""
 
     PROVIDER = "https://example.org/flext"
     LINE = "0.12.0-dev"
@@ -117,11 +116,11 @@ class TestsFlextInfraUpgOwnedDependencyPin:
         )
         tm.that((line.base_url, line.branch), eq=(self.PROVIDER, self.LINE))
 
-    def test_commit_residue_is_re_rendered_on_the_detected_line(
+    def test_explicit_commit_is_preserved_with_a_detected_line(
         self,
         tmp_path: Path,
     ) -> None:
-        """A retired pin left in the projection never survives generation."""
+        """A detected branch never replaces an explicitly declared commit."""
         source = self._consumer(tmp_path, self.COMMIT, self.COMMIT)
         line = m.Infra.WorkspaceIntegrationSpec(
             provider=u.Tests.provider().name,
@@ -129,10 +128,18 @@ class TestsFlextInfraUpgOwnedDependencyPin:
             base_url=self.PROVIDER,
         )
         rendered = tm.ok(self._conform(source, line))
-        tm.that(rendered, lacks=self.COMMIT)
-        tm.that(rendered, has=self._requirement("flext-core", self.LINE))
+        for section, key, distribution in (
+            ("project", "dependencies", "flext-core"),
+            ("dependency-groups", "dev", "flext-core"),
+            ("dependency-groups", "codegen", "flext-infra"),
+        ):
+            tm.that(
+                u.Tests.toml_strings_at(rendered, section, key),
+                eq=(self._requirement(distribution, self.COMMIT),),
+            )
+        tm.that(rendered, lacks="override-dependencies")
         tm.that(tm.ok(self._conform(rendered, line)), eq=rendered)
-        tm.fail(self._conform(source), has="only `make upg` moves it")
+        tm.that(tm.ok(self._conform(source)), eq=rendered)
 
     def test_a_fully_pinned_projection_takes_the_line_from_the_manifest(
         self,

@@ -1,6 +1,6 @@
 # Execution context
 
-<!-- Revision 2026-11-28.9; Marlon Costa <marlon.costa@datacosmos.com.br>; Datacosmos. -->
+<!-- Revision 2026-11-28.10; Marlon Costa <marlon.costa@datacosmos.com.br>; Datacosmos. -->
 
 <!-- TOC START -->
 
@@ -2607,13 +2607,18 @@ member removes only its generated contributions. The public conform and overlay
 paths use canonical resolver-key ordering and preserve these ownership comments
 so repeated generation reaches a byte-identical fixed point.
 
-Each internal `flext-*` requirement declares its integration line in `pyproject.toml`,
-never a commit: the resolved commit exists only in `uv.lock`, and only `make upg` moves
-it to the line tip. The manifest does not pin revisions. A commit left in the
-`pyproject.toml` projection is residue: `make check` re-renders it on the detected line.
-When the projection carries no line, a hand-written `project.flext_source` in the
-manifest declares it, and a commit in a hand-written source fails. Fix the setup or
-`upg` owner and regenerate through `make check`; manual installs do not replace the cycle.
+Dependency conformance preserves each explicit Git requirement's URL and ref,
+including a declared commit, as required by `AGENTS.md`. A detected provider branch
+does not replace that declaration. Only `make upg` advances resolved lock provenance;
+`make check` does not choose another revision or write the lock.
+
+Integration-line detection is a separate concern: a commit ref supplies no branch
+selector. When the declarations carry no infrastructure line, the existing manifest
+or hand-written `project.flext_source` must provide it. That scaffold source declares
+a line and rejects a commit. These rules belong to `_pyproject/requirements.py` and
+`repository.py`, respectively; preserving a dependency ref does not establish an
+integration line, resolve it or prove its runtime. Fix the owning declaration and
+regenerate through `make check`; manual installs do not replace the cycle.
 
 A workspace root preserves declared Git requirements and publishes its declared
 package members in `[tool.uv.workspace].members`. Its `[tool.uv.sources]` entries

@@ -139,41 +139,51 @@ class TestsFlextInfraCodegenLazyInit:
             tm.that(tests_init.read_text(encoding="utf-8"), eq=original_content)
 
     class TestsExcludedDirectories:
-        """Vendor and .venv directories are excluded."""
+        """Exclude declared artifacts while retaining ordinary source packages."""
 
         @staticmethod
-        def test_vendor_dir_excluded(tmp_path: Path) -> None:
-            """Exclude vendored test packages from discovery."""
-            _create_init_file(tmp_path / "src" / "pkg", _VALID_INIT)
-            _create_init_file(
+        def test_nested_vendor_dir_is_scanned(tmp_path: Path) -> None:
+            """Keep nested vendored test packages in source discovery."""
+            src_init = _create_init_file(tmp_path / "src" / "pkg", _VALID_INIT)
+            vendor_init = _create_init_file(
                 tmp_path / "tests" / "vendor" / "pkg",
                 _VALID_TESTS_INIT,
             )
             generator = FlextInfraCodegenLazyInit(repository_root=tmp_path)
             result = generator.plan_files()
-            tm.ok(result.success)
+            planned = {plan.path for plan in tm.ok(result)}
+            tm.ok(src_init in planned)
+            tm.ok(vendor_init.is_file())
+            tm.ok(vendor_init in planned)
 
         @staticmethod
         def test_venv_dir_excluded(tmp_path: Path) -> None:
             """Exclude virtual-environment test packages from discovery."""
-            _create_init_file(tmp_path / "src" / "pkg", _VALID_INIT)
-            _create_init_file(
+            src_init = _create_init_file(tmp_path / "src" / "pkg", _VALID_INIT)
+            excluded_init = _create_init_file(
                 tmp_path / "tests" / ".venv" / "pkg",
                 _VALID_TESTS_INIT,
             )
             generator = FlextInfraCodegenLazyInit(repository_root=tmp_path)
             result = generator.plan_files()
-            tm.ok(result.success)
+            planned = {plan.path for plan in tm.ok(result)}
+            tm.ok(src_init in planned)
+            tm.ok(excluded_init.is_file())
+            tm.that(planned, lacks=excluded_init)
 
         @staticmethod
-        def test_nested_site_packages_dir_excluded(tmp_path: Path) -> None:
-            """Exclude nested site-packages directories from discovery."""
-            _create_init_file(tmp_path / "src" / "pkg", _VALID_INIT)
-            _create_init_file(
+        @c.Tests.MARK.parametrize("environment", ("venv", "runtime"))
+        def test_nested_site_packages_dir_excluded(
+            tmp_path: Path,
+            environment: str,
+        ) -> None:
+            """Exclude site-packages even without a virtual-environment parent."""
+            src_init = _create_init_file(tmp_path / "src" / "pkg", _VALID_INIT)
+            excluded_init = _create_init_file(
                 tmp_path
                 / "pkg"
                 / "container"
-                / "venv"
+                / environment
                 / "lib"
                 / "site-packages"
                 / "bad",
@@ -181,7 +191,10 @@ class TestsFlextInfraCodegenLazyInit:
             )
             generator = FlextInfraCodegenLazyInit(repository_root=tmp_path)
             result = generator.plan_files()
-            tm.ok(result.success)
+            planned = {plan.path for plan in tm.ok(result)}
+            tm.ok(src_init in planned)
+            tm.ok(excluded_init.is_file())
+            tm.that(planned, lacks=excluded_init)
 
         @staticmethod
         def test_runtime_scratch_dir_excluded_from_plans(tmp_path: Path) -> None:

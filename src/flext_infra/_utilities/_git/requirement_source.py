@@ -47,10 +47,9 @@ class FlextInfraUtilitiesGitRequirementSource:
     def ref_is_commit(ref: str) -> bool:
         """Whether one Git ref names a commit rather than an integration line.
 
-        uv.lock, written only by ``make upg``, owns every resolved commit. In a
-        generated pyproject a commit ref is projection residue that generation
-        re-renders on the family line; in a hand-authored source it is a pin
-        beside the lock and fails loudly.
+        Classification does not decide source policy. Conformance preserves
+        authored refs, while integration-line detection requires a branch
+        selector rather than a commit.
 
         Returns:
             The resulting ``bool``.
@@ -64,13 +63,13 @@ class FlextInfraUtilitiesGitRequirementSource:
 
         Returns ``(canonical_url, ref)`` for a requirement that declares
         ``name @ git+URL@REF``, or the empty pair when the requirement declares
-        no direct source at all. The declared line is the only authority for the
-        dependency's canonical URL and branch: canonicalization normalizes the
-        transport scheme (``ssh://``, SCP-style, ``http``) to ``https`` and
-        never invents an organization, host, or ref. A declared source that is
+        no direct source at all. The declaration owns the dependency's URL and
+        ref: canonicalization normalizes the transport scheme (``ssh://``,
+        SCP-style, ``http``) to ``https`` and never invents an organization,
+        host, or ref. A declared source that is
         not a Git URL, or a Git URL without a ref, fails loudly. Whether a
-        commit ref is projection residue or a hand-authored pin is the
-        caller's decision (``ref_is_commit``).
+        commit ref is admissible for a particular operation is the caller's
+        decision (``ref_is_commit``).
 
         Returns:
             The resulting ``p.Result[tuple[str, str]]``.
