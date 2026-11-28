@@ -1,6 +1,6 @@
 # CSV rename campaigns
 
-<!-- Revision 2026-11-28.1; Marlon Costa <marlon.costa@datacosmos.com.br>; Datacosmos. -->
+<!-- Revision 2026-11-28.2; Marlon Costa <marlon.costa@datacosmos.com.br>; Datacosmos. -->
 
 <!-- TOC START -->
 
@@ -16,12 +16,14 @@
 ## Declarative Text Rules and Candidate Bootstrap
 
 For a recovery that only needs declarative Sed text rules, run the declarative text
-recovery operation at the affected repository root (`flext-infra refactor mod-text`).
+recovery operation at the affected repository root
+(`flext-infra refactor mod-text --apply`).
 This public CLI route validates exact rule receipts, checks Python syntax before
 publication, applies the authenticated text batch, and verifies that no findings
 remain. It does not enter the Rope or ast-grep phases of `make mod`. Repair a
 malformed rule in its authored YAML catalogue,
-then replay through this verb; do not edit a generated projection.
+then replay through this verb; do not edit a generated projection. Without `--apply`,
+the route checks the rules without publishing changes and fails if findings remain.
 Python files in governed source trees are scanned by default. A rule may also
 declare a relative `include` glob ending in a file suffix to elect authored
 Markdown or configuration text. The same authenticated inventory and atomic
@@ -31,7 +33,7 @@ mapping, null, non-string, and blank entries fail before any publication; no
 scope is expanded into characters or coerced into a glob. Omitted scopes retain
 the typed rule defaults, and empty lists remain valid unrestricted selectors.
 When a candidate's Python package cannot import, the healthy Infra provider
-can run candidate text recovery (`flext-infra refactor mod-text-candidate`) after
+can run candidate text recovery (`flext-infra refactor mod-text-candidate --apply`) after
 its repository declaration supplies exactly one `candidate_bootstrap_targets` entry.
 Declare targets under `Infra.codegen.repository.candidate_bootstrap_targets` in
 `config/codegen.yaml`, with each `path` relative to the healthy provider and a
@@ -122,7 +124,7 @@ are relative to the consumer repository. Absolute and parent-traversing declarat
 fail during typed config validation; resolved paths that leave either owner through a
 symbolic link fail during public composition before source publication.
 
-`flext-infra refactor mod-text` replays only the declared Sed text rules through
+`flext-infra refactor mod-text --apply` replays only the declared Sed text rules through
 the same authenticated publisher used by `make mod`. It exists for recovery when
 a text rule has left an authored Python file unparsable and the Rope phases cannot
 start. Every future Python
