@@ -116,7 +116,7 @@ jobs:
 
       # One check per run, on the tree the site was built from.
       - name: Check documentation and projections
-        run: make check
+        run: make check CHECK_PHASE=complete
 
       # The site artifact exists only to feed deploy on main; an integration
       # push proves the build and uploads nothing.
@@ -151,7 +151,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: docs-reports
-          # Structured docs reports only — omit raw docs log trees that may carry
+          # Structured docs and check reports only — omit raw log trees that may carry
           # env-derived secrets from lifecycle commands.
           path: |
             .reports/**/audit-summary.json
@@ -162,6 +162,8 @@ jobs:
             apps/*/.reports/**/audit-report.md
             apps/*/.reports/**/validate-summary.json
             apps/*/.reports/**/validate-report.md
+            .reports/gates/**/check/**/*.sarif
+            .reports/gates/**/check/**/*.md
           if-no-files-found: error
           # The allowlisted reports live under hidden .reports directories.
           # upload-artifact excludes hidden paths unless this is explicit.

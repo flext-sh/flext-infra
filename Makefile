@@ -154,7 +154,7 @@ WORKSPACE_SUBPROJECTS :=
 export CHECK_PHASE MARKER
 PYTEST_REPORTS_DIR := .reports/tests
 override PYTEST_RUN_TIMEOUT_SECONDS := 240
-override PYTEST_TERMINATION_GRACE_SECONDS := 2
+override PYTEST_TERMINATION_GRACE_SECONDS := 10
 override PYTEST_TIMEOUT_EXIT_CODE := 124
 override PYTEST_ENFORCEMENT_PLUGIN := flext_tests.enforcement_plugin
 override PYTEST_PROGRESS_ARGS := --verbose --failed-first
@@ -884,7 +884,7 @@ VERB_ARGUMENTS_upg :=
 VERB_DESCRIPTION_mod := Refactor declared source structure through the shared pipeline and publish the complete coherent change; LAWS (ENFORCE ids) or RULES (rule ids) diagnose or repair one law (ADR-028 Decision 18 item 2).
 VERB_ARGUMENTS_mod := LAWS RULES
 
-VERB_DESCRIPTION_check := Validate declarations, projections, environment, documentation and configured gates without repairs or publication.
+VERB_DESCRIPTION_check := Locally, converge generation, repairs and formatting to a fixed point; then validate declarations, projections, environment, documentation and configured gates. CI and commit hooks verify without repairs or publication (ADR-037).
 VERB_ARGUMENTS_check := CHECK_PHASE
 
 VERB_DESCRIPTION_tests := Run native incremental tests through the persistent Testmon selection; in a workspace root ALL=Y includes every governed member.
@@ -1461,8 +1461,8 @@ _builtin_build_artifacts:
 	@$(UV) build --project "$(PROJECT_ROOT)"
 
 
-# Check is read-only: it runs the gates without --apply, so the tree is left
-# unchanged; fix applies the declared repairs of the fixable gates.
+# Check verifies through gates without --apply. Local convergence first runs
+# the private generation, repair and formatting phases; CI and hooks never do.
 # Each gate's declared stage selects its partition: CI=Y runs
 # make.check_gates_ci, CI=C (the commit hook) runs
 # make.pre_commit_check_gates, CI=N runs
@@ -1482,10 +1482,10 @@ _builtin_converge_all: _builtin_require_environment
 	before="$$(tree)" || exit 1; pass=0; \
 	while :; do \
 		pass=$$((pass + 1)); \
-		if [ "$$pass" -gt $(CHECK_CONVERGE_MAX_PASSES) ]; then printf '%s\n' "❌ check: gen -> fix -> fmt did not reach a fixed point in $(CHECK_CONVERGE_MAX_PASSES) passes" >&2; exit 1; fi; \
+		if [ "$$pass" -gt $(CHECK_CONVERGE_MAX_PASSES) ]; then printf '%s\n' "❌ check: convergence did not reach a fixed point in $(CHECK_CONVERGE_MAX_PASSES) passes" >&2; exit 1; fi; \
 		FLEXT_INFRA_CHECK_CONVERGE=1 $(SELF_MAKE) _builtin_gen_all && $(SELF_MAKE) _builtin_fix_all && $(SELF_MAKE) _builtin_fmt_all || exit 1; \
 		after="$$(tree)" || exit 1; \
-		if [ "$$after" = "$$before" ]; then printf '%s\n' "INFO: check: gen -> fix -> fmt fixed point after $$pass pass(es)"; break; fi; \
+		if [ "$$after" = "$$before" ]; then printf '%s\n' "INFO: check: fixed point after $$pass pass(es)"; break; fi; \
 		before="$$after"; \
 	done
 
@@ -1512,7 +1512,7 @@ _builtin_fix_all: _builtin_require_environment
 _builtin_clean_generated: _builtin_require_interpreter
 	@$(PROJECT_FLEXT_INFRA) maintenance clean --repository-root "$(PROJECT_ROOT)" --apply
 
-# Heavy verbs (check, tests, tests-full, tests-harness, gen, gen-scope, mod)
+# Heavy verbs (check, tests, tests-full, tests-harness, mod)
 # admit themselves into the per-host FIFO queue and arm their wall-time budget only once
 # admitted (FLEXT ADR-032, config Infra.gate_admission): queue time never
 # counts against a budget. GEN_PROFILE=1 / MOD_PROFILE=1 capture cProfile.
@@ -1545,16 +1545,6 @@ _builtin_gen_all: _builtin_require_interpreter
 	done; \
 	set +f)
 
-# Focal generation is the bounded diagnosis vehicle: one surface (and, for
-# facades, one module) through the identical engine, lock and budget.
-_builtin_gen_scope_all: _builtin_require_interpreter
-	@set -eu; \
-	root="$(abspath $(or $(strip $(ROOT)),$(PROJECT_ROOT)))"; \
-	scope="$(or $(strip $(SCOPE)),self)"; \
-	module_args=""; \
-	if [ -n "$(strip $(MODULE))" ]; then module_args=" --module $(strip $(MODULE))"; fi; \
-	$(if $(GEN_PROFILE),FLEXT_INFRA_PROFILE=$(GEN_PROFILE) ,)FLEXT_INFRA_PROFILE_OUTPUT="$$root/.reports/codegen/gen-scope.pstats" $(PROJECT_FLEXT_INFRA) codegen generate --root "$$root" --what "$(strip $(WHAT))" --scope "$$scope"$$module_args
-
 # Structural rewrites run one theme at a time (ADR-028 Decision 18 item 2):
 # LAWS selects ENFORCE law ids, RULES selects exact rule ids; the engine refuses
 # a run without either.
@@ -1574,11 +1564,7 @@ _builtin-check: _builtin_check_all
 _builtin-tests: _builtin_tests_all
 _builtin-tests-full: _builtin_tests_full_all
 _builtin-tests-harness: _builtin_tests_harness_all
-_builtin-fmt: _builtin_fmt_all
-_builtin-fix: _builtin_fix_all
 _builtin-clean: _builtin_clean_generated
-_builtin-gen: _builtin_gen_all
-_builtin-gen-scope: _builtin_gen_scope_all
 _builtin-mod: _builtin_mod_apply
 # The repository's release capability elects these product operations.
 # Operator values cross the shell boundary as environment data.

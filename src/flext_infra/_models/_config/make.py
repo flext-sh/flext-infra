@@ -259,9 +259,7 @@ class FlextInfraModelsConfigMake(
         def make_command(self) -> str:
             """Canonical Make transport for this typed workflow operation."""
             return f"make {self.verb}" + (
-                f" CHECK_PHASE={self.phase}"
-                if self.verb == c.Infra.VERB_CHECK
-                else ""
+                f" CHECK_PHASE={self.phase}" if self.verb == c.Infra.VERB_CHECK else ""
             )
 
         @m.model_validator(mode="after")
