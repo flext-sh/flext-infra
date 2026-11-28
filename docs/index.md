@@ -46,8 +46,11 @@ required validation.
 
 ## Quality Gates
 
-Consult `make help` for the current command surface. Each verb performs only its
-declared operation; `make check` validates without applying repairs. Environment setup
+Consult `make help` for the current command surface. Each verb performs its declared
+operation. Locally, `make check` converges generation, repairs and formatting before
+validating the selected phase. CI and commit hooks verify without repairs or
+publication. `make check` defaults to the primary phase; outside commit hooks,
+`CHECK_PHASE=complete` adds projection and documentation validation. Environment setup
 delegates tool provisioning to Mise and project/workspace installation to native uv
 declarations and locks. Python runs the installed project; no custom Python bootstrap or
 lock parser precedes installation.

@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import venv
 from collections.abc import Mapping
 from pathlib import Path
 
@@ -522,7 +523,7 @@ class TestsFlextInfraCodegenMakeCheckPartition:
             tmp_path,
             c.Infra.MakeProfile.STANDALONE,
         )
-        tm.ok(u.Tests.create_python_environment(root))
+        venv.create(u.Infra.runtime_environment_dir(root))
         policy = config.Infra.codegen.make
         environment: Mapping[str, str]
         if context == "ci":
