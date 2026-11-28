@@ -168,6 +168,46 @@ class TestsFlextInfraVscodeOwnerMerge:
         tm.ok(invalid.exception is not None)
 
     @staticmethod
+    def test_invalid_policy_precedes_native_project_classification(
+        tmp_path: Path,
+    ) -> None:
+        """Invalid captured policy retains its cause before native source parsing."""
+        u.Tests.write_native_resolution_project(tmp_path, "policy-project")
+        u.Tests.initialize_git_repo(tmp_path)
+        path = tmp_path / c.CONFIG_DIR_NAME / c.Infra.CODEGEN_CONFIG_FILENAME
+        path.parent.mkdir()
+        tm.ok(
+            u.Cli.yaml_dump(
+                path,
+                {
+                    "Infra": {
+                        "codegen": {
+                            "vscode": {"settings": [["", {"invalid": "empty key"}]]},
+                        },
+                    },
+                },
+            ),
+        )
+        manifest = tmp_path / c.PYPROJECT_FILENAME
+        malformed = "[project]\nname =\n"
+        manifest.write_text(malformed, encoding=c.DEFAULT_ENCODING)
+
+        loaded = u.Infra.load_codegen_inputs(tmp_path)
+
+        tm.fail(loaded, has="vscode.settings")
+        error = tm.not_none(loaded.exception)
+        tm.ok(isinstance(error, ValueError))
+        tm.that(str(error), has=str(tmp_path))
+        tm.ok(isinstance(error.__cause__, c.ValidationError))
+        path.unlink()
+        native = u.Infra.load_codegen_inputs(tmp_path)
+        tm.fail(native)
+        cause = tm.not_none(native.exception)
+        tm.that(type(cause).__name__, eq="TOMLDecodeError")
+        tm.that(native.error, has=str(cause))
+        tm.that(manifest.read_text(encoding=c.DEFAULT_ENCODING), eq=malformed)
+
+    @staticmethod
     def test_captured_yaml_values_are_isolated_and_new_bytes_revalidated() -> None:
         """Memoized parsing never shares mutable values or accepts malformed edits."""
         original = b"Infra:\n  values:\n    nested: [first]\n"

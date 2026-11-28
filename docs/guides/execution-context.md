@@ -1,6 +1,6 @@
 # Execution context
 
-<!-- Revision 2026-11-28.3; Marlon Costa <marlon.costa@datacosmos.com.br>; Datacosmos. -->
+<!-- Revision 2026-11-28.4; Marlon Costa <marlon.costa@datacosmos.com.br>; Datacosmos. -->
 
 <!-- TOC START -->
 
@@ -783,6 +783,12 @@ failure contract, keeping its exception, error code and error data together.
 Additional documentation failures become further issues and cannot replace an
 earlier native failure. No-op destinations retain read-input dependency edges to
 pending writers, while unchanged providers do not become write dependencies.
+
+Each repository's configuration loader validates its captured YAML policy before
+native project classification. Invalid policy retains the contextual `ValueError`
+and original schema-validation cause; valid policy then follows the same native
+discovery owner and supplied source project. This local ordering preserves
+repository selection, per-target planning and publication behavior.
 
 Planning outcomes, conform state and plan coordination are operational mutable
 models. Reuse the existing mutable preset and update these objects by reference;
