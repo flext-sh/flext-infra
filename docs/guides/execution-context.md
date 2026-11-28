@@ -4004,6 +4004,10 @@ binding resolves to the declared destination. Assignment expressions with effect
 ambiguous writes and local-function bindings are not retirement candidates. Native
 consumer, quoted-annotation, import and export completeness checks remain mandatory;
 no source scanner or alternate publisher participates.
+For wildcard consumers, alias relocation checks the provider's native public
+bindings when it has no module export declaration. A read of a declared
+export list can change or escape the list, so the declaration alone cannot
+prove that it excludes the relocated identity.
 
 Installed-distribution import metadata supplies candidates, not executable facade
 providers. Provider election resolves each candidate package initializer through the

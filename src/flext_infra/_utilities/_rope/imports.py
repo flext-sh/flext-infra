@@ -1054,10 +1054,21 @@ class FlextInfraUtilitiesRopeImports:
         imported = FlextInfraUtilitiesRopeRuntimeTypes.require_source_module(
             FlextInfraUtilitiesRopeCore.resolve_pymodule(rope_project, owner_resource)
         )
-        exported = FlextInfraUtilitiesRopeAnalysis.public_export_names_source(imported)
+        index = imported.get_source_binding_index()
+        attributes = imported.get_attributes()
+        exported = index.assignment_string_sequence(c.Infra.DUNDER_ALL)
+        source = imported.source_code
+        if any(
+            fragment.context.access == "read"
+            and source[fragment.start : fragment.end] == c.Infra.DUNDER_ALL
+            for fragment in index.fragments
+        ):
+            exported = tuple(attributes)
+        elif exported is None:
+            exported = tuple(name for name in attributes if not name.startswith("_"))
         if any(
             FlextInfraUtilitiesRopeRuntime.same_name(expected, binding)
-            for name, binding in imported.get_attributes().items()
+            for name, binding in attributes.items()
             if name in exported
             for expected in consumers
         ):
